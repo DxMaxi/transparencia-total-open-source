@@ -6,7 +6,10 @@
       "DepNomeCompleto": "Pessoa de Teste Exemplo A",
       "DepGP": "AA",
       "DepCirculo": "Porto",
-      "DepEmail": "exemplo-a@invalid.test"
+      "DepEmail": "exemplo-a@invalid.test",
+      "DepSituacao": {
+        "DadosSituacaoDeputado": [{ "sioDes": "Efetivo" }]
+      }
     }
   },
   {
@@ -14,7 +17,10 @@
       "DepId": 102,
       "DepNomeParlamentar": "Pessoa Exemplo B",
       "DepGP": "BB",
-      "DepCirculo": "Lisboa"
+      "DepCirculo": "Lisboa",
+      "DepSituacao": {
+        "DadosSituacaoDeputado": [{ "sioDes": "Efetivo Temporário" }]
+      }
     }
   }
 ]
