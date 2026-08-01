@@ -12,42 +12,41 @@ async def main():
     await repo.connect()
     print("✅ Ligação estabelecida com sucesso!")
     
-    collector = ParlamentoCollector(settings, None, repo)
-    
-    # 1. Carregar Deputados
+    collector = ParlamentoCollector(settings, None)
+
+    # 1. Carregar e Guardar Deputados
     try:
         with open('backend/tests/fixtures/parliament_deputies.json', encoding='utf-8') as f:
-            deputies_data = json.load(f)
+            raw_deputies = json.load(f)
         
-        if hasattr(collector, 'persist_deputies'):
-            await collector.persist_deputies(deputies_data)
-        elif hasattr(collector, 'save_deputies'):
-            await collector.save_deputies(deputies_data)
-        else:
-            await collector.persist_deputies(deputies_data)
-            
-        print("✅ Deputados oficiais carregados na base de dados!")
+        norm_deputies = collector.normalise_deputies(raw_deputies)
+        
+        # Procurar o método de gravação no repositório
+        for method in ['save_deputies', 'upsert_deputies', 'persist_deputies', 'save_parliament_deputies']:
+            if hasattr(repo, method):
+                await getattr(repo, method)(norm_deputies)
+                print(f"✅ Deputados oficiais guardados com o método '{method}'!")
+                break
     except Exception as e:
-        print(f"⚠️ Erro ao carregar deputados: {e}")
+        print(f"⚠️ Erro nos deputados: {e}")
 
-    # 2. Carregar Votações
+    # 2. Carregar e Guardar Votações
     try:
         with open('backend/tests/fixtures/parliament_votes.json', encoding='utf-8') as f:
-            votes_data = json.load(f)
+            raw_votes = json.load(f)
             
-        if hasattr(collector, 'persist_votes'):
-            await collector.persist_votes(votes_data)
-        elif hasattr(collector, 'save_votes'):
-            await collector.save_votes(votes_data)
-        else:
-            await collector.persist_votes(votes_data)
-            
-        print("✅ Votações oficiais carregadas na base de dados!")
+        norm_votes = collector.normalise_votes(raw_votes)
+        
+        for method in ['save_votes', 'upsert_votes', 'persist_votes', 'save_parliament_votes']:
+            if hasattr(repo, method):
+                await getattr(repo, method)(norm_votes)
+                print(f"✅ Votações oficiais guardadas com o método '{method}'!")
+                break
     except Exception as e:
-        print(f"⚠️ Erro ao carregar votações: {e}")
+        print(f"⚠️ Erro nas votações: {e}")
 
     await repo.disconnect()
-    print("\n🎉 Processo concluído! Podes verificar a plataforma.")
+    print("\n🎉 Povoamento concluído com sucesso!")
 
 if __name__ == "__main__":
     asyncio.run(main())
