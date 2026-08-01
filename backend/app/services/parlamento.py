@@ -147,8 +147,10 @@ class ParlamentoCollector:
         page = await self.http.get(catalogue_url)
         soup = BeautifulSoup(page.text, "html.parser")
         legislature_norm = _normalise_space(legislature).casefold()
+        exact_labels = {legislature_norm, f"{legislature_norm} legislatura"}
 
-        candidates = []
+        exact_candidates: list[str] = []
+        fallback_candidates: list[str] = []
         for anchor in soup.find_all("a", href=True):
             label = _normalise_space(anchor.get_text(" ", strip=True)).casefold()
             href = urljoin(str(page.url), str(anchor["href"]))
@@ -156,7 +158,13 @@ class ParlamentoCollector:
                 rf"(?<![a-z0-9]){re.escape(legislature_norm)}(?![a-z0-9])",
                 label,
             ):
-                candidates.append(href)
+                target = exact_candidates if label in exact_labels else fallback_candidates
+                target.append(href)
+
+        # O cabeçalho global também pode conter ligações como "Acolhimento aos
+        # Deputados - XVII Legislatura". Se existir a pasta com o nome exato da
+        # legislatura, nunca devemos seguir essas ligações de navegação primeiro.
+        candidates = exact_candidates or fallback_candidates
 
         if not candidates:
             raise LookupError(f"Legislatura {legislature!r} não encontrada em {catalogue_url}")
