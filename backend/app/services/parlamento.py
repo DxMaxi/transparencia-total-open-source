@@ -4,7 +4,7 @@ import unicodedata
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from typing import Any, cast
-from urllib.parse import urljoin, urlparse
+from urllib.parse import parse_qs, unquote, urljoin, urlparse
 
 from bs4 import BeautifulSoup
 from dateutil.parser import parse as parse_datetime
@@ -27,6 +27,7 @@ from app.services.http import OfficialHttpClient
 MIN_DEPUTIES_PER_LEGISLATURE = 100
 MAX_DEPUTIES_PER_LEGISLATURE = 500
 MIN_DEPUTY_METADATA_COVERAGE = 0.70
+JSON_RESOURCE_NAME = re.compile(r"(?:\.json(?:\.txt)?|_json\.txt)$", re.IGNORECASE)
 
 
 def _normalise_key(value: str) -> str:
@@ -80,6 +81,17 @@ def _parse_date(value: Any | None) -> datetime | None:
         return None
 
 
+def _is_json_resource(label: str, href: str) -> bool:
+    """Reconhece os nomes JSON usados nos catálogos oficiais do Parlamento."""
+
+    parsed = urlparse(href)
+    names = [_normalise_space(label), unquote(parsed.path.rsplit("/", 1)[-1])]
+    for key, values in parse_qs(parsed.query).items():
+        if key.casefold() in {"fich", "file", "filename"}:
+            names.extend(unquote(value) for value in values)
+    return any(JSON_RESOURCE_NAME.search(name) for name in names)
+
+
 def _party_short(value: Any | None) -> str | None:
     direct = _as_text(value)
     if direct:
@@ -127,23 +139,24 @@ class ParlamentoCollector:
         for anchor in soup.find_all("a", href=True):
             label = _normalise_space(anchor.get_text(" ", strip=True)).casefold()
             href = urljoin(str(page.url), str(anchor["href"]))
-            if legislature_norm in label:
+            if re.search(
+                rf"(?<![a-z0-9]){re.escape(legislature_norm)}(?![a-z0-9])",
+                label,
+            ):
                 candidates.append(href)
 
         if not candidates:
             raise LookupError(f"Legislatura {legislature!r} não encontrada em {catalogue_url}")
 
         for candidate in candidates:
-            if re.search(r"\.json(?:\.txt)?(?:$|\?)", candidate, re.IGNORECASE):
+            if _is_json_resource("", candidate):
                 return candidate
             folder = await self.http.get(candidate)
             folder_soup = BeautifulSoup(folder.text, "html.parser")
             for anchor in folder_soup.find_all("a", href=True):
                 label = _normalise_space(anchor.get_text(" ", strip=True))
                 href = urljoin(str(folder.url), str(anchor["href"]))
-                if re.search(r"\.json(?:\.txt)?$", label, re.IGNORECASE) or re.search(
-                    r"\.json(?:\.txt)?(?:$|\?)", href, re.IGNORECASE
-                ):
+                if _is_json_resource(label, href):
                     return href
 
         raise LookupError(f"Ficheiro JSON não encontrado para {legislature!r} em {catalogue_url}")
