@@ -21,8 +21,10 @@ class FakeResponse:
 class CatalogueHttp:
     def __init__(self, responses: list[FakeResponse]) -> None:
         self.responses = responses
+        self.requested_urls: list[str] = []
 
-    async def get(self, _url: str) -> FakeResponse:
+    async def get(self, url: str) -> FakeResponse:
+        self.requested_urls.append(url)
         return self.responses.pop(0)
 
 
@@ -48,7 +50,11 @@ def test_discovers_official_underscore_json_txt_resource() -> None:
         [
             FakeResponse(
                 catalogue_url,
-                '<a href="?Path=token&amp;t=token">XVII Legislatura</a>',
+                (
+                    '<a href="/Deputados/Paginas/Acolhimento-XVII.aspx">'
+                    "Acolhimento aos Deputados - XVII Legislatura</a>"
+                    '<a href="?Path=token&amp;t=token">XVII Legislatura</a>'
+                ),
             ),
             FakeResponse(
                 folder_url,
@@ -73,6 +79,7 @@ def test_discovers_official_underscore_json_txt_resource() -> None:
     )
 
     assert discovered == json_url
+    assert http.requested_urls == [catalogue_url, folder_url]
 
 
 def test_normalises_deputies_without_assuming_optional_fields() -> None:
