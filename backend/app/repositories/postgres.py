@@ -93,6 +93,13 @@ def _warning_count(value: Any) -> int:
     return 1 if value else 0
 
 
+def _database_timestamp(value: datetime | None) -> datetime | None:
+    """Normaliza datas para as colunas PostgreSQL TIMESTAMP(3) geridas pelo Prisma."""
+    if value is None or value.tzinfo is None:
+        return value
+    return value.astimezone(UTC).replace(tzinfo=None)
+
+
 class PostgresRepository:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
@@ -197,7 +204,7 @@ class PostgresRepository:
                 payload.statement_text,
                 receipt.statement_sha256,
                 str(payload.official_response_url) if payload.official_response_url else None,
-                receipt.submitted_at,
+                _database_timestamp(receipt.submitted_at),
                 receipt.audit_sha256,
             )
             await connection.execute(
@@ -212,7 +219,7 @@ class PostgresRepository:
                 receipt.public_reference,
                 json.dumps(receipt.model_dump(mode="json"), ensure_ascii=False),
                 "Submissão preservada; publicação depende de verificação humana",
-                receipt.submitted_at,
+                _database_timestamp(receipt.submitted_at),
             )
 
     async def get_public_data_status(self) -> dict[str, Any]:
@@ -833,7 +840,7 @@ class PostgresRepository:
             kind,
             title,
             url,
-            retrieved_at,
+            _database_timestamp(retrieved_at),
             content_sha256,
             parser_version,
         )
@@ -924,7 +931,7 @@ class PostgresRepository:
                             party_id,
                             dataset.legislature,
                             deputy.constituency,
-                            dataset.collected_at,
+                            _database_timestamp(dataset.collected_at),
                             source_document_id,
                         )
                         written += 1
@@ -950,7 +957,7 @@ class PostgresRepository:
                             event.source_id,
                             event.title,
                             event.initiative_number,
-                            event.voted_at,
+                            _database_timestamp(event.voted_at),
                             event.result,
                             event.is_nominal,
                             source_document_id,
@@ -1106,9 +1113,9 @@ class PostgresRepository:
                         contract.base_value,
                         contract.contract_value,
                         contract.currency,
-                        contract.decision_at,
-                        contract.signed_at,
-                        contract.published_at,
+                        _database_timestamp(contract.decision_at),
+                        _database_timestamp(contract.signed_at),
+                        _database_timestamp(contract.published_at),
                         contract.execution_days,
                         contract_document_id,
                     )
