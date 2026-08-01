@@ -1,3 +1,4 @@
+import asyncio
 import json
 from pathlib import Path
 
@@ -11,6 +12,20 @@ class NoNetworkHttp:
     pass
 
 
+class FakeResponse:
+    def __init__(self, url: str, text: str) -> None:
+        self.url = url
+        self.text = text
+
+
+class CatalogueHttp:
+    def __init__(self, responses: list[FakeResponse]) -> None:
+        self.responses = responses
+
+    async def get(self, _url: str) -> FakeResponse:
+        return self.responses.pop(0)
+
+
 def collector() -> ParlamentoCollector:
     return ParlamentoCollector(Settings(environment="test"), NoNetworkHttp())  # type: ignore[arg-type]
 
@@ -20,6 +35,44 @@ def test_deputy_catalogue_defaults_to_official_activity_source() -> None:
         collector().settings.parlamento_deputies_catalogue_path
         == "/Cidadania/Paginas/DAatividadeDeputado.aspx"
     )
+
+
+def test_discovers_official_underscore_json_txt_resource() -> None:
+    catalogue_url = "https://www.parlamento.pt/Cidadania/Paginas/DAatividadeDeputado.aspx"
+    folder_url = f"{catalogue_url}?Path=token&t=token"
+    json_url = (
+        "https://app.parlamento.pt/webutils/docs/doc.txt?Inline=true"
+        "&fich=AtividadeDeputadoXVII_json.txt&path=token"
+    )
+    http = CatalogueHttp(
+        [
+            FakeResponse(
+                catalogue_url,
+                '<a href="?Path=token&amp;t=token">XVII Legislatura</a>',
+            ),
+            FakeResponse(
+                folder_url,
+                (
+                    '<a href="https://app.parlamento.pt/webutils/docs/doc.txt?Inline=true'
+                    '&amp;fich=AtividadeDeputadoXVII.xml&amp;path=token">'
+                    "AtividadeDeputadoXVII.xml</a>"
+                    '<a href="https://app.parlamento.pt/webutils/docs/doc.txt?Inline=true'
+                    '&amp;fich=AtividadeDeputadoXVII_json.txt&amp;path=token">'
+                    "AtividadeDeputadoXVII_json.txt</a>"
+                ),
+            ),
+        ]
+    )
+    parliament = ParlamentoCollector(Settings(environment="test"), http)  # type: ignore[arg-type]
+
+    discovered = asyncio.run(
+        parliament.discover_dataset_url(
+            parliament.settings.parlamento_deputies_catalogue_path,
+            "XVII",
+        )
+    )
+
+    assert discovered == json_url
 
 
 def test_normalises_deputies_without_assuming_optional_fields() -> None:
