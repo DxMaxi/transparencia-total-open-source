@@ -26,7 +26,8 @@ class OfficialHttpClient:
             headers={
                 "User-Agent": settings.official_user_agent,
                 "Accept": "application/json, application/xml, text/xml, text/html;q=0.9, */*;q=0.7",
-                "Accept-Encoding": "identity",  # <--- Adicionar esta linha para evitar erros de compressão no dados.gov.pt
+                # Algumas fontes oficiais devolvem compressão inconsistente.
+                "Accept-Encoding": "identity",
             },
         )
 
