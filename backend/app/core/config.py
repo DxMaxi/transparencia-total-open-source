@@ -47,7 +47,7 @@ class Settings(BaseSettings):
     open_data_max_rows: int = Field(default=10_000, ge=100, le=100_000)
 
     parlamento_base_url: AnyHttpUrl = AnyHttpUrl("https://www.parlamento.pt")
-    parlamento_deputies_catalogue_path: str = "/Cidadania/Paginas/DAInformacaoBase.aspx"
+    parlamento_deputies_catalogue_path: str = "/Cidadania/Paginas/DAatividadeDeputado.aspx"
     parlamento_activity_catalogue_path: str = "/Cidadania/Paginas/DAatividadeDeputado.aspx"
     parlamento_initiatives_catalogue_path: str = "/Cidadania/Paginas/DAIniciativas.aspx"
     parlamento_deputies_url: AnyHttpUrl | None = None
