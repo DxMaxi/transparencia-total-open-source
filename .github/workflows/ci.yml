@@ -23,6 +23,7 @@ jobs:
       - run: npm run lint
       - run: npm run db:validate
       - run: npm run test:frontend
+      - run: npm run db:generate
       - run: npm run build:next
 
   backend:
