@@ -844,6 +844,44 @@ class PostgresRepository:
         )
         return str(row["id"])
 
+    @staticmethod
+    async def _deactivate_stale_parliament_people(
+        connection: asyncpg.Connection,
+        *,
+        legislature: str,
+        incoming_source_ids: list[str],
+    ) -> int:
+        """Desativa pessoas ausentes do snapshot autoritativo sem apagar o histórico."""
+
+        count = await connection.fetchval(
+            """
+            WITH stale_people AS (
+                UPDATE people AS person
+                SET active = FALSE, updated_at = NOW()
+                WHERE person.role = 'DEPUTY'
+                  AND person.active = TRUE
+                  AND (
+                    person.source_id IS NULL
+                    OR person.source_id <> ALL($2::text[])
+                  )
+                  AND EXISTS (
+                    SELECT 1
+                    FROM parliamentary_membership_snapshots AS snapshot
+                    JOIN source_documents AS source
+                      ON source.id = snapshot.source_document_id
+                    WHERE snapshot.person_id = person.id
+                      AND snapshot.legislature = $1
+                      AND source.publisher = 'PARLIAMENT'
+                  )
+                RETURNING person.id
+            )
+            SELECT COUNT(*) FROM stale_people
+            """,
+            legislature,
+            incoming_source_ids,
+        )
+        return int(count or 0)
+
     async def store_parliament_dataset(
         self,
         dataset: ParliamentDataset,
@@ -863,6 +901,7 @@ class PostgresRepository:
             code_version=code_version,
         )
         written = 0
+        deactivated = 0
         try:
             async with self.pool.acquire() as connection, connection.transaction():
                 source_document_id = await self._upsert_source_document(
@@ -876,6 +915,11 @@ class PostgresRepository:
                     parser_version=code_version,
                 )
                 if kind == "deputies":
+                    deactivated = await self._deactivate_stale_parliament_people(
+                        connection,
+                        legislature=dataset.legislature,
+                        incoming_source_ids=[item.source_id for item in dataset.deputies],
+                    )
                     for deputy in dataset.deputies:
                         party_id: str | None = None
                         if deputy.party_short:
@@ -1011,7 +1055,11 @@ class PostgresRepository:
                 error_message=str(exc),
             )
             raise
-        return {"records_read": records_read, "records_written": written}
+        return {
+            "records_read": records_read,
+            "records_written": written,
+            "records_deactivated": deactivated,
+        }
 
     async def store_base_collection(
         self,
