@@ -114,6 +114,12 @@ def test_normalises_only_primary_official_activity_deputy_shape() -> None:
                     ]
                 },
                 "DepCPDes": "PORTO",
+                "DepSituacao": {
+                    "DadosSituacaoDeputado": [
+                        {"sioDes": "Suplente"},
+                        {"sioDes": "Efetivo Temporário"},
+                    ]
+                },
             },
             "AtividadeDeputadoList": [
                 {
@@ -141,6 +147,38 @@ def test_normalises_only_primary_official_activity_deputy_shape() -> None:
     assert deputies[0].source_id == "501"
     assert deputies[0].party_short == "BB"
     assert deputies[0].constituency == "PORTO"
+
+
+def test_excludes_people_who_never_held_a_parliamentary_mandate() -> None:
+    payload = [
+        {
+            "Deputado": {
+                "DepId": "601",
+                "DepNomeParlamentar": "Pessoa Suplente",
+                "DepGP": "AA",
+                "DepCPDes": "PORTO",
+                "DepSituacao": {"DadosSituacaoDeputado": [{"sioDes": "Suplente"}]},
+            }
+        },
+        {
+            "Deputado": {
+                "DepId": "602",
+                "DepNomeParlamentar": "Pessoa Não Eleita",
+                "DepGP": "BB",
+                "DepCPDes": "LISBOA",
+                "DepSituacao": {"DadosSituacaoDeputado": [{"sioDes": "Suspenso(Não Eleito)"}]},
+            }
+        },
+    ]
+
+    deputies = collector().normalise_deputies(
+        payload,
+        legislature="XVII",
+        source_url="https://app.parlamento.pt/AtividadeDeputadoXVII_json.txt",
+        document_sha256="2" * 64,
+    )
+
+    assert deputies == []
 
 
 def test_does_not_treat_information_base_candidates_as_deputies() -> None:
@@ -172,6 +210,7 @@ def test_rejects_implausible_deputy_snapshot_before_persistence() -> None:
                 "DepNomeParlamentar": f"Pessoa {index}",
                 "DepGP": "AA",
                 "DepCPDes": "PORTO",
+                "DepSituacao": {"DadosSituacaoDeputado": [{"sioDes": "Efetivo"}]},
             }
         }
         for index in range(1, 502)
@@ -193,7 +232,13 @@ def test_rejects_implausible_deputy_snapshot_before_persistence() -> None:
 
 def test_rejects_snapshot_without_party_and_constituency() -> None:
     payload = [
-        {"Deputado": {"DepId": str(index), "DepNomeParlamentar": f"Pessoa {index}"}}
+        {
+            "Deputado": {
+                "DepId": str(index),
+                "DepNomeParlamentar": f"Pessoa {index}",
+                "DepSituacao": {"DadosSituacaoDeputado": [{"sioDes": "Efetivo"}]},
+            }
+        }
         for index in range(1, 101)
     ]
     deputies = collector().normalise_deputies(
