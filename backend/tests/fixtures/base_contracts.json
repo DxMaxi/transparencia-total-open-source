@@ -1,0 +1,23 @@
+[
+  {
+    "idContrato": "BASE-DEMO-001",
+    "objectoContrato": "Aquisição demonstrativa de serviços de manutenção",
+    "tipoProcedimento": "Concurso público",
+    "precoBase": "120.000,00 €",
+    "precoContratual": "110.500,00 €",
+    "dataCelebracaoContrato": "2026-04-15",
+    "dataPublicacao": "2026-04-18",
+    "prazoExecucao": "365 dias",
+    "entidadeAdjudicante": {
+      "nome": "Entidade Pública Demonstrativa",
+      "NIPC": "500000001"
+    },
+    "adjudicatarios": [
+      {
+        "nome": "Pessoa Pública Demonstrativa",
+        "NIF": "123456789"
+      }
+    ],
+    "urlContrato": "https://www.base.gov.pt/Base4/pt/pesquisa/?type=contratos"
+  }
+]

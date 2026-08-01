@@ -1,0 +1,46 @@
+{
+  "name": "Transparência Total",
+  "short_name": "Transparência",
+  "description": "Transparência Total / Fator Cívico: contratos, votações, leis e impacto com prova oficial.",
+  "id": "/",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f4f7f6",
+  "theme_color": "#07182a",
+  "lang": "pt-PT",
+  "dir": "ltr",
+  "categories": ["government", "news", "utilities"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Investigador Cívico",
+      "short_name": "Investigar",
+      "url": "/investigador?source=shortcut"
+    },
+    {
+      "name": "Guia do Cidadão",
+      "short_name": "Guia",
+      "url": "/guia-cidadao?source=shortcut"
+    },
+    {
+      "name": "Promessómetro",
+      "short_name": "Promessas",
+      "url": "/promessas?source=shortcut"
+    }
+  ]
+}

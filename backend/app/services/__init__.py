@@ -1,0 +1,1 @@
+"""Coletores e transformações."""

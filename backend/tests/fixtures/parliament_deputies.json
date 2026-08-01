@@ -1,0 +1,20 @@
+{
+  "Registo": {
+    "Deputados": [
+      {
+        "DepId": 101,
+        "DepNomeParlamentar": "Pessoa Exemplo A",
+        "DepNomeCompleto": "Pessoa de Teste Exemplo A",
+        "DepGP": "AA",
+        "DepCirculo": "Porto",
+        "DepEmail": "exemplo-a@invalid.test"
+      },
+      {
+        "DepId": 102,
+        "DepNomeParlamentar": "Pessoa Exemplo B",
+        "DepGP": "BB",
+        "DepCirculo": "Lisboa"
+      }
+    ]
+  }
+}

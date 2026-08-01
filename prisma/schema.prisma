@@ -1,0 +1,1143 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum SourcePublisher {
+  PARLIAMENT
+  DRE
+  TRANSPARENCY_ENTITY
+  BASE_GOV
+  COURT_OF_AUDIT
+  EUROPEAN_PARLIAMENT
+  PUBLIC_PROSECUTOR
+  COURT
+  MEDIA
+  SNS
+  MUNICIPALITY
+  OTHER_OFFICIAL
+}
+
+enum DocumentKind {
+  OPEN_DATASET
+  PUBLIC_CONTRACT
+  AUDIT_REPORT
+  JUDICIAL_ACT
+  NEWS_ARTICLE
+  EUROPEAN_VOTE
+  RIGHT_OF_REPLY
+  LAW
+  REGULATION
+  GOVERNMENT_PROGRAMME
+  PARLIAMENTARY_DIARY
+  ATTENDANCE
+  DECLARATION
+  PUBLIC_REPORT
+  MUNICIPAL_NOTICE
+  OTHER
+}
+
+enum PersonRole {
+  DEPUTY
+  MINISTER
+  SECRETARY_OF_STATE
+  MAYOR
+  OTHER_PUBLIC_OFFICE
+}
+
+enum VoteChoice {
+  FAVOR
+  AGAINST
+  ABSTENTION
+  ABSENT
+  PAIRED
+  UNKNOWN
+}
+
+enum VoteActorType {
+  PERSON
+  PARTY
+  UNKNOWN
+}
+
+enum PromiseStatus {
+  UNVERIFIED
+  FULFILLED
+  IN_PROGRESS
+  BROKEN
+  ABANDONED
+}
+
+enum EvidenceKind {
+  IMPLEMENTS
+  PARTIALLY_IMPLEMENTS
+  DELAYS
+  REPEALS
+  ABANDONS
+  CONTEXT
+}
+
+enum ReviewDecision {
+  ACCEPT
+  REJECT
+  NEEDS_MORE_EVIDENCE
+}
+
+enum AiReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUPERSEDED
+}
+
+enum ComparisonOutcome {
+  CONSISTENT
+  INCONSISTENT
+  INCONCLUSIVE
+  NOT_COMPARABLE
+}
+
+enum LocalItemKind {
+  SOCIAL_SUPPORT
+  HEALTH_SERVICE
+  PUBLIC_WORK
+  EMERGENCY
+  MUNICIPAL_DECISION
+  OTHER
+}
+
+enum LocalItemStatus {
+  ANNOUNCED
+  ACTIVE
+  INTERRUPTED
+  COMPLETED
+  CANCELLED
+  UNKNOWN
+}
+
+enum SyncStatus {
+  RUNNING
+  SUCCEEDED
+  PARTIAL
+  FAILED
+}
+
+enum VerificationStatus {
+  INGESTED
+  PENDING_REVIEW
+  VERIFIED
+  REJECTED
+  SUPERSEDED
+}
+
+enum PublicationStatus {
+  DRAFT
+  UNDER_REVIEW
+  PUBLISHED
+  WITHDRAWN
+}
+
+enum InterestEntityKind {
+  PERSON
+  PARTY
+  PUBLIC_BODY
+  COMPANY
+  NON_PROFIT
+  EUROPEAN_BODY
+  OTHER
+}
+
+enum InterestRelationshipType {
+  PUBLIC_OFFICE
+  BOARD_MEMBERSHIP
+  OWNERSHIP
+  PARTY_MEMBERSHIP
+  CAMPAIGN_DONATION
+  FAMILY_RELATION
+  OFFICIAL_MEETING
+  PUBLIC_CONTRACT
+  OTHER_OFFICIAL
+}
+
+enum PublicContractProcedure {
+  DIRECT_AWARD
+  PRIOR_CONSULTATION
+  PUBLIC_TENDER
+  LIMITED_TENDER
+  NEGOTIATED_PROCEDURE
+  FRAMEWORK_AGREEMENT
+  OTHER
+  UNKNOWN
+}
+
+enum ContractPartyRole {
+  CONTRACTING_AUTHORITY
+  CONTRACTOR
+  CO_CONTRACTOR
+}
+
+enum MatchMethod {
+  EXACT_PUBLIC_ORGANISATION_ID
+  EXACT_PROTECTED_IDENTIFIER
+  NORMALISED_NAME
+  MANUAL_OFFICIAL_EVIDENCE
+}
+
+enum MatchDecision {
+  PENDING_REVIEW
+  CONFIRMED
+  REJECTED
+}
+
+enum JudicialCaseStatus {
+  REPORTED_INVESTIGATION
+  FORMALLY_ACCUSED
+  TRIAL
+  CONVICTED
+  ACQUITTED
+  ARCHIVED
+  APPEAL
+  UNKNOWN
+}
+
+enum JudicialSubjectRole {
+  INVESTIGATED
+  ACCUSED
+  DEFENDANT
+  CONVICTED
+  ACQUITTED
+  OTHER
+}
+
+enum NewsReviewStatus {
+  INGESTED
+  PENDING_EVIDENCE
+  VERIFIED_WITH_OFFICIAL_EVIDENCE
+  REJECTED
+}
+
+enum CitizenAlertCategory {
+  TAX
+  LABOUR
+  SOCIAL_SUPPORT
+  HEALTH
+  HOUSING
+  EDUCATION
+  LOCAL_SERVICE
+  OTHER
+}
+
+enum ImpactDirection {
+  INCREASE
+  DECREASE
+  MIXED
+  NO_CHANGE
+  UNKNOWN
+}
+
+enum RightOfReplyStatus {
+  RECEIVED
+  IDENTITY_PENDING
+  EVIDENCE_REVIEW
+  PUBLISHED
+  REJECTED
+  SUPERSEDED
+}
+
+enum LegalBasis {
+  PUBLIC_INTEREST
+  LEGAL_OBLIGATION
+  LEGITIMATE_INTEREST
+  CONSENT
+  NOT_APPLICABLE
+}
+
+enum DataSensitivity {
+  PUBLIC_OFFICIAL
+  PUBLIC_PERSONAL
+  RESTRICTED_IDENTIFIER
+  SPECIAL_CATEGORY
+  CRIMINAL_DATA
+}
+
+model Party {
+  id                  String                            @id @default(cuid())
+  sourceId            String?                           @unique @map("source_id")
+  name                String
+  shortName           String                            @map("short_name")
+  color               String?
+  officialUrl         String?                           @map("official_url")
+  createdAt           DateTime                          @default(now()) @map("created_at")
+  updatedAt           DateTime                          @updatedAt @map("updated_at")
+  mandates            Mandate[]
+  membershipSnapshots ParliamentaryMembershipSnapshot[]
+  voteRecords         VoteRecord[]
+  interestEntity      InterestEntity?
+  newsMentions        NewsEntityMention[]
+
+  @@index([shortName])
+  @@map("parties")
+}
+
+model Person {
+  id                   String                            @id @default(cuid())
+  sourceId             String?                           @unique @map("source_id")
+  fullName             String                            @map("full_name")
+  parliamentaryName    String?                           @map("parliamentary_name")
+  slug                 String                            @unique
+  role                 PersonRole
+  photoUrl             String?                           @map("photo_url")
+  officialProfileUrl   String?                           @map("official_profile_url")
+  active               Boolean                           @default(true)
+  createdAt            DateTime                          @default(now()) @map("created_at")
+  updatedAt            DateTime                          @updatedAt @map("updated_at")
+  mandates             Mandate[]
+  membershipSnapshots  ParliamentaryMembershipSnapshot[]
+  voteRecords          VoteRecord[]
+  statements           PublicStatement[]
+  assetDeclarations    AssetDeclarationMetadata[]
+  interestEntity       InterestEntity?
+  protectedIdentifiers ProtectedIdentifierDigest[]
+  judicialSubjects     JudicialCaseSubject[]
+  newsMentions         NewsEntityMention[]
+  coherenceSnapshots   CoherenceSnapshot[]
+
+  @@index([fullName])
+  @@index([role, active])
+  @@map("people")
+}
+
+model Mandate {
+  id                String             @id @default(cuid())
+  personId          String             @map("person_id")
+  partyId           String?            @map("party_id")
+  legislature       String?
+  officeTitle       String             @map("office_title")
+  constituency      String?
+  startedAt         DateTime           @map("started_at")
+  endedAt           DateTime?          @map("ended_at")
+  sourceDocumentId  String             @map("source_document_id")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  person            Person             @relation(fields: [personId], references: [id], onDelete: Cascade)
+  party             Party?             @relation(fields: [partyId], references: [id], onDelete: SetNull)
+  sourceDocument    SourceDocument     @relation(fields: [sourceDocumentId], references: [id])
+  attendanceRecords AttendanceRecord[]
+
+  @@unique([personId, officeTitle, startedAt])
+  @@index([legislature])
+  @@index([partyId])
+  @@map("mandates")
+}
+
+/// Fotografia factual de pertença parlamentar numa recolha oficial. Não é usada
+/// como data de início de mandato: `observedAt` significa apenas "visível na fonte
+/// nesta data". O modelo Mandate continua reservado a períodos com datas oficiais.
+model ParliamentaryMembershipSnapshot {
+  id               String         @id @default(cuid())
+  personId         String         @map("person_id")
+  partyId          String?        @map("party_id")
+  legislature      String
+  constituency     String?
+  observedAt       DateTime       @map("observed_at")
+  sourceDocumentId String         @map("source_document_id")
+  person           Person         @relation(fields: [personId], references: [id], onDelete: Cascade)
+  party            Party?         @relation(fields: [partyId], references: [id], onDelete: SetNull)
+  sourceDocument   SourceDocument @relation(fields: [sourceDocumentId], references: [id], onDelete: Cascade)
+
+  @@unique([personId, legislature, sourceDocumentId])
+  @@index([personId, legislature, observedAt])
+  @@index([partyId, legislature])
+  @@map("parliamentary_membership_snapshots")
+}
+
+model ParliamentarySession {
+  id                String             @id @default(cuid())
+  sourceId          String             @unique @map("source_id")
+  legislature       String
+  sessionNumber     String?            @map("session_number")
+  title             String
+  startsAt          DateTime           @map("starts_at")
+  endsAt            DateTime?          @map("ends_at")
+  sourceDocumentId  String             @map("source_document_id")
+  sourceDocument    SourceDocument     @relation(fields: [sourceDocumentId], references: [id])
+  attendanceRecords AttendanceRecord[]
+  voteEvents        VoteEvent[]
+
+  @@index([legislature, startsAt])
+  @@map("parliamentary_sessions")
+}
+
+model AttendanceRecord {
+  id               String               @id @default(cuid())
+  mandateId        String               @map("mandate_id")
+  sessionId        String               @map("session_id")
+  present          Boolean?
+  absenceReason    String?              @map("absence_reason")
+  isExcused        Boolean?             @map("is_excused")
+  sourceDocumentId String               @map("source_document_id")
+  recordedAt       DateTime             @default(now()) @map("recorded_at")
+  mandate          Mandate              @relation(fields: [mandateId], references: [id], onDelete: Cascade)
+  session          ParliamentarySession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sourceDocument   SourceDocument       @relation(fields: [sourceDocumentId], references: [id])
+
+  @@unique([mandateId, sessionId])
+  @@index([sessionId, present])
+  @@map("attendance_records")
+}
+
+model ParliamentaryInitiative {
+  id               String         @id @default(cuid())
+  sourceId         String         @unique @map("source_id")
+  legislature      String
+  number           String
+  type             String
+  title            String
+  description      String?
+  introducedAt     DateTime?      @map("introduced_at")
+  status           String?
+  officialUrl      String         @map("official_url")
+  sourceDocumentId String         @map("source_document_id")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  sourceDocument   SourceDocument @relation(fields: [sourceDocumentId], references: [id])
+  voteEvents       VoteEvent[]
+  laws             Law[]
+
+  @@index([legislature, type])
+  @@index([introducedAt])
+  @@map("parliamentary_initiatives")
+}
+
+model VoteEvent {
+  id               String                    @id @default(cuid())
+  sourceId         String                    @unique @map("source_id")
+  initiativeId     String?                   @map("initiative_id")
+  sessionId        String?                   @map("session_id")
+  title            String
+  initiativeNumber String?                   @map("initiative_number")
+  votedAt          DateTime?                 @map("voted_at")
+  result           String?
+  isNominal        Boolean                   @default(false) @map("is_nominal")
+  sourceDocumentId String                    @map("source_document_id")
+  createdAt        DateTime                  @default(now()) @map("created_at")
+  updatedAt        DateTime                  @updatedAt @map("updated_at")
+  initiative       ParliamentaryInitiative?  @relation(fields: [initiativeId], references: [id], onDelete: SetNull)
+  session          ParliamentarySession?     @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  sourceDocument   SourceDocument            @relation(fields: [sourceDocumentId], references: [id])
+  records          VoteRecord[]
+  comparisons      StatementVoteComparison[]
+
+  @@index([votedAt])
+  @@index([initiativeId])
+  @@map("vote_events")
+}
+
+model VoteRecord {
+  id               String         @id @default(cuid())
+  voteEventId      String         @map("vote_event_id")
+  actorType        VoteActorType  @map("actor_type")
+  actorLabel       String         @map("actor_label")
+  personId         String?        @map("person_id")
+  partyId          String?        @map("party_id")
+  choice           VoteChoice
+  sourceDocumentId String         @map("source_document_id")
+  voteEvent        VoteEvent      @relation(fields: [voteEventId], references: [id], onDelete: Cascade)
+  person           Person?        @relation(fields: [personId], references: [id], onDelete: SetNull)
+  party            Party?         @relation(fields: [partyId], references: [id], onDelete: SetNull)
+  sourceDocument   SourceDocument @relation(fields: [sourceDocumentId], references: [id])
+
+  @@unique([voteEventId, actorType, actorLabel])
+  @@index([personId, choice])
+  @@index([partyId, choice])
+  @@map("vote_records")
+}
+
+model Law {
+  id                 String                   @id @default(cuid())
+  officialIdentifier String                   @map("official_identifier")
+  title              String
+  eliUrl             String?                  @map("eli_url")
+  publishedAt        DateTime?                @map("published_at")
+  effectiveAt        DateTime?                @map("effective_at")
+  initiativeId       String?                  @map("initiative_id")
+  sourceDocumentId   String                   @map("source_document_id")
+  createdAt          DateTime                 @default(now()) @map("created_at")
+  updatedAt          DateTime                 @updatedAt @map("updated_at")
+  initiative         ParliamentaryInitiative? @relation(fields: [initiativeId], references: [id], onDelete: SetNull)
+  sourceDocument     SourceDocument           @relation(fields: [sourceDocumentId], references: [id])
+  promiseEvidence    PromiseEvidence[]
+  impactRules        CitizenImpactRule[]
+  citizenAlerts      CitizenAlert[]
+
+  @@unique([officialIdentifier, publishedAt])
+  @@index([publishedAt])
+  @@map("laws")
+}
+
+model GovernmentProgramme {
+  id               String         @id @default(cuid())
+  governmentNumber String         @map("government_number")
+  title            String
+  mandateStartsAt  DateTime?      @map("mandate_starts_at")
+  mandateEndsAt    DateTime?      @map("mandate_ends_at")
+  sourceDocumentId String         @map("source_document_id")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  sourceDocument   SourceDocument @relation(fields: [sourceDocumentId], references: [id])
+  promises         Promise[]
+
+  @@unique([governmentNumber, title])
+  @@map("government_programmes")
+}
+
+model Promise {
+  id                 String              @id @default(cuid())
+  programmeId        String              @map("programme_id")
+  stableKey          String              @unique @map("stable_key")
+  title              String
+  description        String
+  area               String
+  programmePage      String?             @map("programme_page")
+  status             PromiseStatus       @default(UNVERIFIED)
+  progress           Int                 @default(0)
+  rationale          String?
+  methodologyVersion String              @map("methodology_version")
+  lastReviewedAt     DateTime?           @map("last_reviewed_at")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+  programme          GovernmentProgramme @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+  evidence           PromiseEvidence[]
+  reviews            PromiseReview[]
+
+  @@index([status, area])
+  @@index([programmeId])
+  @@map("promises")
+}
+
+model PromiseEvidence {
+  id               String         @id @default(cuid())
+  promiseId        String         @map("promise_id")
+  lawId            String?        @map("law_id")
+  sourceDocumentId String         @map("source_document_id")
+  kind             EvidenceKind
+  explanation      String
+  effectiveFrom    DateTime?      @map("effective_from")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  promise          Promise        @relation(fields: [promiseId], references: [id], onDelete: Cascade)
+  law              Law?           @relation(fields: [lawId], references: [id], onDelete: SetNull)
+  sourceDocument   SourceDocument @relation(fields: [sourceDocumentId], references: [id])
+
+  @@unique([promiseId, sourceDocumentId, kind])
+  @@map("promise_evidence")
+}
+
+model PromiseReview {
+  id               String          @id @default(cuid())
+  promiseId        String          @map("promise_id")
+  previousStatus   PromiseStatus   @map("previous_status")
+  proposedStatus   PromiseStatus   @map("proposed_status")
+  decision         ReviewDecision
+  reviewerAlias    String          @map("reviewer_alias")
+  rationale        String
+  sourceDocumentId String?         @map("source_document_id")
+  reviewedAt       DateTime        @default(now()) @map("reviewed_at")
+  promise          Promise         @relation(fields: [promiseId], references: [id], onDelete: Cascade)
+  sourceDocument   SourceDocument? @relation(fields: [sourceDocumentId], references: [id], onDelete: SetNull)
+
+  @@index([promiseId, reviewedAt])
+  @@map("promise_reviews")
+}
+
+model PublicStatement {
+  id               String                    @id @default(cuid())
+  personId         String                    @map("person_id")
+  title            String
+  statementText    String                    @map("statement_text")
+  statedAt         DateTime?                 @map("stated_at")
+  sourceDocumentId String                    @map("source_document_id")
+  sourceOffset     String?                   @map("source_offset")
+  createdAt        DateTime                  @default(now()) @map("created_at")
+  person           Person                    @relation(fields: [personId], references: [id], onDelete: Cascade)
+  sourceDocument   SourceDocument            @relation(fields: [sourceDocumentId], references: [id])
+  comparisons      StatementVoteComparison[]
+
+  @@index([personId, statedAt])
+  @@map("public_statements")
+}
+
+model StatementVoteComparison {
+  id                 String             @id @default(cuid())
+  statementId        String             @map("statement_id")
+  voteEventId        String             @map("vote_event_id")
+  outcome            ComparisonOutcome
+  topicKey           String             @default("unclassified") @map("topic_key")
+  comparable         Boolean            @default(false)
+  confidence         Decimal?           @db.Decimal(5, 4)
+  rationale          String
+  methodologyVersion String             @map("methodology_version")
+  sourceDocumentId   String             @map("source_document_id")
+  verificationStatus VerificationStatus @default(PENDING_REVIEW) @map("verification_status")
+  publicationStatus  PublicationStatus  @default(DRAFT) @map("publication_status")
+  reviewedBy         String             @map("reviewed_by")
+  reviewedAt         DateTime           @map("reviewed_at")
+  statement          PublicStatement    @relation(fields: [statementId], references: [id], onDelete: Cascade)
+  voteEvent          VoteEvent          @relation(fields: [voteEventId], references: [id], onDelete: Cascade)
+  sourceDocument     SourceDocument     @relation(fields: [sourceDocumentId], references: [id])
+
+  @@unique([statementId, voteEventId])
+  @@index([topicKey, comparable, publicationStatus])
+  @@map("statement_vote_comparisons")
+}
+
+model AssetDeclarationMetadata {
+  id                 String         @id @default(cuid())
+  personId           String         @map("person_id")
+  declarationType    String         @map("declaration_type")
+  declaredAt         DateTime?      @map("declared_at")
+  periodLabel        String?        @map("period_label")
+  publicAccessStatus String         @map("public_access_status")
+  sourceDocumentId   String         @map("source_document_id")
+  notes              String?
+  createdAt          DateTime       @default(now()) @map("created_at")
+  person             Person         @relation(fields: [personId], references: [id], onDelete: Cascade)
+  sourceDocument     SourceDocument @relation(fields: [sourceDocumentId], references: [id])
+
+  @@index([personId, declaredAt])
+  @@map("asset_declaration_metadata")
+}
+
+model AiSummary {
+  id               String         @id @default(cuid())
+  sourceDocumentId String         @map("source_document_id")
+  provider         String
+  model            String
+  promptSha256     String         @map("prompt_sha256")
+  outputJson       Json           @map("output_json")
+  reviewStatus     AiReviewStatus @default(PENDING) @map("review_status")
+  reviewedBy       String?        @map("reviewed_by")
+  reviewedAt       DateTime?      @map("reviewed_at")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  sourceDocument   SourceDocument @relation(fields: [sourceDocumentId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceDocumentId, provider, model, promptSha256])
+  @@index([reviewStatus])
+  @@map("ai_summaries")
+}
+
+model District {
+  id             String         @id @default(cuid())
+  code           String         @unique
+  name           String
+  municipalities Municipality[]
+
+  @@map("districts")
+}
+
+model Municipality {
+  id            String                  @id @default(cuid())
+  code          String                  @unique
+  name          String
+  districtId    String                  @map("district_id")
+  district      District                @relation(fields: [districtId], references: [id])
+  localItems    LocalTransparencyItem[]
+  citizenAlerts CitizenAlert[]
+
+  @@index([districtId])
+  @@map("municipalities")
+}
+
+model LocalTransparencyItem {
+  id               String          @id @default(cuid())
+  municipalityId   String          @map("municipality_id")
+  kind             LocalItemKind
+  status           LocalItemStatus @default(UNKNOWN)
+  title            String
+  description      String
+  startsAt         DateTime?       @map("starts_at")
+  endsAt           DateTime?       @map("ends_at")
+  sourceDocumentId String          @map("source_document_id")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+  municipality     Municipality    @relation(fields: [municipalityId], references: [id], onDelete: Cascade)
+  sourceDocument   SourceDocument  @relation(fields: [sourceDocumentId], references: [id])
+
+  @@index([municipalityId, kind, status])
+  @@index([startsAt])
+  @@map("local_transparency_items")
+}
+
+model PushSubscription {
+  id             String   @id
+  endpoint       String   @unique
+  p256dh         String
+  auth           String
+  districts      Json
+  municipalities Json
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@index([isActive])
+  @@map("push_subscriptions")
+}
+
+/// Nó canónico do grafo. A migração SQL impõe que exatamente uma das relações
+/// personId, partyId ou organisationId esteja preenchida.
+model InterestEntity {
+  id                    String                 @id @default(cuid())
+  kind                  InterestEntityKind
+  publicLabel           String                 @map("public_label")
+  personId              String?                @unique @map("person_id")
+  partyId               String?                @unique @map("party_id")
+  organisationId        String?                @unique @map("organisation_id")
+  verificationStatus    VerificationStatus     @default(PENDING_REVIEW) @map("verification_status")
+  publicationStatus     PublicationStatus      @default(DRAFT) @map("publication_status")
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+  person                Person?                @relation(fields: [personId], references: [id], onDelete: Cascade)
+  party                 Party?                 @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  organisation          Organisation?          @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  outgoingRelationships InterestRelationship[] @relation("InterestFrom")
+  incomingRelationships InterestRelationship[] @relation("InterestTo")
+  contractParties       PublicContractParty[]
+  matchReviews          ContractMatchReview[]
+  judicialSubjects      JudicialCaseSubject[]
+  newsMentions          NewsEntityMention[]
+
+  @@index([kind, publicationStatus])
+  @@map("interest_entities")
+}
+
+model Organisation {
+  id                 String             @id @default(cuid())
+  sourceId           String?            @unique @map("source_id")
+  legalName          String             @map("legal_name")
+  normalisedName     String             @map("normalised_name")
+  kind               InterestEntityKind
+  publicNipc         String?            @map("public_nipc")
+  officialUrl        String?            @map("official_url")
+  sourceDocumentId   String             @map("source_document_id")
+  verificationStatus VerificationStatus @default(PENDING_REVIEW) @map("verification_status")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+  sourceDocument     SourceDocument     @relation(fields: [sourceDocumentId], references: [id])
+  interestEntity     InterestEntity?
+
+  @@index([normalisedName])
+  @@index([publicNipc])
+  @@map("organisations")
+}
+
+/// Só conserva um HMAC com segredo do servidor; nunca o NIF individual em texto simples.
+model ProtectedIdentifierDigest {
+  id               String         @id @default(cuid())
+  personId         String         @map("person_id")
+  identifierType   String         @map("identifier_type")
+  digest           String
+  sourceDocumentId String         @map("source_document_id")
+  legalBasis       LegalBasis     @map("legal_basis")
+  retentionUntil   DateTime?      @map("retention_until")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  person           Person         @relation(fields: [personId], references: [id], onDelete: Cascade)
+  sourceDocument   SourceDocument @relation(fields: [sourceDocumentId], references: [id])
+
+  @@unique([identifierType, digest])
+  @@index([personId])
+  @@map("protected_identifier_digests")
+}
+
+model PublicContract {
+  id                 String                  @id @default(cuid())
+  sourceId           String                  @unique @map("source_id")
+  object             String
+  procedure          PublicContractProcedure @default(UNKNOWN)
+  cpvCode            String?                 @map("cpv_code")
+  baseValue          Decimal?                @map("base_value") @db.Decimal(20, 2)
+  contractValue      Decimal?                @map("contract_value") @db.Decimal(20, 2)
+  currency           String                  @default("EUR")
+  decisionAt         DateTime?               @map("decision_at")
+  signedAt           DateTime?               @map("signed_at")
+  publishedAt        DateTime?               @map("published_at")
+  executionDays      Int?                    @map("execution_days")
+  sourceDocumentId   String                  @map("source_document_id")
+  verificationStatus VerificationStatus      @default(INGESTED) @map("verification_status")
+  publicationStatus  PublicationStatus       @default(UNDER_REVIEW) @map("publication_status")
+  createdAt          DateTime                @default(now()) @map("created_at")
+  updatedAt          DateTime                @updatedAt @map("updated_at")
+  sourceDocument     SourceDocument          @relation(fields: [sourceDocumentId], references: [id])
+  parties            PublicContractParty[]
+  graphRelationships InterestRelationship[]
+  matchReviews       ContractMatchReview[]
+
+  @@index([procedure, publishedAt])
+  @@index([contractValue])
+  @@index([publicationStatus, verificationStatus])
+  @@map("public_contracts")
+}
+
+model PublicContractParty {
+  id               String            @id @default(cuid())
+  publicContractId String            @map("public_contract_id")
+  interestEntityId String            @map("interest_entity_id")
+  role             ContractPartyRole
+  sourceName       String            @map("source_name")
+  sourcePublicId   String?           @map("source_public_id")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  publicContract   PublicContract    @relation(fields: [publicContractId], references: [id], onDelete: Cascade)
+  interestEntity   InterestEntity    @relation(fields: [interestEntityId], references: [id], onDelete: Restrict)
+
+  @@unique([publicContractId, interestEntityId, role])
+  @@index([interestEntityId, role])
+  @@map("public_contract_parties")
+}
+
+model ContractMatchReview {
+  id                 String         @id @default(cuid())
+  publicContractId   String         @map("public_contract_id")
+  interestEntityId   String         @map("interest_entity_id")
+  method             MatchMethod
+  candidateLabel     String         @map("candidate_label")
+  identifierDigest   String?        @map("identifier_digest")
+  score              Decimal?       @db.Decimal(5, 4)
+  decision           MatchDecision  @default(PENDING_REVIEW)
+  rationale          String
+  evidenceDocumentId String         @map("evidence_document_id")
+  reviewedBy         String?        @map("reviewed_by")
+  reviewedAt         DateTime?      @map("reviewed_at")
+  createdAt          DateTime       @default(now()) @map("created_at")
+  publicContract     PublicContract @relation(fields: [publicContractId], references: [id], onDelete: Cascade)
+  interestEntity     InterestEntity @relation(fields: [interestEntityId], references: [id], onDelete: Cascade)
+  evidenceDocument   SourceDocument @relation(fields: [evidenceDocumentId], references: [id])
+
+  @@unique([publicContractId, interestEntityId, method])
+  @@index([decision, createdAt])
+  @@map("contract_match_reviews")
+}
+
+model InterestRelationship {
+  id                 String                   @id @default(cuid())
+  fromEntityId       String                   @map("from_entity_id")
+  toEntityId         String                   @map("to_entity_id")
+  type               InterestRelationshipType
+  publicContractId   String?                  @map("public_contract_id")
+  publicDescription  String                   @map("public_description")
+  validFrom          DateTime?                @map("valid_from")
+  validUntil         DateTime?                @map("valid_until")
+  sourceDocumentId   String                   @map("source_document_id")
+  verificationStatus VerificationStatus       @default(PENDING_REVIEW) @map("verification_status")
+  publicationStatus  PublicationStatus        @default(DRAFT) @map("publication_status")
+  publicInterestTest String                   @map("public_interest_test")
+  methodologyVersion String                   @map("methodology_version")
+  reviewedBy         String?                  @map("reviewed_by")
+  reviewedAt         DateTime?                @map("reviewed_at")
+  createdAt          DateTime                 @default(now()) @map("created_at")
+  updatedAt          DateTime                 @updatedAt @map("updated_at")
+  fromEntity         InterestEntity           @relation("InterestFrom", fields: [fromEntityId], references: [id], onDelete: Cascade)
+  toEntity           InterestEntity           @relation("InterestTo", fields: [toEntityId], references: [id], onDelete: Cascade)
+  publicContract     PublicContract?          @relation(fields: [publicContractId], references: [id], onDelete: SetNull)
+  sourceDocument     SourceDocument           @relation(fields: [sourceDocumentId], references: [id])
+
+  @@unique([fromEntityId, toEntityId, type, sourceDocumentId])
+  @@index([type, publicationStatus, verificationStatus])
+  @@index([fromEntityId])
+  @@index([toEntityId])
+  @@map("interest_relationships")
+}
+
+model JudicialCase {
+  id                 String                @id @default(cuid())
+  officialIdentifier String                @map("official_identifier")
+  title              String
+  status             JudicialCaseStatus
+  authorityName      String                @map("authority_name")
+  factualSummary     String                @map("factual_summary")
+  openedAt           DateTime?             @map("opened_at")
+  decidedAt          DateTime?             @map("decided_at")
+  sourceDocumentId   String                @map("source_document_id")
+  verificationStatus VerificationStatus    @default(PENDING_REVIEW) @map("verification_status")
+  publicationStatus  PublicationStatus     @default(DRAFT) @map("publication_status")
+  createdAt          DateTime              @default(now()) @map("created_at")
+  updatedAt          DateTime              @updatedAt @map("updated_at")
+  sourceDocument     SourceDocument        @relation(fields: [sourceDocumentId], references: [id])
+  subjects           JudicialCaseSubject[]
+
+  @@unique([authorityName, officialIdentifier])
+  @@index([status, publicationStatus])
+  @@map("judicial_cases")
+}
+
+model JudicialCaseSubject {
+  id               String              @id @default(cuid())
+  judicialCaseId   String              @map("judicial_case_id")
+  interestEntityId String              @map("interest_entity_id")
+  personId         String?             @map("person_id")
+  role             JudicialSubjectRole
+  roleSourceText   String              @map("role_source_text")
+  judicialCase     JudicialCase        @relation(fields: [judicialCaseId], references: [id], onDelete: Cascade)
+  interestEntity   InterestEntity      @relation(fields: [interestEntityId], references: [id], onDelete: Cascade)
+  person           Person?             @relation(fields: [personId], references: [id], onDelete: SetNull)
+
+  @@unique([judicialCaseId, interestEntityId, role])
+  @@map("judicial_case_subjects")
+}
+
+model NewsArticle {
+  id                String              @id @default(cuid())
+  externalId        String              @unique @map("external_id")
+  outletName        String              @map("outlet_name")
+  title             String
+  url               String
+  excerpt           String?
+  publishedAt       DateTime?           @map("published_at")
+  sourceDocumentId  String              @map("source_document_id")
+  reviewStatus      NewsReviewStatus    @default(INGESTED) @map("review_status")
+  publicationStatus PublicationStatus   @default(UNDER_REVIEW) @map("publication_status")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  sourceDocument    SourceDocument      @relation(fields: [sourceDocumentId], references: [id])
+  evidence          NewsEvidence[]
+  mentions          NewsEntityMention[]
+
+  @@index([publishedAt])
+  @@index([reviewStatus, publicationStatus])
+  @@map("news_articles")
+}
+
+model NewsEvidence {
+  id               String         @id @default(cuid())
+  newsArticleId    String         @map("news_article_id")
+  sourceDocumentId String         @map("source_document_id")
+  supportedClaim   String         @map("supported_claim")
+  verifiedBy       String?        @map("verified_by")
+  verifiedAt       DateTime?      @map("verified_at")
+  newsArticle      NewsArticle    @relation(fields: [newsArticleId], references: [id], onDelete: Cascade)
+  sourceDocument   SourceDocument @relation(fields: [sourceDocumentId], references: [id])
+
+  @@unique([newsArticleId, sourceDocumentId, supportedClaim])
+  @@map("news_evidence")
+}
+
+model NewsEntityMention {
+  id               String         @id @default(cuid())
+  newsArticleId    String         @map("news_article_id")
+  interestEntityId String         @map("interest_entity_id")
+  personId         String?        @map("person_id")
+  partyId          String?        @map("party_id")
+  matchedText      String         @map("matched_text")
+  verified         Boolean        @default(false)
+  newsArticle      NewsArticle    @relation(fields: [newsArticleId], references: [id], onDelete: Cascade)
+  interestEntity   InterestEntity @relation(fields: [interestEntityId], references: [id], onDelete: Cascade)
+  person           Person?        @relation(fields: [personId], references: [id], onDelete: SetNull)
+  party            Party?         @relation(fields: [partyId], references: [id], onDelete: SetNull)
+
+  @@unique([newsArticleId, interestEntityId])
+  @@index([personId])
+  @@index([partyId])
+  @@map("news_entity_mentions")
+}
+
+/// Métrica publicada apenas sobre pares comparáveis e revistos por pessoas.
+model CoherenceSnapshot {
+  id                 String   @id @default(cuid())
+  personId           String   @map("person_id")
+  periodStartsAt     DateTime @map("period_starts_at")
+  periodEndsAt       DateTime @map("period_ends_at")
+  comparableCount    Int      @map("comparable_count")
+  consistentCount    Int      @map("consistent_count")
+  inconsistentCount  Int      @map("inconsistent_count")
+  score              Decimal? @db.Decimal(5, 2)
+  coverageNote       String   @map("coverage_note")
+  methodologyVersion String   @map("methodology_version")
+  aggregateSha256    String   @map("aggregate_sha256")
+  computedAt         DateTime @default(now()) @map("computed_at")
+  person             Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@unique([personId, periodStartsAt, periodEndsAt, methodologyVersion])
+  @@map("coherence_snapshots")
+}
+
+model CitizenImpactRule {
+  id                  String               @id @default(cuid())
+  code                String               @unique
+  lawId               String               @map("law_id")
+  category            CitizenAlertCategory
+  title               String
+  eligibilityJson     Json                 @map("eligibility_json")
+  calculationJson     Json                 @map("calculation_json")
+  explanationTemplate String               @map("explanation_template")
+  direction           ImpactDirection      @default(UNKNOWN)
+  effectiveFrom       DateTime             @map("effective_from")
+  effectiveUntil      DateTime?            @map("effective_until")
+  sourceDocumentId    String               @map("source_document_id")
+  methodologyVersion  String               @map("methodology_version")
+  verificationStatus  VerificationStatus   @default(PENDING_REVIEW) @map("verification_status")
+  publicationStatus   PublicationStatus    @default(DRAFT) @map("publication_status")
+  reviewedBy          String?              @map("reviewed_by")
+  reviewedAt          DateTime?            @map("reviewed_at")
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+  law                 Law                  @relation(fields: [lawId], references: [id], onDelete: Cascade)
+  sourceDocument      SourceDocument       @relation(fields: [sourceDocumentId], references: [id])
+  alerts              CitizenAlert[]
+
+  @@index([category, effectiveFrom])
+  @@map("citizen_impact_rules")
+}
+
+model CitizenAlert {
+  id                  String               @id @default(cuid())
+  category            CitizenAlertCategory
+  title               String
+  body                String
+  lawId               String?              @map("law_id")
+  impactRuleId        String?              @map("impact_rule_id")
+  municipalityId      String?              @map("municipality_id")
+  sourceDocumentId    String               @map("source_document_id")
+  effectiveAt         DateTime?            @map("effective_at")
+  expiresAt           DateTime?            @map("expires_at")
+  publicationStatus   PublicationStatus    @default(UNDER_REVIEW) @map("publication_status")
+  requiresHumanReview Boolean              @default(true) @map("requires_human_review")
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+  law                 Law?                 @relation(fields: [lawId], references: [id], onDelete: SetNull)
+  impactRule          CitizenImpactRule?   @relation(fields: [impactRuleId], references: [id], onDelete: SetNull)
+  municipality        Municipality?        @relation(fields: [municipalityId], references: [id], onDelete: SetNull)
+  sourceDocument      SourceDocument       @relation(fields: [sourceDocumentId], references: [id])
+
+  @@index([category, publicationStatus, effectiveAt])
+  @@index([municipalityId])
+  @@map("citizen_alerts")
+}
+
+model RightOfReply {
+  id                   String             @id @default(cuid())
+  publicReference      String             @unique @map("public_reference")
+  targetType           String             @map("target_type")
+  targetId             String             @map("target_id")
+  originalRecordSha256 String             @map("original_record_sha256")
+  claimantPublicName   String             @map("claimant_public_name")
+  claimantRole         String             @map("claimant_role")
+  statementText        String             @map("statement_text")
+  statementSha256      String             @map("statement_sha256")
+  officialResponseUrl  String?            @map("official_response_url")
+  sourceDocumentId     String?            @map("source_document_id")
+  status               RightOfReplyStatus @default(RECEIVED)
+  submittedAt          DateTime           @default(now()) @map("submitted_at")
+  publishedAt          DateTime?          @map("published_at")
+  supersedesId         String?            @map("supersedes_id")
+  auditSha256          String             @unique @map("audit_sha256")
+  sourceDocument       SourceDocument?    @relation(fields: [sourceDocumentId], references: [id], onDelete: SetNull)
+  supersedes           RightOfReply?      @relation("ReplyVersions", fields: [supersedesId], references: [id], onDelete: SetNull)
+  supersededBy         RightOfReply[]     @relation("ReplyVersions")
+
+  @@index([targetType, targetId, submittedAt])
+  @@index([status])
+  @@map("rights_of_reply")
+}
+
+model DataPublicationReview {
+  id                  String          @id @default(cuid())
+  entityType          String          @map("entity_type")
+  entityId            String          @map("entity_id")
+  purpose             String
+  legalBasis          LegalBasis      @map("legal_basis")
+  sensitivity         DataSensitivity
+  necessityAssessment String          @map("necessity_assessment")
+  proportionalityTest String          @map("proportionality_test")
+  retentionUntil      DateTime?       @map("retention_until")
+  publishable         Boolean         @default(false)
+  sourceDocumentId    String?         @map("source_document_id")
+  reviewedBy          String          @map("reviewed_by")
+  reviewedAt          DateTime        @default(now()) @map("reviewed_at")
+  sourceDocument      SourceDocument? @relation(fields: [sourceDocumentId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId, reviewedAt])
+  @@index([publishable, sensitivity])
+  @@map("data_publication_reviews")
+}
+
+model SourceDocument {
+  id                    String                            @id @default(cuid())
+  publisher             SourcePublisher
+  kind                  DocumentKind
+  title                 String
+  officialIdentifier    String?                           @map("official_identifier")
+  url                   String
+  retrievedAt           DateTime                          @map("retrieved_at")
+  publishedAt           DateTime?                         @map("published_at")
+  contentSha256         String                            @map("content_sha256")
+  mimeType              String?                           @map("mime_type")
+  rawStorageKey         String?                           @map("raw_storage_key")
+  parserVersion         String?                           @map("parser_version")
+  createdAt             DateTime                          @default(now()) @map("created_at")
+  mandates              Mandate[]
+  membershipSnapshots   ParliamentaryMembershipSnapshot[]
+  sessions              ParliamentarySession[]
+  attendanceRecords     AttendanceRecord[]
+  initiatives           ParliamentaryInitiative[]
+  voteEvents            VoteEvent[]
+  voteRecords           VoteRecord[]
+  laws                  Law[]
+  governmentProgrammes  GovernmentProgramme[]
+  promiseEvidence       PromiseEvidence[]
+  promiseReviews        PromiseReview[]
+  publicStatements      PublicStatement[]
+  comparisons           StatementVoteComparison[]
+  assetDeclarations     AssetDeclarationMetadata[]
+  aiSummaries           AiSummary[]
+  localItems            LocalTransparencyItem[]
+  organisations         Organisation[]
+  protectedIdentifiers  ProtectedIdentifierDigest[]
+  publicContracts       PublicContract[]
+  contractMatchReviews  ContractMatchReview[]
+  interestRelationships InterestRelationship[]
+  judicialCases         JudicialCase[]
+  newsArticles          NewsArticle[]
+  newsEvidence          NewsEvidence[]
+  citizenImpactRules    CitizenImpactRule[]
+  citizenAlerts         CitizenAlert[]
+  rightsOfReply         RightOfReply[]
+  publicationReviews    DataPublicationReview[]
+
+  @@unique([url, contentSha256])
+  @@index([publisher, kind, publishedAt])
+  @@index([contentSha256])
+  @@map("source_documents")
+}
+
+model SyncRun {
+  id             String     @id @default(cuid())
+  sourceName     String     @map("source_name")
+  datasetUrl     String?    @map("dataset_url")
+  status         SyncStatus @default(RUNNING)
+  startedAt      DateTime   @default(now()) @map("started_at")
+  finishedAt     DateTime?  @map("finished_at")
+  recordsRead    Int        @default(0) @map("records_read")
+  recordsWritten Int        @default(0) @map("records_written")
+  warnings       Json?
+  errorMessage   String?    @map("error_message")
+  codeVersion    String     @map("code_version")
+
+  @@index([sourceName, startedAt])
+  @@index([status])
+  @@map("sync_runs")
+}
+
+model AuditEvent {
+  id         String   @id @default(cuid())
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  action     String
+  actorAlias String   @map("actor_alias")
+  beforeJson Json?    @map("before_json")
+  afterJson  Json?    @map("after_json")
+  reason     String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([entityType, entityId, createdAt])
+  @@map("audit_events")
+}

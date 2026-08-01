@@ -1,0 +1,15 @@
+{
+  "Iniciativas": [
+    {
+      "VotacaoId": "V-001",
+      "VotacaoDescricao": "Votação demonstrativa",
+      "VotacaoData": "2026-06-01",
+      "VotacaoResultado": "Aprovado",
+      "IniNr": "1/XVII",
+      "VotacaoDetalhe": [
+        {"DeputadoId": "101", "DeputadoNome": "Pessoa Exemplo A", "Voto": "A Favor"},
+        {"DeputadoId": "102", "DeputadoNome": "Pessoa Exemplo B", "Voto": "Abstenção"}
+      ]
+    }
+  ]
+}

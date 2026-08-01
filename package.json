@@ -1,0 +1,62 @@
+{
+  "name": "transparencia-total",
+  "version": "0.3.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "install:ci": "bash scripts/install-ci.sh",
+    "dev": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vite",
+    "build": "bash scripts/build-verified.sh",
+    "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
+    "dev:next": "next dev",
+    "build:next": "next build",
+    "start:next": "next start",
+    "test": "npm run build && node --test tests/*.test.mjs",
+    "validate:artifact": "bash scripts/validate-artifact.sh",
+    "lint": "bash scripts/sites-env.sh -- eslint . --ignore-pattern dist --ignore-pattern .next",
+    "db:generate": "prisma generate",
+    "db:validate": "prisma validate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "tsx prisma/seed.ts",
+    "api:dev": "cd backend && uvicorn app.main:app --reload --port 8000",
+    "test:frontend": "node --test tests/pwa-contract.test.mjs tests/source-contract.test.mjs tests/live-data-contract.test.mjs",
+    "test:sites": "node --test tests/rendered-html.test.mjs",
+    "test:api": "cd backend && pytest",
+    "quality": "npm run lint && npm run db:validate && npm run test:frontend && npm run build:next"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.0.0",
+    "@prisma/client": "^7.0.0",
+    "@xyflow/react": "^12.11.2",
+    "dotenv": "^17.0.0",
+    "next": "16.2.6",
+    "pg": "^8.16.0",
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "1.37.1",
+    "@tailwindcss/postcss": "4.2.1",
+    "@types/node": "22.19.19",
+    "@types/pg": "^8.15.0",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.0.2",
+    "@vitejs/plugin-rsc": "0.5.26",
+    "eslint": "9.39.4",
+    "eslint-config-next": "16.2.6",
+    "prisma": "^7.0.0",
+    "react-server-dom-webpack": "19.2.6",
+    "tailwindcss": "4.2.1",
+    "tsx": "^4.20.0",
+    "typescript": "5.9.3",
+    "vinext": "0.0.50",
+    "vite": "8.0.13",
+    "wrangler": "4.92.0"
+  },
+  "type": "module",
+  "displayName": "Transparência Total"
+}
