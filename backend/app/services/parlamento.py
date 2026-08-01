@@ -92,6 +92,19 @@ def _is_json_resource(label: str, href: str) -> bool:
     return any(JSON_RESOURCE_NAME.search(name) for name in names)
 
 
+def _primary_deputy_records(payload: Any) -> Iterator[dict[str, Any]]:
+    """Extrai apenas o bloco biográfico principal do ficheiro de atividade."""
+
+    if not isinstance(payload, list):
+        return
+    for item in payload:
+        if not isinstance(item, dict):
+            continue
+        deputy = _field(item, "Deputado")
+        if isinstance(deputy, dict):
+            yield deputy
+
+
 def _party_short(value: Any | None) -> str | None:
     direct = _as_text(value)
     if direct:
@@ -185,9 +198,9 @@ class ParlamentoCollector:
         )
         deputies: dict[str, Deputy] = {}
 
-        for record in _walk(payload):
-            # A fonte "Informação Base" também contém cadId e nomes de candidatos.
-            # Só um par explícito DepId/DepNomeParlamentar identifica um deputado.
+        for record in _primary_deputy_records(payload):
+            # As referências dentro de AtividadeDeputadoList podem repetir nomes e
+            # identificadores. Só o bloco principal "Deputado" constitui uma ficha.
             source_id = _as_text(_field(record, "DepId"))
             name = _as_text(_field(record, "DepNomeParlamentar"))
             if not source_id or not name:

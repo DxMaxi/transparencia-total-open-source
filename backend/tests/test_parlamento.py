@@ -88,7 +88,7 @@ def test_normalises_deputies_without_assuming_optional_fields() -> None:
     assert deputies[1].full_name is None
 
 
-def test_normalises_official_activity_deputy_shape() -> None:
+def test_normalises_only_primary_official_activity_deputy_shape() -> None:
     payload = [
         {
             "Deputado": {
@@ -107,7 +107,19 @@ def test_normalises_official_activity_deputy_shape() -> None:
                     ]
                 },
                 "DepCPDes": "PORTO",
-            }
+            },
+            "AtividadeDeputadoList": [
+                {
+                    "Ini": [
+                        {
+                            "DepId": "999",
+                            "DepNomeParlamentar": "Referência interna",
+                            "DepGP": "XX",
+                            "DepCPDes": "LISBOA",
+                        }
+                    ]
+                }
+            ],
         }
     ]
 
@@ -148,10 +160,12 @@ def test_does_not_treat_information_base_candidates_as_deputies() -> None:
 def test_rejects_implausible_deputy_snapshot_before_persistence() -> None:
     payload = [
         {
-            "DepId": str(index),
-            "DepNomeParlamentar": f"Pessoa {index}",
-            "DepGP": "AA",
-            "DepCPDes": "PORTO",
+            "Deputado": {
+                "DepId": str(index),
+                "DepNomeParlamentar": f"Pessoa {index}",
+                "DepGP": "AA",
+                "DepCPDes": "PORTO",
+            }
         }
         for index in range(1, 502)
     ]
@@ -172,7 +186,8 @@ def test_rejects_implausible_deputy_snapshot_before_persistence() -> None:
 
 def test_rejects_snapshot_without_party_and_constituency() -> None:
     payload = [
-        {"DepId": str(index), "DepNomeParlamentar": f"Pessoa {index}"} for index in range(1, 101)
+        {"Deputado": {"DepId": str(index), "DepNomeParlamentar": f"Pessoa {index}"}}
+        for index in range(1, 101)
     ]
     deputies = collector().normalise_deputies(
         payload,
