@@ -28,6 +28,16 @@ MIN_DEPUTIES_PER_LEGISLATURE = 100
 MAX_DEPUTIES_PER_LEGISLATURE = 500
 MIN_DEPUTY_METADATA_COVERAGE = 0.70
 JSON_RESOURCE_NAME = re.compile(r"(?:\.json(?:\.txt)?|_json\.txt)$", re.IGNORECASE)
+MANDATE_HOLDER_SITUATIONS = frozenset(
+    {
+        "efetivo",
+        "efetivodefinitivo",
+        "efetivotemporario",
+        "impedido",
+        "renunciou",
+        "suspensoeleito",
+    }
+)
 
 
 def _normalise_key(value: str) -> str:
@@ -103,6 +113,17 @@ def _primary_deputy_records(payload: Any) -> Iterator[dict[str, Any]]:
         deputy = _field(item, "Deputado")
         if isinstance(deputy, dict):
             yield deputy
+
+
+def _held_parliamentary_mandate(record: dict[str, Any]) -> bool:
+    """Confirma pela situação oficial que a pessoa exerceu ou recebeu mandato."""
+
+    situation = _field(record, "DepSituacao", "Situacao")
+    for item in _walk(situation):
+        description = _as_text(_field(item, "sioDes", "description"))
+        if description and _normalise_key(description) in MANDATE_HOLDER_SITUATIONS:
+            return True
+    return False
 
 
 def _party_short(value: Any | None) -> str | None:
@@ -209,6 +230,10 @@ class ParlamentoCollector:
         for record in _primary_deputy_records(payload):
             # As referências dentro de AtividadeDeputadoList podem repetir nomes e
             # identificadores. Só o bloco principal "Deputado" constitui uma ficha.
+            # A fonte também inclui suplentes e candidatos que nunca exerceram mandato.
+            if not _held_parliamentary_mandate(record):
+                continue
+
             source_id = _as_text(_field(record, "DepId"))
             name = _as_text(_field(record, "DepNomeParlamentar"))
             if not source_id or not name:
