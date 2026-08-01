@@ -24,6 +24,10 @@ from app.models.api import (
 )
 from app.services.http import OfficialHttpClient
 
+MIN_DEPUTIES_PER_LEGISLATURE = 100
+MAX_DEPUTIES_PER_LEGISLATURE = 500
+MIN_DEPUTY_METADATA_COVERAGE = 0.70
+
 
 def _normalise_key(value: str) -> str:
     decomposed = unicodedata.normalize("NFKD", value)
@@ -74,6 +78,30 @@ def _parse_date(value: Any | None) -> datetime | None:
         return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
     except (ValueError, OverflowError):
         return None
+
+
+def _party_short(value: Any | None) -> str | None:
+    direct = _as_text(value)
+    if direct:
+        return direct
+
+    candidates: list[tuple[bool, datetime, int, str]] = []
+    for position, record in enumerate(_walk(value)):
+        short_name = _as_text(_field(record, "gpSigla", "partyShort"))
+        if not short_name:
+            continue
+        started_at = _parse_date(_field(record, "gpDtInicio", "startDate"))
+        ended_at = _parse_date(_field(record, "gpDtFim", "endDate"))
+        candidates.append(
+            (
+                ended_at is None,
+                started_at or datetime.min.replace(tzinfo=UTC),
+                -position,
+                short_name,
+            )
+        )
+
+    return max(candidates)[-1] if candidates else None
 
 
 class ParlamentoCollector:
@@ -145,26 +173,24 @@ class ParlamentoCollector:
         deputies: dict[str, Deputy] = {}
 
         for record in _walk(payload):
-            source_id = _as_text(
-                _field(record, "DepId", "DeputadoId", "deputyId", "cadId", "idDeputado")
-            )
-            name = _as_text(
-                _field(
-                    record,
-                    "DepNomeParlamentar",
-                    "NomeParlamentar",
-                    "deputyName",
-                    "DepNomeCompleto",
-                    "NomeCompleto",
-                )
-            )
+            # A fonte "Informação Base" também contém cadId e nomes de candidatos.
+            # Só um par explícito DepId/DepNomeParlamentar identifica um deputado.
+            source_id = _as_text(_field(record, "DepId"))
+            name = _as_text(_field(record, "DepNomeParlamentar"))
             if not source_id or not name:
                 continue
 
             full_name = _as_text(_field(record, "DepNomeCompleto", "NomeCompleto", "fullName"))
-            party = _as_text(_field(record, "DepGP", "GP", "GrupoParlamentar", "party", "Sigla"))
+            party = _party_short(_field(record, "DepGP", "GrupoParlamentar", "party"))
             constituency = _as_text(
-                _field(record, "DepCirculo", "CirculoEleitoral", "Circulo", "constituency")
+                _field(
+                    record,
+                    "DepCPDes",
+                    "DepCirculo",
+                    "CirculoEleitoral",
+                    "Circulo",
+                    "constituency",
+                )
             )
             email = _as_text(_field(record, "DepEmail", "Email", "email"))
 
@@ -180,6 +206,37 @@ class ParlamentoCollector:
             )
 
         return sorted(deputies.values(), key=lambda item: item.parliamentary_name.casefold())
+
+    @staticmethod
+    def _validate_deputy_snapshot(deputies: list[Deputy]) -> list[str]:
+        count = len(deputies)
+        if not MIN_DEPUTIES_PER_LEGISLATURE <= count <= MAX_DEPUTIES_PER_LEGISLATURE:
+            raise ValueError(
+                "Snapshot parlamentar rejeitado: "
+                f"{count} deputados, fora do intervalo de segurança "
+                f"{MIN_DEPUTIES_PER_LEGISLATURE}-{MAX_DEPUTIES_PER_LEGISLATURE}."
+            )
+
+        party_count = sum(item.party_short is not None for item in deputies)
+        constituency_count = sum(item.constituency is not None for item in deputies)
+        party_coverage = party_count / count
+        constituency_coverage = constituency_count / count
+        if (
+            party_coverage < MIN_DEPUTY_METADATA_COVERAGE
+            or constituency_coverage < MIN_DEPUTY_METADATA_COVERAGE
+        ):
+            raise ValueError(
+                "Snapshot parlamentar rejeitado: cobertura insuficiente de partido/círculo "
+                f"({party_count}/{count} e {constituency_count}/{count})."
+            )
+
+        warnings = []
+        if party_count < count or constituency_count < count:
+            warnings.append(
+                "Existem deputados sem partido ou círculo na fonte; os campos foram "
+                "mantidos vazios e exigem revisão antes da publicação."
+            )
+        return warnings
 
     def normalise_votes(
         self,
@@ -303,11 +360,7 @@ class ParlamentoCollector:
             source_url=final_url,
             document_sha256=digest,
         )
-        warnings = []
-        if not deputies:
-            warnings.append(
-                "Nenhum deputado normalizado; conservar o documento para revisão do mapeamento."
-            )
+        warnings = self._validate_deputy_snapshot(deputies)
         return ParliamentDataset(
             legislature=legislature,
             dataset_url=HttpUrl(final_url),

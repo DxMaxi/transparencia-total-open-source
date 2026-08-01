@@ -245,8 +245,7 @@ class PostgresRepository:
                 "database_configured": False,
                 "counts": empty_counts,
                 "sources": [
-                    {"source_name": source, "status": "NEVER"}
-                    for source in canonical_sources
+                    {"source_name": source, "status": "NEVER"} for source in canonical_sources
                 ],
                 "message": "Base de dados não configurada; nenhum dado é apresentado como real.",
             }
@@ -572,9 +571,8 @@ class PostgresRepository:
                     "progress": row["progress"],
                     "programme_page": row["programme_page"] or "Página não indicada",
                     "programme_source": _source_from_row(row, "programme_source_"),
-                    "rationale": row["rationale"] or (
-                        "Decisão fundamentada no histórico de revisão."
-                    ),
+                    "rationale": row["rationale"]
+                    or ("Decisão fundamentada no histórico de revisão."),
                     "last_reviewed_at": row["reviewed_at"],
                     "evidence": [],
                 },
