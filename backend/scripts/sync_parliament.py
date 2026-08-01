@@ -14,7 +14,7 @@ from app.repositories.postgres import PostgresRepository
 from app.services.http import OfficialHttpClient
 from app.services.parlamento import ParlamentoCollector
 
-CODE_VERSION = "parliament-ingestion-v3"
+CODE_VERSION = "parliament-ingestion-v4"
 
 
 async def collect(
@@ -61,9 +61,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    result, persistence = asyncio.run(
-        collect(args.kind, args.legislature, persist=args.persist)
-    )
+    result, persistence = asyncio.run(collect(args.kind, args.legislature, persist=args.persist))
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         temporary = args.output.with_suffix(f"{args.output.suffix}.tmp")
