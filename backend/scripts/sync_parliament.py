@@ -14,7 +14,7 @@ from app.repositories.postgres import PostgresRepository
 from app.services.http import OfficialHttpClient
 from app.services.parlamento import ParlamentoCollector
 
-CODE_VERSION = "parliament-ingestion-v8"
+CODE_VERSION = "parliament-ingestion-v9"
 
 
 async def collect(
@@ -71,10 +71,13 @@ def main() -> None:
     else:
         print(result)
     if persistence is not None:
+        deactivated = persistence.get("records_deactivated", 0)
         print(
             "Persistência concluída em staging: "
             f"{persistence['records_written']} escritas / "
-            f"{persistence['records_read']} lidas; publicação continua pendente."
+            f"{persistence['records_read']} lidas; "
+            f"{deactivated} registos antigos desativados; "
+            "publicação continua pendente."
         )
 
 
