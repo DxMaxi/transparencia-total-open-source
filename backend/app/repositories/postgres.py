@@ -10,6 +10,7 @@ from typing import Any
 import asyncpg
 
 from app.core.config import Settings
+from app.core.security import require_official_url
 from app.models.api import (
     BaseContractCollection,
     ParliamentDataset,
@@ -264,7 +265,15 @@ class PostgresRepository:
                       AND (
                         SELECT dpr.publishable
                         FROM data_publication_reviews dpr
-                        WHERE dpr.entity_type = 'PERSON' AND dpr.entity_id = p.id
+                        WHERE dpr.entity_type = 'PERSON'
+                          AND dpr.entity_id = p.id
+                          AND dpr.source_document_id = (
+                            SELECT snapshot.source_document_id
+                            FROM parliamentary_membership_snapshots snapshot
+                            WHERE snapshot.person_id = p.id
+                            ORDER BY snapshot.observed_at DESC, snapshot.id DESC
+                            LIMIT 1
+                          )
                         ORDER BY dpr.reviewed_at DESC, dpr.id DESC LIMIT 1
                       ) = TRUE
                   ) AS politicians,
@@ -377,18 +386,20 @@ class PostgresRepository:
                        sd.content_sha256 AS source_sha256
                 FROM people p
                 JOIN LATERAL (
-                    SELECT dpr.publishable, dpr.reviewed_at
-                    FROM data_publication_reviews dpr
-                    WHERE dpr.entity_type = 'PERSON' AND dpr.entity_id = p.id
-                    ORDER BY dpr.reviewed_at DESC, dpr.id DESC LIMIT 1
-                ) review ON review.publishable = TRUE
-                JOIN LATERAL (
                     SELECT snapshot.party_id, snapshot.constituency, snapshot.legislature,
                            snapshot.source_document_id
                     FROM parliamentary_membership_snapshots snapshot
                     WHERE snapshot.person_id = p.id
                     ORDER BY snapshot.observed_at DESC, snapshot.id DESC LIMIT 1
                 ) ms ON TRUE
+                JOIN LATERAL (
+                    SELECT dpr.publishable, dpr.reviewed_at
+                    FROM data_publication_reviews dpr
+                    WHERE dpr.entity_type = 'PERSON'
+                      AND dpr.entity_id = p.id
+                      AND dpr.source_document_id = ms.source_document_id
+                    ORDER BY dpr.reviewed_at DESC, dpr.id DESC LIMIT 1
+                ) review ON review.publishable = TRUE
                 JOIN source_documents sd ON sd.id = ms.source_document_id
                 LEFT JOIN parties pa ON pa.id = ms.party_id
                 WHERE p.active = TRUE AND ($1::text IS NULL OR p.slug = $1)
@@ -1279,21 +1290,27 @@ class PostgresRepository:
         if entity_type not in allowed:
             raise ValueError("Tipo de entidade não suportado para revisão pública")
 
+        review_source_document_id: str | None = None
         async with self.pool.acquire() as connection, connection.transaction():
             if entity_type == "PERSON":
                 current = await connection.fetchrow(
-                    "SELECT id, active FROM people WHERE id = $1",
-                    entity_id,
-                )
-                evidence_exists = await connection.fetchval(
                     """
-                    SELECT EXISTS (
-                      SELECT 1 FROM parliamentary_membership_snapshots
-                      WHERE person_id = $1
-                    )
+                    SELECT person.id, person.active, snapshot.source_document_id
+                    FROM people person
+                    LEFT JOIN LATERAL (
+                        SELECT membership.source_document_id
+                        FROM parliamentary_membership_snapshots membership
+                        WHERE membership.person_id = person.id
+                        ORDER BY membership.observed_at DESC, membership.id DESC
+                        LIMIT 1
+                    ) snapshot ON TRUE
+                    WHERE person.id = $1
                     """,
                     entity_id,
                 )
+                evidence_exists = bool(current and current["source_document_id"])
+                if current is not None and current["source_document_id"] is not None:
+                    review_source_document_id = str(current["source_document_id"])
                 sensitivity = "PUBLIC_PERSONAL"
             elif entity_type == "PROMISE":
                 current = await connection.fetchrow(
@@ -1412,9 +1429,9 @@ class PostgresRepository:
                 INSERT INTO data_publication_reviews
                     (id, entity_type, entity_id, purpose, legal_basis, sensitivity,
                      necessity_assessment, proportionality_test, publishable,
-                     reviewed_by, reviewed_at)
+                     source_document_id, reviewed_by, reviewed_at)
                 VALUES ($1, $2, $3, $4, 'PUBLIC_INTEREST', $5::"DataSensitivity",
-                        $6, $7, $8, $9, NOW())
+                        $6, $7, $8, $9, $10, NOW())
                 """,
                 _new_id("publication_review"),
                 entity_type,
@@ -1424,6 +1441,7 @@ class PostgresRepository:
                 "A fonte e a identidade do registo foram verificadas pelo revisor.",
                 "A exposição é limitada aos campos públicos necessários e conserva a fonte.",
                 publish,
+                review_source_document_id,
                 reviewer_alias,
             )
             await connection.execute(
@@ -1443,6 +1461,240 @@ class PostgresRepository:
                 rationale,
             )
         return decision
+
+    @staticmethod
+    async def _parliament_people_publication_snapshot(
+        connection: asyncpg.Connection,
+        *,
+        legislature: str,
+        lock_people: bool = False,
+    ) -> dict[str, Any]:
+        """Obtém a última fotografia parlamentar persistida e os seus candidatos."""
+
+        sync_run = await connection.fetchrow(
+            """
+            SELECT dataset_url, status::text AS status, records_read, records_written,
+                   code_version, started_at, finished_at
+            FROM sync_runs
+            WHERE source_name = 'PARLIAMENT_DEPUTIES'
+            ORDER BY started_at DESC, id DESC
+            LIMIT 1
+            """
+        )
+        if sync_run is None:
+            raise ValueError("Não existe sincronização de deputados para rever")
+        if sync_run["status"] != "SUCCEEDED":
+            raise ValueError("A última sincronização de deputados não terminou com sucesso")
+
+        source = await connection.fetchrow(
+            """
+            SELECT sd.id, sd.url, sd.content_sha256, sd.retrieved_at,
+                   sd.parser_version, MAX(snapshot.observed_at) AS observed_at,
+                   COUNT(DISTINCT snapshot.person_id) AS candidate_count
+            FROM source_documents sd
+            JOIN parliamentary_membership_snapshots snapshot
+              ON snapshot.source_document_id = sd.id
+            JOIN people person ON person.id = snapshot.person_id
+            WHERE sd.publisher = 'PARLIAMENT'
+              AND sd.url = $1
+              AND snapshot.legislature = $2
+              AND person.role = 'DEPUTY'
+              AND person.active = TRUE
+            GROUP BY sd.id
+            ORDER BY observed_at DESC, sd.retrieved_at DESC, sd.id DESC
+            LIMIT 1
+            """,
+            sync_run["dataset_url"],
+            legislature,
+        )
+        if source is None:
+            raise ValueError("Documento-fonte da última sincronização não encontrado")
+        source_url = require_official_url(str(source["url"]))
+        source_sha256 = str(source["content_sha256"])
+        if not re.fullmatch(r"[0-9a-f]{64}", source_sha256):
+            raise ValueError("O documento-fonte não contém um SHA-256 válido")
+
+        people_query = """
+            SELECT person.id, person.source_id,
+                   COALESCE(person.parliamentary_name, person.full_name) AS name,
+                   COALESCE(party.short_name, '—') AS party_short,
+                   COALESCE(snapshot.constituency, 'Não disponível') AS constituency,
+                   latest_review.publishable AS latest_publishable
+            FROM parliamentary_membership_snapshots snapshot
+            JOIN people person ON person.id = snapshot.person_id
+            LEFT JOIN parties party ON party.id = snapshot.party_id
+            LEFT JOIN LATERAL (
+                SELECT review.publishable
+                FROM data_publication_reviews review
+                WHERE review.entity_type = 'PERSON'
+                  AND review.entity_id = person.id
+                  AND review.source_document_id = snapshot.source_document_id
+                ORDER BY review.reviewed_at DESC, review.id DESC
+                LIMIT 1
+            ) latest_review ON TRUE
+            WHERE snapshot.source_document_id = $1
+              AND snapshot.legislature = $2
+              AND person.role = 'DEPUTY'
+              AND person.active = TRUE
+            ORDER BY name, person.id
+        """
+        if lock_people:
+            people_query += " FOR UPDATE OF person"
+        people = await connection.fetch(people_query, source["id"], legislature)
+
+        candidate_count = int(source["candidate_count"])
+        if candidate_count != len(people):
+            raise ValueError("A fotografia parlamentar contém candidatos duplicados")
+        if int(sync_run["records_read"]) != candidate_count:
+            raise ValueError(
+                "A contagem persistida não coincide com a última sincronização de deputados"
+            )
+        if int(sync_run["records_written"]) != candidate_count:
+            raise ValueError("Nem todos os deputados da última sincronização foram persistidos")
+        source_ids = [str(person["source_id"] or "") for person in people]
+        if not all(source_ids) or len(set(source_ids)) != len(source_ids):
+            raise ValueError("A fotografia contém identificadores ausentes ou duplicados")
+
+        return {
+            "legislature": legislature,
+            "source_document_id": str(source["id"]),
+            "source_url": source_url,
+            "source_sha256": source_sha256,
+            "source_retrieved_at": source["retrieved_at"],
+            "source_observed_at": source["observed_at"],
+            "parser_version": str(source["parser_version"]),
+            "sync_code_version": str(sync_run["code_version"]),
+            "sync_finished_at": sync_run["finished_at"],
+            "candidate_count": candidate_count,
+            "already_published": sum(person["latest_publishable"] is True for person in people),
+            "people": [dict(person) for person in people],
+        }
+
+    async def inspect_parliament_people_publication(
+        self,
+        *,
+        legislature: str,
+    ) -> dict[str, Any]:
+        """Pré-visualiza, sem escrever, a fotografia elegível para revisão."""
+
+        if self.pool is None:
+            raise RuntimeError("Base de dados não configurada")
+        async with self.pool.acquire() as connection:
+            return await self._parliament_people_publication_snapshot(
+                connection,
+                legislature=legislature,
+            )
+
+    async def publish_parliament_people_snapshot(
+        self,
+        *,
+        legislature: str,
+        expected_source_sha256: str,
+        expected_count: int,
+        reviewer_alias: str,
+        rationale: str,
+    ) -> dict[str, Any]:
+        """Publica uma fotografia validada, preservando uma decisão por pessoa."""
+
+        if self.pool is None:
+            raise RuntimeError("Base de dados não configurada")
+        if not re.fullmatch(r"[0-9a-f]{64}", expected_source_sha256):
+            raise ValueError("O SHA-256 esperado deve conter 64 caracteres hexadecimais")
+        if not 100 <= expected_count <= 500:
+            raise ValueError("A contagem esperada deve estar entre 100 e 500")
+        if len(reviewer_alias.strip()) < 3:
+            raise ValueError("O pseudónimo do revisor é demasiado curto")
+        if len(rationale.strip()) < 20:
+            raise ValueError("A fundamentação deve ter pelo menos 20 caracteres")
+
+        async with self.pool.acquire() as connection, connection.transaction():
+            await connection.execute(
+                "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
+                f"parliament-people-publication:{legislature}",
+            )
+            snapshot = await self._parliament_people_publication_snapshot(
+                connection,
+                legislature=legislature,
+                lock_people=True,
+            )
+            if snapshot["source_sha256"] != expected_source_sha256:
+                raise ValueError("O SHA-256 fornecido não corresponde à fotografia mais recente")
+            if snapshot["candidate_count"] != expected_count:
+                raise ValueError("A contagem fornecida não corresponde à fotografia mais recente")
+
+            pending_people = [
+                person for person in snapshot["people"] if person["latest_publishable"] is not True
+            ]
+            review_arguments: list[tuple[object, ...]] = []
+            audit_arguments: list[tuple[object, ...]] = []
+            for person in pending_people:
+                review_arguments.append(
+                    (
+                        _new_id("publication_review"),
+                        person["id"],
+                        snapshot["source_document_id"],
+                        reviewer_alias.strip(),
+                    )
+                )
+                before = {
+                    "active": True,
+                    "latest_publishable": person["latest_publishable"],
+                }
+                after = {
+                    "publishable": True,
+                    "legislature": legislature,
+                    "source_sha256": expected_source_sha256,
+                    "batch_expected_count": expected_count,
+                }
+                audit_arguments.append(
+                    (
+                        _new_id("audit"),
+                        person["id"],
+                        reviewer_alias.strip(),
+                        json.dumps(before, ensure_ascii=False),
+                        json.dumps(after, ensure_ascii=False),
+                        rationale.strip(),
+                    )
+                )
+
+            if review_arguments:
+                await connection.executemany(
+                    """
+                    INSERT INTO data_publication_reviews
+                        (id, entity_type, entity_id, purpose, legal_basis, sensitivity,
+                         necessity_assessment, proportionality_test, publishable,
+                         source_document_id, reviewed_by, reviewed_at)
+                    VALUES ($1, 'PERSON', $2,
+                            'Informação factual necessária à fiscalização democrática',
+                            'PUBLIC_INTEREST', 'PUBLIC_PERSONAL',
+                            'A fonte, a identidade e a pertença parlamentar foram verificadas.',
+                            'Publica apenas os campos necessários e mantém a fonte oficial.',
+                            TRUE, $3, $4, NOW())
+                    """,
+                    review_arguments,
+                )
+                await connection.executemany(
+                    """
+                    INSERT INTO audit_events
+                        (id, entity_type, entity_id, action, actor_alias,
+                         before_json, after_json, reason, created_at)
+                    VALUES ($1, 'PERSON', $2, 'PUBLISHED', $3,
+                            $4::jsonb, $5::jsonb, $6, NOW())
+                    """,
+                    audit_arguments,
+                )
+
+        return {
+            "legislature": legislature,
+            "source_url": snapshot["source_url"],
+            "source_sha256": snapshot["source_sha256"],
+            "candidate_count": snapshot["candidate_count"],
+            "already_published": snapshot["already_published"],
+            "published_now": len(pending_people),
+            "publication_rule": (
+                "Uma decisão e um evento de auditoria foram preservados por pessoa."
+            ),
+        }
 
     async def list_open_data(
         self,
