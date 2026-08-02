@@ -1,0 +1,2305 @@
+{
+  "legislature": "XVII",
+  "source_document_id": "source_8a409b21dae4428dbbbd64735e522aef",
+  "source_url": "https://app.parlamento.pt/webutils/docs/doc.txt?path=sHI5Ws6nLv0hPrFu%2bi%2b2uMC4I5bj8bp%2fnQocUfqyb6Tk9Pkn6zUkhRWxV6%2f2NmGW3SG2VEs6MXyeyw2EpjUvmTuH%2bVSYRCt4OCE0lTOxk329ItQbwPJ4hw%2bv8rGUvjHZouaUPv3%2bkb7GC9%2fQPIkxwagDJiBiub9fEFnIHB77vrUZPDy%2bKkIiu4SrkTqKwOjlfnHGw5YAr03gQUWtirig%2f0b9LL5YLc3Dflp21vPne0YDf2Shaj%2fNhwcC3k0PXknsk4nrvF4BvTIJGdWqzcSTTcxs25X%2b8wJZEu1tKkOOR9nKGP0bavQb3RfMk9KrWZmyaUxuDthyE5NioTNEvYwqCKSnJV2dygC15lwPHVB4dPGw4LNu9FfgLYafa8OcudchYmr6OdJ9oV7w8JM6L8FZrwF%2fxereIwOMPuHe5ZyXGIU%3d&fich=AtividadeDeputadoXVII_json.txt&Inline=true",
+  "source_sha256": "e54b30869212ea3d50a401637a31847339e29dcfdac9ec7b66e51c0def0cd9b9",
+  "source_retrieved_at": "2026-08-02 11:56:10.950000",
+  "source_observed_at": "2026-08-02 11:56:10.950000",
+  "parser_version": "parliament-ingestion-v9",
+  "sync_code_version": "parliament-ingestion-v9",
+  "sync_finished_at": "2026-08-02 11:56:46.212000",
+  "candidate_count": 286,
+  "already_published": 0,
+  "people": [
+    {
+      "id": "person_157aafdb599c4888bd15b6b2e9bb07b3",
+      "source_id": "15856.0",
+      "name": "Adriana Rodrigues",
+      "party_short": "PSD",
+      "constituency": "Aveiro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_eade71d8a76447109d6387592798709f",
+      "source_id": "16140.0",
+      "name": "Aida Carvalho",
+      "party_short": "PS",
+      "constituency": "Guarda",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_c88afe63c30c40d0a5354c99f1e36e3c",
+      "source_id": "16907.0",
+      "name": "Alberto Fonseca",
+      "party_short": "PSD",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_0dfe5610b47f4d888c92b3ba11db4d94",
+      "source_id": "16897.0",
+      "name": "Alberto Machado",
+      "party_short": "PSD",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_f2099fef5ffb41f09049ef7d1edec5a2",
+      "source_id": "16896.0",
+      "name": "Alberto Santos",
+      "party_short": "PSD",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_473ee4ad6f604c0f8ff6ae7d40e19bc4",
+      "source_id": "16716.0",
+      "name": "Albino Ramos",
+      "party_short": "IL",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_fae71170aef746bc8b28d50e36f6ab7e",
+      "source_id": "16569.0",
+      "name": "Alexandre Homem Cristo",
+      "party_short": "PSD",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_da9e2b9a0e7444389db47088ad1eecde",
+      "source_id": "16571.0",
+      "name": "Alexandre Poço",
+      "party_short": "PSD",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_4d63a71eec6d4c5f8f3cb115137be8bb",
+      "source_id": "16801.0",
+      "name": "Alfredo Maia",
+      "party_short": "PCP",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_50a0fb4e3e8547e18d6e92116da27127",
+      "source_id": "15857.0",
+      "name": "Almiro Moreira",
+      "party_short": "PSD",
+      "constituency": "Aveiro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_a7661217d7fa4fe1bd31c90f2c7cd2cd",
+      "source_id": "16663.0",
+      "name": "Álvaro Castello-Branco",
+      "party_short": "CDS-PP",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_ab53f02ba03b4101bf17ddc85d6e4abc",
+      "source_id": "17159.0",
+      "name": "Amílcar Almeida",
+      "party_short": "PSD",
+      "constituency": "Vila Real",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_6b8f337bbb5e47cf9ab054cfe87993f9",
+      "source_id": "16523.0",
+      "name": "Ana Bernardo",
+      "party_short": "PS",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_6ceac4baafa7452e9659d6aec2ea6983",
+      "source_id": "16892.0",
+      "name": "Ana Gabriela Cabilhas",
+      "party_short": "PSD",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_30d033e1650d4fce97c67cf00d1cf558",
+      "source_id": "16906.0",
+      "name": "Ana Isabel Ferreira",
+      "party_short": "PSD",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_6d6910e757e342619489ba2994044c21",
+      "source_id": "16579.0",
+      "name": "Ana Isabel Xavier",
+      "party_short": "PSD",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_85719ab22ef4450eab69fe8a678b4992",
+      "source_id": "15762.0",
+      "name": "Ana Martins",
+      "party_short": "CH",
+      "constituency": "Açores",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_3ba9e37b1f1840c7b6fea84f088fd717",
+      "source_id": "16049.0",
+      "name": "Ana Oliveira",
+      "party_short": "PSD",
+      "constituency": "Coimbra",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_fabb97c9404c40e9be486f8abc44f8db",
+      "source_id": "17158.0",
+      "name": "Ana Paula Martins",
+      "party_short": "PSD",
+      "constituency": "Vila Real",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_f52a7516f3cf4ce7bcc9efa99b450205",
+      "source_id": "17161.0",
+      "name": "Ana Silveira",
+      "party_short": "PSD",
+      "constituency": "Vila Real",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_e9b3c4dfaa8846b4919529f340303d50",
+      "source_id": "17062.0",
+      "name": "André Pinotes Batista",
+      "party_short": "PS",
+      "constituency": "Setúbal",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_059843f252fb411fb22283b1cb32afc3",
+      "source_id": "16524.0",
+      "name": "André Rijo",
+      "party_short": "PS",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_7190111ff1b24ff4b05d9b93a0c4e129",
+      "source_id": "16252.0",
+      "name": "André Ventura",
+      "party_short": "CH",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_1b3055b641fc4c5fb976659085c71581",
+      "source_id": "16584.0",
+      "name": "Andreia Bernardo",
+      "party_short": "PSD",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_9e2bde00f2f34d9c83940d14a5775791",
+      "source_id": "16102.0",
+      "name": "Andreia Filipa Sousa",
+      "party_short": "PS",
+      "constituency": "Faro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_82307f125f8d49ef8af1f58d38cb6262",
+      "source_id": "16196.0",
+      "name": "Andreia Galvão",
+      "party_short": "BE",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_f23130f11f104506a3bd4af04deaeb0c",
+      "source_id": "16898.0",
+      "name": "Andreia Neto",
+      "party_short": "PSD",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_9c2356a9c1b64332b8bd08fa80c12316",
+      "source_id": "16307.0",
+      "name": "Angélique Da Teresa",
+      "party_short": "IL",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_5e3103cade2b4c54b5b67e2a12e0c338",
+      "source_id": "15873.0",
+      "name": "António Carneiro",
+      "party_short": "CH",
+      "constituency": "Beja",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_f47393437f8c4939a9765180bd168c8f",
+      "source_id": "17193.0",
+      "name": "António Leitão Amaro",
+      "party_short": "PSD",
+      "constituency": "Viseu",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_267daa36793448eeb50129fe90c759b5",
+      "source_id": "17060.0",
+      "name": "António Mendonça Mendes",
+      "party_short": "PS",
+      "constituency": "Setúbal",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_93c95757cba4438199c7a016efede16e",
+      "source_id": "16578.0",
+      "name": "António Rodrigues",
+      "party_short": "PSD",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_05876f49ec024e7c9bc593cd839f0850",
+      "source_id": "15791.0",
+      "name": "Armando Grave",
+      "party_short": "CH",
+      "constituency": "Aveiro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_cd5e51e2a6c54c018ec5fbaf63a736e9",
+      "source_id": "17181.0",
+      "name": "Armando Mourisco",
+      "party_short": "PS",
+      "constituency": "Viseu",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_da57f22aff154f23a418939e1bc8d142",
+      "source_id": "16115.0",
+      "name": "Bárbara do Amaral Correia",
+      "party_short": "PSD",
+      "constituency": "Faro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_d45b4b8596f54c28a1c321a18b75e77c",
+      "source_id": "17169.0",
+      "name": "Bernardo Pessanha",
+      "party_short": "CH",
+      "constituency": "Viseu",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_cbcc58869b7c407393c095152157edc3",
+      "source_id": "17200.0",
+      "name": "Bruno Faria",
+      "party_short": "PSD",
+      "constituency": "Viseu",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_1313ae2908eb4af7ba673c764ca73068",
+      "source_id": "16258.0",
+      "name": "Bruno Nunes",
+      "party_short": "CH",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_331883cab9a94e22a7c42eb02c0e74dc",
+      "source_id": "16574.0",
+      "name": "Bruno Ventura",
+      "party_short": "PSD",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_44cf1cdee8594180a9300b2fcab9f296",
+      "source_id": "17086.0",
+      "name": "Bruno Vitorino",
+      "party_short": "PSD",
+      "constituency": "Setúbal",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_ab6511388d074c30bf1773eee44b7a80",
+      "source_id": "16901.0",
+      "name": "Carla Barros",
+      "party_short": "PSD",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_91bda44d13a94763a2d6f864907d1173",
+      "source_id": "16894.0",
+      "name": "Carlos Abreu Amorim",
+      "party_short": "PSD",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_7e64f37dcaca4e11ae90e96c6163f1b5",
+      "source_id": "16065.0",
+      "name": "Carlos Alberto Gonçalves",
+      "party_short": "PSD",
+      "constituency": "Europa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_78948a59d48642639def439676c80781",
+      "source_id": "15893.0",
+      "name": "Carlos Barbosa",
+      "party_short": "CH",
+      "constituency": "Braga",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_8717690fc2c045efbc6a2448037c89b8",
+      "source_id": "15964.0",
+      "name": "Carlos Cação",
+      "party_short": "PSD",
+      "constituency": "Braga",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_5545fad5f01d46c5b4448640c66c1d59",
+      "source_id": "16713.0",
+      "name": "Carlos Guimarães Pinto",
+      "party_short": "IL",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_3fbe3224699c4e4d9182fe612ef17bc3",
+      "source_id": "17064.0",
+      "name": "Carlos Pereira",
+      "party_short": "PS",
+      "constituency": "Setúbal",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_d0eb4cc446db4984bb2a8f5d48a8a751",
+      "source_id": "16585.0",
+      "name": "Carlos Reis",
+      "party_short": "PSD",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_fbf24ef546fb49ff97021bbe2be5623e",
+      "source_id": "17196.0",
+      "name": "Carlos Silva Santiago",
+      "party_short": "PSD",
+      "constituency": "Viseu",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_aeb02e4c409546c095634b3e5d7401dc",
+      "source_id": "15859.0",
+      "name": "Carolina Marques",
+      "party_short": "PSD",
+      "constituency": "Aveiro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_437e2a98272c42cf8bc8ba8da7fca68b",
+      "source_id": "16165.0",
+      "name": "Catarina Louro",
+      "party_short": "PS",
+      "constituency": "Leiria",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_b958f025726b483f86d6332b9dd287e7",
+      "source_id": "16931.0",
+      "name": "Catarina Salgueiro",
+      "party_short": "CH",
+      "constituency": "Santarém",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_d1801d05c32d419db4153f27c52bf942",
+      "source_id": "16184.0",
+      "name": "Célia Freire",
+      "party_short": "PSD",
+      "constituency": "Leiria",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_9abce01e847940bc92d4e2f7391057f8",
+      "source_id": "15965.0",
+      "name": "Clara Marques Mendes",
+      "party_short": "PSD",
+      "constituency": "Braga",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_c27dcb8331f44c0793003f7b0bf44d39",
+      "source_id": "16973.0",
+      "name": "Cláudia Estêvão",
+      "party_short": "CH",
+      "constituency": "Setúbal",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_047a74f50fb14beca533bed88d49be05",
+      "source_id": "16671.0",
+      "name": "Cristina Rodrigues",
+      "party_short": "CH",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_0a0a0c744f3e4c27b0c258820437fe8e",
+      "source_id": "16573.0",
+      "name": "Cristina Vaz Tomé",
+      "party_short": "PSD",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_0fb20ae0b9cb42e8b8a26b8f742a44ca",
+      "source_id": "16154.0",
+      "name": "Cristina Vieira Henriques",
+      "party_short": "CH",
+      "constituency": "Leiria",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_65acbbd7dd2143f7934a5433d1ea13e4",
+      "source_id": "16114.0",
+      "name": "Cristóvão Norte",
+      "party_short": "PSD",
+      "constituency": "Faro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_22fdc3eac7ff4fc89c06efa358732093",
+      "source_id": "16854.0",
+      "name": "Dália Miranda",
+      "party_short": "PS",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_7766311024c04c4184e1d49c8aede8ba",
+      "source_id": "16972.0",
+      "name": "Daniel Teixeira",
+      "party_short": "CH",
+      "constituency": "Setúbal",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_6aed37bdbd1a4456a5a933260f0a271b",
+      "source_id": "15793.0",
+      "name": "Darlene Costa",
+      "party_short": "CH",
+      "constituency": "Aveiro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_2535db03890d45a39b36c1a589b7dc76",
+      "source_id": "16525.0",
+      "name": "Davide Amado",
+      "party_short": "PS",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_b700ca63deb742879e37bcf8bbbb7ccd",
+      "source_id": "16670.0",
+      "name": "Diogo Pacheco de Amorim",
+      "party_short": "CH",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_c058b726a3fd4ab989ecec1bab771561",
+      "source_id": "16146.0",
+      "name": "Dulcineia Catarina Moura",
+      "party_short": "PSD",
+      "constituency": "Guarda",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_652be4782bdd4f06a741da657eb9de7f",
+      "source_id": "16516.0",
+      "name": "Edite Estrela",
+      "party_short": "PS",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_903de686142649f88a3ab9eb9782c76c",
+      "source_id": "16853.0",
+      "name": "Eduardo Pinheiro",
+      "party_short": "PS",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_ad8ea93c424b4ddba38c1e1cf475290b",
+      "source_id": "17108.0",
+      "name": "Eduardo Teixeira",
+      "party_short": "CH",
+      "constituency": "Viana do Castelo",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_e893577c0fe4478786e8a2f5e9659bd3",
+      "source_id": "16021.0",
+      "name": "Eliseu Neves",
+      "party_short": "CH",
+      "constituency": "Coimbra",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_af8a76fcbc1e4d18a1cf31a956c7280e",
+      "source_id": "17180.0",
+      "name": "Elza Pais",
+      "party_short": "PS",
+      "constituency": "Viseu",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_3553a66079fc45b5a44dafe589a2d8a9",
+      "source_id": "16632.0",
+      "name": "Emanuel Câmara",
+      "party_short": "PS",
+      "constituency": "Madeira",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_837d20be3f154ef7a98763ba6f02de4a",
+      "source_id": "15963.0",
+      "name": "Emídio Guerreiro",
+      "party_short": "PSD",
+      "constituency": "Braga",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_0adfb92959d64c8880e72b516edcbc92",
+      "source_id": "15852.0",
+      "name": "Emídio Sousa",
+      "party_short": "PSD",
+      "constituency": "Aveiro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_5d54503d45ea41d485f780f9f04ad5b2",
+      "source_id": "16164.0",
+      "name": "Eurico Brilhante Dias",
+      "party_short": "PS",
+      "constituency": "Leiria",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_7ec477281ce94e1fb372fd79467f0444",
+      "source_id": "17061.0",
+      "name": "Eurídice Pereira",
+      "party_short": "PS",
+      "constituency": "Setúbal",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_81ebcf9964bf440ea50417200eedcc2d",
+      "source_id": "16581.0",
+      "name": "Eva Brás Pinho",
+      "party_short": "PSD",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_0850350b5afd43a2ac38d62facb12f60",
+      "source_id": "16521.0",
+      "name": "Eva Cruzeiro",
+      "party_short": "PS",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_124814ba9d574f40b6db8278cc33e4ba",
+      "source_id": "16195.0",
+      "name": "Fabian Figueiredo",
+      "party_short": "BE",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_ac4663f8b07448f4a17505ba9f2fc228",
+      "source_id": "16257.0",
+      "name": "Felicidade Vital",
+      "party_short": "CH",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_f11d9e39b6084d12aa0c155dbc08ccab",
+      "source_id": "16955.0",
+      "name": "Fernando Alexandre",
+      "party_short": "PSD",
+      "constituency": "Santarém",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_a35117866b02447bbb30828f1360dcd2",
+      "source_id": "16846.0",
+      "name": "Fernando Araújo",
+      "party_short": "PS",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_f637d2a666584bea9729ee610b46a947",
+      "source_id": "17160.0",
+      "name": "Fernando Queiroga",
+      "party_short": "PSD",
+      "constituency": "Vila Real",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_3dacd763a7254340908c8793282fbfde",
+      "source_id": "16759.0",
+      "name": "Filipa Pinto",
+      "party_short": "L",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_40582c73af9841eaa132db1ccd9f6ddc",
+      "source_id": "15890.0",
+      "name": "Filipe Melo",
+      "party_short": "CH",
+      "constituency": "Braga",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_0d8d57b7e19d4504b37a091b555f01be",
+      "source_id": "15833.0",
+      "name": "Filipe Neto Brandão",
+      "party_short": "PS",
+      "constituency": "Aveiro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_79fe8f9a978a40149b7f73aa5b2cf9f8",
+      "source_id": "16621.0",
+      "name": "Filipe Sousa",
+      "party_short": "JPP",
+      "constituency": "Madeira",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_8f57e62488724509ad03c01431d46a73",
+      "source_id": "15861.0",
+      "name": "Firmino Ferreira",
+      "party_short": "PSD",
+      "constituency": "Aveiro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_dfa5f2631b7647e8bbafabc5f59f27c5",
+      "source_id": "16132.0",
+      "name": "Flávio Martins",
+      "party_short": "PSD",
+      "constituency": "Fora da Europa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_53a1de94a4914322aebb780a8d5077cd",
+      "source_id": "15769.0",
+      "name": "Francisco César",
+      "party_short": "PS",
+      "constituency": "Açores",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_232fb6160a75498797f61b2913e1d200",
+      "source_id": "16900.0",
+      "name": "Francisco Covelinhas Lopes",
+      "party_short": "PSD",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_7b8740e2e0fb4eebaf2a14183bb5a10e",
+      "source_id": "16079.0",
+      "name": "Francisco Figueira",
+      "party_short": "PSD",
+      "constituency": "Évora",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_0bcaad2e52f442a282db5e34713b2af8",
+      "source_id": "16611.0",
+      "name": "Francisco Gomes",
+      "party_short": "CH",
+      "constituency": "Madeira",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_b5515e9f5abf40108c85e1c649345689",
+      "source_id": "16583.0",
+      "name": "Francisco José Martins",
+      "party_short": "PSD",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_503924e006ec45978ed0c0e8fa9a6837",
+      "source_id": "15760.0",
+      "name": "Francisco Lima",
+      "party_short": "CH",
+      "constituency": "Açores",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_31ff0ce50c5f499589079ee7e764d93f",
+      "source_id": "15780.0",
+      "name": "Francisco Pimentel",
+      "party_short": "PSD",
+      "constituency": "Açores",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_e628e5961edf43b89516b620a45158c8",
+      "source_id": "16902.0",
+      "name": "Francisco Sousa Vieira",
+      "party_short": "PSD",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_bde8e992e4f1459cb4aa044adbf3a94a",
+      "source_id": "16517.0",
+      "name": "Frederico Francisco",
+      "party_short": "PS",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_b6e7ecab0419466c84a61713bc651d5b",
+      "source_id": "16152.0",
+      "name": "Gabriel Mithá Ribeiro",
+      "party_short": "CH",
+      "constituency": "Leiria",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_e8f655b143404845bc8e6871ffec759b",
+      "source_id": "16895.0",
+      "name": "Germana Rocha",
+      "party_short": "PSD",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_7daf8174b3524d90ab6b4df8d488f661",
+      "source_id": "15944.0",
+      "name": "Gilberto Anjos",
+      "party_short": "PS",
+      "constituency": "Braga",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_71466eebb5514ca3917e1029d5324727",
+      "source_id": "16905.0",
+      "name": "Gonçalo Dinis Capitão",
+      "party_short": "PSD",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_0a0171c0c1fd4e6aa3a7cad89105b70d",
+      "source_id": "16580.0",
+      "name": "Gonçalo Lage",
+      "party_short": "PSD",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_a629a0910bcb46638996f2bac46bc2f2",
+      "source_id": "15884.0",
+      "name": "Gonçalo Valente",
+      "party_short": "PSD",
+      "constituency": "Beja",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_b28e07b7f60c45dca6c96ecb8266c13c",
+      "source_id": "15862.0",
+      "name": "Helga Correia",
+      "party_short": "PSD",
+      "constituency": "Aveiro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_e6195a75659f4ce1a555a59348f7a34a",
+      "source_id": "15990.0",
+      "name": "Hernâni Dias",
+      "party_short": "PSD",
+      "constituency": "Bragança",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_86822364c61947e0b67276d1086129e0",
+      "source_id": "15943.0",
+      "name": "Hernâni Loureiro",
+      "party_short": "PS",
+      "constituency": "Braga",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_2e3c9544ea1d4c54b5232398bdd3b871",
+      "source_id": "16899.0",
+      "name": "Hugo Carneiro",
+      "party_short": "PSD",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_021c905f960d4de5a8e208a92737d74f",
+      "source_id": "16942.0",
+      "name": "Hugo Costa",
+      "party_short": "PS",
+      "constituency": "Santarém",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_f6ec2370f71b4bcc854c0060ebef90f8",
+      "source_id": "15832.0",
+      "name": "Hugo Oliveira",
+      "party_short": "PS",
+      "constituency": "Aveiro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_97f614a6cfb84d08b1fa9a5f0d6974e9",
+      "source_id": "16180.0",
+      "name": "Hugo Patrício Oliveira",
+      "party_short": "PSD",
+      "constituency": "Leiria",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_24810beffc6a4684bd10e8a174cff0ba",
+      "source_id": "15960.0",
+      "name": "Hugo Soares",
+      "party_short": "PSD",
+      "constituency": "Braga",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_196608f978d14b1499b63415a815e5a5",
+      "source_id": "16855.0",
+      "name": "Humberto Brito",
+      "party_short": "PS",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_c05af23caf2f4c6b9d27e75f0eadac9e",
+      "source_id": "16677.0",
+      "name": "Idalina Durães",
+      "party_short": "CH",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_03cc4b4e5dfd40b38998a848a9622fa3",
+      "source_id": "16959.0",
+      "name": "Inês Barroso",
+      "party_short": "PSD",
+      "constituency": "Santarém",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_4164c38531df4fa9ad741de8b4d4e548",
+      "source_id": "16408.0",
+      "name": "Inês de Sousa Real",
+      "party_short": "PAN",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_feb534aa742947a2a9b7e553fe8e171a",
+      "source_id": "17195.0",
+      "name": "Inês Domingos",
+      "party_short": "PSD",
+      "constituency": "Viseu",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_8bd895656a8e4c6ca0606a17f700a708",
+      "source_id": "15942.0",
+      "name": "Irene Costa",
+      "party_short": "PS",
+      "constituency": "Braga",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_82fd6149f17f433198af4630a2ace7c9",
+      "source_id": "16519.0",
+      "name": "Isabel Alves Moreira",
+      "party_short": "PS",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_033aec5f036d4bad916ce265e67c2632",
+      "source_id": "15945.0",
+      "name": "Isabel Costa",
+      "party_short": "PS",
+      "constituency": "Braga",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_1de53b9582c049ddaa4b82b5da115c03",
+      "source_id": "17198.0",
+      "name": "Isabel Fernandes",
+      "party_short": "PSD",
+      "constituency": "Viseu",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_5f58c420b51a445eb09de610c0fd63bb",
+      "source_id": "16359.0",
+      "name": "Isabel Mendes Lopes",
+      "party_short": "L",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_2605f8417e624bb7868282334ed07240",
+      "source_id": "16957.0",
+      "name": "Isaura Morais",
+      "party_short": "PSD",
+      "constituency": "Santarém",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_b1d7d9ddbf10446db0394afba08720cf",
+      "source_id": "16099.0",
+      "name": "Jamila Madeira",
+      "party_short": "PS",
+      "constituency": "Faro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_5a8fbe3aaff146468d3aed7a0bce7791",
+      "source_id": "16991.0",
+      "name": "Joana Cordeiro",
+      "party_short": "IL",
+      "constituency": "Setúbal",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_2a09ae7d5c364bcb9212a5a2911f94e1",
+      "source_id": "16852.0",
+      "name": "Joana Lima",
+      "party_short": "PS",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_193846afae9c4095ba549c0a9b72208d",
+      "source_id": "16051.0",
+      "name": "Joana Seabra",
+      "party_short": "PSD",
+      "constituency": "Coimbra",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_5300e24a75ad47b9a4acce4cd8c4daf8",
+      "source_id": "16717.0",
+      "name": "João Alves Ambrósio",
+      "party_short": "IL",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_a086755865d245a99f3494b914827a61",
+      "source_id": "16182.0",
+      "name": "João Antunes dos Santos",
+      "party_short": "PSD",
+      "constituency": "Leiria",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_196a34cd6ba549f5beb3d038d62ab48e",
+      "source_id": "16654.0",
+      "name": "João Lopes Aleixo",
+      "party_short": "CH",
+      "constituency": "Portalegre",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_fc8baaa317bc4033b24ecd3ddfa9dc47",
+      "source_id": "17129.0",
+      "name": "João Manuel Esteves",
+      "party_short": "PSD",
+      "constituency": "Viana do Castelo",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_6dcb5c788de94cd88691da3a2f455ba8",
+      "source_id": "16956.0",
+      "name": "João Moura",
+      "party_short": "PSD",
+      "constituency": "Santarém",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_948c4283b4714658b2c98dbb9e1ad293",
+      "source_id": "16086.0",
+      "name": "João Paulo Graça",
+      "party_short": "CH",
+      "constituency": "Faro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_5deb73133f414dd1b14ad9f9a2e8248a",
+      "source_id": "16575.0",
+      "name": "João Pedro Louro",
+      "party_short": "PSD",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_276061d5e58a496b86a2682861d0028a",
+      "source_id": "16664.0",
+      "name": "João Pinho de Almeida",
+      "party_short": "CDS-PP",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_f691fa1a4a4a412dafa503a7945cc799",
+      "source_id": "15996.0",
+      "name": "João Ribeiro",
+      "party_short": "CH",
+      "constituency": "Castelo Branco",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_489a7d30bdd8475b8ac121e7c2b351d3",
+      "source_id": "17168.0",
+      "name": "João Tilly",
+      "party_short": "CH",
+      "constituency": "Viseu",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_2ac60ca6e4dd43f9a014d24d2eab3074",
+      "source_id": "16848.0",
+      "name": "João Torres",
+      "party_short": "PS",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_60b36e6e82c54b998c9d35f531206ca3",
+      "source_id": "16572.0",
+      "name": "João Vale e Azevedo",
+      "party_short": "PSD",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_dfe7fc86e13e45679d36608c0eebfd73",
+      "source_id": "15966.0",
+      "name": "Joaquim Barbosa",
+      "party_short": "PSD",
+      "constituency": "Braga",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_56ce61af55914351b4e3f138e9264c08",
+      "source_id": "16566.0",
+      "name": "Joaquim Miranda Sarmento",
+      "party_short": "PSD",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_b6ab1a30454e4be3b628aacf5e4b00a3",
+      "source_id": "16100.0",
+      "name": "Jorge Botelho",
+      "party_short": "PS",
+      "constituency": "Faro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_33ebaeb144014411a11280bbf351479f",
+      "source_id": "16068.0",
+      "name": "Jorge Galveias",
+      "party_short": "CH",
+      "constituency": "Évora",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_85ed223bd57449bdb00b84b9945f08ad",
+      "source_id": "16308.0",
+      "name": "Jorge Miguel Teixeira",
+      "party_short": "IL",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_5695eb2cbc5d46a491a80e3ee0de1f9f",
+      "source_id": "16758.0",
+      "name": "Jorge Pinto",
+      "party_short": "L",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_0c026f85fef94ac8b571e09b40b5f89d",
+      "source_id": "16259.0",
+      "name": "José Barreira Soares",
+      "party_short": "CH",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_446cc8916f91441baf4bf7904941d02f",
+      "source_id": "16856.0",
+      "name": "José Carlos Barbosa",
+      "party_short": "PS",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_b0e4c3f72b8841a497e032f6881b2375",
+      "source_id": "16672.0",
+      "name": "José Carvalho",
+      "party_short": "CH",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_a9bd07ff3d52488c81df130c27cf4759",
+      "source_id": "16131.0",
+      "name": "José Cesário",
+      "party_short": "PSD",
+      "constituency": "Fora da Europa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_db9a2187c6e94e0d99b7e31521014978",
+      "source_id": "16060.0",
+      "name": "José Dias Fernandes",
+      "party_short": "CH",
+      "constituency": "Europa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_63ef5e5c807a4562af6ec0c19a4b998f",
+      "source_id": "16930.0",
+      "name": "José Dotti",
+      "party_short": "CH",
+      "constituency": "Santarém",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_d0453f531dfc4e449682b091bfb2c5b2",
+      "source_id": "17132.0",
+      "name": "José Lago Gonçalves",
+      "party_short": "PSD",
+      "constituency": "Viana do Castelo",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_4b0c768013b2458ba8dfbd8828f30f06",
+      "source_id": "15938.0",
+      "name": "José Luís Carneiro",
+      "party_short": "PS",
+      "constituency": "Braga",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_222786cd527b4efa88e8d6cb5d414a68",
+      "source_id": "16064.0",
+      "name": "José Manuel Fernandes",
+      "party_short": "PSD",
+      "constituency": "Europa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_df5510f0d2fb40b5abaa02dc2101626c",
+      "source_id": "17128.0",
+      "name": "José Pedro Aguiar-Branco",
+      "party_short": "PSD",
+      "constituency": "Viana do Castelo",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_d3de1a96fc4d422e8c24a400d24c5f0b",
+      "source_id": "15984.0",
+      "name": "Júlia Rodrigues",
+      "party_short": "PS",
+      "constituency": "Bragança",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_1531cc8d468949988c66e07732929667",
+      "source_id": "15969.0",
+      "name": "Leandro Ferreira Luís",
+      "party_short": "PSD",
+      "constituency": "Braga",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_5045a893bab24e768d4be5116c0661a8",
+      "source_id": "16014.0",
+      "name": "Leonor Cipriano",
+      "party_short": "PSD",
+      "constituency": "Castelo Branco",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_0d609258fe2f4e1aaee33fc8cd54ffa8",
+      "source_id": "15834.0",
+      "name": "Lia Ferreira",
+      "party_short": "PS",
+      "constituency": "Aveiro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_4bd3dc0324d2422c9c5ea076086256a3",
+      "source_id": "16586.0",
+      "name": "Liliana Fidalgo",
+      "party_short": "PSD",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_eab01fa00d88459ebe497b1f0a7b9d47",
+      "source_id": "16185.0",
+      "name": "Liliana Sousa",
+      "party_short": "PSD",
+      "constituency": "Leiria",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_61bad5a357344f7bbba983ff7e01a1c7",
+      "source_id": "15894.0",
+      "name": "Lina Pinheiro",
+      "party_short": "CH",
+      "constituency": "Braga",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_865dcda41e1a412bb8b586a77df91eed",
+      "source_id": "16073.0",
+      "name": "Luís Dias",
+      "party_short": "PS",
+      "constituency": "Évora",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_2ffc8c46e24b42cab6bd688f0c776d5a",
+      "source_id": "16263.0",
+      "name": "Luís Gonçalves Pereira",
+      "party_short": "CH",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_2510eac7951b4876be84a3dc3d44d71f",
+      "source_id": "16101.0",
+      "name": "Luís Graça",
+      "party_short": "PS",
+      "constituency": "Faro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_e96d2a653b6f45e9a2c4579d415aac4b",
+      "source_id": "15851.0",
+      "name": "Luís Montenegro",
+      "party_short": "PSD",
+      "constituency": "Aveiro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_2116fea510df41e788057fbadccb6455",
+      "source_id": "16658.0",
+      "name": "Luís Moreira Testa",
+      "party_short": "PS",
+      "constituency": "Portalegre",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_c437990584eb48abab8fc487fd1b9ea3",
+      "source_id": "16153.0",
+      "name": "Luís Paulo Fernandes",
+      "party_short": "CH",
+      "constituency": "Leiria",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_6d45ab35e8a04573827f9eef654b3587",
+      "source_id": "16678.0",
+      "name": "Luísa Vaz",
+      "party_short": "CH",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_72223173d5a84cd784b8803c0f471802",
+      "source_id": "16261.0",
+      "name": "Madalena Cordeiro",
+      "party_short": "CH",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_ce69e097c87c4bee960ea2850786bf5f",
+      "source_id": "16127.0",
+      "name": "Manuel Magno",
+      "party_short": "CH",
+      "constituency": "Fora da Europa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_ab7756680874431baf4bf22dac470211",
+      "source_id": "17130.0",
+      "name": "Manuela Carvalho",
+      "party_short": "PSD",
+      "constituency": "Viana do Castelo",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_e4ac1841ead94b98a70b082f5052ac98",
+      "source_id": "17138.0",
+      "name": "Manuela Tender",
+      "party_short": "CH",
+      "constituency": "Vila Real",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_2cddd15cfaa44369ba4a58886c06c7a5",
+      "source_id": "16577.0",
+      "name": "Marco Claudino",
+      "party_short": "PSD",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_ea79c01cb23848c291ee586a2f3ff46b",
+      "source_id": "16941.0",
+      "name": "Marcos Perestrello",
+      "party_short": "PS",
+      "constituency": "Santarém",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_186af1a096e8400b89fb044765969c51",
+      "source_id": "16673.0",
+      "name": "Marcus Santos",
+      "party_short": "CH",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_a4c20dad48344a32b0339d3a85ae2f74",
+      "source_id": "17063.0",
+      "name": "Margarida Afonso",
+      "party_short": "PS",
+      "constituency": "Setúbal",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_fac635050ce74cf29036b57ba1a36166",
+      "source_id": "16179.0",
+      "name": "Margarida Balseiro Lopes",
+      "party_short": "PSD",
+      "constituency": "Leiria",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_e3583ff7c2d642b6805d8d89983de94b",
+      "source_id": "16576.0",
+      "name": "Margarida Saavedra",
+      "party_short": "PSD",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_6be4f4d525f74ab3838165f4e92e3820",
+      "source_id": "16113.0",
+      "name": "Maria da Graça Carvalho",
+      "party_short": "PSD",
+      "constituency": "Faro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_e4fe32c2ce5a4f5387551d52ba29179d",
+      "source_id": "15790.0",
+      "name": "Maria José Aguiar",
+      "party_short": "CH",
+      "constituency": "Aveiro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_ea025f9f25594fec99c9dcf1e77ea827",
+      "source_id": "16305.0",
+      "name": "Mariana Leitão",
+      "party_short": "IL",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_7e8371ee602f47089d72e5af3d137622",
+      "source_id": "16194.0",
+      "name": "Mariana Mortágua",
+      "party_short": "BE",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_3620797ab79d44aaaa5e81e0220b3c3d",
+      "source_id": "16514.0",
+      "name": "Mariana Vieira da Silva",
+      "party_short": "PS",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_24296031fcd64a5e817c697f90c1615a",
+      "source_id": "17118.0",
+      "name": "Marina Gonçalves",
+      "party_short": "PS",
+      "constituency": "Viana do Castelo",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_ccab6c4c450a41f0a64dafd175b2812d",
+      "source_id": "15810.0",
+      "name": "Mário Amorim Lopes",
+      "party_short": "IL",
+      "constituency": "Aveiro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_618ac270cbe64c1d8b3b4408bb4ef391",
+      "source_id": "16254.0",
+      "name": "Marta Martins da Silva",
+      "party_short": "CH",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_44e3b6814f334489bd0eaaf46b7fc1a8",
+      "source_id": "16715.0",
+      "name": "Marta Patrícia Silva",
+      "party_short": "IL",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_bccf0094c933413882694f2aeedb536c",
+      "source_id": "16050.0",
+      "name": "Martim Syder",
+      "party_short": "PSD",
+      "constituency": "Coimbra",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_d0845f31ebb143eebcadd7972472a767",
+      "source_id": "16047.0",
+      "name": "Maurício Marques",
+      "party_short": "PSD",
+      "constituency": "Coimbra",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_411dd5999138407da2019ad77988ebd7",
+      "source_id": "16515.0",
+      "name": "Miguel Cabrita",
+      "party_short": "PS",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_5301eba169ca44e0ab37b1a4c0abf57e",
+      "source_id": "16893.0",
+      "name": "Miguel Guimarães",
+      "party_short": "PSD",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_a9b2db0d06c0434db15e1a78111f9846",
+      "source_id": "16522.0",
+      "name": "Miguel Matos",
+      "party_short": "PS",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_66d99fe5ecff4f5987790209868456b8",
+      "source_id": "16567.0",
+      "name": "Miguel Pinto Luz",
+      "party_short": "PSD",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_51f8304432e24fa6b6b2d2f8a12fae86",
+      "source_id": "16714.0",
+      "name": "Miguel Rangel",
+      "party_short": "IL",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_fbcad9c2e63c4c7da502ae18c8fb818e",
+      "source_id": "16116.0",
+      "name": "Miguel Santos",
+      "party_short": "PSD",
+      "constituency": "Faro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_369135b4cfd94ebb979adf0f6cf9a318",
+      "source_id": "15781.0",
+      "name": "Nuna Menezes",
+      "party_short": "PSD",
+      "constituency": "Açores",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_a77d2ca3fa034505b9114372ff960610",
+      "source_id": "16004.0",
+      "name": "Nuno Fazenda",
+      "party_short": "PS",
+      "constituency": "Castelo Branco",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_78315f3daf2d488c9f93faeab8783384",
+      "source_id": "16971.0",
+      "name": "Nuno Gabriel",
+      "party_short": "CH",
+      "constituency": "Setúbal",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_4afbf5212cfd455ba950d310aa872813",
+      "source_id": "15991.0",
+      "name": "Nuno Jorge Gonçalves",
+      "party_short": "PSD",
+      "constituency": "Bragança",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_4aa5f5ad5360486aabcbb62bb9744edc",
+      "source_id": "16662.0",
+      "name": "Nuno Melo",
+      "party_short": "CDS-PP",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_7b20590af8024cb1b9cd972dbb44ab6a",
+      "source_id": "16135.0",
+      "name": "Nuno Simões de Melo",
+      "party_short": "CH",
+      "constituency": "Guarda",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_21b2745d9ceb4699b6abbbdc3fef9c17",
+      "source_id": "16904.0",
+      "name": "Olga Freire",
+      "party_short": "PSD",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_4bff11a4e5c24d4c9457ea96fb2ab983",
+      "source_id": "16260.0",
+      "name": "Patrícia Almeida",
+      "party_short": "CH",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_89831b44a8d14554a14d0a60e2605832",
+      "source_id": "16970.0",
+      "name": "Patrícia Carvalho",
+      "party_short": "CH",
+      "constituency": "Setúbal",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_356a431d9b3240569c364878af519285",
+      "source_id": "16850.0",
+      "name": "Patrícia Faro",
+      "party_short": "PS",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_02f1854ccaf14d2ea094a97f4d8b46f9",
+      "source_id": "16360.0",
+      "name": "Patrícia Gonçalves",
+      "party_short": "L",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_e364cf7c09284161aa894abe22dc4f5d",
+      "source_id": "16675.0",
+      "name": "Patrícia Nascimento",
+      "party_short": "CH",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_f9412bd7c4394e6d91731c2be0061282",
+      "source_id": "15853.0",
+      "name": "Paula Cardoso",
+      "party_short": "PSD",
+      "constituency": "Aveiro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_20364086f547474ca46484e1ad6bcb19",
+      "source_id": "17036.0",
+      "name": "Paula Santos",
+      "party_short": "PCP",
+      "constituency": "Setúbal",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_5be252bd96bb46a296cee6fae4ff9f12",
+      "source_id": "16891.0",
+      "name": "Paulo Castro Rangel",
+      "party_short": "PSD",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_038c36ab3ba842229cf5592fd780e492",
+      "source_id": "15858.0",
+      "name": "Paulo Cavaleiro",
+      "party_short": "PSD",
+      "constituency": "Aveiro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_2b9a378d561c4e5196764a5028ecdc11",
+      "source_id": "17089.0",
+      "name": "Paulo Edson Cunha",
+      "party_short": "PSD",
+      "constituency": "Setúbal",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_dc7c481228524464ac979ee3871cac06",
+      "source_id": "16582.0",
+      "name": "Paulo Lopes Marcelo",
+      "party_short": "PSD",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_053f24a36a6447b19a7f4f046b9c9493",
+      "source_id": "15941.0",
+      "name": "Paulo Lopes Silva",
+      "party_short": "PS",
+      "constituency": "Braga",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_b0dbd2be141f4181ae02464bbf7f37ad",
+      "source_id": "15779.0",
+      "name": "Paulo Moniz",
+      "party_short": "PSD",
+      "constituency": "Açores",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_cd785349add146f983432b37dbef4f59",
+      "source_id": "17015.0",
+      "name": "Paulo Muacho",
+      "party_short": "L",
+      "constituency": "Setúbal",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_f29cb07bac504d878ddcacb690161d19",
+      "source_id": "16645.0",
+      "name": "Paulo Neves",
+      "party_short": "PSD",
+      "constituency": "Madeira",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_27bd8391e4e44fa5ae95ba5643d518c3",
+      "source_id": "16245.0",
+      "name": "Paulo Núncio",
+      "party_short": "CDS-PP",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_e166e071bbf04419b436fdaa2d2f1474",
+      "source_id": "16461.0",
+      "name": "Paulo Raimundo",
+      "party_short": "PCP",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_102bbae21e9f4623a22f9801ec1de9bc",
+      "source_id": "16020.0",
+      "name": "Paulo Seco",
+      "party_short": "CH",
+      "constituency": "Coimbra",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_2c090740f680457a948a2991e3db194a",
+      "source_id": "17085.0",
+      "name": "Paulo Simões Ribeiro",
+      "party_short": "PSD",
+      "constituency": "Setúbal",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_ebb0de735df14775bdca4e027dddb293",
+      "source_id": "17194.0",
+      "name": "Pedro Alves",
+      "party_short": "PSD",
+      "constituency": "Viseu",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_9c4fabf0b7a44230a932918099c10dbc",
+      "source_id": "16643.0",
+      "name": "Pedro Coelho",
+      "party_short": "PSD",
+      "constituency": "Madeira",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_29ce66520a334b19b7998027368bc84e",
+      "source_id": "16034.0",
+      "name": "Pedro Coimbra",
+      "party_short": "PS",
+      "constituency": "Coimbra",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_ae2d7b5528fb47dd91ce3825e056f3c5",
+      "source_id": "16929.0",
+      "name": "Pedro Correia",
+      "party_short": "CH",
+      "constituency": "Santarém",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_aca677b24d7c4aba9ff9685964b9930c",
+      "source_id": "16032.0",
+      "name": "Pedro Delgado Alves",
+      "party_short": "PS",
+      "constituency": "Coimbra",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_94be05eb7e1e4442ad359ed046329a81",
+      "source_id": "15878.0",
+      "name": "Pedro do Carmo",
+      "party_short": "PS",
+      "constituency": "Beja",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_13d3b13986b14f21b1a3996d36653e3f",
+      "source_id": "15789.0",
+      "name": "Pedro dos Santos Frazão",
+      "party_short": "CH",
+      "constituency": "Aveiro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_bfb76671db324fcfbbcf295f59c53fca",
+      "source_id": "16048.0",
+      "name": "Pedro Machado",
+      "party_short": "PSD",
+      "constituency": "Coimbra",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_ef81b7d436d3412883da02b2bb3d227d",
+      "source_id": "15830.0",
+      "name": "Pedro Nuno Santos",
+      "party_short": "PS",
+      "constituency": "Aveiro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_afbebe8301014f94bd17a389ecef259e",
+      "source_id": "16255.0",
+      "name": "Pedro Pessanha",
+      "party_short": "CH",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_bc12b96d4d7f4846b68aea585a1c3cbb",
+      "source_id": "16085.0",
+      "name": "Pedro Pinto",
+      "party_short": "CH",
+      "constituency": "Faro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_0742d292686c444d878f6c98ac9d670f",
+      "source_id": "16012.0",
+      "name": "Pedro Reis",
+      "party_short": "PSD",
+      "constituency": "Castelo Branco",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_06cfd5b7bd564e6bac04eaa3a419d089",
+      "source_id": "17088.0",
+      "name": "Pedro Roque",
+      "party_short": "PSD",
+      "constituency": "Setúbal",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_eba27783d30544d981f0c812cb4af738",
+      "source_id": "16587.0",
+      "name": "Pedro Soares Pimenta",
+      "party_short": "PSD",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_d8fdd9c261434d6f88e715b8fe81c58b",
+      "source_id": "15940.0",
+      "name": "Pedro Sousa",
+      "party_short": "PS",
+      "constituency": "Braga",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_64d57084f36648aea9ad04b73d472f82",
+      "source_id": "15792.0",
+      "name": "Pedro Tavares",
+      "party_short": "CH",
+      "constituency": "Aveiro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_9137511895d44c9e97736d436c3094b5",
+      "source_id": "16518.0",
+      "name": "Pedro Vaz",
+      "party_short": "PS",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_0a6ec3118f804fe89885f1878312c401",
+      "source_id": "16851.0",
+      "name": "Porfírio Silva",
+      "party_short": "PS",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_e41a4069bbb846e4b2cae2b3025531c2",
+      "source_id": "16676.0",
+      "name": "Raul Melo",
+      "party_short": "CH",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_777e098f71b540aa850df5dc71c3309a",
+      "source_id": "16568.0",
+      "name": "Regina Bastos",
+      "party_short": "PSD",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_1ff252c915ff43f29bedadcb4ecc4884",
+      "source_id": "16013.0",
+      "name": "Ricardo Aires",
+      "party_short": "PSD",
+      "constituency": "Castelo Branco",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_893912d33ae34389a059cd7fa4377c24",
+      "source_id": "15961.0",
+      "name": "Ricardo Araújo",
+      "party_short": "PSD",
+      "constituency": "Braga",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_1ba3b28cc7dc4cf19f1fd5de0759dc24",
+      "source_id": "15967.0",
+      "name": "Ricardo Barroso",
+      "party_short": "PSD",
+      "constituency": "Braga",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_6d4348e627f0480db69ffc70be04c76b",
+      "source_id": "16960.0",
+      "name": "Ricardo Carlos",
+      "party_short": "PSD",
+      "constituency": "Santarém",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_c0dedf3317984d648660f49c29823972",
+      "source_id": "16183.0",
+      "name": "Ricardo Carvalho",
+      "party_short": "PSD",
+      "constituency": "Leiria",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_14e10459303a4301b5d5570906141f07",
+      "source_id": "16256.0",
+      "name": "Ricardo Dias Pinto",
+      "party_short": "CH",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_9981b801340c4275a2eb86556fdb0aff",
+      "source_id": "16520.0",
+      "name": "Ricardo Lima",
+      "party_short": "PS",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_0936d8981ba44d4ba2212702c3389c36",
+      "source_id": "16974.0",
+      "name": "Ricardo Lopes Reis",
+      "party_short": "CH",
+      "constituency": "Setúbal",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_e2a1b541f7a54d89b76155bdc1b34be8",
+      "source_id": "16088.0",
+      "name": "Ricardo Moreira",
+      "party_short": "CH",
+      "constituency": "Faro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_c03b74445e4941cd9aaf540cde4149e8",
+      "source_id": "16958.0",
+      "name": "Ricardo Oliveira",
+      "party_short": "PSD",
+      "constituency": "Santarém",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_402d264932254eee9a485ff1522d9d81",
+      "source_id": "16046.0",
+      "name": "Rita Alarcão Júdice",
+      "party_short": "PSD",
+      "constituency": "Coimbra",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_58f139353dc145d081c0acc426e802b8",
+      "source_id": "16969.0",
+      "name": "Rita Matias",
+      "party_short": "CH",
+      "constituency": "Setúbal",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_7e5fc570e9f24025aa6901212ba88f74",
+      "source_id": "15891.0",
+      "name": "Rodrigo Alves Taxa",
+      "party_short": "CH",
+      "constituency": "Braga",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_9a0110d30dab45d68d0b956b84f6a438",
+      "source_id": "16306.0",
+      "name": "Rodrigo Saraiva",
+      "party_short": "IL",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_f3c0720e224c4cf4be4dee1efefa9643",
+      "source_id": "16033.0",
+      "name": "Rosa Isabel Cruz",
+      "party_short": "PS",
+      "constituency": "Coimbra",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_48390d8e827843e79fd6f10bb7342342",
+      "source_id": "16669.0",
+      "name": "Rui Afonso",
+      "party_short": "CH",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_e78ab33a81d044aab070d58612785866",
+      "source_id": "16262.0",
+      "name": "Rui Cardoso",
+      "party_short": "CH",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_de81408aa95445ab9c6fdf95324703da",
+      "source_id": "15872.0",
+      "name": "Rui Cristina",
+      "party_short": "CH",
+      "constituency": "Beja",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_7a58e27f50054e78b3c9f349f070676b",
+      "source_id": "16155.0",
+      "name": "Rui Fernandes",
+      "party_short": "CH",
+      "constituency": "Leiria",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_b4326793eaa64c7ca8094fad4604ed14",
+      "source_id": "17148.0",
+      "name": "Rui Jorge Santos",
+      "party_short": "PS",
+      "constituency": "Vila Real",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_83e8922c1d3345499ab97908fcadbf40",
+      "source_id": "17197.0",
+      "name": "Rui Ladeira Pereira",
+      "party_short": "PSD",
+      "constituency": "Viseu",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_e756c5bb39b64dc6bd91eef900361294",
+      "source_id": "16253.0",
+      "name": "Rui Paulo Sousa",
+      "party_short": "CH",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_a66a130bcd674fd0bd48232cd86cfb74",
+      "source_id": "15914.0",
+      "name": "Rui Rocha",
+      "party_short": "IL",
+      "constituency": "Braga",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_7f60ec8a44bd4b3fa929ce71118d66c5",
+      "source_id": "16903.0",
+      "name": "Rui Rocha Pereira",
+      "party_short": "PSD",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_f72a0bf240c44285918e1e82e8b237b9",
+      "source_id": "16358.0",
+      "name": "Rui Tavares",
+      "party_short": "L",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_b241c04941dd48e68148fb2144867506",
+      "source_id": "15855.0",
+      "name": "Salvador Malheiro",
+      "party_short": "PSD",
+      "constituency": "Aveiro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_0e2b20a60a054fb68686f3098b39c3ad",
+      "source_id": "15939.0",
+      "name": "Sandra Lopes",
+      "party_short": "PS",
+      "constituency": "Braga",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_d0681400611a4f9bb61c3abcb9c98dc9",
+      "source_id": "16570.0",
+      "name": "Sandra Pereira",
+      "party_short": "PSD",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_31c14fc944cf4556ab93e1bf8e3f30d5",
+      "source_id": "16087.0",
+      "name": "Sandra Ribeiro",
+      "party_short": "CH",
+      "constituency": "Faro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_c76c95b0787a4361939ba8887f3925a4",
+      "source_id": "15854.0",
+      "name": "Silvério Regalado",
+      "party_short": "PSD",
+      "constituency": "Aveiro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_d5dc98e24377449bb802db8faf0107f4",
+      "source_id": "16857.0",
+      "name": "Sofia Andrade",
+      "party_short": "PS",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_7a35caef873841259e178ca935bc3bd7",
+      "source_id": "16633.0",
+      "name": "Sofia Canha",
+      "party_short": "PS",
+      "constituency": "Madeira",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_14c6c377835945098989f430eee3bc39",
+      "source_id": "16181.0",
+      "name": "Sofia Carreira",
+      "party_short": "PSD",
+      "constituency": "Leiria",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_767c91c3ed0d46b38024a47af5bec08b",
+      "source_id": "15962.0",
+      "name": "Sofia Machado Fernandes",
+      "party_short": "PSD",
+      "constituency": "Braga",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_7380eb06faf6491c8584fe3d662a1fb3",
+      "source_id": "16847.0",
+      "name": "Sofia Pereira",
+      "party_short": "PS",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_f737ab0d230c4bb889e1bdc442259541",
+      "source_id": "17087.0",
+      "name": "Sonia dos Reis",
+      "party_short": "PSD",
+      "constituency": "Setúbal",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_d2fdea920466431dae4d19c14ca892e8",
+      "source_id": "15968.0",
+      "name": "Sónia Margarida Fernandes",
+      "party_short": "PSD",
+      "constituency": "Braga",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_03a5c2d6d78a4250921fb55e366e4839",
+      "source_id": "16674.0",
+      "name": "Sónia Monteiro",
+      "party_short": "CH",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_7048d3e4affb471e9fcfa510f409acf4",
+      "source_id": "15831.0",
+      "name": "Susana Correia",
+      "party_short": "PS",
+      "constituency": "Aveiro",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_c73c544fd91d43ab97b880173559e4ae",
+      "source_id": "17084.0",
+      "name": "Teresa Morais",
+      "party_short": "PSD",
+      "constituency": "Setúbal",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_4fb032e5d6c1417ebb79349de3524977",
+      "source_id": "16849.0",
+      "name": "Tiago Barbosa Ribeiro",
+      "party_short": "PS",
+      "constituency": "Porto",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_88e8468c28264d3c8e3d3f11cafefbca",
+      "source_id": "16361.0",
+      "name": "Tomás Pereira",
+      "party_short": "L",
+      "constituency": "Lisboa",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_7d84966efe8243469802a83d1c18ac97",
+      "source_id": "15892.0",
+      "name": "Vanessa Barata",
+      "party_short": "CH",
+      "constituency": "Braga",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_1933318024c84d94b1b0cafe114908e3",
+      "source_id": "16644.0",
+      "name": "Vânia Jesus",
+      "party_short": "PSD",
+      "constituency": "Madeira",
+      "latest_publishable": null
+    },
+    {
+      "id": "person_1f1a577482ca484d95371f827be60480",
+      "source_id": "16103.0",
+      "name": "Vítor Guerreiro",
+      "party_short": "PS",
+      "constituency": "Faro",
+      "latest_publishable": null
+    }
+  ],
+  "pending_publication": 286,
+  "publication_rule": "A pré-visualização não publica dados. Compare a fonte, o SHA-256 e a contagem antes de confirmar a decisão."
+}
