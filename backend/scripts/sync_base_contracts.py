@@ -20,11 +20,13 @@ from pydantic import ValidationError
 
 from app.core.config import Settings
 from app.models.api import PublicActorMatchKey
-from app.repositories.postgres import BASE_PERSISTENCE_DISABLED_MESSAGE
+from app.repositories.base_staging import BASE_STAGING_ONLY_MESSAGE
+from app.repositories.postgres import PostgresRepository
 from app.services.base_gov import BaseGovCollector, ContractMatcher
 from app.services.http import OfficialHttpClient
+from app.services.raw_archive import ContentAddressedFileArchive
 
-CODE_VERSION = "base-ingestion-v4"
+CODE_VERSION = "base-ingestion-v5"
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -79,17 +81,32 @@ def arguments() -> argparse.Namespace:
     parser.add_argument(
         "--persist",
         action="store_true",
-        help="Recusado nesta versão; use apenas o ficheiro JSON privado para revisão",
+        help="Guardar snapshot append-only exclusivamente em staging; não publica",
+    )
+    parser.add_argument(
+        "--confirm-staging",
+        action="store_true",
+        help="Confirmar explicitamente que DATABASE_URL aponta para staging",
     )
     parsed = parser.parse_args()
-    if parsed.persist:
-        parser.error(BASE_PERSISTENCE_DISABLED_MESSAGE)
+    if parsed.persist and not parsed.confirm_staging:
+        parser.error(
+            "A persistência BASE exige --persist e --confirm-staging; "
+            "ingestão não constitui revisão nem publicação."
+        )
+    if parsed.persist and parsed.limit is not None:
+        parser.error("Uma amostra --limit não pode ser persistida como snapshot anual")
     return parsed
 
 
-async def run(args: argparse.Namespace) -> None:
-    if args.persist:
-        raise RuntimeError(BASE_PERSISTENCE_DISABLED_MESSAGE)
+async def run(args: argparse.Namespace) -> dict[str, int] | None:
+    persist = bool(getattr(args, "persist", False))
+    if persist and not bool(getattr(args, "confirm_staging", False)):
+        raise RuntimeError(
+            "A persistência BASE exige confirmação explícita de staging antes da recolha"
+        )
+    if persist and getattr(args, "limit", None) is not None:
+        raise RuntimeError("Uma amostra BASE limitada não pode ser persistida")
 
     _require_path_outside_repository(args.output, label="O ficheiro de revisão BASE")
     if args.actors_file:
@@ -107,9 +124,10 @@ async def run(args: argparse.Namespace) -> None:
                 "O ficheiro de atores é inválido; use apenas digests HMAC-SHA-256 e prova oficial"
             ) from None
 
-    settings = Settings.model_validate(
-        {"base_resource_url": args.resource_url} if args.resource_url else {}
-    )
+    settings = Settings(base_resource_url=args.resource_url) if args.resource_url else Settings()
+    if persist and settings.environment != "staging":
+        raise RuntimeError(BASE_STAGING_ONLY_MESSAGE)
+    archive = ContentAddressedFileArchive.from_settings(settings) if persist else None
     async with OfficialHttpClient(settings) as http:
         collection = await BaseGovCollector(settings, http).collect(args.year, limit=args.limit)
 
@@ -120,17 +138,23 @@ async def run(args: argparse.Namespace) -> None:
     )
     matches = ContractMatcher(pepper=pepper).match(collection.contracts, actors)
     warnings = list(collection.warnings)
-    if pepper is None and any(
+    actor_identifier_inputs = any(
         actor.protected_nif_digest is not None
         or any(
             association.protected_nipc_digest is not None
             for association in actor.official_associations
         )
         for actor in actors
-    ):
+    )
+    contract_identifier_inputs = any(
+        party.protected_identifier_digest is not None
+        for contract in collection.contracts
+        for party in [*contract.contracting_authorities, *contract.contractors]
+    )
+    if pepper is None and (actor_identifier_inputs or contract_identifier_inputs):
         warnings.append(
-            "PROTECTED_IDENTIFIER_PEPPER não configurado: correspondências por identificador "
-            "protegido foram omitidas"
+            "Dados indisponíveis para cruzamento fiscal: PROTECTED_IDENTIFIER_PEPPER não "
+            "configurado; correspondências e digests persistentes foram omitidos"
         )
 
     result = {
@@ -148,10 +172,35 @@ async def run(args: argparse.Namespace) -> None:
     }
     _write_private_review(args.output, result)
 
+    if not persist:
+        return None
+    assert archive is not None
+    if collection.raw_document is None:
+        raise RuntimeError("A recolha BASE não conservou os bytes necessários para o arquivo")
+    archive_receipt = archive.archive(collection.raw_document)
+    repository = PostgresRepository(settings)
+    await repository.connect()
+    try:
+        return await repository.store_base_collection(
+            collection,
+            code_version=CODE_VERSION,
+            archive_receipt=archive_receipt,
+        )
+    finally:
+        await repository.close()
+
 
 def main() -> None:
     try:
-        asyncio.run(run(arguments()))
+        persistence = asyncio.run(run(arguments()))
+        if persistence is not None:
+            print(
+                "Persistência BASE concluída em staging privado: "
+                f"{persistence['contracts_written']} contratos e "
+                f"{persistence['parties_written']} partes acrescentados; "
+                f"{persistence['archive_attestations_written']} atestações de arquivo; "
+                "sem revisão, correspondências ou publicação."
+            )
     except ValidationError:
         raise SystemExit("Configuração inválida; nenhum valor protegido foi mostrado") from None
     except ValueError as exc:

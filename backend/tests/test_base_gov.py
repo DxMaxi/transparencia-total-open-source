@@ -8,7 +8,15 @@ from pydantic import ValidationError
 
 from app.core.config import Settings
 from app.core.security import hmac_protected_identifier
-from app.models.api import BaseContractCollection, PublicActorMatchKey
+from app.models.api import (
+    BaseContractCollection,
+    ContractPartyRole,
+    OfficialSource,
+    PublicActorMatchKey,
+    PublicContractParty,
+    PublicContractRecord,
+    SourcePublisher,
+)
 from app.services.base_gov import BaseGovCollector, ContractMatcher
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -586,3 +594,26 @@ def test_actor_association_name_rejects_identifier_without_echoing_it() -> None:
         )
 
     assert "987–654–321" not in str(error.value)
+
+
+def test_contract_models_reject_identifier_in_public_text_without_echoing_it() -> None:
+    unsafe_identifier = "987 654 321"
+    with pytest.raises(ValidationError) as party_error:
+        PublicContractParty(
+            name=f"Empresa {unsafe_identifier}",
+            role=ContractPartyRole.CONTRACTOR,
+        )
+    with pytest.raises(ValidationError) as contract_error:
+        PublicContractRecord(
+            source_id="BASE-SAFE-ID",
+            object=f"Serviço associado a {unsafe_identifier}",
+            source=OfficialSource(
+                publisher=SourcePublisher.BASE_GOV,
+                label="Portal BASE",
+                url="https://dados.gov.pt/",
+                content_sha256="a" * 64,
+            ),
+        )
+
+    assert unsafe_identifier not in str(party_error.value)
+    assert unsafe_identifier not in str(contract_error.value)

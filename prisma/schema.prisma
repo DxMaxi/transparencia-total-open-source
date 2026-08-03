@@ -750,6 +750,78 @@ model ProtectedIdentifierDigest {
   @@map("protected_identifier_digests")
 }
 
+/// Lote privado e append-only de normalização BASE. Não é uma entidade
+/// publicável e não participa nas projeções públicas. A migração SQL impede
+/// UPDATE e DELETE; uma nova recolha ou versão do parser cria outro lote.
+model BaseStagingBatch {
+  id                      String                 @id
+  sourceDocumentId        String                 @map("source_document_id")
+  syncRunId               String                 @unique @map("sync_run_id")
+  resourceYear            Int                    @map("resource_year")
+  resourceTitle           String                 @map("resource_title")
+  resourceFormat          String                 @map("resource_format")
+  parserVersion           String                 @map("parser_version")
+  normalisedSha256        String                 @map("normalised_sha256")
+  identifierDigestsStored Boolean                @map("identifier_digests_stored")
+  contractCount           Int                    @map("contract_count")
+  partyCount              Int                    @map("party_count")
+  collectedAt             DateTime               @map("collected_at")
+  createdAt               DateTime               @default(now()) @map("created_at")
+  sourceDocument          SourceDocument         @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
+  syncRun                 SyncRun                @relation(fields: [syncRunId], references: [id], onDelete: Restrict)
+  contracts               BaseContractSnapshot[]
+
+  @@unique([sourceDocumentId, parserVersion])
+  @@index([resourceYear, collectedAt])
+  @@index([normalisedSha256])
+  @@map("base_staging_batches")
+}
+
+/// Versão normalizada privada de um contrato dentro de um lote BASE. O mesmo
+/// identificador oficial pode reaparecer noutro lote sem substituir o anterior.
+model BaseContractSnapshot {
+  id                String                      @id
+  batchId           String                      @map("batch_id")
+  sourceId          String                      @map("source_id")
+  object            String
+  procedure         PublicContractProcedure     @default(UNKNOWN)
+  cpvCode           String?                     @map("cpv_code")
+  baseValue         Decimal?                    @map("base_value") @db.Decimal(20, 2)
+  contractValue     Decimal?                    @map("contract_value") @db.Decimal(20, 2)
+  currency          String                      @default("EUR")
+  decisionAt        DateTime?                   @map("decision_at")
+  signedAt          DateTime?                   @map("signed_at")
+  publishedAt       DateTime?                   @map("published_at")
+  executionDays     Int?                        @map("execution_days")
+  directOfficialUrl String?                     @map("direct_official_url")
+  createdAt         DateTime                    @default(now()) @map("created_at")
+  batch             BaseStagingBatch            @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  parties           BaseContractPartySnapshot[]
+
+  @@unique([batchId, sourceId])
+  @@index([sourceId])
+  @@index([procedure, publishedAt])
+  @@map("base_contract_snapshots")
+}
+
+/// Parte contratual tal como consta da fonte. O identificador fiscal nunca é
+/// guardado em claro: quando existe pepper durável, só persiste o HMAC-SHA-256.
+model BaseContractPartySnapshot {
+  id                        String               @id
+  contractSnapshotId        String               @map("contract_snapshot_id")
+  ordinal                   Int
+  role                      ContractPartyRole
+  sourceName                String               @map("source_name")
+  protectedIdentifierDigest String?              @map("protected_identifier_digest")
+  createdAt                 DateTime             @default(now()) @map("created_at")
+  contractSnapshot          BaseContractSnapshot @relation(fields: [contractSnapshotId], references: [id], onDelete: Restrict)
+
+  @@unique([contractSnapshotId, ordinal])
+  @@index([role])
+  @@index([protectedIdentifierDigest])
+  @@map("base_contract_party_snapshots")
+}
+
 model PublicContract {
   id                 String                  @id @default(cuid())
   sourceId           String                  @unique @map("source_id")
@@ -1092,6 +1164,7 @@ model SourceDocument {
   localItems            LocalTransparencyItem[]
   organisations         Organisation[]
   protectedIdentifiers  ProtectedIdentifierDigest[]
+  baseStagingBatches    BaseStagingBatch[]
   publicContracts       PublicContract[]
   contractMatchReviews  ContractMatchReview[]
   interestRelationships InterestRelationship[]
@@ -1137,23 +1210,26 @@ model SourceArchiveAttestation {
 }
 
 model SyncRun {
-  id             String     @id @default(cuid())
-  sourceName     String     @map("source_name")
-  datasetUrl     String?    @map("dataset_url")
-  status         SyncStatus @default(RUNNING)
-  startedAt      DateTime   @default(now()) @map("started_at")
-  finishedAt     DateTime?  @map("finished_at")
-  recordsRead    Int        @default(0) @map("records_read")
-  recordsWritten Int        @default(0) @map("records_written")
-  warnings       Json?
-  errorMessage   String?    @map("error_message")
-  codeVersion    String     @map("code_version")
+  id               String            @id @default(cuid())
+  sourceName       String            @map("source_name")
+  datasetUrl       String?           @map("dataset_url")
+  status           SyncStatus        @default(RUNNING)
+  startedAt        DateTime          @default(now()) @map("started_at")
+  finishedAt       DateTime?         @map("finished_at")
+  recordsRead      Int               @default(0) @map("records_read")
+  recordsWritten   Int               @default(0) @map("records_written")
+  warnings         Json?
+  errorMessage     String?           @map("error_message")
+  codeVersion      String            @map("code_version")
+  baseStagingBatch BaseStagingBatch?
 
   @@index([sourceName, startedAt])
   @@index([status])
   @@map("sync_runs")
 }
 
+/// Histórico imutável. A migração V4.2 impede UPDATE e DELETE; uma correção
+/// ou retirada acrescenta sempre outro evento.
 model AuditEvent {
   id         String   @id @default(cuid())
   entityType String   @map("entity_type")

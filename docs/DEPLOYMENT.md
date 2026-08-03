@@ -16,17 +16,18 @@
 4. Crie `ADMIN_API_KEY` aleatória com pelo menos 32 bytes.
 5. Defina backups, retenção e alertas do PostgreSQL.
 6. Não ative IA antes de existir fila de revisão.
-7. Não ative a V4.1 em produção até existir um backend externo de arquivo e todas as fontes
+7. Não ative a V4.1/V4.2 em produção até existir um backend externo de arquivo e todas as fontes
    publicadas estarem atestadas e verificadas.
 
-## Porta de implantação V4.1
+## Porta de implantação V4.1/V4.2
 
 `RAW_ARCHIVE_ROOT` configura apenas o backend local de desenvolvimento, testes e staging
 controlado. Não o aponte para o sistema de ficheiros efémero do Render, Fly.io, Vercel, CI ou para
 uma pasta servida pela aplicação. O caminho tem de ser absoluto, privado e exterior ao
 repositório.
 
-As projeções públicas da V4.1 recusam qualquer facto cuja fonte não tenha uma atestação coerente.
+As projeções públicas recusam qualquer facto cuja fonte não tenha uma atestação coerente. Os
+snapshots BASE da V4.2 são adicionalmente privados, append-only e sem promoção pública automática.
 Aplicar a migração e publicar o código antes de arquivar as fontes históricas pode, por desenho,
 fazer os dados atuais passar para `EMPTY`/`UNAVAILABLE`. Isso é preferível a mostrar prova não
 conservada, mas exige um rollout deliberado:
@@ -36,10 +37,11 @@ conservada, mas exige um rollout deliberado:
 3. arquivar cada `SourceDocument` histórico apenas quando os bytes ainda coincidirem exatamente;
 4. tratar fontes alteradas como novas versões, nunca como substituições do documento anterior;
 5. executar `inspect_source_archive` e reconciliar contagens, hashes e objetos indisponíveis;
-6. só depois promover a versão da API, mantendo as revisões humanas existentes como circuito
-   independente.
+6. executar `inspect_base_staging` para cada ano BASE carregado, sem exportar nomes ou HMAC;
+7. implementar e rever separadamente a promoção humana BASE antes de expor qualquer contrato;
+8. só depois promover a versão da API, mantendo as revisões humanas como circuito independente.
 
-Enquanto estes passos não forem concluídos, a branch V4.1 deve permanecer fora de produção.
+Enquanto estes passos não forem concluídos, a V4.1/V4.2 deve permanecer fora de produção.
 
 ## Vercel
 

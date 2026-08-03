@@ -13,25 +13,19 @@ from pydantic import HttpUrl
 from app.core.config import Settings
 from app.core.security import require_official_url
 from app.models.api import (
-    BaseContractCollection,
     ParliamentDataset,
     PushSubscriptionRequest,
     RightOfReplyReceipt,
     RightOfReplyRequest,
 )
 from app.models.archive import RawArchiveReceipt
+from app.repositories.base_staging import BaseStagingRepositoryMixin
 
 logger = logging.getLogger(__name__)
 
 PUBLICATION_RULE = (
     "Apenas registos aprovados segundo a regra explícita do respetivo conjunto; "
     "a ingestão nunca equivale a publicação."
-)
-
-BASE_PERSISTENCE_DISABLED_MESSAGE = (
-    "A persistência BASE está bloqueada nesta versão: estão disponíveis apenas a "
-    "pré-visualização e o ficheiro JSON privado para revisão. A persistência só poderá "
-    "ser reativada com carga em lote append-only e atestação explícita de staging."
 )
 
 _PUBLISHER_CODES = {
@@ -147,7 +141,7 @@ def _archive_attestation_sha256(
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
-class PostgresRepository:
+class PostgresRepository(BaseStagingRepositoryMixin):
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         self.pool: asyncpg.Pool | None = None
@@ -2007,15 +2001,6 @@ class PostgresRepository:
                 "archive_key_matches_source_hash": archive_key_matches,
             },
         }
-
-    async def store_base_collection(
-        self,
-        collection: BaseContractCollection,
-        *,
-        code_version: str,
-    ) -> dict[str, int]:
-        # Fail closed antes de criar SyncRun, adquirir uma ligação ou executar qualquer escrita.
-        raise RuntimeError(BASE_PERSISTENCE_DISABLED_MESSAGE)
 
     async def review_publication(
         self,
