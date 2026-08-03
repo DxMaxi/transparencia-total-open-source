@@ -65,7 +65,8 @@ def _parse_date(value: Any | None) -> datetime | None:
         return None
     try:
         parsed = cast(datetime, parse_datetime(text, dayfirst=True))
-        return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+        aware = parsed.astimezone(UTC) if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+        return aware.replace(microsecond=(aware.microsecond // 1000) * 1000)
     except (OverflowError, ValueError):
         return None
 

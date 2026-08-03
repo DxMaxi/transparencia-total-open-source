@@ -46,7 +46,8 @@ da recolha, o objeto é criado e verificado antes de existir qualquer escrita na
 
 Os coletores do Parlamento, BASE e DRE já transportam o original num modelo privado excluído da
 serialização. Nesta etapa, apenas a persistência parlamentar consome automaticamente o recibo de
-arquivo. A persistência BASE continua bloqueada e o DRE continua sem circuito de publicação.
+arquivo. A V4.2 liga também o recibo aos snapshots BASE append-only exclusivamente em staging; DRE
+continua sem persistência ou circuito de publicação.
 
 ## Backend de ficheiros local
 

@@ -55,6 +55,12 @@ eliminação da atestação e protege o URL/hash de uma fonte já atestada. A ex
 uma porta adicional e fail-closed nas projeções públicas; nunca substitui a última revisão humana
 exigida pelo domínio.
 
+Na V4.2, `BaseStagingBatch`, `BaseContractSnapshot` e `BaseContractPartySnapshot` recebem apenas a
+normalização privada de um recurso BASE atestado. Não têm relação com as tabelas públicas do grafo.
+Triggers rejeitam `UPDATE` e `DELETE` nestes snapshots e em `AuditEvent`; uma nova fonte ou versão
+do parser acrescenta outro lote. Repetições exatas são idempotentes. A ausência de pepper elimina o
+digest efémero antes da escrita e fica registada como capacidade indisponível.
+
 ### Arquivo privado de originais
 
 `PrivateRawDocument` transporta os bytes apenas dentro do processo de ingestão e exclui-os de
@@ -63,8 +69,8 @@ serialização e representação. O backend local escreve com chave
 eliminação. Um recibo validado é a única entrada aceite pelo repositório para criar a atestação.
 
 O backend de ficheiros serve desenvolvimento, testes e staging controlado. O adaptador de produção
-para object storage privado, versionado ou WORM, continua por implementar; por isso a V4.1 não deve
-ser ativada em produção apenas com disco local ou efémero.
+para object storage privado, versionado ou WORM, continua por implementar; por isso a V4.1/V4.2 não
+deve ser ativada em produção apenas com disco local ou efémero.
 
 Identificadores pessoais usados na deduplicação ficam em `ProtectedIdentifierDigest` como HMAC; o
 valor original não pertence ao esquema publicável. Restrições SQL verificam sujeitos exclusivos,
@@ -85,9 +91,9 @@ idempotentes:
 8. criar alertas apenas após promoção.
 
 Cada execução persistente abre um `SyncRun`. Falha parcial conserva avisos e não substitui a última
-versão publicada. Na V3 isto está implementado para as fontes parlamentares. O coletor BASE produz
-apenas um artefacto privado e a sua persistência permanece bloqueada até existir carga em lote
-append-only e atestação explícita de staging.
+versão publicada. Na V3 isto está implementado para as fontes parlamentares; na V4.2, BASE usa uma
+carga `COPY` append-only ligada ao arquivo e limitada a staging explicitamente confirmado. O lote
+BASE não tem caminho automático para revisão ou publicação.
 
 ## Contrato de proveniência
 
@@ -127,9 +133,11 @@ omissões antes de aprovar.
 ### Contrato e relação de interesse
 
 O recurso anual BASE é descarregado para staging, validado contra limites de tamanho e expansão ZIP
-e convertido para um contrato canónico. O matcher exato gera `ContractMatchReview=PENDING_REVIEW`.
-Um revisor confirma identidade, papel, datas e fonte da associação; outro controlo promove a aresta
-para `InterestRelationship`. A API pública nunca consulta candidatos.
+e convertido para um snapshot canónico privado. O matcher exato opcional produz candidatos
+`PENDING_REVIEW` apenas no ficheiro privado de revisão; não os persiste como
+`ContractMatchReview`. Um futuro circuito humano terá de confirmar identidade, papel, datas e fonte
+da associação antes de criar qualquer entidade ou aresta. A API pública nunca consulta staging ou
+candidatos.
 
 ### Direito de resposta
 

@@ -1,12 +1,13 @@
-# Transparência Total / Fator Cívico — V4.1 em desenvolvimento
+# Transparência Total / Fator Cívico — V4.2 em desenvolvimento
 
 Plataforma cívica, neutra, open-source e sem fins lucrativos para acompanhar atividade
 política em Portugal através de dados oficiais auditáveis.
 
 > **Estado do projeto:** V3 funcional com circuito completo entre recolha, staging PostgreSQL,
-> revisão humana, API pública e PWA. A V4.1 acrescenta localmente o arquivo privado dos bytes
-> oficiais e a respetiva atestação append-only; ainda não está autorizada para produção. Sem uma
-> API configurada ou sem registos aprovados, a interface usa uma amostra fictícia sempre
+> revisão humana, API pública e PWA. A V4.1 acrescenta o arquivo privado dos bytes oficiais e a
+> respetiva atestação append-only; a V4.2 acrescenta snapshots BASE privados e append-only,
+> deliberadamente separados das tabelas públicas. Ainda não está autorizada para produção. Sem
+> uma API configurada ou sem registos aprovados, a interface usa uma amostra fictícia sempre
 > assinalada. Ingestão nunca significa publicação.
 
 ## Princípios
@@ -28,10 +29,11 @@ política em Portugal através de dados oficiais auditáveis.
 O nome “Transparência Total” descreve a ambição. Nenhum sistema pode garantir a completude de
 uma fonte pública; a plataforma torna também visíveis falhas, atrasos e limites conhecidos.
 
-## O que está incluído na V3 e na base V4.1
+## O que está incluído na V3 e na base V4.2
 
-- Persistência transacional dos snapshots parlamentares, com `SyncRun`, contagens, avisos e versão
-  do coletor; o Portal BASE disponibiliza apenas pré-visualização e JSON privado para revisão.
+- Persistência transacional dos snapshots parlamentares e BASE, com `SyncRun`, contagens, avisos e
+  versão do coletor. BASE escreve apenas tabelas privadas de staging e mantém o JSON de revisão
+  separado.
 - `ParliamentaryMembershipSnapshot`: regista “observado na fonte em”, sem inventar uma data de
   início de mandato quando o dataset não a fornece.
 - API de leitura pública para estado dos dados, diretório e perfil de políticos, Promessómetro e
@@ -40,8 +42,8 @@ uma fonte pública; a plataforma torna também visíveis falhas, atrasos e limit
   uma amostra fictícia como se fosse um facto real.
 - Promoção editorial por linha de comando com confirmação explícita, teste de dependências,
   `DataPublicationReview` e `AuditEvent`; a decisão pode ser retirada sem apagar o histórico.
-- A persistência BASE permanece bloqueada até existir carga em lote append-only e atestação
-  explícita de staging.
+- A persistência BASE exige `ENVIRONMENT=staging`, confirmação explícita, arquivo atestado e carga
+  em lote append-only; não cria contratos públicos, entidades, correspondências ou revisões.
 - Arquivo privado content-addressed dos bytes oficiais, com recibo verificado antes da persistência
   parlamentar, `SourceArchiveAttestation` imutável e projeções públicas em modo fail-closed.
 - Ferramentas separadas para atestar um `SourceDocument` histórico em staging e para verificar o
@@ -94,6 +96,7 @@ coletores, revisão e envio push ficam no backend. Consulte [Arquitetura](docs/A
 [Governação de IA](docs/AI_GOVERNANCE.md), [Governação V2](docs/V2_GOVERNANCE.md) e
 [circuito de dados reais V3](docs/V3_LIVE_DATA.md), além do
 [arquivo privado de prova V4.1](docs/V4_RAW_EVIDENCE.md) e do
+[staging BASE append-only V4.2](docs/V4_BASE_STAGING.md), bem como do
 [modelo de AIPD/RGPD](docs/DPIA_TEMPLATE.md).
 
 ## Estrutura do projeto
@@ -141,12 +144,13 @@ transparencia-total/
 Os ficheiros `.openai/`, `build/`, `worker/` e os scripts `sites-*` suportam o preview público
 do projeto. A publicação Next.js normal usa `npm run build:next`.
 
-## Modelo de dados V3/V4.1
+## Modelo de dados V3/V4.2
 
 O esquema integral está em `prisma/schema.prisma`. A V3 acrescenta a migração
 `prisma/migrations/20260801020000_v3_live_data/migration.sql` e a V4.1 acrescenta
-`prisma/migrations/20260803070000_v4_raw_evidence_archive/migration.sql`; as migrações anteriores
-continuam necessárias e são aplicadas por ordem.
+`prisma/migrations/20260803070000_v4_raw_evidence_archive/migration.sql`. A V4.2 acrescenta
+`prisma/migrations/20260803080000_v4_base_staging/migration.sql`; as migrações anteriores continuam
+necessárias e são aplicadas por ordem.
 
 | Área pedida | Modelos principais | Regra de publicação |
 |---|---|---|
@@ -160,6 +164,7 @@ continuam necessárias e são aplicadas por ordem.
 | RGPD | `ProtectedIdentifierDigest`, `DataPublicationReview` | HMAC e decisão de necessidade/proporcionalidade |
 | Fotografias parlamentares | `ParliamentaryMembershipSnapshot`, `SyncRun` | “Observado em” é distinto de início de mandato; ingestão fica privada |
 | Prova bruta | `SourceArchiveAttestation`, `AuditEvent` | Objeto privado e atestação são obrigatórios, mas nunca equivalem a revisão ou publicação |
+| Staging BASE | `BaseStagingBatch`, `BaseContractSnapshot`, `BaseContractPartySnapshot` | Append-only, privado e sem ligação automática às projeções públicas |
 
 `SourceDocument` continua a ser a raiz de proveniência e `AuditEvent` o rasto de decisões. Os
 `CHECK` SQL adicionais impedem sujeitos ambíguos, arestas reflexivas, montantes negativos, métricas
@@ -379,10 +384,28 @@ aplicável, a prova oficial da associação. O URL direto do contrato permanece 
 sem herdar o hash do dump. Nome normalizado é usado apenas em igualdade exata; não há semelhança
 aproximada. Use `--limit 25` em ensaios ou `--resource-url` apenas para um recurso oficial permitido.
 
-Nesta versão, este comando produz apenas o ficheiro JSON privado de pré-visualização/revisão.
-`--persist` é recusado antes de qualquer ligação à base de dados ou criação de `SyncRun`. A carga
-BASE só poderá ser reativada quando for implementada em lote, append-only e com atestação explícita
-de staging.
+Sem `--persist`, este comando produz apenas o ficheiro JSON privado de pré-visualização/revisão. Na
+V4.2, uma fotografia anual completa pode ser carregada em staging depois de confirmar o destino da
+base por um meio independente:
+
+```bash
+ENVIRONMENT=staging \
+RAW_ARCHIVE_ROOT=/caminho/absoluto/privado/fora-do-repositorio \
+python -m scripts.sync_base_contracts \
+  --year 2026 \
+  --output /caminho/privado/base-2026-review.json \
+  --persist \
+  --confirm-staging
+```
+
+O arquivo é verificado antes da ligação à base e a carga escreve apenas
+`BaseStagingBatch`, `BaseContractSnapshot` e `BaseContractPartySnapshot`. `--limit` não pode ser
+combinado com persistência. O comando não cria `PublicContract`, entidades, correspondências,
+revisões ou publicação. Inspecione depois apenas metadados e contagens com:
+
+```bash
+python -m scripts.inspect_base_staging --year 2026
+```
 
 O ficheiro de atores é opcional quando se pretende apenas pré-visualizar contratos sem produzir
 candidatos de correspondência. Identificadores fiscais presentes na fonte não são guardados

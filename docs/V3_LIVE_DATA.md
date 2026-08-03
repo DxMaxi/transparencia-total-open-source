@@ -37,8 +37,13 @@ ENVIRONMENT=staging RAW_ARCHIVE_ROOT=/caminho/privado/fora-do-repositorio \
   python -m scripts.sync_parliament deputies --legislature XVII --persist
 ENVIRONMENT=staging RAW_ARCHIVE_ROOT=/caminho/privado/fora-do-repositorio \
   python -m scripts.sync_parliament votes --legislature XVII --persist
-python -m scripts.sync_base_contracts --year 2026 --output ../data/base-review.json
+python -m scripts.sync_base_contracts \
+  --year 2026 --output /caminho/privado/base-review.json
 ```
+
+O exemplo BASE acima é apenas uma pré-visualização. Uma persistência autorizada exige um destino
+privado fora do repositório, `ENVIRONMENT=staging`, `RAW_ARCHIVE_ROOT`, `--persist` e
+`--confirm-staging`; consulte `V4_BASE_STAGING.md` antes da operação.
 
 Nas sincronizações parlamentares, confirme primeiro o destino de `DATABASE_URL` e configure uma
 raiz absoluta, privada e exterior ao repositório. Inspecione o documento, a atestação, o objeto, o
@@ -56,10 +61,11 @@ append-only, a primeira fotografia usa apenas inserções e uma segunda persist�
 recusada antes de alterar eventos ou posições. Tanto o perfil como o modo Investigador exigem a
 última revisão positiva ligada exatamente ao documento-fonte do voto.
 
-O comando BASE produz apenas um JSON privado de pré-visualização/revisão. Nesta versão,
-`--persist` é recusado antes de qualquer ligação à base de dados ou criação de `SyncRun`; a
-persistência só poderá ser reativada com carga em lote append-only e atestação explícita de
-staging. Para BASE, inspecione a fonte, o SHA-256, as contagens e os avisos no próprio JSON.
+O comando BASE produz sempre um JSON privado de pré-visualização/revisão. Na V4.2, `--persist` só é
+aceite com confirmação explícita de staging, snapshot completo e arquivo prévio. A carga cria
+`BaseStagingBatch`, `BaseContractSnapshot` e `BaseContractPartySnapshot`, todos append-only, mas não
+cria entidades ou contratos públicos. Use `python -m scripts.inspect_base_staging --year 2026`
+para verificar a fonte, o SHA-256, as contagens e os avisos sem devolver nomes ou HMAC.
 
 ## Projeções públicas
 
@@ -74,7 +80,7 @@ staging. Para BASE, inspecione a fonte, o SHA-256, as contagens e os avisos no p
 
 ## Limitação deliberada
 
-A V3 não transforma automaticamente contratos BASE em relações de interesse. A pré-visualização
-cria apenas um ficheiro JSON privado; não cria contratos, organizações, nós ou `SyncRun` na base de
-dados. Correspondências e arestas exigem prova adicional e revisão editorial. Esta limitação evita
-converter coincidências de nomes ou papéis contratuais em acusações.
+A V4.2 não transforma automaticamente snapshots BASE em relações de interesse. A persistência cria
+apenas um lote privado e o respetivo `SyncRun`; não cria `PublicContract`, organizações, nós,
+candidatos ou arestas. Correspondências e relações exigem prova adicional e revisão editorial.
+Esta limitação evita converter coincidências de nomes ou papéis contratuais em acusações.

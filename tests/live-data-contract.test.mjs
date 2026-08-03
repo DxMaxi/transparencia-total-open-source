@@ -28,17 +28,36 @@ test("ingestion paths fail closed without auto-publication", async () => {
     new URL("../backend/app/repositories/postgres.py", import.meta.url),
     "utf8",
   );
+  const baseRepository = await readFile(
+    new URL("../backend/app/repositories/base_staging.py", import.meta.url),
+    "utf8",
+  );
   const baseScript = await readFile(
     new URL("../backend/scripts/sync_base_contracts.py", import.meta.url),
     "utf8",
   );
+  const baseMigration = await readFile(
+    new URL(
+      "../prisma/migrations/20260803080000_v4_base_staging/migration.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
   assert.match(repository, /store_parliament_dataset/);
-  assert.match(repository, /store_base_collection/);
-  assert.match(repository, /BASE_PERSISTENCE_DISABLED_MESSAGE/);
-  assert.match(repository, /raise RuntimeError\(BASE_PERSISTENCE_DISABLED_MESSAGE\)/);
+  assert.match(baseRepository, /store_base_collection/);
+  assert.match(baseRepository, /archive_receipt: RawArchiveReceipt \| None/);
+  assert.match(baseRepository, /copy_records_to_table\(\s*"base_contract_snapshots"/);
+  assert.match(baseRepository, /copy_records_to_table\(\s*"base_contract_party_snapshots"/);
   assert.match(repository, /PARLIAMENT_VOTES_SNAPSHOT/);
-  assert.match(baseScript, /parser\.error\(BASE_PERSISTENCE_DISABLED_MESSAGE\)/);
+  assert.match(baseScript, /--confirm-staging/);
+  assert.match(baseScript, /ContentAddressedFileArchive\.from_settings/);
+  assert.match(baseMigration, /BEFORE UPDATE OR DELETE ON "base_staging_batches"/);
+  assert.match(baseMigration, /BEFORE UPDATE OR DELETE ON "base_contract_snapshots"/);
+  assert.match(baseMigration, /BEFORE UPDATE OR DELETE ON "base_contract_party_snapshots"/);
   assert.doesNotMatch(repository, /INSERT INTO public_contracts/);
+  assert.doesNotMatch(baseRepository, /INSERT INTO public_contracts/);
+  assert.doesNotMatch(baseRepository, /INSERT INTO interest_entities/);
+  assert.doesNotMatch(baseRepository, /INSERT INTO contract_match_reviews/);
 });
 
 test("unreviewed nominal vote coverage is shown as unavailable rather than zero", async () => {

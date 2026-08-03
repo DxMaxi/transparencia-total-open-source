@@ -42,7 +42,7 @@ class OfficialSource(BaseModel):
     label: str
     url: HttpUrl
     retrieved_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    content_sha256: str | None = None
+    content_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
 
 
 class Deputy(BaseModel):
@@ -267,8 +267,17 @@ class PublicContractParty(BaseModel):
             raise ValueError("O digest protegido deve ser um HMAC-SHA-256 hexadecimal")
         return value
 
+    @field_validator("name")
+    @classmethod
+    def reject_identifier_in_party_name(cls, value: str) -> str:
+        if _contains_protected_identifier(value):
+            raise ValueError("A designação pública não pode conter um identificador fiscal")
+        return value
+
 
 class PublicContractRecord(BaseModel):
+    model_config = ConfigDict(hide_input_in_errors=True)
+
     source_id: str
     object: str
     procedure: PublicContractProcedure = PublicContractProcedure.UNKNOWN
@@ -285,10 +294,17 @@ class PublicContractRecord(BaseModel):
     source: OfficialSource
     direct_official_url: HttpUrl | None = None
 
+    @field_validator("object")
+    @classmethod
+    def reject_identifier_in_contract_object(cls, value: str) -> str:
+        if _contains_protected_identifier(value):
+            raise ValueError("O objeto público não pode conter um identificador fiscal")
+        return value
+
 
 class BaseContractCollection(BaseModel):
     dataset_resource: BaseDatasetResource
-    document_sha256: str
+    document_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     contracts: list[PublicContractRecord] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     collected_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

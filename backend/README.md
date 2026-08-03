@@ -1,19 +1,20 @@
-# API Transparência Total / Fator Cívico — V4.1 em desenvolvimento
+# API Transparência Total / Fator Cívico — V4.2 em desenvolvimento
 
 Serviço FastAPI responsável por descobrir, descarregar, preservar e normalizar fontes oficiais.
-Inclui ingestão persistente do Parlamento e pré-visualização BASE JSON/XML/ZIP para JSON privado,
-estado de sincronização, projeções públicas, cruzamento exato protegido, resumos DRE, Guia do
-Cidadão, direito de resposta e exportações Open Data. A API pública nunca trata uma correspondência
-automática, notícia ou resumo de IA como prova.
+Inclui ingestão persistente do Parlamento, pré-visualização BASE JSON/XML/ZIP e staging BASE
+append-only privado, estado de sincronização, projeções públicas, cruzamento exato protegido,
+resumos DRE, Guia do Cidadão, direito de resposta e exportações Open Data. A API pública nunca
+trata uma correspondência automática, notícia ou resumo de IA como prova.
 
 `sync_parliament.py` dispõe de um circuito próprio de persistência em staging. Na V4.1, a operação
 exige `RAW_ARCHIVE_ROOT`: conserva e verifica os bytes exatos antes de abrir a ligação à base de
 dados; a transação acrescenta depois `SourceDocument`, `SourceArchiveAttestation`, `AuditEvent` e os
 registos normalizados. O recibo de arquivo nunca equivale a revisão ou publicação.
-`sync_base_contracts.py` produz apenas o ficheiro JSON privado para revisão e recusa `--persist`
-antes de qualquer ligação à base de dados ou criação de `SyncRun`. A persistência BASE só poderá ser
-reativada com carga em lote append-only e atestação explícita de staging. A entrada de atores aceita
-apenas HMAC e tanto a entrada como a saída privada têm de ficar fora do repositório. Para dados elegíveis,
+Na V4.2, `sync_base_contracts.py` mantém o ficheiro JSON privado e permite `--persist` apenas com
+`ENVIRONMENT=staging`, `--confirm-staging`, arquivo prévio e snapshot completo. A carga usa tabelas
+BASE próprias protegidas contra alteração e nunca escreve contratos, entidades, correspondências
+ou revisões públicas. A entrada de atores aceita apenas HMAC e tanto a entrada como a saída privada
+têm de ficar fora do repositório. Para dados elegíveis,
 `review_publication.py` é a fronteira humana explícita: valida dependências, acrescenta revisão e
 auditoria e só então torna o registo elegível para `/api/v1/public/*`. Mesmo uma revisão positiva
 fica bloqueada se a fonte associada não tiver uma atestação de arquivo exatamente coerente.
@@ -49,6 +50,33 @@ python -m scripts.archive_source_document --source-document-id SOURCE_ID --actor
 
 O backend local não substitui object storage versionado/WORM em produção. Consulte
 [`docs/V4_RAW_EVIDENCE.md`](../docs/V4_RAW_EVIDENCE.md) antes de qualquer operação persistente.
+
+## Staging BASE V4.2
+
+Produzir apenas a pré-visualização privada:
+
+```powershell
+python -m scripts.sync_base_contracts --year 2026 --output D:\transparencia-total-private\base-2026-review.json
+```
+
+Depois de confirmar por um meio independente o destino de `DATABASE_URL`, persistir apenas em
+staging:
+
+```powershell
+$env:ENVIRONMENT = 'staging'
+$env:RAW_ARCHIVE_ROOT = 'D:\transparencia-total-private\raw-evidence'
+python -m scripts.sync_base_contracts --year 2026 --output D:\transparencia-total-private\base-2026-review.json --persist --confirm-staging
+```
+
+Inspecionar contagens e proveniência sem devolver nomes ou HMAC:
+
+```powershell
+python -m scripts.inspect_base_staging --year 2026
+```
+
+`--limit` é incompatível com persistência. Sem pepper durável, nenhum digest efémero é guardado e
+o relatório mostra o cruzamento fiscal como dados indisponíveis. Consulte
+[`docs/V4_BASE_STAGING.md`](../docs/V4_BASE_STAGING.md).
 
 ## Rever a fotografia parlamentar em lote
 
