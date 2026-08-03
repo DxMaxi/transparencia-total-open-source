@@ -59,6 +59,17 @@ class VoteInspectionConnection:
             "mime_type": None,
             "raw_storage_key": None,
             "parser_version": "parliament-ingestion-v10",
+            "archive_attestation_id": None,
+            "archive_storage_backend": None,
+            "archive_storage_key": None,
+            "archive_content_sha256": None,
+            "archive_byte_size": None,
+            "archive_mime_type": None,
+            "archive_retrieval_url": None,
+            "archive_retrieved_at": None,
+            "archive_archived_at": None,
+            "archive_archived_by": None,
+            "archive_attestation_sha256": None,
             "event_count": 2_438,
             "position_count": 19_998,
             "nominal_event_count": 0,
@@ -114,7 +125,12 @@ def test_vote_staging_inspection_is_read_only_and_reports_uncertainty() -> None:
     assert availability["event_count"] == 342
     assert "confirmar no documento oficial" in availability["description"]
     assert "parser" in availability["description"]
-    assert all(report["checks"].values())
+    assert report["provenance"]["archive_attestation"] is None
+    assert report["checks"]["archive_attested"] is False
+    assert report["checks"]["archive_hash_matches_source"] is False
+    assert report["checks"]["archive_url_matches_source"] is False
+    assert report["checks"]["archive_key_matches_source_hash"] is False
+    assert all(value for key, value in report["checks"].items() if not key.startswith("archive_"))
     assert len(connection.queries) == 3
     assert all(query.lstrip().startswith("SELECT") for query in connection.queries)
     snapshot_query = connection.queries[0]
@@ -123,6 +139,8 @@ def test_vote_staging_inspection_is_read_only_and_reports_uncertainty() -> None:
     assert "MAX(event.updated_at) <= run.finished_at" in snapshot_query
     assert "COUNT(DISTINCT event.id) = run.records_read" in snapshot_query
     assert "COUNT(DISTINCT event.id) + COUNT(record.id) = run.records_written" in snapshot_query
+    assert "source_archive_attestations candidate" in snapshot_query
+    assert "LEFT JOIN LATERAL" in snapshot_query
 
 
 class PublicProfileConnection:
@@ -185,6 +203,7 @@ def test_public_vote_gate_returns_no_votes_without_review() -> None:
         assert "JOIN LATERAL" in query
         assert "LEFT JOIN LATERAL" not in query
         assert "publishable = TRUE" in query
+        assert "source_archive_attestations" in query
 
 
 def test_profile_uses_reviewed_total_instead_of_limited_vote_list_length() -> None:
@@ -232,6 +251,7 @@ def test_review_of_old_source_does_not_authorise_a_new_vote_snapshot() -> None:
     assert "sd.publisher = 'PARLIAMENT'" in connection.vote_query
     assert "vr.choice IN ('FAVOR', 'AGAINST', 'ABSTENTION', 'ABSENT')" in connection.vote_query
     assert "'PAIRED'" not in connection.vote_query
+    assert "source_archive_attestations vote_archive" in connection.vote_query
 
 
 class InvestigatorConnection:
@@ -268,3 +288,5 @@ def test_public_investigator_uses_the_same_vote_snapshot_gate() -> None:
     assert "vote_sd.publisher = 'PARLIAMENT'" in comparison_query
     assert "vr.choice IN ('FAVOR', 'AGAINST', 'ABSTENTION', 'ABSENT')" in comparison_query
     assert "'PAIRED'" not in comparison_query
+    assert "source_archive_attestations vote_archive" in comparison_query
+    assert "source_archive_attestations statement_archive" in comparison_query

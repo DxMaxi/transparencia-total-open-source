@@ -16,9 +16,16 @@ class Transaction(AbstractAsyncContextManager[None]):
 
 
 class PublicationConnection:
-    def __init__(self, *, people: list[dict[str, Any]], source_sha256: str) -> None:
+    def __init__(
+        self,
+        *,
+        people: list[dict[str, Any]],
+        source_sha256: str,
+        archive_attested: bool = True,
+    ) -> None:
         self.people = people
         self.source_sha256 = source_sha256
+        self.archive_attested = archive_attested
         self.commands: list[tuple[str, tuple[object, ...]]] = []
         self.fetch_queries: list[str] = []
         self.writes: list[tuple[str, list[tuple[object, ...]]]] = []
@@ -48,8 +55,25 @@ class PublicationConnection:
                 "parser_version": "parliament-ingestion-v9",
                 "observed_at": "2026-08-02T10:00:00",
                 "candidate_count": len(self.people),
+                "archive_attestation_id": "archive-1" if self.archive_attested else None,
+                "archive_content_sha256": (self.source_sha256 if self.archive_attested else None),
+                "archive_retrieval_url": (
+                    "https://www.parlamento.pt/deputados-xvii.json"
+                    if self.archive_attested
+                    else None
+                ),
+                "archive_storage_key": (
+                    f"sha256/{self.source_sha256[:2]}/{self.source_sha256}"
+                    if self.archive_attested
+                    else None
+                ),
             }
         return None
+
+    async def fetchval(self, query: str, *arguments: object) -> bool:
+        assert "source_archive_attestations" in query
+        assert arguments == ("source-1",)
+        return self.archive_attested
 
     async def fetch(self, query: str, *arguments: object) -> list[dict[str, Any]]:
         self.fetch_queries.append(query)
@@ -115,6 +139,8 @@ def test_preview_does_not_write_and_exposes_snapshot_guard_values() -> None:
 
     assert result["candidate_count"] == 286
     assert result["source_sha256"] == digest
+    assert result["archive_attested"] is True
+    assert result["publication_eligible"] is True
     assert result["already_published"] == 0
     assert connection.writes == []
     assert "review.source_document_id = snapshot.source_document_id" in connection.fetch_queries[0]
@@ -126,6 +152,7 @@ def test_public_listing_requires_review_for_latest_source_document() -> None:
     asyncio.run(_repository(connection)._public_person_rows())
 
     assert "dpr.source_document_id = ms.source_document_id" in connection.fetch_queries[0]
+    assert "source_archive_attestations profile_archive" in connection.fetch_queries[0]
 
 
 def test_individual_person_review_is_bound_to_latest_source_document() -> None:
@@ -191,3 +218,31 @@ def test_publication_writes_one_review_and_audit_event_per_pending_person() -> N
     assert connection.writes[0][0].count("proportionality_test") == 1
     assert all(arguments[2] == "source-1" for arguments in connection.writes[0][1])
     assert "pg_advisory_xact_lock" in connection.commands[0][0]
+
+
+def test_publication_is_blocked_when_raw_archive_is_unavailable() -> None:
+    digest = "a" * 64
+    connection = PublicationConnection(
+        people=_people(100),
+        source_sha256=digest,
+        archive_attested=False,
+    )
+
+    preview = asyncio.run(
+        _repository(connection).inspect_parliament_people_publication(legislature="XVII")
+    )
+    assert preview["archive_attested"] is False
+    assert preview["publication_eligible"] is False
+
+    with pytest.raises(ValueError, match="atestação de arquivo"):
+        asyncio.run(
+            _repository(connection).publish_parliament_people_snapshot(
+                legislature="XVII",
+                expected_source_sha256=digest,
+                expected_count=100,
+                reviewer_alias="revisor-01",
+                rationale="Fonte e identidade verificadas no documento oficial.",
+            )
+        )
+
+    assert connection.writes == []

@@ -23,6 +23,7 @@ from app.models.api import (
     VoteEvent,
     VoteRecord,
 )
+from app.models.archive import PrivateRawDocument
 from app.services.http import OfficialHttpClient
 
 MIN_DEPUTIES_PER_LEGISLATURE = 100
@@ -219,15 +220,24 @@ class ParlamentoCollector:
         url: str,
         *,
         max_bytes: int | None = None,
-    ) -> tuple[Any, str, str]:
+    ) -> tuple[Any, PrivateRawDocument]:
         response = (
             await self.http.get(url, max_bytes=max_bytes)
             if max_bytes is not None
             else await self.http.get(url)
         )
+        retrieved_at = datetime.now(UTC)
+        digest = hashlib.sha256(response.content).hexdigest()
+        raw_document = PrivateRawDocument(
+            source_url=HttpUrl(str(response.url)),
+            retrieved_at=retrieved_at,
+            content_sha256=digest,
+            mime_type=response.headers.get("content-type"),
+            content=response.content,
+        )
         text = response.content.decode("utf-8-sig", errors="replace")
         try:
-            return json.loads(text), hashlib.sha256(response.content).hexdigest(), str(response.url)
+            return json.loads(text), raw_document
         except json.JSONDecodeError as exc:
             raise ValueError(f"A fonte oficial não devolveu JSON válido: {response.url}") from exc
 
@@ -238,11 +248,13 @@ class ParlamentoCollector:
         legislature: str,
         source_url: str,
         document_sha256: str,
+        retrieved_at: datetime | None = None,
     ) -> list[Deputy]:
         source = OfficialSource(
             publisher=SourcePublisher.PARLIAMENT,
             label="Assembleia da República — Dados Abertos",
             url=HttpUrl(source_url),
+            retrieved_at=retrieved_at or datetime.now(UTC),
             content_sha256=document_sha256,
         )
         deputies: dict[str, Deputy] = {}
@@ -323,11 +335,13 @@ class ParlamentoCollector:
         *,
         source_url: str,
         document_sha256: str,
+        retrieved_at: datetime | None = None,
     ) -> list[VoteEvent]:
         source = OfficialSource(
             publisher=SourcePublisher.PARLIAMENT,
             label="Assembleia da República — votação oficial",
             url=HttpUrl(source_url),
+            retrieved_at=retrieved_at or datetime.now(UTC),
             content_sha256=document_sha256,
         )
         events: dict[str, VoteEvent] = {}
@@ -453,20 +467,23 @@ class ParlamentoCollector:
                 self.settings.parlamento_deputies_catalogue_path,
                 legislature,
             )
-        payload, digest, final_url = await self.fetch_json(url)
+        payload, raw_document = await self.fetch_json(url)
         deputies = self.normalise_deputies(
             payload,
             legislature=legislature,
-            source_url=final_url,
-            document_sha256=digest,
+            source_url=str(raw_document.source_url),
+            document_sha256=raw_document.content_sha256,
+            retrieved_at=raw_document.retrieved_at,
         )
         warnings = self._validate_deputy_snapshot(deputies)
         return ParliamentDataset(
             legislature=legislature,
-            dataset_url=HttpUrl(final_url),
-            document_sha256=digest,
+            dataset_url=raw_document.source_url,
+            document_sha256=raw_document.content_sha256,
             deputies=deputies,
             warnings=warnings,
+            collected_at=raw_document.retrieved_at,
+            raw_document=raw_document,
         )
 
     async def collect_votes(self, legislature: str) -> ParliamentDataset:
@@ -476,11 +493,16 @@ class ParlamentoCollector:
                 self.settings.parlamento_initiatives_catalogue_path,
                 legislature,
             )
-        payload, digest, final_url = await self.fetch_json(
+        payload, raw_document = await self.fetch_json(
             url,
             max_bytes=self.settings.parlamento_votes_max_bytes,
         )
-        votes = self.normalise_votes(payload, source_url=final_url, document_sha256=digest)
+        votes = self.normalise_votes(
+            payload,
+            source_url=str(raw_document.source_url),
+            document_sha256=raw_document.content_sha256,
+            retrieved_at=raw_document.retrieved_at,
+        )
         warnings = []
         if not votes:
             warnings.append(
@@ -499,8 +521,10 @@ class ParlamentoCollector:
             )
         return ParliamentDataset(
             legislature=legislature,
-            dataset_url=HttpUrl(final_url),
-            document_sha256=digest,
+            dataset_url=raw_document.source_url,
+            document_sha256=raw_document.content_sha256,
             votes=votes,
             warnings=warnings,
+            collected_at=raw_document.retrieved_at,
+            raw_document=raw_document,
         )

@@ -1,11 +1,13 @@
-# Transparência Total / Fator Cívico — V3
+# Transparência Total / Fator Cívico — V4.1 em desenvolvimento
 
 Plataforma cívica, neutra, open-source e sem fins lucrativos para acompanhar atividade
 política em Portugal através de dados oficiais auditáveis.
 
 > **Estado do projeto:** V3 funcional com circuito completo entre recolha, staging PostgreSQL,
-> revisão humana, API pública e PWA. Sem uma API configurada ou sem registos aprovados, a interface
-> usa uma amostra fictícia sempre assinalada. Ingestão nunca significa publicação.
+> revisão humana, API pública e PWA. A V4.1 acrescenta localmente o arquivo privado dos bytes
+> oficiais e a respetiva atestação append-only; ainda não está autorizada para produção. Sem uma
+> API configurada ou sem registos aprovados, a interface usa uma amostra fictícia sempre
+> assinalada. Ingestão nunca significa publicação.
 
 ## Princípios
 
@@ -26,7 +28,7 @@ política em Portugal através de dados oficiais auditáveis.
 O nome “Transparência Total” descreve a ambição. Nenhum sistema pode garantir a completude de
 uma fonte pública; a plataforma torna também visíveis falhas, atrasos e limites conhecidos.
 
-## O que está incluído na V3
+## O que está incluído na V3 e na base V4.1
 
 - Persistência transacional dos snapshots parlamentares, com `SyncRun`, contagens, avisos e versão
   do coletor; o Portal BASE disponibiliza apenas pré-visualização e JSON privado para revisão.
@@ -40,6 +42,10 @@ uma fonte pública; a plataforma torna também visíveis falhas, atrasos e limit
   `DataPublicationReview` e `AuditEvent`; a decisão pode ser retirada sem apagar o histórico.
 - A persistência BASE permanece bloqueada até existir carga em lote append-only e atestação
   explícita de staging.
+- Arquivo privado content-addressed dos bytes oficiais, com recibo verificado antes da persistência
+  parlamentar, `SourceArchiveAttestation` imutável e projeções públicas em modo fail-closed.
+- Ferramentas separadas para atestar um `SourceDocument` histórico em staging e para verificar o
+  objeto em modo exclusivamente de leitura; nenhuma destas operações cria revisão ou publicação.
 
 - PWA Next.js responsiva, instalável, com ecrã offline e Service Worker próprio.
 - Modo Investigador Cívico com filtros por ano, partido, montante e empresa.
@@ -69,14 +75,17 @@ uma fonte pública; a plataforma torna também visíveis falhas, atrasos e limit
 
 ```mermaid
 flowchart TD
-  A["Fontes oficiais"] --> B["Ingestão + SyncRun"]
-  B --> C["Staging + SHA-256"]
-  C --> D["Revisão humana"]
-  D --> E["Registos publicáveis"]
-  E --> F["API pública + Open Data"]
-  F --> G["PWA: LIVE / EMPTY / DEMO"]
-  C --> H["IA: proposta"]
-  H --> D
+  A["Fontes oficiais"] --> B["Bytes exatos + SHA-256"]
+  B --> C["Arquivo privado + atestação"]
+  B --> D["Normalização + SyncRun"]
+  C --> E["Staging"]
+  D --> E
+  E --> F["Revisão humana"]
+  F --> G["Registos publicáveis"]
+  G --> H["API pública + Open Data"]
+  H --> I["PWA: LIVE / EMPTY / DEMO"]
+  E --> J["IA: proposta"]
+  J --> F
 ```
 
 O frontend e o backend são serviços separados. O frontend só consome a API pública; chaves,
@@ -84,6 +93,7 @@ coletores, revisão e envio push ficam no backend. Consulte [Arquitetura](docs/A
 [Neutralidade](docs/NEUTRALITY.md), [Fontes](docs/DATA_SOURCES.md) e
 [Governação de IA](docs/AI_GOVERNANCE.md), [Governação V2](docs/V2_GOVERNANCE.md) e
 [circuito de dados reais V3](docs/V3_LIVE_DATA.md), além do
+[arquivo privado de prova V4.1](docs/V4_RAW_EVIDENCE.md) e do
 [modelo de AIPD/RGPD](docs/DPIA_TEMPLATE.md).
 
 ## Estrutura do projeto
@@ -131,11 +141,12 @@ transparencia-total/
 Os ficheiros `.openai/`, `build/`, `worker/` e os scripts `sites-*` suportam o preview público
 do projeto. A publicação Next.js normal usa `npm run build:next`.
 
-## Modelo de dados V3
+## Modelo de dados V3/V4.1
 
 O esquema integral está em `prisma/schema.prisma`. A V3 acrescenta a migração
-`prisma/migrations/20260801020000_v3_live_data/migration.sql`; as migrações anteriores continuam
-necessárias e são aplicadas por ordem.
+`prisma/migrations/20260801020000_v3_live_data/migration.sql` e a V4.1 acrescenta
+`prisma/migrations/20260803070000_v4_raw_evidence_archive/migration.sql`; as migrações anteriores
+continuam necessárias e são aplicadas por ordem.
 
 | Área pedida | Modelos principais | Regra de publicação |
 |---|---|---|
@@ -148,6 +159,7 @@ necessárias e são aplicadas por ordem.
 | Retificação | `RightOfReply`, `AuditEvent` | Acrescenta versão e hashes; não apaga o alvo |
 | RGPD | `ProtectedIdentifierDigest`, `DataPublicationReview` | HMAC e decisão de necessidade/proporcionalidade |
 | Fotografias parlamentares | `ParliamentaryMembershipSnapshot`, `SyncRun` | “Observado em” é distinto de início de mandato; ingestão fica privada |
+| Prova bruta | `SourceArchiveAttestation`, `AuditEvent` | Objeto privado e atestação são obrigatórios, mas nunca equivalem a revisão ou publicação |
 
 `SourceDocument` continua a ser a raiz de proveniência e `AuditEvent` o rasto de decisões. Os
 `CHECK` SQL adicionais impedem sujeitos ambíguos, arestas reflexivas, montantes negativos, métricas
@@ -171,7 +183,8 @@ cp .env.example .env
 ```
 
 Edite `OFFICIAL_USER_AGENT` com o URL real do repositório e um contacto técnico. Não coloque
-segredos em variáveis `NEXT_PUBLIC_*`.
+segredos em variáveis `NEXT_PUBLIC_*`. Deixe `RAW_ARCHIVE_ROOT` vazio para recolhas sem
+persistência; antes de usar `--persist`, defina um caminho absoluto privado fora do repositório.
 
 ### 2. Instalar o frontend e o Prisma
 
@@ -277,19 +290,29 @@ python -m scripts.sync_parliament votes --legislature XVII --output ../data/vote
 Para conservar os snapshots no PostgreSQL em estado privado de revisão, acrescente `--persist`:
 
 ```bash
-python -m scripts.sync_parliament deputies --legislature XVII --persist
-python -m scripts.sync_parliament votes --legislature XVII --persist
+ENVIRONMENT=staging RAW_ARCHIVE_ROOT=/caminho/absoluto/fora-do-repositorio \
+  python -m scripts.sync_parliament deputies --legislature XVII --persist
+ENVIRONMENT=staging RAW_ARCHIVE_ROOT=/caminho/absoluto/fora-do-repositorio \
+  python -m scripts.sync_parliament votes --legislature XVII --persist
 ```
 
-Cada execução cria um `SyncRun`. Pessoas e votos não ficam publicáveis por este comando. Votos cujo
-identificador individual não corresponda exatamente a uma pessoa recolhida permanecem `UNKNOWN` e
-nunca são atribuídos por nome.
+O caminho do arquivo tem de ser absoluto, privado e exterior ao repositório. Os bytes são
+arquivados e verificados antes de qualquer escrita na base de dados; depois, cada execução cria um
+`SyncRun` e uma atestação append-only. Pessoas e votos não ficam publicáveis por este comando.
+Votos cujo identificador individual não corresponda exatamente a uma pessoa recolhida permanecem
+`UNKNOWN` e nunca são atribuídos por nome.
 
 Depois da primeira persistência de votos, inspecione a fotografia privada sem criar revisão ou
 publicação:
 
 ```bash
 python -m scripts.inspect_parliament_votes --legislature XVII
+```
+
+Para verificar separadamente a conservação do original sem qualquer escrita:
+
+```bash
+python -m scripts.inspect_source_archive --source-document-id SOURCE_ID
 ```
 
 Enquanto o modelo de votações não tiver versões append-only, a primeira fotografia é inserida sem

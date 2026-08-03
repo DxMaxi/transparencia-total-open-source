@@ -11,6 +11,7 @@ sem converter ausência de dados em conclusões e sem permitir que um modelo de 
 |---|---|---|
 | Fonte oficial | Publicar o documento de origem | Garantir que todos os seus dados estão completos |
 | Coletor | Descarregar, validar, datar e calcular hash | Inventar campos ausentes ou ultrapassar controlos de acesso |
+| Arquivo privado | Conservar e verificar os bytes por SHA-256 | Rever, interpretar ou publicar o documento |
 | Normalizador | Mapear nomes oficiais para um esquema comum | Atribuir uma posição coletiva a uma pessoa |
 | IA | Propor linguagem simples a partir do texto fornecido | Determinar mérito político ou cumprimento de promessa |
 | Revisor | Aplicar critérios públicos e fundamentar decisão | Alterar a fonte ou apagar o histórico |
@@ -48,6 +49,23 @@ abrem/fecham `SyncRun`; a promoção humana cria `DataPublicationReview` e `Audi
 leitura usa projeções SQL próprias e não consulta staging, correspondências pendentes ou IA por
 rever. O frontend mostra separadamente `LIVE`, `EMPTY`, `UNAVAILABLE` e `DEMO`.
 
+Na V4.1, `SourceArchiveAttestation` liga um `SourceDocument` a um objeto privado
+content-addressed. O PostgreSQL valida a igualdade de URL, SHA-256 e chave, rejeita alterações ou
+eliminação da atestação e protege o URL/hash de uma fonte já atestada. A existência da atestação é
+uma porta adicional e fail-closed nas projeções públicas; nunca substitui a última revisão humana
+exigida pelo domínio.
+
+### Arquivo privado de originais
+
+`PrivateRawDocument` transporta os bytes apenas dentro do processo de ingestão e exclui-os de
+serialização e representação. O backend local escreve com chave
+`sha256/<prefixo>/<sha256 completo>`, sem operações de substituição, leitura de conteúdo ou
+eliminação. Um recibo validado é a única entrada aceite pelo repositório para criar a atestação.
+
+O backend de ficheiros serve desenvolvimento, testes e staging controlado. O adaptador de produção
+para object storage privado, versionado ou WORM, continua por implementar; por isso a V4.1 não deve
+ser ativada em produção apenas com disco local ou efémero.
+
 Identificadores pessoais usados na deduplicação ficam em `ProtectedIdentifierDigest` como HMAC; o
 valor original não pertence ao esquema publicável. Restrições SQL verificam sujeitos exclusivos,
 arestas não reflexivas, montantes não negativos, limites das métricas e hashes válidos.
@@ -59,11 +77,12 @@ idempotentes:
 
 1. descobrir catálogo;
 2. descarregar documento;
-3. calcular hash e guardar original imutável;
-4. normalizar para tabelas de staging;
-5. comparar contagens e campos obrigatórios;
-6. promover a versão;
-7. criar alertas apenas após promoção.
+3. calcular o hash sobre os bytes exatos e guardar o original imutável;
+4. verificar o objeto e acrescentar a atestação coerente;
+5. normalizar para tabelas de staging;
+6. comparar contagens e campos obrigatórios;
+7. promover a versão após revisão humana;
+8. criar alertas apenas após promoção.
 
 Cada execução persistente abre um `SyncRun`. Falha parcial conserva avisos e não substitui a última
 versão publicada. Na V3 isto está implementado para as fontes parlamentares. O coletor BASE produz
@@ -78,6 +97,7 @@ Todo o dado publicável deve permitir reconstruir:
 - URL exato e identificador oficial, quando existe;
 - instante de recolha em UTC;
 - hash SHA-256 do conteúdo recebido;
+- chave e atestação do original privado, coerentes com esse URL e hash;
 - versão do parser;
 - versão e decisão de revisão, quando aplicável.
 
@@ -128,7 +148,8 @@ candidatos e notas internas não fazem parte das projeções SQL.
 - CDN para páginas e ativos públicos.
 - API sem estado, escalável horizontalmente.
 - PostgreSQL com backups e point-in-time recovery.
-- Object storage versionado para originais, não incluído no protótipo local.
+- Arquivo content-addressed local apenas para desenvolvimento/teste/staging; object storage
+  privado e versionado continua obrigatório antes de produção.
 - Redis/fila para jobs e rate limit distribuído, quando houver mais de uma instância.
 - Observabilidade sem conteúdo sensível: latência, contagens, hash, código do job e falhas.
 
