@@ -16,7 +16,7 @@ export function SiteFooter() {
           <a href="/metodologia">Metodologia</a>
           <a href="/direito-de-resposta">Direito de resposta</a>
           <a href="/investigador">Investigador Cívico</a>
-          <a href="https://github.com/" target="_blank" rel="noreferrer">Código-fonte</a>
+          <a href="https://github.com/DxMaxi/transparencia-total-open-source" target="_blank" rel="noreferrer">Código-fonte</a>
           <a href="/metodologia#neutralidade">Política de neutralidade</a>
         </div>
         <div>
