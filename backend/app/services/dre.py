@@ -1,4 +1,6 @@
+import hashlib
 import re
+from datetime import UTC, datetime
 
 import feedparser
 from bs4 import BeautifulSoup
@@ -7,6 +9,7 @@ from pydantic import HttpUrl
 from app.core.config import Settings
 from app.core.security import require_official_url, sha256_text
 from app.models.api import LegalDocument
+from app.models.archive import PrivateRawDocument
 from app.services.http import OfficialHttpClient
 
 
@@ -18,6 +21,15 @@ class DreCollector:
     async def fetch_document(self, source_url: str) -> LegalDocument:
         require_official_url(source_url)
         response = await self.http.get(source_url)
+        retrieved_at = datetime.now(UTC)
+        raw_sha256 = hashlib.sha256(response.content).hexdigest()
+        raw_document = PrivateRawDocument(
+            source_url=HttpUrl(str(response.url)),
+            retrieved_at=retrieved_at,
+            content_sha256=raw_sha256,
+            mime_type=response.headers.get("content-type"),
+            content=response.content,
+        )
         soup = BeautifulSoup(response.text, "html.parser")
         for element in soup.select("script, style, nav, header, footer, form, noscript"):
             element.decompose()
@@ -35,7 +47,9 @@ class DreCollector:
             source_url=HttpUrl(str(response.url)),
             official_identifier=identifier,
             text=text,
-            content_sha256=sha256_text(text),
+            content_sha256=raw_sha256,
+            normalised_text_sha256=sha256_text(text),
+            raw_document=raw_document,
         )
 
     async def read_rss(self) -> list[dict[str, str | None]]:

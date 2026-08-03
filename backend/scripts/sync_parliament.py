@@ -13,8 +13,9 @@ from app.core.config import get_settings
 from app.repositories.postgres import PostgresRepository
 from app.services.http import OfficialHttpClient
 from app.services.parlamento import ParlamentoCollector
+from app.services.raw_archive import ContentAddressedFileArchive
 
-CODE_VERSION = "parliament-ingestion-v11"
+CODE_VERSION = "parliament-ingestion-v12"
 
 
 async def collect(
@@ -24,6 +25,7 @@ async def collect(
     persist: bool = False,
 ) -> tuple[str, dict[str, int] | None]:
     settings = get_settings()
+    archive = ContentAddressedFileArchive.from_settings(settings) if persist else None
     async with OfficialHttpClient(settings) as http:
         collector = ParlamentoCollector(settings, http)
         dataset = (
@@ -33,6 +35,12 @@ async def collect(
         )
     persistence = None
     if persist:
+        assert archive is not None
+        if dataset.raw_document is None:
+            raise RuntimeError(
+                "A fonte parlamentar não conservou os bytes necessários para o arquivo"
+            )
+        archive_receipt = archive.archive(dataset.raw_document)
         repository = PostgresRepository(settings)
         await repository.connect()
         try:
@@ -40,6 +48,7 @@ async def collect(
                 dataset,
                 kind=kind,
                 code_version=CODE_VERSION,
+                archive_receipt=archive_receipt,
             )
         finally:
             await repository.close()
@@ -77,6 +86,7 @@ def main() -> None:
             f"{persistence['records_written']} escritas / "
             f"{persistence['records_read']} lidas; "
             f"{deactivated} registos antigos desativados; "
+            f"{persistence['archive_attestations_written']} atestações de arquivo acrescentadas; "
             "publicação continua pendente."
         )
 

@@ -1102,11 +1102,38 @@ model SourceDocument {
   citizenAlerts         CitizenAlert[]
   rightsOfReply         RightOfReply[]
   publicationReviews    DataPublicationReview[]
+  archiveAttestations   SourceArchiveAttestation[]
 
   @@unique([url, contentSha256])
   @@index([publisher, kind, publishedAt])
   @@index([contentSha256])
   @@map("source_documents")
+}
+
+/// Prova append-only de que os bytes exatos de um SourceDocument foram
+/// conservados num arquivo privado content-addressed. A migração impede UPDATE
+/// e DELETE ao nível do PostgreSQL; uma correção cria sempre nova atestação.
+model SourceArchiveAttestation {
+  id                String         @id @default(cuid())
+  sourceDocumentId  String         @map("source_document_id")
+  storageBackend    String         @map("storage_backend")
+  storageKey        String         @map("storage_key")
+  contentSha256     String         @map("content_sha256")
+  byteSize          BigInt         @map("byte_size")
+  mimeType          String?        @map("mime_type")
+  retrievalUrl      String         @map("retrieval_url")
+  retrievedAt       DateTime       @map("retrieved_at")
+  archivedAt        DateTime       @map("archived_at")
+  archivedBy        String         @map("archived_by")
+  attestationSha256 String         @map("attestation_sha256")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  sourceDocument    SourceDocument @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
+
+  @@unique([sourceDocumentId, storageBackend, storageKey])
+  @@index([sourceDocumentId, archivedAt])
+  @@index([storageBackend, storageKey])
+  @@index([contentSha256])
+  @@map("source_archive_attestations")
 }
 
 model SyncRun {

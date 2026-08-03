@@ -34,6 +34,7 @@ from app.models.api import (
     PublicContractRecord,
     SourcePublisher,
 )
+from app.models.archive import PrivateRawDocument
 from app.services.http import OfficialHttpClient
 from app.services.public_interest import assess_public_actor, association_has_public_evidence
 
@@ -199,6 +200,13 @@ class BaseGovCollector:
         )
         collected_at = datetime.now(UTC)
         digest = hashlib.sha256(response.content).hexdigest()
+        raw_document = PrivateRawDocument(
+            source_url=HttpUrl(str(response.url)),
+            retrieved_at=collected_at,
+            content_sha256=digest,
+            mime_type=response.headers.get("content-type"),
+            content=response.content,
+        )
         effective_resource = resource.model_copy(
             update={"url": HttpUrl(str(response.url))},
         )
@@ -307,6 +315,7 @@ class BaseGovCollector:
             contracts=contracts,
             warnings=warnings,
             collected_at=collected_at,
+            raw_document=raw_document,
         )
 
     @staticmethod

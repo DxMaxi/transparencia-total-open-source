@@ -13,6 +13,18 @@
 | Imprensa | Modelo preparado | RSS, notícia, menção, prova e revisão previstos no esquema | A allowlist editorial deve ser aprovada antes de produção |
 | Radar local/SNS | Esquema preparado | Distritos, municípios e itens locais | Conectores específicos ainda não implementados |
 
+## Regra comum de prova bruta V4.1
+
+Os coletores do Parlamento, BASE e DRE calculam o SHA-256 sobre os bytes exatos da resposta HTTP e
+transportam-nos apenas num `PrivateRawDocument`, excluído de serialização. Uma persistência só pode
+referenciar o documento depois de o objeto content-addressed ser escrito e verificado e de existir
+uma atestação com o mesmo URL efetivo e hash.
+
+Atualmente esta sequência está ligada à persistência parlamentar. BASE continua apenas em
+pré-visualização privada e DRE continua sem persistência/publicação automática. Ausência de objeto,
+atestado ou acesso ao arquivo significa “dados indisponíveis”; nunca é interpretada como ausência
+de factos na fonte.
+
 ## Assembleia da República
 
 Catálogo: <https://www.parlamento.pt/Cidadania/Paginas/DadosAbertos.aspx>
@@ -28,8 +40,9 @@ opacos, `ParlamentoCollector.discover_dataset_url`:
 6. calcula o hash antes da normalização.
 
 Aliases de campo existem para tolerar nomes históricos. O SHA-256 é calculado sobre os bytes
-recebidos, antes de descodificar e normalizar o JSON. Uma mudança de estrutura que produza zero
-registos gera aviso; não promove uma tabela vazia como verdade.
+recebidos, antes de descodificar e normalizar o JSON. Na operação persistente, os bytes são
+arquivados e verificados antes de o repositório escrever o snapshot em staging. Uma mudança de
+estrutura que produza zero registos gera aviso; não promove uma tabela vazia como verdade.
 
 Na fotografia oficial da legislatura XVII, o detalhe das votações identifica sobretudo grupos
 parlamentares ou rótulos textuais, não deputados através de um identificador individual estável.
@@ -44,7 +57,10 @@ Portal: <https://diariodarepublica.pt/>
 
 O coletor aceita apenas URLs de anfitriões DRE autorizados. URLs ELI podem ser construídos por tipo,
 número e data. O HTML é reduzido a texto após remoção de navegação, scripts, estilos e formulários.
-O documento guardado deve conservar o HTML/PDF original, mesmo que o parser produza apenas texto.
+O `content_sha256` identifica agora o HTML/PDF bruto; `normalised_text_sha256` identifica
+separadamente o texto extraído. O documento guardado deve conservar o original, mesmo que o parser
+produza apenas texto. O coletor já transporta os bytes privados, mas ainda não existe persistência
+DRE ligada ao arquivo.
 
 Defina `DRE_RSS_URL` quando a equipa confirmar e documentar o feed oficial a usar. Esta decisão
 evita depender de um URL adivinhado.
@@ -78,7 +94,9 @@ Catálogo oficial: <https://dados.gov.pt/pt/datasets/contratos-publicos-portal-b
 
 O coletor lê metadados do catálogo e escolhe o recurso correspondente ao ano. Aceita JSON, XML e ZIP
 com limites de download, tamanho descomprimido e taxa de compressão; nunca executa conteúdos do
-arquivo. Guarda o hash ligado ao URL do ficheiro efetivamente descarregado e, quando a linha inclui
+arquivo. Calcula o hash dos bytes exatos e mantém-nos privados durante a recolha, mas a persistência
+BASE permanece bloqueada até existir uma carga em lote append-only ligada ao recibo de arquivo.
+Guarda o hash ligado ao URL do ficheiro efetivamente descarregado e, quando a linha inclui
 um URL oficial individual, conserva-o apenas como metadado auxiliar. Um URL direto só pode receber
 hash próprio depois de esse documento ser descarregado e verificado separadamente.
 Recursos com o mesmo identificador e conteúdo normalizado equivalente são conservados uma única

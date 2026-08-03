@@ -23,6 +23,7 @@ class JsonResponse:
     def __init__(self, url: str, payload: object) -> None:
         self.url = url
         self.content = json.dumps(payload, ensure_ascii=False).encode()
+        self.headers = {"content-type": "application/json; charset=utf-8"}
 
 
 class RawJsonHttp:
@@ -421,14 +422,18 @@ def test_fetch_json_hashes_the_exact_received_bytes() -> None:
     http = RawJsonHttp(raw_document)
     parliament = ParlamentoCollector(Settings(environment="test"), http)  # type: ignore[arg-type]
 
-    payload, digest, source_url = asyncio.run(
+    payload, raw = asyncio.run(
         parliament.fetch_json("https://app.parlamento.pt/IniciativasXVII_json.txt")
     )
 
     assert payload["id"] == "139080"
-    assert source_url == "https://app.parlamento.pt/IniciativasXVII_json.txt"
-    assert digest == hashlib.sha256(raw_document).hexdigest()
-    assert digest != hashlib.sha256(raw_document.decode("utf-8-sig").encode()).hexdigest()
+    assert str(raw.source_url) == "https://app.parlamento.pt/IniciativasXVII_json.txt"
+    assert raw.content_sha256 == hashlib.sha256(raw_document).hexdigest()
+    assert (
+        raw.content_sha256 != hashlib.sha256(raw_document.decode("utf-8-sig").encode()).hexdigest()
+    )
+    assert raw.content == raw_document
+    assert "content" not in raw.model_dump(mode="json")
 
 
 def test_collect_votes_warns_when_positions_are_not_normalised() -> None:

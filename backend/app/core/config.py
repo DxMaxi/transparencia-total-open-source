@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pathlib import Path
 from typing import Annotated, Literal
 from urllib.parse import urlparse
 
@@ -15,7 +16,7 @@ class Settings(BaseSettings):
     )
 
     app_name: str = "Transparência Total / Fator Cívico API"
-    environment: Literal["development", "test", "production"] = "development"
+    environment: Literal["development", "test", "staging", "production"] = "development"
     api_prefix: str = "/api/v1"
     log_level: str = "INFO"
     cors_origins: Annotated[list[str], NoDecode] = Field(
@@ -23,6 +24,7 @@ class Settings(BaseSettings):
     )
     admin_api_key: SecretStr | None = None
     database_url: SecretStr | None = None
+    raw_archive_root: Path | None = None
 
     official_user_agent: str = (
         "TransparenciaTotal/0.3 (+https://github.com/SEU_UTILIZADOR/transparencia-total; "
@@ -83,6 +85,7 @@ class Settings(BaseSettings):
         "parlamento_deputies_url",
         "parlamento_votes_url",
         "dre_rss_url",
+        "raw_archive_root",
         "openai_api_key",
         "protected_identifier_pepper",
         "vapid_private_key",

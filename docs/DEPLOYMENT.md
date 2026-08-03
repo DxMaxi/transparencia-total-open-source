@@ -5,7 +5,7 @@
 - Vercel: Next.js PWA e CDN.
 - Render ou Fly.io: FastAPI.
 - PostgreSQL gerido: dados normalizados, auditoria e push.
-- Object storage versionado: documentos brutos; adicionar antes de produção real.
+- Object storage privado e versionado/WORM: documentos brutos; obrigatório antes de produção real.
 - Scheduler/worker: sincronizações, resumos e alertas, separado da API pública.
 
 ## Preparação
@@ -16,6 +16,30 @@
 4. Crie `ADMIN_API_KEY` aleatória com pelo menos 32 bytes.
 5. Defina backups, retenção e alertas do PostgreSQL.
 6. Não ative IA antes de existir fila de revisão.
+7. Não ative a V4.1 em produção até existir um backend externo de arquivo e todas as fontes
+   publicadas estarem atestadas e verificadas.
+
+## Porta de implantação V4.1
+
+`RAW_ARCHIVE_ROOT` configura apenas o backend local de desenvolvimento, testes e staging
+controlado. Não o aponte para o sistema de ficheiros efémero do Render, Fly.io, Vercel, CI ou para
+uma pasta servida pela aplicação. O caminho tem de ser absoluto, privado e exterior ao
+repositório.
+
+As projeções públicas da V4.1 recusam qualquer facto cuja fonte não tenha uma atestação coerente.
+Aplicar a migração e publicar o código antes de arquivar as fontes históricas pode, por desenho,
+fazer os dados atuais passar para `EMPTY`/`UNAVAILABLE`. Isso é preferível a mostrar prova não
+conservada, mas exige um rollout deliberado:
+
+1. implementar o adaptador de object storage privado com versionamento ou retenção WORM;
+2. ensaiar a migração e os triggers numa cópia restaurável da base;
+3. arquivar cada `SourceDocument` histórico apenas quando os bytes ainda coincidirem exatamente;
+4. tratar fontes alteradas como novas versões, nunca como substituições do documento anterior;
+5. executar `inspect_source_archive` e reconciliar contagens, hashes e objetos indisponíveis;
+6. só depois promover a versão da API, mantendo as revisões humanas existentes como circuito
+   independente.
+
+Enquanto estes passos não forem concluídos, a branch V4.1 deve permanecer fora de produção.
 
 ## Vercel
 

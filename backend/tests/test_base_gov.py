@@ -39,6 +39,7 @@ class DatasetResponse:
     def __init__(self, payload: list[dict[str, object]], url: str) -> None:
         self.content = json.dumps(payload).encode("utf-8")
         self.url = url
+        self.headers = {"content-type": "application/json"}
 
 
 class DatasetHttp:
@@ -442,6 +443,10 @@ def test_collection_provenance_uses_effective_response_url_after_redirect() -> N
     assert str(collection.dataset_resource.url) == effective_url
     assert str(collection.contracts[0].source.url) == effective_url
     assert collection.contracts[0].source.retrieved_at == collection.collected_at
+    assert collection.raw_document is not None
+    assert collection.raw_document.content_sha256 == collection.document_sha256
+    assert str(collection.raw_document.source_url) == effective_url
+    assert "raw_document" not in collection.model_dump(mode="json")
 
 
 def test_identifier_candidates_require_hmac_and_preserve_roles_and_hashed_source() -> None:

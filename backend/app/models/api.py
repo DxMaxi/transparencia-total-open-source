@@ -6,6 +6,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, SecretStr, field_validator
 
+from app.models.archive import PrivateRawDocument
+
 _PROTECTED_IDENTIFIER_SEQUENCE = re.compile(r"(?<!\d)\d(?:[\W_]*\d){8}(?!\d)")
 _INTERNAL_PERSON_ID = re.compile(r"[A-Za-z][A-Za-z0-9:_-]{1,127}")
 _CANONICAL_UUID = re.compile(
@@ -94,6 +96,7 @@ class ParliamentDataset(BaseModel):
     votes: list[VoteEvent] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     collected_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    raw_document: PrivateRawDocument | None = Field(default=None, exclude=True, repr=False)
 
 
 class TransparencyResource(BaseModel):
@@ -110,6 +113,8 @@ class LegalDocument(BaseModel):
     published_at: datetime | None = None
     text: str = Field(min_length=1)
     content_sha256: str
+    normalised_text_sha256: str
+    raw_document: PrivateRawDocument | None = Field(default=None, exclude=True, repr=False)
 
 
 class GlossaryItem(BaseModel):
@@ -287,6 +292,7 @@ class BaseContractCollection(BaseModel):
     contracts: list[PublicContractRecord] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     collected_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    raw_document: PrivateRawDocument | None = Field(default=None, exclude=True, repr=False)
 
 
 class ActorAssociationKey(BaseModel):

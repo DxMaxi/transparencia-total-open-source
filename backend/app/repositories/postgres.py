@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 import asyncpg
+from pydantic import HttpUrl
 
 from app.core.config import Settings
 from app.core.security import require_official_url
@@ -18,6 +19,7 @@ from app.models.api import (
     RightOfReplyReceipt,
     RightOfReplyRequest,
 )
+from app.models.archive import RawArchiveReceipt
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +107,44 @@ def _database_timestamp(value: datetime | None) -> datetime | None:
     if value is None or value.tzinfo is None:
         return value
     return value.astimezone(UTC).replace(tzinfo=None)
+
+
+def _utc_database_timestamp(value: datetime) -> datetime:
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+
+
+def _millisecond_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        raise ValueError("A atestação de arquivo exige datas com fuso horário")
+    utc_value = value.astimezone(UTC)
+    return utc_value.replace(microsecond=(utc_value.microsecond // 1000) * 1000)
+
+
+def _archive_attestation_sha256(
+    *,
+    source_document_id: str,
+    receipt: RawArchiveReceipt,
+    archived_at: datetime,
+    archived_by: str,
+) -> str:
+    canonical = json.dumps(
+        {
+            "source_document_id": source_document_id,
+            "storage_backend": receipt.storage_backend,
+            "storage_key": receipt.storage_key,
+            "content_sha256": receipt.content_sha256,
+            "byte_size": receipt.byte_size,
+            "mime_type": receipt.mime_type,
+            "retrieval_url": str(receipt.source_url),
+            "retrieved_at": _millisecond_utc(receipt.retrieved_at).isoformat(),
+            "archived_at": archived_at.isoformat(),
+            "archived_by": archived_by,
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 class PostgresRepository:
@@ -280,6 +320,16 @@ class PostgresRepository:
                             ORDER BY snapshot.observed_at DESC, snapshot.id DESC
                             LIMIT 1
                           )
+                          AND EXISTS (
+                            SELECT 1
+                            FROM source_documents reviewed_source
+                            JOIN source_archive_attestations reviewed_archive
+                              ON reviewed_archive.source_document_id = reviewed_source.id
+                            WHERE reviewed_source.id = dpr.source_document_id
+                              AND reviewed_archive.content_sha256 =
+                                  reviewed_source.content_sha256
+                              AND reviewed_archive.retrieval_url = reviewed_source.url
+                          )
                         ORDER BY dpr.reviewed_at DESC, dpr.id DESC LIMIT 1
                       ) = TRUE
                   ) AS politicians,
@@ -287,6 +337,29 @@ class PostgresRepository:
                     SELECT COUNT(*) FROM promises p
                     WHERE p.status IN ('FULFILLED', 'IN_PROGRESS', 'BROKEN', 'ABANDONED')
                       AND EXISTS (SELECT 1 FROM promise_evidence pe WHERE pe.promise_id = p.id)
+                      AND EXISTS (
+                        SELECT 1
+                        FROM government_programmes gp
+                        JOIN source_documents programme_source
+                          ON programme_source.id = gp.source_document_id
+                        JOIN source_archive_attestations programme_archive
+                          ON programme_archive.source_document_id = programme_source.id
+                        WHERE gp.id = p.programme_id
+                          AND programme_archive.content_sha256 =
+                              programme_source.content_sha256
+                          AND programme_archive.retrieval_url = programme_source.url
+                      )
+                      AND EXISTS (
+                        SELECT 1
+                        FROM promise_evidence archived_proof
+                        JOIN source_documents evidence_source
+                          ON evidence_source.id = archived_proof.source_document_id
+                        JOIN source_archive_attestations evidence_archive
+                          ON evidence_archive.source_document_id = evidence_source.id
+                        WHERE archived_proof.promise_id = p.id
+                          AND evidence_archive.content_sha256 = evidence_source.content_sha256
+                          AND evidence_archive.retrieval_url = evidence_source.url
+                      )
                       AND (
                         SELECT pr.decision::text FROM promise_reviews pr
                         WHERE pr.promise_id = p.id
@@ -294,8 +367,20 @@ class PostgresRepository:
                       ) = 'ACCEPT'
                   ) AS promises,
                   (
-                    SELECT COUNT(*) FROM public_contracts
-                    WHERE publication_status = 'PUBLISHED' AND verification_status = 'VERIFIED'
+                    SELECT COUNT(*)
+                    FROM public_contracts contract
+                    JOIN source_documents contract_source
+                      ON contract_source.id = contract.source_document_id
+                    WHERE contract.publication_status = 'PUBLISHED'
+                      AND contract.verification_status = 'VERIFIED'
+                      AND EXISTS (
+                        SELECT 1
+                        FROM source_archive_attestations contract_archive
+                        WHERE contract_archive.source_document_id = contract_source.id
+                          AND contract_archive.content_sha256 =
+                              contract_source.content_sha256
+                          AND contract_archive.retrieval_url = contract_source.url
+                      )
                   ) AS contracts,
                   (
                     SELECT COUNT(*) FROM interest_relationships r
@@ -309,15 +394,55 @@ class PostgresRepository:
                       AND t.publication_status = 'PUBLISHED'
                       AND t.verification_status = 'VERIFIED'
                       AND sd.publisher <> 'MEDIA'
+                      AND EXISTS (
+                        SELECT 1
+                        FROM source_archive_attestations relationship_archive
+                        WHERE relationship_archive.source_document_id = sd.id
+                          AND relationship_archive.content_sha256 = sd.content_sha256
+                          AND relationship_archive.retrieval_url = sd.url
+                      )
                   ) AS relationships,
                   (
-                    SELECT COUNT(*) FROM news_articles
-                    WHERE publication_status = 'PUBLISHED'
-                      AND review_status = 'VERIFIED_WITH_OFFICIAL_EVIDENCE'
+                    SELECT COUNT(*)
+                    FROM news_articles article
+                    JOIN source_documents article_source
+                      ON article_source.id = article.source_document_id
+                    WHERE article.publication_status = 'PUBLISHED'
+                      AND article.review_status = 'VERIFIED_WITH_OFFICIAL_EVIDENCE'
+                      AND EXISTS (
+                        SELECT 1
+                        FROM source_archive_attestations article_archive
+                        WHERE article_archive.source_document_id = article_source.id
+                          AND article_archive.content_sha256 = article_source.content_sha256
+                          AND article_archive.retrieval_url = article_source.url
+                      )
+                      AND EXISTS (
+                        SELECT 1
+                        FROM news_evidence evidence
+                        JOIN source_documents evidence_source
+                          ON evidence_source.id = evidence.source_document_id
+                        JOIN source_archive_attestations evidence_archive
+                          ON evidence_archive.source_document_id = evidence_source.id
+                        WHERE evidence.news_article_id = article.id
+                          AND evidence_source.publisher <> 'MEDIA'
+                          AND evidence_archive.content_sha256 = evidence_source.content_sha256
+                          AND evidence_archive.retrieval_url = evidence_source.url
+                      )
                   ) AS news,
                   (
-                    SELECT COUNT(*) FROM citizen_alerts
-                    WHERE publication_status = 'PUBLISHED' AND requires_human_review = TRUE
+                    SELECT COUNT(*)
+                    FROM citizen_alerts alert
+                    JOIN source_documents alert_source
+                      ON alert_source.id = alert.source_document_id
+                    WHERE alert.publication_status = 'PUBLISHED'
+                      AND alert.requires_human_review = TRUE
+                      AND EXISTS (
+                        SELECT 1
+                        FROM source_archive_attestations alert_archive
+                        WHERE alert_archive.source_document_id = alert_source.id
+                          AND alert_archive.content_sha256 = alert_source.content_sha256
+                          AND alert_archive.retrieval_url = alert_source.url
+                      )
                   ) AS citizen_alerts
                 """
             )
@@ -408,7 +533,15 @@ class PostgresRepository:
                 ) review ON review.publishable = TRUE
                 JOIN source_documents sd ON sd.id = ms.source_document_id
                 LEFT JOIN parties pa ON pa.id = ms.party_id
-                WHERE p.active = TRUE AND ($1::text IS NULL OR p.slug = $1)
+                WHERE p.active = TRUE
+                  AND EXISTS (
+                      SELECT 1
+                      FROM source_archive_attestations profile_archive
+                      WHERE profile_archive.source_document_id = sd.id
+                        AND profile_archive.content_sha256 = sd.content_sha256
+                        AND profile_archive.retrieval_url = sd.url
+                  )
+                  AND ($1::text IS NULL OR p.slug = $1)
                 ORDER BY name, p.id
                 LIMIT $2 OFFSET $3
                 """,
@@ -477,10 +610,30 @@ class PostgresRepository:
                                  available_event.source_document_id
                              AND available_event.is_nominal = TRUE
                              AND available_source.publisher = 'PARLIAMENT'
+                             AND EXISTS (
+                                 SELECT 1
+                                 FROM source_archive_attestations available_archive
+                                 WHERE available_archive.source_document_id =
+                                       available_source.id
+                                   AND available_archive.content_sha256 =
+                                       available_source.content_sha256
+                                   AND available_archive.retrieval_url =
+                                       available_source.url
+                             )
                        ) AS nominal_vote_count
                 FROM mandates m
                 JOIN attendance_records ar ON ar.mandate_id = m.id
+                JOIN source_documents attendance_source
+                  ON attendance_source.id = ar.source_document_id
                 WHERE m.person_id = $1
+                  AND EXISTS (
+                      SELECT 1
+                      FROM source_archive_attestations attendance_archive
+                      WHERE attendance_archive.source_document_id = attendance_source.id
+                        AND attendance_archive.content_sha256 =
+                            attendance_source.content_sha256
+                        AND attendance_archive.retrieval_url = attendance_source.url
+                  )
                 """,
                 row["id"],
             )
@@ -510,6 +663,13 @@ class PostgresRepository:
                   AND vr.choice IN ('FAVOR', 'AGAINST', 'ABSTENTION', 'ABSENT')
                   AND vr.source_document_id = ve.source_document_id
                   AND sd.publisher = 'PARLIAMENT'
+                  AND EXISTS (
+                      SELECT 1
+                      FROM source_archive_attestations vote_archive
+                      WHERE vote_archive.source_document_id = sd.id
+                        AND vote_archive.content_sha256 = sd.content_sha256
+                        AND vote_archive.retrieval_url = sd.url
+                  )
                 ORDER BY ve.voted_at DESC NULLS LAST, ve.id DESC
                 LIMIT 50
                 """,
@@ -523,6 +683,13 @@ class PostgresRepository:
                 FROM asset_declaration_metadata adm
                 JOIN source_documents sd ON sd.id = adm.source_document_id
                 WHERE adm.person_id = $1
+                  AND EXISTS (
+                      SELECT 1
+                      FROM source_archive_attestations declaration_archive
+                      WHERE declaration_archive.source_document_id = sd.id
+                        AND declaration_archive.content_sha256 = sd.content_sha256
+                        AND declaration_archive.retrieval_url = sd.url
+                  )
                 ORDER BY adm.declared_at DESC NULLS LAST, adm.created_at DESC
                 LIMIT 1
                 """,
@@ -586,9 +753,34 @@ class PostgresRepository:
                         WHERE pr.promise_id = p.id
                         ORDER BY pr.reviewed_at DESC, pr.id DESC LIMIT 1
                     ) latest_review ON latest_review.decision = 'ACCEPT'
+                    JOIN government_programmes selected_programme
+                      ON selected_programme.id = p.programme_id
+                    JOIN source_documents selected_programme_source
+                      ON selected_programme_source.id = selected_programme.source_document_id
                     WHERE p.status IN ('FULFILLED', 'IN_PROGRESS', 'BROKEN', 'ABANDONED')
                       AND EXISTS (
-                        SELECT 1 FROM promise_evidence proof WHERE proof.promise_id = p.id
+                        SELECT 1
+                        FROM source_archive_attestations selected_programme_archive
+                        WHERE selected_programme_archive.source_document_id =
+                              selected_programme_source.id
+                          AND selected_programme_archive.content_sha256 =
+                              selected_programme_source.content_sha256
+                          AND selected_programme_archive.retrieval_url =
+                              selected_programme_source.url
+                      )
+                      AND EXISTS (
+                        SELECT 1
+                        FROM promise_evidence selected_proof
+                        JOIN source_documents selected_evidence_source
+                          ON selected_evidence_source.id = selected_proof.source_document_id
+                        JOIN source_archive_attestations selected_evidence_archive
+                          ON selected_evidence_archive.source_document_id =
+                             selected_evidence_source.id
+                        WHERE selected_proof.promise_id = p.id
+                          AND selected_evidence_archive.content_sha256 =
+                              selected_evidence_source.content_sha256
+                          AND selected_evidence_archive.retrieval_url =
+                              selected_evidence_source.url
                       )
                     ORDER BY p.area, p.title, p.id
                     LIMIT $1 OFFSET $2
@@ -613,6 +805,20 @@ class PostgresRepository:
                 JOIN promise_evidence pe ON pe.promise_id = p.id
                 JOIN source_documents evidence_sd ON evidence_sd.id = pe.source_document_id
                 LEFT JOIN laws l ON l.id = pe.law_id
+                WHERE EXISTS (
+                    SELECT 1
+                    FROM source_archive_attestations programme_archive
+                    WHERE programme_archive.source_document_id = programme_sd.id
+                      AND programme_archive.content_sha256 = programme_sd.content_sha256
+                      AND programme_archive.retrieval_url = programme_sd.url
+                )
+                  AND EXISTS (
+                    SELECT 1
+                    FROM source_archive_attestations evidence_archive
+                    WHERE evidence_archive.source_document_id = evidence_sd.id
+                      AND evidence_archive.content_sha256 = evidence_sd.content_sha256
+                      AND evidence_archive.retrieval_url = evidence_sd.url
+                  )
                 ORDER BY p.area, p.title, pe.created_at, pe.id
                 """,
                 limit,
@@ -657,7 +863,14 @@ class PostgresRepository:
                        r.valid_from, r.valid_until, r.from_entity_id, r.to_entity_id,
                        f.public_label AS from_label, f.kind::text AS from_kind,
                        t.public_label AS to_label, t.kind::text AS to_kind,
-                       pc.contract_value, pc.published_at AS contract_published_at,
+                       CASE WHEN contract_proof.attested
+                                  AND pc.publication_status = 'PUBLISHED'
+                                  AND pc.verification_status = 'VERIFIED'
+                            THEN pc.contract_value END AS contract_value,
+                       CASE WHEN contract_proof.attested
+                                  AND pc.publication_status = 'PUBLISHED'
+                                  AND pc.verification_status = 'VERIFIED'
+                            THEN pc.published_at END AS contract_published_at,
                        CASE WHEN f.kind = 'PARTY' THEN f.public_label
                             WHEN t.kind = 'PARTY' THEN t.public_label END AS party_label,
                        CASE WHEN f.kind IN ('COMPANY', 'NON_PROFIT') THEN f.public_label
@@ -671,6 +884,15 @@ class PostgresRepository:
                 JOIN interest_entities t ON t.id = r.to_entity_id
                 JOIN source_documents sd ON sd.id = r.source_document_id
                 LEFT JOIN public_contracts pc ON pc.id = r.public_contract_id
+                LEFT JOIN source_documents contract_sd ON contract_sd.id = pc.source_document_id
+                LEFT JOIN LATERAL (
+                    SELECT TRUE AS attested
+                    FROM source_archive_attestations contract_archive
+                    WHERE contract_archive.source_document_id = contract_sd.id
+                      AND contract_archive.content_sha256 = contract_sd.content_sha256
+                      AND contract_archive.retrieval_url = contract_sd.url
+                    LIMIT 1
+                ) contract_proof ON TRUE
                 WHERE r.publication_status = 'PUBLISHED'
                   AND r.verification_status = 'VERIFIED'
                   AND f.publication_status = 'PUBLISHED'
@@ -678,6 +900,13 @@ class PostgresRepository:
                   AND t.publication_status = 'PUBLISHED'
                   AND t.verification_status = 'VERIFIED'
                   AND sd.publisher <> 'MEDIA'
+                  AND EXISTS (
+                      SELECT 1
+                      FROM source_archive_attestations relationship_archive
+                      WHERE relationship_archive.source_document_id = sd.id
+                        AND relationship_archive.content_sha256 = sd.content_sha256
+                        AND relationship_archive.retrieval_url = sd.url
+                  )
                 ORDER BY COALESCE(r.valid_from, r.reviewed_at) DESC NULLS LAST, r.id
                 LIMIT $1
                 """,
@@ -699,12 +928,26 @@ class PostgresRepository:
                        vote_sd.retrieved_at AS vote_source_retrieved_at,
                        vote_sd.content_sha256 AS vote_source_sha256,
                        snapshot.score, snapshot.comparable_count,
-                       (SELECT COUNT(*) FROM public_statements all_ps
-                        WHERE all_ps.person_id = p.id) AS total_statements
+                       (
+                         SELECT COUNT(*)
+                         FROM public_statements all_ps
+                         JOIN source_documents all_statement_sd
+                           ON all_statement_sd.id = all_ps.source_document_id
+                         WHERE all_ps.person_id = p.id
+                           AND EXISTS (
+                             SELECT 1
+                             FROM source_archive_attestations all_statement_archive
+                             WHERE all_statement_archive.source_document_id = all_statement_sd.id
+                               AND all_statement_archive.content_sha256 =
+                                   all_statement_sd.content_sha256
+                               AND all_statement_archive.retrieval_url = all_statement_sd.url
+                           )
+                       ) AS total_statements
                 FROM statement_vote_comparisons c
                 JOIN public_statements ps ON ps.id = c.statement_id
                 JOIN people p ON p.id = ps.person_id
                 JOIN source_documents statement_sd ON statement_sd.id = ps.source_document_id
+                JOIN source_documents comparison_sd ON comparison_sd.id = c.source_document_id
                 JOIN vote_events ve ON ve.id = c.vote_event_id
                 JOIN vote_records vr ON vr.vote_event_id = ve.id
                   AND vr.person_id = ps.person_id AND vr.actor_type = 'PERSON'
@@ -733,6 +976,27 @@ class PostgresRepository:
                   AND ve.is_nominal = TRUE
                   AND vote_sd.publisher = 'PARLIAMENT'
                   AND statement_sd.publisher <> 'MEDIA'
+                  AND EXISTS (
+                      SELECT 1
+                      FROM source_archive_attestations comparison_archive
+                      WHERE comparison_archive.source_document_id = comparison_sd.id
+                        AND comparison_archive.content_sha256 = comparison_sd.content_sha256
+                        AND comparison_archive.retrieval_url = comparison_sd.url
+                  )
+                  AND EXISTS (
+                      SELECT 1
+                      FROM source_archive_attestations vote_archive
+                      WHERE vote_archive.source_document_id = vote_sd.id
+                        AND vote_archive.content_sha256 = vote_sd.content_sha256
+                        AND vote_archive.retrieval_url = vote_sd.url
+                  )
+                  AND EXISTS (
+                      SELECT 1
+                      FROM source_archive_attestations statement_archive
+                      WHERE statement_archive.source_document_id = statement_sd.id
+                        AND statement_archive.content_sha256 = statement_sd.content_sha256
+                        AND statement_archive.retrieval_url = statement_sd.url
+                  )
                 ORDER BY c.reviewed_at DESC, c.id
                 LIMIT 20
                 """
@@ -882,7 +1146,7 @@ class PostgresRepository:
             )
 
     @staticmethod
-    async def _upsert_source_document(
+    async def _ensure_source_document(
         connection: asyncpg.Connection,
         *,
         publisher: str,
@@ -891,17 +1155,17 @@ class PostgresRepository:
         url: str,
         retrieved_at: datetime,
         content_sha256: str,
+        mime_type: str | None,
         parser_version: str,
     ) -> str:
         row = await connection.fetchrow(
             """
             INSERT INTO source_documents
                 (id, publisher, kind, title, url, retrieved_at, content_sha256,
-                 parser_version, created_at)
-            VALUES ($1, $2::"SourcePublisher", $3::"DocumentKind", $4, $5, $6, $7, $8, NOW())
-            ON CONFLICT (url, content_sha256) DO UPDATE SET
-                retrieved_at = GREATEST(source_documents.retrieved_at, EXCLUDED.retrieved_at),
-                parser_version = EXCLUDED.parser_version
+                 mime_type, parser_version, created_at)
+            VALUES ($1, $2::"SourcePublisher", $3::"DocumentKind", $4, $5, $6,
+                    $7, $8, $9, NOW())
+            ON CONFLICT (url, content_sha256) DO NOTHING
             RETURNING id
             """,
             _new_id("source"),
@@ -911,9 +1175,324 @@ class PostgresRepository:
             url,
             _database_timestamp(retrieved_at),
             content_sha256,
+            mime_type,
             parser_version,
         )
+        if row is None:
+            # Uma segunda instrução recebe um novo snapshot READ COMMITTED. Assim,
+            # também encontra a linha quando outra transação ganhou a corrida do
+            # índice único imediatamente antes do ``ON CONFLICT``.
+            row = await connection.fetchrow(
+                """
+                SELECT id
+                FROM source_documents
+                WHERE url = $1 AND content_sha256 = $2
+                """,
+                url,
+                content_sha256,
+            )
+        if row is None:
+            raise RuntimeError("Não foi possível garantir o SourceDocument imutável")
         return str(row["id"])
+
+    @staticmethod
+    async def _attest_source_archive(
+        connection: asyncpg.Connection,
+        *,
+        source_document_id: str,
+        receipt: RawArchiveReceipt,
+        archived_by: str,
+    ) -> dict[str, Any]:
+        actor_alias = archived_by.strip()
+        if not actor_alias or len(actor_alias) > 200:
+            raise ValueError("O pseudónimo do processo de arquivo é inválido")
+        source_url = require_official_url(str(receipt.source_url))
+        source = await connection.fetchrow(
+            """
+            SELECT id, url, content_sha256
+            FROM source_documents
+            WHERE id = $1
+            FOR UPDATE
+            """,
+            source_document_id,
+        )
+        if source is None:
+            raise LookupError("SourceDocument não encontrado para atestação")
+        if str(source["url"]) != source_url:
+            raise ValueError("O URL recolhido não corresponde ao SourceDocument")
+        if str(source["content_sha256"]) != receipt.content_sha256:
+            raise ValueError("O SHA-256 arquivado não corresponde ao SourceDocument")
+
+        retrieved_at = _millisecond_utc(receipt.retrieved_at)
+        archived_at = _millisecond_utc(receipt.recorded_at)
+        attestation_sha256 = _archive_attestation_sha256(
+            source_document_id=source_document_id,
+            receipt=receipt,
+            archived_at=archived_at,
+            archived_by=actor_alias,
+        )
+        attestation_id = _new_id("source_archive")
+        inserted = await connection.fetchrow(
+            """
+            INSERT INTO source_archive_attestations
+                (id, source_document_id, storage_backend, storage_key,
+                 content_sha256, byte_size, mime_type, retrieval_url,
+                 retrieved_at, archived_at, archived_by, attestation_sha256,
+                 created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
+            ON CONFLICT (source_document_id, storage_backend, storage_key) DO NOTHING
+            RETURNING id, source_document_id, storage_backend, storage_key,
+                      content_sha256, byte_size, mime_type, retrieval_url,
+                      retrieved_at, archived_at, archived_by, attestation_sha256
+            """,
+            attestation_id,
+            source_document_id,
+            receipt.storage_backend,
+            receipt.storage_key,
+            receipt.content_sha256,
+            receipt.byte_size,
+            receipt.mime_type,
+            source_url,
+            _database_timestamp(retrieved_at),
+            _database_timestamp(archived_at),
+            actor_alias,
+            attestation_sha256,
+        )
+        created = inserted is not None
+        attestation = inserted
+        if attestation is None:
+            attestation = await connection.fetchrow(
+                """
+                SELECT id, source_document_id, storage_backend, storage_key,
+                       content_sha256, byte_size, mime_type, retrieval_url,
+                       retrieved_at, archived_at, archived_by, attestation_sha256
+                FROM source_archive_attestations
+                WHERE source_document_id = $1
+                  AND storage_backend = $2
+                  AND storage_key = $3
+                """,
+                source_document_id,
+                receipt.storage_backend,
+                receipt.storage_key,
+            )
+        if attestation is None:
+            raise RuntimeError("A atestação de arquivo não foi criada nem encontrada")
+
+        expected_existing = {
+            "source_document_id": source_document_id,
+            "storage_backend": receipt.storage_backend,
+            "storage_key": receipt.storage_key,
+            "content_sha256": receipt.content_sha256,
+            "byte_size": receipt.byte_size,
+            "mime_type": receipt.mime_type,
+            "retrieval_url": source_url,
+        }
+        observed_existing = {
+            key: int(attestation[key]) if key == "byte_size" else attestation[key]
+            for key in expected_existing
+        }
+        if observed_existing != expected_existing:
+            raise ValueError("A atestação existente diverge do recibo content-addressed")
+
+        if created:
+            after_json = {
+                **expected_existing,
+                "retrieved_at": retrieved_at.isoformat(),
+                "archived_at": archived_at.isoformat(),
+                "archived_by": actor_alias,
+                "attestation_sha256": attestation_sha256,
+            }
+            await connection.execute(
+                """
+                INSERT INTO audit_events
+                    (id, entity_type, entity_id, action, actor_alias,
+                     before_json, after_json, reason, created_at)
+                VALUES ($1, 'SOURCE_ARCHIVE_ATTESTATION', $2,
+                        'ARCHIVED_OFFICIAL_BYTES', $3, NULL, $4::jsonb,
+                        'Original oficial conservado em arquivo privado content-addressed', NOW())
+                """,
+                _new_id("audit"),
+                str(attestation["id"]),
+                actor_alias,
+                json.dumps(after_json, ensure_ascii=False, default=str),
+            )
+
+        return {
+            "id": str(attestation["id"]),
+            **expected_existing,
+            "retrieved_at": attestation["retrieved_at"],
+            "archived_at": attestation["archived_at"],
+            "archived_by": str(attestation["archived_by"]),
+            "attestation_sha256": str(attestation["attestation_sha256"]),
+            "created": created,
+        }
+
+    async def get_source_document_for_archival(
+        self,
+        *,
+        source_document_id: str,
+    ) -> dict[str, Any]:
+        """Obtém apenas a proveniência necessária para uma recolha de arquivo."""
+
+        if self.pool is None:
+            raise RuntimeError("Base de dados não configurada")
+        async with self.pool.acquire() as connection:
+            row = await connection.fetchrow(
+                """
+                SELECT id, publisher, kind, title, url, retrieved_at,
+                       content_sha256, mime_type, parser_version
+                FROM source_documents
+                WHERE id = $1
+                """,
+                source_document_id,
+            )
+        if row is None:
+            raise LookupError("SourceDocument não encontrado")
+        source_url = require_official_url(str(row["url"]))
+        return {
+            "id": str(row["id"]),
+            "publisher": str(row["publisher"]),
+            "kind": str(row["kind"]),
+            "title": str(row["title"]),
+            "url": source_url,
+            "retrieved_at": row["retrieved_at"],
+            "content_sha256": str(row["content_sha256"]),
+            "mime_type": row["mime_type"],
+            "parser_version": row["parser_version"],
+        }
+
+    async def attest_source_archive(
+        self,
+        *,
+        source_document_id: str,
+        receipt: RawArchiveReceipt,
+        archived_by: str,
+    ) -> dict[str, Any]:
+        """Acrescenta uma atestação e AuditEvent; nunca altera a fonte original."""
+
+        if self.pool is None:
+            raise RuntimeError("Base de dados não configurada")
+        async with self.pool.acquire() as connection, connection.transaction():
+            return await self._attest_source_archive(
+                connection,
+                source_document_id=source_document_id,
+                receipt=receipt,
+                archived_by=archived_by,
+            )
+
+    async def inspect_source_archive_attestation(
+        self,
+        *,
+        source_document_id: str,
+    ) -> dict[str, Any]:
+        """Inspeciona a atestação mais recente sem criar arquivo, revisão ou evento."""
+
+        if self.pool is None:
+            raise RuntimeError("Base de dados não configurada")
+        async with self.pool.acquire() as connection:
+            row = await connection.fetchrow(
+                """
+                SELECT source.id AS source_document_id,
+                       source.publisher, source.kind, source.title, source.url,
+                       source.retrieved_at AS source_retrieved_at,
+                       source.content_sha256 AS source_sha256,
+                       source.mime_type AS source_mime_type,
+                       archive.id AS archive_attestation_id,
+                       archive.storage_backend, archive.storage_key,
+                       archive.content_sha256 AS archive_sha256,
+                       archive.byte_size, archive.mime_type AS archive_mime_type,
+                       archive.retrieval_url, archive.retrieved_at,
+                       archive.archived_at, archive.archived_by,
+                       archive.attestation_sha256
+                FROM source_documents AS source
+                LEFT JOIN LATERAL (
+                    SELECT candidate.*
+                    FROM source_archive_attestations AS candidate
+                    WHERE candidate.source_document_id = source.id
+                    ORDER BY candidate.archived_at DESC, candidate.id DESC
+                    LIMIT 1
+                ) AS archive ON TRUE
+                WHERE source.id = $1
+                """,
+                source_document_id,
+            )
+        if row is None:
+            raise LookupError("SourceDocument não encontrado")
+
+        source_url = require_official_url(str(row["url"]))
+        source_sha256 = str(row["source_sha256"])
+        archive_present = row["archive_attestation_id"] is not None
+        expected_storage_key = f"sha256/{source_sha256[:2]}/{source_sha256}"
+        archive_hash_matches = archive_present and str(row["archive_sha256"]) == source_sha256
+        archive_url_matches = archive_present and str(row["retrieval_url"]) == source_url
+        archive_key_matches = archive_present and str(row["storage_key"]) == expected_storage_key
+        attestation_hash_matches = False
+        if archive_present:
+            retrieved_at = _utc_database_timestamp(row["retrieved_at"])
+            archived_at = _utc_database_timestamp(row["archived_at"])
+            receipt = RawArchiveReceipt(
+                storage_backend=str(row["storage_backend"]),
+                storage_key=str(row["storage_key"]),
+                content_sha256=str(row["archive_sha256"]),
+                byte_size=int(row["byte_size"]),
+                mime_type=row["archive_mime_type"],
+                source_url=HttpUrl(source_url),
+                retrieved_at=retrieved_at,
+                recorded_at=archived_at,
+                object_created=False,
+            )
+            expected_attestation_sha256 = _archive_attestation_sha256(
+                source_document_id=source_document_id,
+                receipt=receipt,
+                archived_at=_millisecond_utc(archived_at),
+                archived_by=str(row["archived_by"]),
+            )
+            attestation_hash_matches = expected_attestation_sha256 == str(row["attestation_sha256"])
+
+        return {
+            "publication_eligible": False,
+            "publication_rule": (
+                "A inspeção do arquivo é privada e de leitura; uma atestação não constitui "
+                "revisão humana nem autorização de publicação."
+            ),
+            "source": {
+                "id": source_document_id,
+                "publisher": str(row["publisher"]),
+                "kind": str(row["kind"]),
+                "title": str(row["title"]),
+                "url": source_url,
+                "retrieved_at": row["source_retrieved_at"],
+                "content_sha256": source_sha256,
+                "mime_type": row["source_mime_type"],
+            },
+            "archive": (
+                {
+                    "id": str(row["archive_attestation_id"]),
+                    "storage_backend": str(row["storage_backend"]),
+                    "storage_key": str(row["storage_key"]),
+                    "content_sha256": str(row["archive_sha256"]),
+                    "byte_size": int(row["byte_size"]),
+                    "mime_type": row["archive_mime_type"],
+                    "retrieval_url": str(row["retrieval_url"]),
+                    "retrieved_at": row["retrieved_at"],
+                    "archived_at": row["archived_at"],
+                    "archived_by": str(row["archived_by"]),
+                    "attestation_sha256": str(row["attestation_sha256"]),
+                }
+                if archive_present
+                else None
+            ),
+            "availability": "VERIFICATION_PENDING" if archive_present else "UNAVAILABLE",
+            "checks": {
+                "official_source_url": bool(source_url),
+                "valid_source_sha256": bool(re.fullmatch(r"[0-9a-f]{64}", source_sha256)),
+                "archive_attested": archive_present,
+                "archive_hash_matches_source": archive_hash_matches,
+                "archive_url_matches_source": archive_url_matches,
+                "archive_key_matches_source_hash": archive_key_matches,
+                "attestation_hash_valid": attestation_hash_matches,
+            },
+        }
 
     @staticmethod
     async def _deactivate_stale_parliament_people(
@@ -984,9 +1563,16 @@ class PostgresRepository:
         *,
         kind: str,
         code_version: str,
+        archive_receipt: RawArchiveReceipt | None = None,
     ) -> dict[str, int]:
         if kind not in {"deputies", "votes"}:
             raise ValueError("Tipo de dataset parlamentar desconhecido")
+        if archive_receipt is None:
+            raise ValueError("A persistência parlamentar exige arquivo prévio dos bytes oficiais")
+        if archive_receipt.content_sha256 != dataset.document_sha256:
+            raise ValueError("O recibo de arquivo não corresponde ao hash do dataset")
+        if str(archive_receipt.source_url) != str(dataset.dataset_url):
+            raise ValueError("O recibo de arquivo não corresponde ao URL efetivo do dataset")
         if self.pool is None:
             raise RuntimeError("Base de dados não configurada")
         source_name = f"PARLIAMENT_{kind.upper()}"
@@ -1002,7 +1588,7 @@ class PostgresRepository:
             async with self.pool.acquire() as connection, connection.transaction():
                 if kind == "votes":
                     await self._ensure_initial_parliament_vote_snapshot(connection)
-                source_document_id = await self._upsert_source_document(
+                source_document_id = await self._ensure_source_document(
                     connection,
                     publisher="PARLIAMENT",
                     kind="OPEN_DATASET",
@@ -1010,7 +1596,14 @@ class PostgresRepository:
                     url=str(dataset.dataset_url),
                     retrieved_at=dataset.collected_at,
                     content_sha256=dataset.document_sha256,
+                    mime_type=archive_receipt.mime_type,
                     parser_version=code_version,
+                )
+                archive_attestation = await self._attest_source_archive(
+                    connection,
+                    source_document_id=source_document_id,
+                    receipt=archive_receipt,
+                    archived_by=f"sync:{code_version}",
                 )
                 if kind == "deputies":
                     deactivated = await self._deactivate_stale_parliament_people(
@@ -1141,6 +1734,7 @@ class PostgresRepository:
             "records_read": records_read,
             "records_written": written,
             "records_deactivated": deactivated,
+            "archive_attestations_written": int(archive_attestation["created"]),
         }
 
     async def inspect_parliament_votes_staging(
@@ -1167,6 +1761,17 @@ class PostgresRepository:
                        source.url AS source_url, source.retrieved_at,
                        source.content_sha256, source.mime_type,
                        source.raw_storage_key, source.parser_version,
+                       MAX(archive.id) AS archive_attestation_id,
+                       MAX(archive.storage_backend) AS archive_storage_backend,
+                       MAX(archive.storage_key) AS archive_storage_key,
+                       MAX(archive.content_sha256) AS archive_content_sha256,
+                       MAX(archive.byte_size) AS archive_byte_size,
+                       MAX(archive.mime_type) AS archive_mime_type,
+                       MAX(archive.retrieval_url) AS archive_retrieval_url,
+                       MAX(archive.retrieved_at) AS archive_retrieved_at,
+                       MAX(archive.archived_at) AS archive_archived_at,
+                       MAX(archive.archived_by) AS archive_archived_by,
+                       MAX(archive.attestation_sha256) AS archive_attestation_sha256,
                        COUNT(DISTINCT event.id) AS event_count,
                        COUNT(record.id) AS position_count,
                        COUNT(DISTINCT event.id) FILTER (
@@ -1189,6 +1794,13 @@ class PostgresRepository:
                        ) AS party_link_count
                 FROM sync_runs run
                 JOIN source_documents source ON source.url = run.dataset_url
+                LEFT JOIN LATERAL (
+                    SELECT candidate.*
+                    FROM source_archive_attestations candidate
+                    WHERE candidate.source_document_id = source.id
+                    ORDER BY candidate.archived_at DESC, candidate.id DESC
+                    LIMIT 1
+                ) archive ON TRUE
                 JOIN vote_events event ON event.source_document_id = source.id
                 LEFT JOIN vote_records record
                   ON record.vote_event_id = event.id
@@ -1287,6 +1899,17 @@ class PostgresRepository:
         parser_version = str(snapshot["parser_version"] or "")
         code_version = str(snapshot["code_version"])
         unavailable_events = [dict(row) for row in events_without_positions]
+        archive_attested = snapshot["archive_attestation_id"] is not None
+        expected_archive_key = f"sha256/{source_sha256[:2]}/{source_sha256}"
+        archive_hash_matches = (
+            archive_attested and str(snapshot["archive_content_sha256"]) == source_sha256
+        )
+        archive_url_matches = (
+            archive_attested and str(snapshot["archive_retrieval_url"]) == source_url
+        )
+        archive_key_matches = (
+            archive_attested and str(snapshot["archive_storage_key"]) == expected_archive_key
+        )
 
         return {
             "legislature": legislature,
@@ -1318,6 +1941,23 @@ class PostgresRepository:
                 "mime_type": snapshot["mime_type"],
                 "raw_storage_key": snapshot["raw_storage_key"],
                 "parser_version": parser_version,
+                "archive_attestation": (
+                    {
+                        "id": str(snapshot["archive_attestation_id"]),
+                        "storage_backend": str(snapshot["archive_storage_backend"]),
+                        "storage_key": str(snapshot["archive_storage_key"]),
+                        "content_sha256": str(snapshot["archive_content_sha256"]),
+                        "byte_size": int(snapshot["archive_byte_size"]),
+                        "mime_type": snapshot["archive_mime_type"],
+                        "retrieval_url": str(snapshot["archive_retrieval_url"]),
+                        "retrieved_at": snapshot["archive_retrieved_at"],
+                        "archived_at": snapshot["archive_archived_at"],
+                        "archived_by": str(snapshot["archive_archived_by"]),
+                        "attestation_sha256": str(snapshot["archive_attestation_sha256"]),
+                    }
+                    if archive_attested
+                    else None
+                ),
             },
             "counts": {
                 "events": event_count,
@@ -1361,6 +2001,10 @@ class PostgresRepository:
                 ),
                 "unavailable_list_matches_count": (len(unavailable_events) == unavailable_count),
                 "parser_matches_sync_code_version": parser_version == code_version,
+                "archive_attested": archive_attested,
+                "archive_hash_matches_source": archive_hash_matches,
+                "archive_url_matches_source": archive_url_matches,
+                "archive_key_matches_source_hash": archive_key_matches,
             },
         }
 
@@ -1431,12 +2075,15 @@ class PostgresRepository:
                 current = await connection.fetchrow(
                     """
                     SELECT id, verification_status::text AS verification_status,
-                           publication_status::text AS publication_status
+                           publication_status::text AS publication_status,
+                           source_document_id
                     FROM public_contracts WHERE id = $1
                     """,
                     entity_id,
                 )
                 evidence_exists = current is not None
+                if current is not None:
+                    review_source_document_id = str(current["source_document_id"])
                 sensitivity = "PUBLIC_OFFICIAL"
             elif entity_type == "INTEREST_ENTITY":
                 current = await connection.fetchrow(
@@ -1457,7 +2104,8 @@ class PostgresRepository:
                            f.publication_status::text AS from_publication_status,
                            t.publication_status::text AS to_publication_status,
                            f.verification_status::text AS from_verification_status,
-                           t.verification_status::text AS to_verification_status
+                           t.verification_status::text AS to_verification_status,
+                           r.source_document_id
                     FROM interest_relationships r
                     JOIN interest_entities f ON f.id = r.from_entity_id
                     JOIN interest_entities t ON t.id = r.to_entity_id
@@ -1472,12 +2120,31 @@ class PostgresRepository:
                     and current["from_verification_status"] == "VERIFIED"
                     and current["to_verification_status"] == "VERIFIED"
                 )
+                if current is not None:
+                    review_source_document_id = str(current["source_document_id"])
                 sensitivity = "PUBLIC_OFFICIAL"
 
             if current is None:
                 raise ValueError("Entidade a rever não encontrada")
             if publish and not evidence_exists:
                 raise ValueError("A publicação exige prova associada e dependências publicadas")
+            if publish and review_source_document_id is not None:
+                archive_exists = await connection.fetchval(
+                    """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM source_archive_attestations archive
+                        JOIN source_documents source
+                          ON source.id = archive.source_document_id
+                        WHERE source.id = $1
+                          AND archive.content_sha256 = source.content_sha256
+                          AND archive.retrieval_url = source.url
+                    )
+                    """,
+                    review_source_document_id,
+                )
+                if not archive_exists:
+                    raise ValueError("A publicação exige atestação do original no arquivo privado")
 
             before = dict(current)
             if entity_type == "PROMISE":
@@ -1595,8 +2262,19 @@ class PostgresRepository:
             """
             SELECT sd.id, sd.url, sd.content_sha256, sd.retrieved_at,
                    sd.parser_version, MAX(snapshot.observed_at) AS observed_at,
-                   COUNT(DISTINCT snapshot.person_id) AS candidate_count
+                   COUNT(DISTINCT snapshot.person_id) AS candidate_count,
+                   MAX(archive.id) AS archive_attestation_id,
+                   MAX(archive.content_sha256) AS archive_content_sha256,
+                   MAX(archive.retrieval_url) AS archive_retrieval_url,
+                   MAX(archive.storage_key) AS archive_storage_key
             FROM source_documents sd
+            LEFT JOIN LATERAL (
+                SELECT candidate.*
+                FROM source_archive_attestations candidate
+                WHERE candidate.source_document_id = sd.id
+                ORDER BY candidate.archived_at DESC, candidate.id DESC
+                LIMIT 1
+            ) archive ON TRUE
             JOIN parliamentary_membership_snapshots snapshot
               ON snapshot.source_document_id = sd.id
             JOIN people person ON person.id = snapshot.person_id
@@ -1618,6 +2296,13 @@ class PostgresRepository:
         source_sha256 = str(source["content_sha256"])
         if not re.fullmatch(r"[0-9a-f]{64}", source_sha256):
             raise ValueError("O documento-fonte não contém um SHA-256 válido")
+        expected_archive_key = f"sha256/{source_sha256[:2]}/{source_sha256}"
+        archive_attested = bool(
+            source["archive_attestation_id"] is not None
+            and str(source["archive_content_sha256"]) == source_sha256
+            and str(source["archive_retrieval_url"]) == source_url
+            and str(source["archive_storage_key"]) == expected_archive_key
+        )
 
         people_query = """
             SELECT person.id, person.source_id,
@@ -1670,6 +2355,13 @@ class PostgresRepository:
             "parser_version": str(source["parser_version"]),
             "sync_code_version": str(sync_run["code_version"]),
             "sync_finished_at": sync_run["finished_at"],
+            "archive_attested": archive_attested,
+            "archive_attestation_id": (
+                str(source["archive_attestation_id"])
+                if source["archive_attestation_id"] is not None
+                else None
+            ),
+            "publication_eligible": archive_attested,
             "candidate_count": candidate_count,
             "already_published": sum(person["latest_publishable"] is True for person in people),
             "people": [dict(person) for person in people],
@@ -1726,6 +2418,8 @@ class PostgresRepository:
                 raise ValueError("O SHA-256 fornecido não corresponde à fotografia mais recente")
             if snapshot["candidate_count"] != expected_count:
                 raise ValueError("A contagem fornecida não corresponde à fotografia mais recente")
+            if not snapshot["archive_attested"]:
+                raise ValueError("O documento-fonte não tem uma atestação de arquivo válida")
 
             pending_people = [
                 person for person in snapshot["people"] if person["latest_publishable"] is not True
@@ -1827,6 +2521,13 @@ class PostgresRepository:
                 LEFT JOIN public_contract_parties p ON p.public_contract_id = c.id
                 WHERE c.publication_status = 'PUBLISHED'
                   AND c.verification_status = 'VERIFIED'
+                  AND EXISTS (
+                    SELECT 1
+                    FROM source_archive_attestations contract_archive
+                    WHERE contract_archive.source_document_id = sd.id
+                      AND contract_archive.content_sha256 = sd.content_sha256
+                      AND contract_archive.retrieval_url = sd.url
+                  )
                 GROUP BY c.id, sd.id
                 ORDER BY c.published_at DESC NULLS LAST, c.source_id
                 LIMIT $1 OFFSET $2
@@ -1846,6 +2547,13 @@ class PostgresRepository:
                   AND r.verification_status = 'VERIFIED'
                   AND f.publication_status = 'PUBLISHED'
                   AND t.publication_status = 'PUBLISHED'
+                  AND EXISTS (
+                    SELECT 1
+                    FROM source_archive_attestations relationship_archive
+                    WHERE relationship_archive.source_document_id = sd.id
+                      AND relationship_archive.content_sha256 = sd.content_sha256
+                      AND relationship_archive.retrieval_url = sd.url
+                  )
                 ORDER BY r.valid_from DESC NULLS LAST, r.id
                 LIMIT $1 OFFSET $2
             """,
@@ -1858,14 +2566,41 @@ class PostgresRepository:
                              'official_source_url', evd.url,
                              'supported_claim', e.supported_claim
                            )
-                         ) FILTER (WHERE e.id IS NOT NULL), '[]'::jsonb
+                         ) FILTER (WHERE evd.id IS NOT NULL), '[]'::jsonb
                        ) AS official_evidence
                 FROM news_articles n
                 JOIN source_documents sd ON sd.id = n.source_document_id
                 LEFT JOIN news_evidence e ON e.news_article_id = n.id
-                LEFT JOIN source_documents evd ON evd.id = e.source_document_id
+                LEFT JOIN source_documents evd
+                  ON evd.id = e.source_document_id
+                 AND EXISTS (
+                    SELECT 1
+                    FROM source_archive_attestations evidence_archive
+                    WHERE evidence_archive.source_document_id = evd.id
+                      AND evidence_archive.content_sha256 = evd.content_sha256
+                      AND evidence_archive.retrieval_url = evd.url
+                 )
                 WHERE n.publication_status = 'PUBLISHED'
                   AND n.review_status = 'VERIFIED_WITH_OFFICIAL_EVIDENCE'
+                  AND EXISTS (
+                    SELECT 1
+                    FROM source_archive_attestations article_archive
+                    WHERE article_archive.source_document_id = sd.id
+                      AND article_archive.content_sha256 = sd.content_sha256
+                      AND article_archive.retrieval_url = sd.url
+                  )
+                  AND EXISTS (
+                    SELECT 1
+                    FROM news_evidence official_evidence
+                    JOIN source_documents official_source
+                      ON official_source.id = official_evidence.source_document_id
+                    JOIN source_archive_attestations official_archive
+                      ON official_archive.source_document_id = official_source.id
+                    WHERE official_evidence.news_article_id = n.id
+                      AND official_source.publisher <> 'MEDIA'
+                      AND official_archive.content_sha256 = official_source.content_sha256
+                      AND official_archive.retrieval_url = official_source.url
+                  )
                 GROUP BY n.id, sd.id
                 ORDER BY n.published_at DESC NULLS LAST
                 LIMIT $1 OFFSET $2
@@ -1879,6 +2614,13 @@ class PostgresRepository:
                 LEFT JOIN municipalities m ON m.id = a.municipality_id
                 WHERE a.publication_status = 'PUBLISHED'
                   AND a.requires_human_review = true
+                  AND EXISTS (
+                    SELECT 1
+                    FROM source_archive_attestations alert_archive
+                    WHERE alert_archive.source_document_id = sd.id
+                      AND alert_archive.content_sha256 = sd.content_sha256
+                      AND alert_archive.retrieval_url = sd.url
+                  )
                 ORDER BY a.effective_at DESC NULLS LAST, a.id
                 LIMIT $1 OFFSET $2
             """,
