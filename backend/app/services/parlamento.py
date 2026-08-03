@@ -1,3 +1,4 @@
+import hashlib
 import json
 import re
 import unicodedata
@@ -12,7 +13,6 @@ from dateutil.parser import parse as parse_datetime
 from pydantic import HttpUrl
 
 from app.core.config import Settings
-from app.core.security import sha256_text
 from app.models.api import (
     Deputy,
     OfficialSource,
@@ -227,7 +227,7 @@ class ParlamentoCollector:
         )
         text = response.content.decode("utf-8-sig", errors="replace")
         try:
-            return json.loads(text), sha256_text(text), str(response.url)
+            return json.loads(text), hashlib.sha256(response.content).hexdigest(), str(response.url)
         except json.JSONDecodeError as exc:
             raise ValueError(f"A fonte oficial não devolveu JSON válido: {response.url}") from exc
 
@@ -485,6 +485,12 @@ class ParlamentoCollector:
         if not votes:
             warnings.append(
                 "Nenhuma votação normalizada; conservar o documento para revisão do mapeamento."
+            )
+        votes_without_positions = sum(not event.records for event in votes)
+        if votes_without_positions:
+            warnings.append(
+                f"{votes_without_positions} votações sem posições normalizadas; "
+                "o detalhe deve ser tratado como dados indisponíveis até confirmação na fonte."
             )
         if any(event.records and not event.is_nominal for event in votes):
             warnings.append(

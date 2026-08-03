@@ -45,8 +45,16 @@ export function PoliticianProfile({ profile }: { profile: PoliticianProfileData 
         </div>
         <div className="stat-card card">
           <span className="stat-card__label">Votações nominais</span>
-          <strong>{profile.votes.filter((vote) => vote.isNominal).length}</strong>
-          <small>Não atribui votos partidários a pessoas individuais.</small>
+          <strong>
+            {profile.nominalVotesAvailable
+              ? profile.nominalVoteCount
+              : "Dados indisponíveis"}
+          </strong>
+          <small>
+            {profile.nominalVotesAvailable
+              ? "Não atribui votos partidários a pessoas individuais."
+              : "Não existem posições nominais individuais aprovadas para este perfil."}
+          </small>
         </div>
         <div className="stat-card card">
           <span className="stat-card__label">Declaração de interesses</span>
@@ -79,18 +87,27 @@ export function PoliticianProfile({ profile }: { profile: PoliticianProfileData 
               </tr>
             </thead>
             <tbody>
-              {profile.votes.map((vote) => (
-                <tr key={vote.id}>
-                  <td>
-                    <strong>{vote.title}</strong>
-                    <small>{vote.initiativeNumber}</small>
+              {profile.nominalVotesAvailable ? (
+                profile.votes.map((vote) => (
+                  <tr key={vote.id}>
+                    <td>
+                      <strong>{vote.title}</strong>
+                      <small>{vote.initiativeNumber}</small>
+                    </td>
+                    <td><span className="table-date"><ClockIcon /> {vote.date}</span></td>
+                    <td><span className={`vote-pill vote-pill--${vote.choice.toLowerCase()}`}>{voteLabels[vote.choice]}</span></td>
+                    <td>{vote.result}</td>
+                    <td><SourceLink source={vote.source} compact /></td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5}>
+                    Dados indisponíveis: não existem posições nominais individuais
+                    aprovadas para este perfil.
                   </td>
-                  <td><span className="table-date"><ClockIcon /> {vote.date}</span></td>
-                  <td><span className={`vote-pill vote-pill--${vote.choice.toLowerCase()}`}>{voteLabels[vote.choice]}</span></td>
-                  <td>{vote.result}</td>
-                  <td><SourceLink source={vote.source} compact /></td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>

@@ -23,13 +23,46 @@ test("parliamentary observations are not represented as inferred mandate starts"
   assert.doesNotMatch(migration, /started_at/);
 });
 
-test("collectors persist into staging without auto-publication", async () => {
+test("ingestion paths fail closed without auto-publication", async () => {
   const repository = await readFile(
     new URL("../backend/app/repositories/postgres.py", import.meta.url),
     "utf8",
   );
+  const baseScript = await readFile(
+    new URL("../backend/scripts/sync_base_contracts.py", import.meta.url),
+    "utf8",
+  );
   assert.match(repository, /store_parliament_dataset/);
   assert.match(repository, /store_base_collection/);
-  assert.match(repository, /'INGESTED', 'UNDER_REVIEW'/);
-  assert.doesNotMatch(repository, /'VERIFIED', 'PUBLISHED'.*INSERT INTO public_contracts/s);
+  assert.match(repository, /BASE_PERSISTENCE_DISABLED_MESSAGE/);
+  assert.match(repository, /raise RuntimeError\(BASE_PERSISTENCE_DISABLED_MESSAGE\)/);
+  assert.match(repository, /PARLIAMENT_VOTES_SNAPSHOT/);
+  assert.match(baseScript, /parser\.error\(BASE_PERSISTENCE_DISABLED_MESSAGE\)/);
+  assert.doesNotMatch(repository, /INSERT INTO public_contracts/);
+});
+
+test("unreviewed nominal vote coverage is shown as unavailable rather than zero", async () => {
+  const client = await readFile(new URL("../lib/public-data.ts", import.meta.url), "utf8");
+  const types = await readFile(new URL("../types/domain.ts", import.meta.url), "utf8");
+  const profile = await readFile(
+    new URL("../components/politician-profile.tsx", import.meta.url),
+    "utf8",
+  );
+  const demo = await readFile(new URL("../lib/demo-data.ts", import.meta.url), "utf8");
+
+  assert.match(client, /nominal_votes_available:\s*boolean/);
+  assert.match(client, /nominal_vote_count:\s*number/);
+  assert.match(client, /nominalVotesAvailable:\s*result\.data\.nominal_votes_available/);
+  assert.match(client, /nominalVoteCount:\s*result\.data\.nominal_vote_count/);
+  assert.match(types, /nominalVotesAvailable:\s*boolean/);
+  assert.match(types, /nominalVoteCount:\s*number/);
+  assert.match(demo, /nominalVotesAvailable:\s*true/);
+  assert.match(demo, /nominalVoteCount:\s*3/);
+  assert.match(
+    profile,
+    /profile\.nominalVotesAvailable[\s\S]*profile\.nominalVoteCount[\s\S]*"Dados indisponíveis"/,
+  );
+  assert.doesNotMatch(profile, /profile\.votes\.filter\([\s\S]*\.length/);
+  assert.match(profile, /Não existem posições nominais individuais aprovadas para este perfil/);
+  assert.match(profile, /Dados indisponíveis:[\s\S]*posições nominais individuais/);
 });

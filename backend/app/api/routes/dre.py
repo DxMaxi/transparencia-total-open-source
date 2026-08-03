@@ -1,12 +1,17 @@
 import httpx
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.config import get_settings
+from app.core.security import require_admin_key
 from app.models.api import LegalDocument
 from app.services.dre import DreCollector
 from app.services.http import OfficialHttpClient
 
-router = APIRouter(prefix="/dre", tags=["Diário da República"])
+router = APIRouter(
+    prefix="/dre",
+    tags=["Diário da República"],
+    dependencies=[Depends(require_admin_key)],
+)
 
 
 @router.get("/document", response_model=LegalDocument)

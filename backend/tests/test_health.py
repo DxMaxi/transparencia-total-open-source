@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -17,7 +18,24 @@ def test_push_broadcast_requires_admin_configuration() -> None:
             "/api/v1/push/broadcast",
             json={"title": "Alerta", "body": "Atualização oficial", "url": "/"},
         )
-    assert response.status_code == 503
+    assert response.status_code in {401, 503}
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/v1/parliament/deputies?legislature=XVII",
+        "/api/v1/parliament/votes?legislature=XVII",
+        "/api/v1/dre/document?source_url=https://diariodarepublica.pt/",
+        "/api/v1/dre/rss",
+        "/api/v1/transparency-entity/resources",
+    ],
+)
+def test_ingestion_adapters_require_admin_key(path: str) -> None:
+    with TestClient(app) as client:
+        response = client.get(path)
+
+    assert response.status_code in {401, 503}
 
 
 def test_civic_guide_is_disabled_by_default() -> None:

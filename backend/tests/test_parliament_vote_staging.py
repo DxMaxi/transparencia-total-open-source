@@ -1,0 +1,270 @@
+import asyncio
+from contextlib import AbstractAsyncContextManager
+from datetime import datetime
+from typing import Any
+
+from app.repositories.postgres import PostgresRepository
+
+
+class ReadOnlyAcquire(AbstractAsyncContextManager[Any]):
+    def __init__(self, connection: Any) -> None:
+        self.connection = connection
+
+    async def __aenter__(self) -> Any:
+        return self.connection
+
+    async def __aexit__(self, *_: object) -> None:
+        return None
+
+
+class ReadOnlyPool:
+    def __init__(self, connection: Any) -> None:
+        self.connection = connection
+
+    def acquire(self) -> ReadOnlyAcquire:
+        return ReadOnlyAcquire(self.connection)
+
+
+def _repository(connection: Any) -> PostgresRepository:
+    repository = PostgresRepository.__new__(PostgresRepository)
+    repository.pool = ReadOnlyPool(connection)  # type: ignore[assignment]
+    return repository
+
+
+class VoteInspectionConnection:
+    def __init__(self) -> None:
+        self.queries: list[str] = []
+
+    async def fetchrow(self, query: str, *arguments: object) -> dict[str, Any]:
+        self.queries.append(query)
+        assert arguments == ("Assembleia da República — votes — XVII",)
+        return {
+            "sync_run_id": "sync-votes-1",
+            "dataset_url": "https://app.parlamento.pt/IniciativasXVII_json.txt",
+            "sync_status": "PARTIAL",
+            "started_at": datetime(2026, 8, 3, 3, 52, 56),
+            "finished_at": datetime(2026, 8, 3, 4, 9, 26),
+            "records_read": 2_438,
+            "records_written": 22_436,
+            "warnings": ["Existem posições cujo ator não é inequivocamente individual."],
+            "error_message": None,
+            "code_version": "parliament-ingestion-v10",
+            "source_document_id": "source-votes-1",
+            "source_publisher": "PARLIAMENT",
+            "source_kind": "OPEN_DATASET",
+            "source_title": "Assembleia da República — votes — XVII",
+            "source_url": "https://app.parlamento.pt/IniciativasXVII_json.txt",
+            "retrieved_at": datetime(2026, 8, 3, 3, 52, 56),
+            "content_sha256": "a" * 64,
+            "mime_type": None,
+            "raw_storage_key": None,
+            "parser_version": "parliament-ingestion-v10",
+            "event_count": 2_438,
+            "position_count": 19_998,
+            "nominal_event_count": 0,
+            "event_without_date_count": 0,
+            "event_without_normalised_positions_count": 342,
+            "unknown_choice_count": 7,
+            "person_link_count": 0,
+            "party_link_count": 0,
+        }
+
+    async def fetch(self, query: str, *arguments: object) -> list[dict[str, Any]]:
+        self.queries.append(query)
+        assert arguments == ("source-votes-1",)
+        if "AS dimension" in query:
+            return [
+                {"dimension": "choice", "value": "FAVOR", "count": 11_395},
+                {"dimension": "choice", "value": "AGAINST", "count": 3_981},
+                {"dimension": "choice", "value": "ABSTENTION", "count": 3_325},
+                {"dimension": "choice", "value": "ABSENT", "count": 1_290},
+                {"dimension": "choice", "value": "UNKNOWN", "count": 7},
+                {"dimension": "actor_type", "value": "UNKNOWN", "count": 19_998},
+            ]
+        return [
+            {
+                "source_id": f"vote-{index}",
+                "title": f"Votação {index}",
+                "voted_at": None,
+                "result": "Aprovado",
+            }
+            for index in range(342)
+        ]
+
+
+def test_vote_staging_inspection_is_read_only_and_reports_uncertainty() -> None:
+    connection = VoteInspectionConnection()
+
+    report = asyncio.run(
+        _repository(connection).inspect_parliament_votes_staging(legislature="XVII")
+    )
+
+    assert report["publication_eligible"] is False
+    assert report["counts"] == {
+        "events": 2_438,
+        "positions": 19_998,
+        "nominal_events": 0,
+        "events_without_date": 0,
+        "events_without_normalised_positions": 342,
+        "unknown_choices": 7,
+        "person_links": 0,
+        "party_links": 0,
+    }
+    availability = report["normalised_position_availability"]
+    assert availability["event_count"] == 342
+    assert "confirmar no documento oficial" in availability["description"]
+    assert "parser" in availability["description"]
+    assert all(report["checks"].values())
+    assert len(connection.queries) == 3
+    assert all(query.lstrip().startswith("SELECT") for query in connection.queries)
+    snapshot_query = connection.queries[0]
+    assert "source.parser_version = run.code_version" in snapshot_query
+    assert "MIN(event.updated_at) >= run.started_at" in snapshot_query
+    assert "MAX(event.updated_at) <= run.finished_at" in snapshot_query
+    assert "COUNT(DISTINCT event.id) = run.records_read" in snapshot_query
+    assert "COUNT(DISTINCT event.id) + COUNT(record.id) = run.records_written" in snapshot_query
+
+
+class PublicProfileConnection:
+    def __init__(self, *, nominal_vote_count: int = 0) -> None:
+        self.availability_query = ""
+        self.vote_query = ""
+        self.nominal_vote_count = nominal_vote_count
+
+    async def fetch(self, query: str, *arguments: object) -> list[dict[str, Any]]:
+        if "FROM people p" in query:
+            return [
+                {
+                    "id": "person-1",
+                    "slug": "pessoa-1",
+                    "name": "Pessoa 1",
+                    "role": "DEPUTY",
+                    "photo_url": None,
+                    "party": "Partido",
+                    "party_short": "P",
+                    "constituency": "Lisboa",
+                    "legislature": "XVII",
+                    "verified_at": datetime(2026, 8, 1),
+                    "source_publisher": "PARLIAMENT",
+                    "source_url": "https://www.parlamento.pt/",
+                    "source_retrieved_at": datetime(2026, 8, 1),
+                    "source_sha256": "b" * 64,
+                }
+            ]
+        self.vote_query = query
+        return []
+
+    async def fetchrow(self, query: str, *arguments: object) -> dict[str, Any] | None:
+        if "FROM mandates m" in query:
+            self.availability_query = query
+            return {
+                "total": 0,
+                "present": 0,
+                "nominal_vote_count": self.nominal_vote_count,
+            }
+        return None
+
+
+def _public_profile_result(
+    *, nominal_vote_count: int = 0
+) -> tuple[dict[str, Any], PublicProfileConnection]:
+    connection = PublicProfileConnection(nominal_vote_count=nominal_vote_count)
+    profile = asyncio.run(_repository(connection).get_public_politician("pessoa-1"))
+    assert profile is not None
+    return profile, connection
+
+
+def test_public_vote_gate_returns_no_votes_without_review() -> None:
+    profile, connection = _public_profile_result()
+
+    assert profile["nominal_votes_available"] is False
+    assert profile["nominal_vote_count"] == 0
+    assert profile["votes"] == []
+    for query in (connection.availability_query, connection.vote_query):
+        assert "review.entity_type = 'PARLIAMENT_VOTES_SNAPSHOT'" in query
+        assert "JOIN LATERAL" in query
+        assert "LEFT JOIN LATERAL" not in query
+        assert "publishable = TRUE" in query
+
+
+def test_profile_uses_reviewed_total_instead_of_limited_vote_list_length() -> None:
+    profile, connection = _public_profile_result(nominal_vote_count=73)
+
+    assert profile["nominal_votes_available"] is True
+    assert profile["nominal_vote_count"] == 73
+    assert profile["votes"] == []
+    assert "SELECT COUNT(*)" in connection.availability_query
+    assert "LIMIT 50" not in connection.availability_query
+    assert "LIMIT 50" in connection.vote_query
+
+
+def test_latest_negative_vote_review_revokes_an_older_positive_review() -> None:
+    _, connection = _public_profile_result()
+
+    for query in (connection.availability_query, connection.vote_query):
+        order_position = query.index("ORDER BY review.reviewed_at DESC, review.id DESC")
+        selection_position = query.rfind("SELECT review.publishable", 0, order_position)
+        limit_position = query.index("LIMIT 1", order_position)
+        gate_position = query.index("publishable = TRUE", limit_position)
+        review_selection = query[selection_position:limit_position]
+        assert "review.publishable = TRUE" not in review_selection
+        assert selection_position < order_position < limit_position < gate_position
+
+
+def test_review_of_old_source_does_not_authorise_a_new_vote_snapshot() -> None:
+    _, connection = _public_profile_result()
+
+    assert "review.entity_id = available_event.source_document_id" in connection.availability_query
+    assert (
+        "review.source_document_id = available_event.source_document_id"
+        in connection.availability_query
+    )
+    assert "available_record.person_id = $1" in connection.availability_query
+    assert "available_record.actor_type = 'PERSON'" in connection.availability_query
+    assert "available_record.choice IN" in connection.availability_query
+    assert "'FAVOR', 'AGAINST', 'ABSTENTION', 'ABSENT'" in connection.availability_query
+    assert "'PAIRED'" not in connection.availability_query
+    assert "available_record.source_document_id =" in connection.availability_query
+    assert "available_event.source_document_id" in connection.availability_query
+    assert "review.entity_id = ve.source_document_id" in connection.vote_query
+    assert "review.source_document_id = ve.source_document_id" in connection.vote_query
+    assert "vr.source_document_id = ve.source_document_id" in connection.vote_query
+    assert "sd.publisher = 'PARLIAMENT'" in connection.vote_query
+    assert "vr.choice IN ('FAVOR', 'AGAINST', 'ABSTENTION', 'ABSENT')" in connection.vote_query
+    assert "'PAIRED'" not in connection.vote_query
+
+
+class InvestigatorConnection:
+    def __init__(self) -> None:
+        self.queries: list[str] = []
+
+    async def fetch(self, query: str, *arguments: object) -> list[dict[str, Any]]:
+        self.queries.append(query)
+        if len(self.queries) == 1:
+            assert arguments == (25,)
+        else:
+            assert arguments == ()
+        return []
+
+
+def test_public_investigator_uses_the_same_vote_snapshot_gate() -> None:
+    connection = InvestigatorConnection()
+
+    report = asyncio.run(_repository(connection).get_public_investigator_dataset(limit=25))
+
+    assert report["nodes"] == []
+    assert report["edges"] == []
+    assert report["comparisons"] == []
+    assert len(connection.queries) == 2
+    comparison_query = connection.queries[1]
+    assert "review.entity_type = 'PARLIAMENT_VOTES_SNAPSHOT'" in comparison_query
+    assert "review.entity_id = ve.source_document_id" in comparison_query
+    assert "review.source_document_id = ve.source_document_id" in comparison_query
+    assert "ORDER BY review.reviewed_at DESC, review.id DESC" in comparison_query
+    assert "latest_snapshot_review.publishable = TRUE" in comparison_query
+    assert "vr.source_document_id = ve.source_document_id" in comparison_query
+    assert "vote_sd.id = ve.source_document_id" in comparison_query
+    assert "ve.is_nominal = TRUE" in comparison_query
+    assert "vote_sd.publisher = 'PARLIAMENT'" in comparison_query
+    assert "vr.choice IN ('FAVOR', 'AGAINST', 'ABSTENTION', 'ABSENT')" in comparison_query
+    assert "'PAIRED'" not in comparison_query

@@ -48,6 +48,8 @@ export interface PoliticianProfileData {
   portraitUrl?: string;
   attendanceRate?: number;
   attendanceLabel: string;
+  nominalVotesAvailable: boolean;
+  nominalVoteCount: number;
   verifiedAt: string;
   profileSource: OfficialSource;
   declarationSource: OfficialSource;

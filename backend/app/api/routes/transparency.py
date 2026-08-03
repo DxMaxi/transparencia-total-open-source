@@ -1,12 +1,17 @@
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.config import get_settings
+from app.core.security import require_admin_key
 from app.models.api import TransparencyResource
 from app.services.http import OfficialHttpClient
 from app.services.transparency_entity import TransparencyEntityCollector
 
-router = APIRouter(prefix="/transparency-entity", tags=["Entidade para a Transparência"])
+router = APIRouter(
+    prefix="/transparency-entity",
+    tags=["Entidade para a Transparência"],
+    dependencies=[Depends(require_admin_key)],
+)
 
 
 @router.get("/resources", response_model=list[TransparencyResource])

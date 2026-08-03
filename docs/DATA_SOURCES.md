@@ -27,8 +27,16 @@ opacos, `ParlamentoCollector.discover_dataset_url`:
 5. volta a validar o anfitrião após cada redirecionamento;
 6. calcula o hash antes da normalização.
 
-Aliases de campo existem para tolerar nomes históricos. Uma mudança de estrutura que produza zero
+Aliases de campo existem para tolerar nomes históricos. O SHA-256 é calculado sobre os bytes
+recebidos, antes de descodificar e normalizar o JSON. Uma mudança de estrutura que produza zero
 registos gera aviso; não promove uma tabela vazia como verdade.
+
+Na fotografia oficial da legislatura XVII, o detalhe das votações identifica sobretudo grupos
+parlamentares ou rótulos textuais, não deputados através de um identificador individual estável.
+Essas posições permanecem em staging como `UNKNOWN`: uma posição partidária nunca é atribuída a
+uma pessoa. Quando a própria fonte não contém detalhe estruturado, a cobertura é apresentada como
+“dados indisponíveis”, nunca como zero. A leitura pública exige uma revisão humana positiva e
+específica do mesmo documento-fonte.
 
 ## Diário da República
 
@@ -66,11 +74,28 @@ de uma matriz pública de cobertura por fonte e território.
 
 ## Portal BASE e dados.gov.pt
 
-Catálogo oficial: <https://dados.gov.pt/pt/datasets/contratos-publicos-portal-base-impic-contratos-de-2012-a-2025/>
+Catálogo oficial: <https://dados.gov.pt/pt/datasets/contratos-publicos-portal-base-impic-contratos-de-2012-a-2026/>
 
 O coletor lê metadados do catálogo e escolhe o recurso correspondente ao ano. Aceita JSON, XML e ZIP
 com limites de download, tamanho descomprimido e taxa de compressão; nunca executa conteúdos do
-arquivo. Guarda hash do ficheiro e, quando a linha inclui um URL oficial individual, conserva-o.
+arquivo. Guarda o hash ligado ao URL do ficheiro efetivamente descarregado e, quando a linha inclui
+um URL oficial individual, conserva-o apenas como metadado auxiliar. Um URL direto só pode receber
+hash próprio depois de esse documento ser descarregado e verificado separadamente.
+Recursos com o mesmo identificador e conteúdo normalizado equivalente são conservados uma única
+vez; versões materialmente diferentes do mesmo identificador são excluídas da coleção e remetidas
+para revisão, sem escolher automaticamente uma delas.
+
+No formato textual oficial `NIF/NIPC - Nome`, o separador só é aceite por correspondência estrita:
+o nome público perde o prefixo e o identificador é convertido imediatamente para HMAC-SHA-256 com
+pepper. Só o digest excluído da serialização participa na deduplicação e no cruzamento privado; o
+valor em claro não entra na coleção. Sem pepper configurado, usa-se um segredo efémero apenas para
+deduplicar a recolha e não são produzidas correspondências por identificador.
+
+Qualquer sequência autónoma de nove algarismos Unicode — também separada por espaços ou pontuação —
+num nome ou noutro texto livre publicável coloca o contrato em quarentena privada. Campos fiscais
+explícitos não vazios mas inválidos têm o mesmo tratamento. Os avisos são agregados e nunca repetem
+o valor encontrado. Campos tipados, como montante, prazo e identificador oficial do contrato, não
+são reinterpretados automaticamente como NIF.
 
 Extrações de grande volume através da API direta do Portal BASE devem seguir o procedimento oficial
 do IMPIC. A existência de dados públicos não autoriza contornar autenticação, limites ou requisitos

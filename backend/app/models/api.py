@@ -1,9 +1,21 @@
+import re
 from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, SecretStr, field_validator
+
+_PROTECTED_IDENTIFIER_SEQUENCE = re.compile(r"(?<!\d)\d(?:[\W_]*\d){8}(?!\d)")
+_INTERNAL_PERSON_ID = re.compile(r"[A-Za-z][A-Za-z0-9:_-]{1,127}")
+_CANONICAL_UUID = re.compile(
+    r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
+    r"[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+)
+
+
+def _contains_protected_identifier(value: str) -> bool:
+    return _PROTECTED_IDENTIFIER_SEQUENCE.search(value) is not None
 
 
 class SourcePublisher(StrEnum):
@@ -232,10 +244,23 @@ class BaseDatasetResource(BaseModel):
 
 
 class PublicContractParty(BaseModel):
+    model_config = ConfigDict(hide_input_in_errors=True)
+
     name: str = Field(min_length=1, max_length=500)
-    # Usado apenas no cruzamento interno; nunca serializado em respostas ou ficheiros públicos.
-    public_identifier: str | None = Field(default=None, max_length=32, exclude=True)
+    # HMAC usado apenas no cruzamento interno; nunca serializado em respostas ou ficheiros.
+    protected_identifier_digest: SecretStr | None = Field(
+        default=None,
+        exclude=True,
+        repr=False,
+    )
     role: ContractPartyRole
+
+    @field_validator("protected_identifier_digest")
+    @classmethod
+    def validate_identifier_digest(cls, value: SecretStr | None) -> SecretStr | None:
+        if value is not None and not re.fullmatch(r"[0-9a-f]{64}", value.get_secret_value()):
+            raise ValueError("O digest protegido deve ser um HMAC-SHA-256 hexadecimal")
+        return value
 
 
 class PublicContractRecord(BaseModel):
@@ -265,13 +290,31 @@ class BaseContractCollection(BaseModel):
 
 
 class ActorAssociationKey(BaseModel):
+    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
+
     organisation_name: str = Field(min_length=2, max_length=500)
-    public_nipc: str | None = Field(default=None, pattern=r"^\d{9}$")
+    protected_nipc_digest: SecretStr | None = Field(default=None, repr=False, exclude=True)
     official_evidence_url: HttpUrl
+
+    @field_validator("organisation_name")
+    @classmethod
+    def reject_identifier_in_organisation_name(cls, value: str) -> str:
+        if _contains_protected_identifier(value):
+            raise ValueError("A designação pública não pode conter um identificador fiscal")
+        return value
+
+    @field_validator("protected_nipc_digest")
+    @classmethod
+    def validate_nipc_digest(cls, value: SecretStr | None) -> SecretStr | None:
+        if value is not None and not re.fullmatch(r"[0-9a-f]{64}", value.get_secret_value()):
+            raise ValueError("O digest protegido deve ser um HMAC-SHA-256 hexadecimal")
+        return value
 
 
 class PublicActorMatchKey(BaseModel):
-    person_id: str
+    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
+
+    person_id: str = Field(min_length=2, max_length=128)
     public_name: str = Field(min_length=2, max_length=300)
     public_role: Literal[
         "DEPUTY",
@@ -281,16 +324,28 @@ class PublicActorMatchKey(BaseModel):
         "OTHER_PUBLIC_OFFICE",
     ]
     official_role_source_url: HttpUrl
-    protected_nif: SecretStr | None = None
+    protected_nif_digest: SecretStr | None = Field(default=None, repr=False, exclude=True)
     official_associations: list[ActorAssociationKey] = Field(default_factory=list, max_length=100)
 
-    @field_validator("protected_nif")
+    @field_validator("person_id")
     @classmethod
-    def validate_nif(cls, value: SecretStr | None) -> SecretStr | None:
-        if value is not None and not value.get_secret_value().isdigit():
-            raise ValueError("O identificador protegido deve conter apenas algarismos")
-        if value is not None and len(value.get_secret_value()) != 9:
-            raise ValueError("O identificador protegido deve ter nove algarismos")
+    def validate_internal_person_id(cls, value: str) -> str:
+        if not (_INTERNAL_PERSON_ID.fullmatch(value) or _CANONICAL_UUID.fullmatch(value)):
+            raise ValueError("O identificador interno da pessoa tem formato inválido")
+        return value
+
+    @field_validator("public_name")
+    @classmethod
+    def reject_identifier_in_public_actor_name(cls, value: str) -> str:
+        if _contains_protected_identifier(value):
+            raise ValueError("O nome público não pode conter um identificador fiscal")
+        return value
+
+    @field_validator("protected_nif_digest")
+    @classmethod
+    def validate_nif_digest(cls, value: SecretStr | None) -> SecretStr | None:
+        if value is not None and not re.fullmatch(r"[0-9a-f]{64}", value.get_secret_value()):
+            raise ValueError("O digest protegido deve ser um HMAC-SHA-256 hexadecimal")
         return value
 
 
@@ -309,6 +364,9 @@ class ContractMatchCandidate(BaseModel):
     method: ContractMatchMethod
     score: Decimal
     contract_source_url: HttpUrl
+    contract_source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    contract_source_retrieved_at: datetime
+    contract_direct_official_url: HttpUrl | None = None
     actor_source_url: HttpUrl
     association_evidence_url: HttpUrl | None = None
     decision: Literal["PENDING_REVIEW"] = "PENDING_REVIEW"
@@ -472,6 +530,8 @@ class PublishedVote(BaseModel):
 class PublishedPoliticianProfile(PublishedPersonSummary):
     attendance_rate: int | None = Field(default=None, ge=0, le=100)
     attendance_label: str
+    nominal_votes_available: bool
+    nominal_vote_count: int = Field(ge=0)
     declaration_source: OfficialSource
     votes: list[PublishedVote] = Field(default_factory=list)
 

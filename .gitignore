@@ -50,3 +50,7 @@ next-env.d.ts
 /.sites-runtime/
 /outputs/
 /work/
+
+# artefactos privados de revisão (defesa contra inclusão acidental no Git)
+/data/private/
+/data/base-*-review.json

@@ -46,6 +46,8 @@ class FakePublicRepository:
             **self._person(),
             "attendance_rate": None,
             "attendance_label": "Sem registos individuais suficientes.",
+            "nominal_votes_available": False,
+            "nominal_vote_count": 0,
             "declaration_source": self._source("https://www.tribunalconstitucional.pt/tc/ept/"),
             "votes": [],
         }
@@ -102,6 +104,9 @@ def test_public_status_and_profiles_have_explicit_contract() -> None:
     assert list_response.json()[0]["profile_source"]["url"].startswith("https://")
     assert profile_response.status_code == 200
     assert profile_response.json()["attendance_rate"] is None
+    assert profile_response.json()["nominal_votes_available"] is False
+    assert profile_response.json()["nominal_vote_count"] == 0
+    assert profile_response.json()["votes"] == []
     assert missing_response.status_code == 404
 
 

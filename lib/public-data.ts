@@ -75,6 +75,8 @@ type RawPerson = {
 type RawProfile = RawPerson & {
   attendance_rate?: number | null;
   attendance_label: string;
+  nominal_votes_available: boolean;
+  nominal_vote_count: number;
   declaration_source: RawSource;
   votes: Array<{
     id: string;
@@ -324,6 +326,8 @@ export async function loadPublicPolitician(
         role: formatRole(result.data.role),
         attendanceRate: result.data.attendance_rate ?? undefined,
         attendanceLabel: result.data.attendance_label,
+        nominalVotesAvailable: result.data.nominal_votes_available,
+        nominalVoteCount: result.data.nominal_vote_count,
         declarationSource: toOfficialSource(result.data.declaration_source),
         votes: result.data.votes
           .filter((vote) => allowedChoices.has(vote.choice))
