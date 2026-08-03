@@ -14,7 +14,7 @@ from app.repositories.postgres import PostgresRepository
 from app.services.http import OfficialHttpClient
 from app.services.parlamento import ParlamentoCollector
 
-CODE_VERSION = "parliament-ingestion-v10"
+CODE_VERSION = "parliament-ingestion-v11"
 
 
 async def collect(

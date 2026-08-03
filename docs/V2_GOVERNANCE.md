@@ -41,8 +41,8 @@ recolha, tamanho, versão do parser e SHA-256.
 
 O cruzamento automático aceita apenas:
 
-1. HMAC exato de identificador individual protegido;
-2. NIPC público exato de pessoa coletiva, com associação oficial;
+1. HMAC exato de identificador fiscal protegido;
+2. HMAC exato de NIPC de pessoa coletiva, com associação oficial;
 3. nome normalizado exatamente igual, sempre com confiança inferior e revisão.
 
 Não existe fuzzy matching. Homónimos, mudanças de firma, grupos económicos, familiares, doadores ou
@@ -100,4 +100,3 @@ notas de revisão e segredos. Limites, paginação, licença e data de geração
 - revisão periódica de fontes, allowlists, taxonomia e modelos;
 - aconselhamento jurídico independente sobre RGPD, direitos de personalidade, segredo de justiça,
   reutilização de informação pública e responsabilidade editorial.
-

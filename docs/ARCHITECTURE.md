@@ -65,8 +65,10 @@ idempotentes:
 6. promover a versão;
 7. criar alertas apenas após promoção.
 
-Cada execução abre um `SyncRun`. Falha parcial conserva avisos e não substitui a última versão
-publicada. Na V3 isto já está implementado para deputados, votações e contratos BASE.
+Cada execução persistente abre um `SyncRun`. Falha parcial conserva avisos e não substitui a última
+versão publicada. Na V3 isto está implementado para as fontes parlamentares. O coletor BASE produz
+apenas um artefacto privado e a sua persistência permanece bloqueada até existir carga em lote
+append-only e atestação explícita de staging.
 
 ## Contrato de proveniência
 

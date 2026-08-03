@@ -88,7 +88,9 @@ def normalise_public_name(value: str) -> str:
 
 
 def hmac_protected_identifier(value: str, pepper: str) -> str:
-    canonical = re.sub(r"\D", "", value)
+    canonical = "".join(
+        str(unicodedata.decimal(character)) for character in value if character.isdecimal()
+    )
     if len(canonical) != 9:
         raise ValueError("O identificador fiscal protegido deve ter nove algarismos")
     return hmac.new(pepper.encode(), canonical.encode(), hashlib.sha256).hexdigest()

@@ -1,14 +1,18 @@
 # API Transparência Total / Fator Cívico — V3
 
 Serviço FastAPI responsável por descobrir, descarregar, preservar e normalizar fontes oficiais.
-Inclui ingestão persistente de Parlamento e BASE JSON/XML/ZIP, estado de sincronização, projeções
-públicas, cruzamento exato protegido, resumos DRE, Guia do Cidadão, direito de resposta e
-exportações Open Data. A API pública nunca trata uma correspondência automática, notícia ou resumo
-de IA como prova.
+Inclui ingestão persistente do Parlamento e pré-visualização BASE JSON/XML/ZIP para JSON privado,
+estado de sincronização, projeções públicas, cruzamento exato protegido, resumos DRE, Guia do
+Cidadão, direito de resposta e exportações Open Data. A API pública nunca trata uma correspondência
+automática, notícia ou resumo de IA como prova.
 
-Os scripts `sync_parliament.py` e `sync_base_contracts.py` aceitam `--persist`, mas escrevem apenas
-em staging. `review_publication.py` é a fronteira humana explícita: valida dependências, acrescenta
-revisão e auditoria e só então torna o registo elegível para `/api/v1/public/*`.
+`sync_parliament.py` dispõe de um circuito próprio de persistência em staging.
+`sync_base_contracts.py` produz apenas o ficheiro JSON privado para revisão e recusa `--persist`
+antes de qualquer ligação à base de dados ou criação de `SyncRun`. A persistência BASE só poderá ser
+reativada com carga em lote append-only e atestação explícita de staging. A entrada de atores aceita
+apenas HMAC e tanto a entrada como a saída privada têm de ficar fora do repositório. Para dados elegíveis,
+`review_publication.py` é a fronteira humana explícita: valida dependências, acrescenta revisão e
+auditoria e só então torna o registo elegível para `/api/v1/public/*`.
 
 ## Rever a fotografia parlamentar em lote
 

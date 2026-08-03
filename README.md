@@ -28,8 +28,8 @@ uma fonte pública; a plataforma torna também visíveis falhas, atrasos e limit
 
 ## O que está incluído na V3
 
-- Persistência transacional dos snapshots de deputados, votações e contratos BASE, com `SyncRun`,
-  contagens, avisos e versão do coletor.
+- Persistência transacional dos snapshots parlamentares, com `SyncRun`, contagens, avisos e versão
+  do coletor; o Portal BASE disponibiliza apenas pré-visualização e JSON privado para revisão.
 - `ParliamentaryMembershipSnapshot`: regista “observado na fonte em”, sem inventar uma data de
   início de mandato quando o dataset não a fornece.
 - API de leitura pública para estado dos dados, diretório e perfil de políticos, Promessómetro e
@@ -38,8 +38,8 @@ uma fonte pública; a plataforma torna também visíveis falhas, atrasos e limit
   uma amostra fictícia como se fosse um facto real.
 - Promoção editorial por linha de comando com confirmação explícita, teste de dependências,
   `DataPublicationReview` e `AuditEvent`; a decisão pode ser retirada sem apagar o histórico.
-- Reingestão não altera contratos já publicados: uma nova fotografia fica disponível para revisão,
-  preservando o registo público anterior.
+- A persistência BASE permanece bloqueada até existir carga em lote append-only e atestação
+  explícita de staging.
 
 - PWA Next.js responsiva, instalável, com ecrã offline e Service Worker próprio.
 - Modo Investigador Cívico com filtros por ano, partido, montante e empresa.
@@ -249,11 +249,11 @@ de produção servido por HTTPS ou em `localhost`.
 | `GET` | `/api/v1/public/politicians/{slug}` | Perfil, assiduidade e votos nominais aprovados |
 | `GET` | `/api/v1/public/promises` | Medidas com prova e última revisão aceite |
 | `GET` | `/api/v1/public/investigator` | Grafo e comparações publicadas e verificadas |
-| `GET` | `/api/v1/parliament/deputies?legislature=XVII` | Descobrir e normalizar deputados |
-| `GET` | `/api/v1/parliament/votes?legislature=XVII` | Descobrir e normalizar votações |
-| `GET` | `/api/v1/dre/document?source_url=…` | Extrair um diploma oficial autorizado |
-| `GET` | `/api/v1/dre/rss` | Ler o RSS configurado em `DRE_RSS_URL` |
-| `GET` | `/api/v1/transparency-entity/resources` | Indexar recursos públicos da EPT |
+| `GET` | `/api/v1/parliament/deputies?legislature=XVII` | Descobrir e normalizar deputados; exige `X-Admin-Key` |
+| `GET` | `/api/v1/parliament/votes?legislature=XVII` | Descobrir e normalizar votações; exige `X-Admin-Key` |
+| `GET` | `/api/v1/dre/document?source_url=…` | Extrair um diploma oficial autorizado; exige `X-Admin-Key` |
+| `GET` | `/api/v1/dre/rss` | Ler o RSS configurado em `DRE_RSS_URL`; exige `X-Admin-Key` |
+| `GET` | `/api/v1/transparency-entity/resources` | Indexar recursos públicos da EPT; exige `X-Admin-Key` |
 | `GET` | `/api/v1/base/resources/{year}` | Descobrir o recurso anual oficial BASE |
 | `GET` | `/api/v1/base/contracts/preview?year=2026&limit=25` | Pré-visualizar contratos; exige `X-Admin-Key` |
 | `POST` | `/api/v1/ai/summaries` | Propor resumo estruturado para revisão |
@@ -285,6 +285,18 @@ Cada execução cria um `SyncRun`. Pessoas e votos não ficam publicáveis por e
 identificador individual não corresponda exatamente a uma pessoa recolhida permanecem `UNKNOWN` e
 nunca são atribuídos por nome.
 
+Depois da primeira persistência de votos, inspecione a fotografia privada sem criar revisão ou
+publicação:
+
+```bash
+python -m scripts.inspect_parliament_votes --legislature XVII
+```
+
+Enquanto o modelo de votações não tiver versões append-only, a primeira fotografia é inserida sem
+`UPDATE`/`DELETE` e uma segunda persistência é recusada antes de alterar eventos ou posições. As
+projeções públicas do perfil e do Investigador só devolvem posições nominais individuais cuja
+fotografia tenha uma revisão humana positiva ligada exatamente ao mesmo `SourceDocument`.
+
 Os URLs dos datasets do Parlamento podem mudar. O coletor navega o catálogo oficial e escolhe o
 JSON da legislatura em vez de codificar um URL opaco. Para uma integração controlada, defina
 `PARLAMENTO_DEPUTIES_URL` e `PARLAMENTO_VOTES_URL` explicitamente.
@@ -295,7 +307,15 @@ O caminho normal usa os recursos anuais abertos que o IMPIC publica no dados.gov
 de grande volume do Portal BASE só deve ser configurada quando a organização tiver registo e
 autorização prévia do IMPIC; o coletor não tenta contornar esse controlo.
 
-Crie um ficheiro privado de atores fora do repositório:
+Defina primeiro um segredo aleatório com pelo menos 32 caracteres em
+`PROTECTED_IDENTIFIER_PEPPER`. Gere cada digest sem ecoar nem guardar o NIF/NIPC em claro:
+
+```bash
+cd backend
+python -m scripts.protect_identifier
+```
+
+Crie depois um ficheiro privado de atores fora do repositório, contendo apenas os HMAC gerados:
 
 ```json
 [
@@ -304,11 +324,11 @@ Crie um ficheiro privado de atores fora do repositório:
     "public_name": "Nome público",
     "public_role": "DEPUTY",
     "official_role_source_url": "https://www.parlamento.pt/DeputadoGP/Paginas/default.aspx",
-    "protected_nif": "123456789",
+    "protected_nif_digest": "64-carateres-hexadecimais-do-hmac",
     "official_associations": [
       {
         "organisation_name": "Empresa publicamente associada",
-        "public_nipc": "509000000",
+        "protected_nipc_digest": "64-carateres-hexadecimais-do-hmac",
         "official_evidence_url": "https://diariodarepublica.pt/"
       }
     ]
@@ -316,26 +336,35 @@ Crie um ficheiro privado de atores fora do repositório:
 ]
 ```
 
-O exemplo é apenas estrutural; substitua valores e URLs por prova oficial real. Defina um segredo
-aleatório com pelo menos 32 caracteres em `PROTECTED_IDENTIFIER_PEPPER` e execute:
+O exemplo é apenas estrutural; substitua valores, digests e URLs por prova oficial real. Use o
+mesmo pepper para gerar os digests e para executar a recolha. O esquema rejeita os campos antigos
+com identificadores em claro. Tanto a entrada de atores como a saída privada são recusadas se o
+caminho ficar dentro do repositório. O comando também recusa substituir um ficheiro de revisão já
+existente: cada execução conserva uma versão separada. Execute:
 
 ```bash
 cd backend
 python -m scripts.sync_base_contracts \
   --year 2026 \
-  --actors-file ../data/private/public-actors.json \
-  --output ../data/base-2026-review.json \
-  --persist
+  --actors-file ../../transparencia-total-private/public-actors.json \
+  --output ../../transparencia-total-private/base-2026-review.json
 ```
 
-O resultado omite NIFs, marca todos os cruzamentos como `PENDING_REVIEW` e inclui a ligação oficial
-do contrato, a prova do cargo e, quando aplicável, a prova oficial da associação. Nome normalizado
-é usado apenas em igualdade exata; não há semelhança aproximada. Use `--limit 25` em ensaios ou
-`--resource-url` apenas para um recurso oficial permitido.
+O resultado omite identificadores e digests, marca todos os cruzamentos como `PENDING_REVIEW` e
+inclui o URL, data e SHA-256 do dump efetivamente descarregado, a prova do cargo e, quando
+aplicável, a prova oficial da associação. O URL direto do contrato permanece metadado auxiliar,
+sem herdar o hash do dump. Nome normalizado é usado apenas em igualdade exata; não há semelhança
+aproximada. Use `--limit 25` em ensaios ou `--resource-url` apenas para um recurso oficial permitido.
 
-O ficheiro de atores é opcional quando se pretende apenas persistir contratos. Identificadores
-fiscais presentes na fonte não são guardados automaticamente como NIPC: a distinção entre pessoa
-singular e coletiva exige prova e revisão próprias.
+Nesta versão, este comando produz apenas o ficheiro JSON privado de pré-visualização/revisão.
+`--persist` é recusado antes de qualquer ligação à base de dados ou criação de `SyncRun`. A carga
+BASE só poderá ser reativada quando for implementada em lote, append-only e com atestação explícita
+de staging.
+
+O ficheiro de atores é opcional quando se pretende apenas pré-visualizar contratos sem produzir
+candidatos de correspondência. Identificadores fiscais presentes na fonte não são guardados
+automaticamente como NIPC: a distinção entre pessoa singular e coletiva exige prova e revisão
+próprias.
 
 ### Revisão e promoção para a API pública
 
@@ -407,9 +436,10 @@ aprovados e listar todos os diplomas incluídos e excluídos.
   registos publicáveis. Só a última alimenta a API aberta.
 - Apenas titulares de cargos públicos dentro do âmbito publicado e com prova oficial do cargo são
   elegíveis. Ser PEP não é indício de ilícito e não autoriza tratamento ilimitado.
-- Identificadores fiscais individuais não são exportados nem guardados em claro na tabela de
-  correspondência; são comparados por HMAC com segredo rotacionável. NIPC de pessoas coletivas pode
-  ser público quando necessário e juridicamente validado.
+- O pipeline de correspondência trata qualquer identificador fiscal da fonte como protegido:
+  converte-o imediatamente para HMAC com pepper e nunca o exporta ou guarda em claro. Um NIPC de
+  pessoa coletiva só pode ser mostrado noutro contexto depois de necessidade, natureza coletiva e
+  base jurídica terem sido verificadas separadamente.
 - Moradas, contactos, assinaturas, localização exata, dados familiares e categorias especiais são
   excluídos por omissão. A necessidade e proporcionalidade de qualquer exceção têm de ficar
   documentadas numa AIPD.

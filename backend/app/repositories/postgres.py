@@ -26,6 +26,12 @@ PUBLICATION_RULE = (
     "a ingestão nunca equivale a publicação."
 )
 
+BASE_PERSISTENCE_DISABLED_MESSAGE = (
+    "A persistência BASE está bloqueada nesta versão: estão disponíveis apenas a "
+    "pré-visualização e o ficheiro JSON privado para revisão. A persistência só poderá "
+    "ser reativada com carga em lote append-only e atestação explícita de staging."
+)
+
 _PUBLISHER_CODES = {
     "PARLIAMENT": "AR",
     "DRE": "DRE",
@@ -444,7 +450,34 @@ class PostgresRepository:
             attendance = await connection.fetchrow(
                 """
                 SELECT COUNT(*) FILTER (WHERE ar.present IS NOT NULL) AS total,
-                       COUNT(*) FILTER (WHERE ar.present = TRUE) AS present
+                       COUNT(*) FILTER (WHERE ar.present = TRUE) AS present,
+                       (
+                           SELECT COUNT(*)
+                           FROM vote_records available_record
+                           JOIN vote_events available_event
+                             ON available_event.id = available_record.vote_event_id
+                           JOIN source_documents available_source
+                             ON available_source.id = available_event.source_document_id
+                           JOIN LATERAL (
+                               SELECT review.publishable
+                               FROM data_publication_reviews review
+                               WHERE review.entity_type = 'PARLIAMENT_VOTES_SNAPSHOT'
+                                 AND review.entity_id = available_event.source_document_id
+                                 AND review.source_document_id = available_event.source_document_id
+                               ORDER BY review.reviewed_at DESC, review.id DESC
+                               LIMIT 1
+                           ) latest_snapshot_review
+                             ON latest_snapshot_review.publishable = TRUE
+                           WHERE available_record.person_id = $1
+                             AND available_record.actor_type = 'PERSON'
+                             AND available_record.choice IN (
+                                 'FAVOR', 'AGAINST', 'ABSTENTION', 'ABSENT'
+                             )
+                             AND available_record.source_document_id =
+                                 available_event.source_document_id
+                             AND available_event.is_nominal = TRUE
+                             AND available_source.publisher = 'PARLIAMENT'
+                       ) AS nominal_vote_count
                 FROM mandates m
                 JOIN attendance_records ar ON ar.mandate_id = m.id
                 WHERE m.person_id = $1
@@ -462,9 +495,21 @@ class PostgresRepository:
                        sd.content_sha256 AS source_sha256
                 FROM vote_records vr
                 JOIN vote_events ve ON ve.id = vr.vote_event_id
-                JOIN source_documents sd ON sd.id = vr.source_document_id
+                JOIN source_documents sd ON sd.id = ve.source_document_id
+                JOIN LATERAL (
+                    SELECT review.publishable
+                    FROM data_publication_reviews review
+                    WHERE review.entity_type = 'PARLIAMENT_VOTES_SNAPSHOT'
+                      AND review.entity_id = ve.source_document_id
+                      AND review.source_document_id = ve.source_document_id
+                    ORDER BY review.reviewed_at DESC, review.id DESC
+                    LIMIT 1
+                ) latest_snapshot_review ON latest_snapshot_review.publishable = TRUE
                 WHERE vr.person_id = $1 AND vr.actor_type = 'PERSON'
-                  AND ve.is_nominal = TRUE AND vr.choice <> 'UNKNOWN'
+                  AND ve.is_nominal = TRUE
+                  AND vr.choice IN ('FAVOR', 'AGAINST', 'ABSTENTION', 'ABSENT')
+                  AND vr.source_document_id = ve.source_document_id
+                  AND sd.publisher = 'PARLIAMENT'
                 ORDER BY ve.voted_at DESC NULLS LAST, ve.id DESC
                 LIMIT 50
                 """,
@@ -486,6 +531,7 @@ class PostgresRepository:
         total = int(attendance["total"])
         present = int(attendance["present"])
         attendance_rate = round(present * 100 / total) if total else None
+        nominal_vote_count = int(attendance["nominal_vote_count"])
         declaration_source = (
             _source_from_row(declaration)
             if declaration is not None
@@ -505,6 +551,8 @@ class PostgresRepository:
                     if total
                     else "A fonte sincronizada não contém presenças individuais suficientes."
                 ),
+                "nominal_votes_available": nominal_vote_count > 0,
+                "nominal_vote_count": nominal_vote_count,
                 "declaration_source": declaration_source,
                 "votes": [
                     {
@@ -660,7 +708,17 @@ class PostgresRepository:
                 JOIN vote_events ve ON ve.id = c.vote_event_id
                 JOIN vote_records vr ON vr.vote_event_id = ve.id
                   AND vr.person_id = ps.person_id AND vr.actor_type = 'PERSON'
-                JOIN source_documents vote_sd ON vote_sd.id = vr.source_document_id
+                  AND vr.source_document_id = ve.source_document_id
+                JOIN source_documents vote_sd ON vote_sd.id = ve.source_document_id
+                JOIN LATERAL (
+                    SELECT review.publishable
+                    FROM data_publication_reviews review
+                    WHERE review.entity_type = 'PARLIAMENT_VOTES_SNAPSHOT'
+                      AND review.entity_id = ve.source_document_id
+                      AND review.source_document_id = ve.source_document_id
+                    ORDER BY review.reviewed_at DESC, review.id DESC
+                    LIMIT 1
+                ) latest_snapshot_review ON latest_snapshot_review.publishable = TRUE
                 LEFT JOIN LATERAL (
                     SELECT cs.score, cs.comparable_count
                     FROM coherence_snapshots cs
@@ -671,7 +729,9 @@ class PostgresRepository:
                   AND c.verification_status = 'VERIFIED'
                   AND c.comparable = TRUE
                   AND c.outcome IN ('CONSISTENT', 'INCONSISTENT', 'INCONCLUSIVE')
-                  AND vr.choice <> 'UNKNOWN'
+                  AND vr.choice IN ('FAVOR', 'AGAINST', 'ABSTENTION', 'ABSENT')
+                  AND ve.is_nominal = TRUE
+                  AND vote_sd.publisher = 'PARLIAMENT'
                   AND statement_sd.publisher <> 'MEDIA'
                 ORDER BY c.reviewed_at DESC, c.id
                 LIMIT 20
@@ -893,6 +953,31 @@ class PostgresRepository:
         )
         return int(count or 0)
 
+    @staticmethod
+    async def _ensure_initial_parliament_vote_snapshot(
+        connection: asyncpg.Connection,
+    ) -> None:
+        """Impede reingestão destrutiva enquanto não existirem versões append-only."""
+
+        await connection.execute(
+            "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
+            "parliament-votes-initial-snapshot",
+        )
+        snapshot_exists = await connection.fetchval(
+            """
+            SELECT EXISTS (
+                SELECT 1
+                FROM vote_events
+            )
+            """
+        )
+        if snapshot_exists:
+            raise ValueError(
+                "A reingestão de votações parlamentares está bloqueada: "
+                "já existem eventos em staging e qualquer nova fotografia exige "
+                "versionamento append-only."
+            )
+
     async def store_parliament_dataset(
         self,
         dataset: ParliamentDataset,
@@ -915,6 +1000,8 @@ class PostgresRepository:
         deactivated = 0
         try:
             async with self.pool.acquire() as connection, connection.transaction():
+                if kind == "votes":
+                    await self._ensure_initial_parliament_vote_snapshot(connection)
                 source_document_id = await self._upsert_source_document(
                     connection,
                     publisher="PARLIAMENT",
@@ -996,14 +1083,6 @@ class PostgresRepository:
                                 (id, source_id, title, initiative_number, voted_at, result,
                                  is_nominal, source_document_id, created_at, updated_at)
                             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
-                            ON CONFLICT (source_id) DO UPDATE SET
-                                title = EXCLUDED.title,
-                                initiative_number = EXCLUDED.initiative_number,
-                                voted_at = EXCLUDED.voted_at,
-                                result = EXCLUDED.result,
-                                is_nominal = EXCLUDED.is_nominal,
-                                source_document_id = EXCLUDED.source_document_id,
-                                updated_at = NOW()
                             RETURNING id
                             """,
                             _new_id("vote_event"),
@@ -1014,10 +1093,6 @@ class PostgresRepository:
                             event.result,
                             event.is_nominal,
                             source_document_id,
-                        )
-                        await connection.execute(
-                            "DELETE FROM vote_records WHERE vote_event_id = $1",
-                            event_row["id"],
                         )
                         for record in event.records:
                             person_id: str | None = None
@@ -1034,10 +1109,6 @@ class PostgresRepository:
                                      party_id, choice, source_document_id)
                                 VALUES ($1, $2, $3::"VoteActorType", $4, $5, NULL,
                                         $6::"VoteChoice", $7)
-                                ON CONFLICT (vote_event_id, actor_type, actor_label) DO UPDATE SET
-                                    person_id = EXCLUDED.person_id,
-                                    choice = EXCLUDED.choice,
-                                    source_document_id = EXCLUDED.source_document_id
                                 """,
                                 _new_id("vote_record"),
                                 event_row["id"],
@@ -1072,201 +1143,235 @@ class PostgresRepository:
             "records_deactivated": deactivated,
         }
 
+    async def inspect_parliament_votes_staging(
+        self,
+        *,
+        legislature: str,
+    ) -> dict[str, Any]:
+        """Inspeciona a última fotografia de votos apenas com leituras de staging."""
+
+        if self.pool is None:
+            raise RuntimeError("Base de dados não configurada")
+
+        source_title = f"Assembleia da República — votes — {legislature}"
+        async with self.pool.acquire() as connection:
+            snapshot = await connection.fetchrow(
+                """
+                SELECT run.id AS sync_run_id, run.dataset_url,
+                       run.status::text AS sync_status, run.started_at,
+                       run.finished_at, run.records_read, run.records_written,
+                       run.warnings, run.error_message, run.code_version,
+                       source.id AS source_document_id,
+                       source.publisher::text AS source_publisher,
+                       source.kind::text AS source_kind, source.title AS source_title,
+                       source.url AS source_url, source.retrieved_at,
+                       source.content_sha256, source.mime_type,
+                       source.raw_storage_key, source.parser_version,
+                       COUNT(DISTINCT event.id) AS event_count,
+                       COUNT(record.id) AS position_count,
+                       COUNT(DISTINCT event.id) FILTER (
+                           WHERE event.is_nominal = TRUE
+                       ) AS nominal_event_count,
+                       COUNT(DISTINCT event.id) FILTER (
+                           WHERE event.voted_at IS NULL
+                       ) AS event_without_date_count,
+                       COUNT(DISTINCT event.id) FILTER (
+                           WHERE record.id IS NULL
+                       ) AS event_without_normalised_positions_count,
+                       COUNT(record.id) FILTER (
+                           WHERE record.choice = 'UNKNOWN'
+                       ) AS unknown_choice_count,
+                       COUNT(record.id) FILTER (
+                           WHERE record.person_id IS NOT NULL
+                       ) AS person_link_count,
+                       COUNT(record.id) FILTER (
+                           WHERE record.party_id IS NOT NULL
+                       ) AS party_link_count
+                FROM sync_runs run
+                JOIN source_documents source ON source.url = run.dataset_url
+                JOIN vote_events event ON event.source_document_id = source.id
+                LEFT JOIN vote_records record
+                  ON record.vote_event_id = event.id
+                 AND record.source_document_id = source.id
+                WHERE run.source_name = 'PARLIAMENT_VOTES'
+                  AND run.status IN ('SUCCEEDED', 'PARTIAL')
+                  AND run.finished_at IS NOT NULL
+                  AND source.publisher = 'PARLIAMENT'
+                  AND source.kind = 'OPEN_DATASET'
+                  AND source.title = $1
+                  AND source.parser_version = run.code_version
+                GROUP BY run.id, source.id
+                HAVING MIN(event.updated_at) >= run.started_at
+                   AND MAX(event.updated_at) <= run.finished_at
+                   AND COUNT(DISTINCT event.id) = run.records_read
+                   AND COUNT(DISTINCT event.id) + COUNT(record.id) = run.records_written
+                ORDER BY run.started_at DESC, run.id DESC,
+                         source.retrieved_at DESC, source.id DESC
+                LIMIT 1
+                """,
+                source_title,
+            )
+            if snapshot is None:
+                raise ValueError(
+                    f"Não existe fotografia persistida de votações para a legislatura {legislature}"
+                )
+
+            source_document_id = str(snapshot["source_document_id"])
+            distribution_rows = await connection.fetch(
+                """
+                SELECT dimension, value, count
+                FROM (
+                    SELECT 'choice'::text AS dimension, choice::text AS value,
+                           COUNT(*)::bigint AS count
+                    FROM vote_records
+                    WHERE source_document_id = $1
+                    GROUP BY choice
+                    UNION ALL
+                    SELECT 'actor_type'::text AS dimension, actor_type::text AS value,
+                           COUNT(*)::bigint AS count
+                    FROM vote_records
+                    WHERE source_document_id = $1
+                    GROUP BY actor_type
+                ) distribution
+                ORDER BY dimension, value
+                """,
+                source_document_id,
+            )
+            events_without_positions = await connection.fetch(
+                """
+                SELECT event.source_id, event.title, event.voted_at, event.result
+                FROM vote_events event
+                WHERE event.source_document_id = $1
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM vote_records record
+                      WHERE record.vote_event_id = event.id
+                        AND record.source_document_id = event.source_document_id
+                  )
+                ORDER BY event.voted_at DESC NULLS LAST, event.source_id
+                """,
+                source_document_id,
+            )
+
+        source_url = require_official_url(str(snapshot["source_url"]))
+        source_sha256 = str(snapshot["content_sha256"])
+        warnings: Any = snapshot["warnings"]
+        if isinstance(warnings, str):
+            try:
+                warnings = json.loads(warnings)
+            except json.JSONDecodeError:
+                warnings = [warnings]
+        elif warnings is None:
+            warnings = []
+        elif not isinstance(warnings, list):
+            warnings = [warnings]
+
+        choice_counts = {
+            "FAVOR": 0,
+            "AGAINST": 0,
+            "ABSTENTION": 0,
+            "ABSENT": 0,
+            "PAIRED": 0,
+            "UNKNOWN": 0,
+        }
+        actor_type_counts = {"PERSON": 0, "PARTY": 0, "UNKNOWN": 0}
+        for row in distribution_rows:
+            target = choice_counts if row["dimension"] == "choice" else actor_type_counts
+            target[str(row["value"])] = int(row["count"])
+
+        event_count = int(snapshot["event_count"])
+        position_count = int(snapshot["position_count"])
+        unavailable_count = int(snapshot["event_without_normalised_positions_count"])
+        records_read = int(snapshot["records_read"])
+        records_written = int(snapshot["records_written"])
+        parser_version = str(snapshot["parser_version"] or "")
+        code_version = str(snapshot["code_version"])
+        unavailable_events = [dict(row) for row in events_without_positions]
+
+        return {
+            "legislature": legislature,
+            "publication_eligible": False,
+            "publication_rule": (
+                "Esta inspeção é privada e exclusivamente de leitura; não cria revisão, "
+                "não associa atores e não publica votações."
+            ),
+            "sync_run": {
+                "id": str(snapshot["sync_run_id"]),
+                "dataset_url": str(snapshot["dataset_url"]),
+                "status": str(snapshot["sync_status"]),
+                "started_at": snapshot["started_at"],
+                "finished_at": snapshot["finished_at"],
+                "records_read": records_read,
+                "records_written": records_written,
+                "warnings": warnings,
+                "error_message": snapshot["error_message"],
+                "code_version": code_version,
+            },
+            "provenance": {
+                "source_document_id": source_document_id,
+                "publisher": str(snapshot["source_publisher"]),
+                "kind": str(snapshot["source_kind"]),
+                "title": str(snapshot["source_title"]),
+                "url": source_url,
+                "retrieved_at": snapshot["retrieved_at"],
+                "content_sha256": source_sha256,
+                "mime_type": snapshot["mime_type"],
+                "raw_storage_key": snapshot["raw_storage_key"],
+                "parser_version": parser_version,
+            },
+            "counts": {
+                "events": event_count,
+                "positions": position_count,
+                "nominal_events": int(snapshot["nominal_event_count"]),
+                "events_without_date": int(snapshot["event_without_date_count"]),
+                "events_without_normalised_positions": unavailable_count,
+                "unknown_choices": int(snapshot["unknown_choice_count"]),
+                "person_links": int(snapshot["person_link_count"]),
+                "party_links": int(snapshot["party_link_count"]),
+            },
+            "distributions": {
+                "choices": choice_counts,
+                "actor_types": actor_type_counts,
+            },
+            "normalised_position_availability": {
+                "status": "UNAVAILABLE_FOR_LISTED_EVENTS",
+                "event_count": unavailable_count,
+                "description": (
+                    "Não existem posições normalizadas para estes eventos; é necessário "
+                    "confirmar no documento oficial se o detalhe está ausente ou se o parser "
+                    "não o reconheceu."
+                ),
+                "events": unavailable_events,
+            },
+            "checks": {
+                "official_source_url": bool(source_url),
+                "valid_source_sha256": bool(re.fullmatch(r"[0-9a-f]{64}", source_sha256)),
+                "sync_finished": snapshot["finished_at"] is not None,
+                "sync_status_allows_inspection": snapshot["sync_status"]
+                in {"SUCCEEDED", "PARTIAL"},
+                "event_count_matches_records_read": event_count == records_read,
+                "written_count_matches_events_and_positions": (
+                    event_count + position_count == records_written
+                ),
+                "choice_distribution_matches_positions": (
+                    sum(choice_counts.values()) == position_count
+                ),
+                "actor_distribution_matches_positions": (
+                    sum(actor_type_counts.values()) == position_count
+                ),
+                "unavailable_list_matches_count": (len(unavailable_events) == unavailable_count),
+                "parser_matches_sync_code_version": parser_version == code_version,
+            },
+        }
+
     async def store_base_collection(
         self,
         collection: BaseContractCollection,
         *,
         code_version: str,
     ) -> dict[str, int]:
-        if self.pool is None:
-            raise RuntimeError("Base de dados não configurada")
-        records_read = len(collection.contracts)
-        warnings = list(collection.warnings)
-        dataset_url = str(collection.dataset_resource.url)
-        sync_id = await self._start_sync_run(
-            source_name="BASE_CONTRACTS",
-            dataset_url=dataset_url,
-            code_version=code_version,
-        )
-        written = 0
-        try:
-            async with self.pool.acquire() as connection, connection.transaction():
-                dataset_document_id = await self._upsert_source_document(
-                    connection,
-                    publisher="BASE_GOV",
-                    kind="OPEN_DATASET",
-                    title=collection.dataset_resource.title,
-                    url=dataset_url,
-                    retrieved_at=collection.collected_at,
-                    content_sha256=collection.document_sha256,
-                    parser_version=code_version,
-                )
-                for contract in collection.contracts:
-                    contract_url = str(contract.direct_official_url or contract.source.url)
-                    contract_document_id = (
-                        dataset_document_id
-                        if contract_url == dataset_url
-                        else await self._upsert_source_document(
-                            connection,
-                            publisher="BASE_GOV",
-                            kind="PUBLIC_CONTRACT",
-                            title=f"Portal BASE — contrato {contract.source_id}",
-                            url=contract_url,
-                            retrieved_at=collection.collected_at,
-                            content_sha256=collection.document_sha256,
-                            parser_version=code_version,
-                        )
-                    )
-                    contract_row = await connection.fetchrow(
-                        """
-                        INSERT INTO public_contracts
-                            (id, source_id, object, procedure, cpv_code, base_value,
-                             contract_value, currency, decision_at, signed_at, published_at,
-                             execution_days, source_document_id, verification_status,
-                             publication_status, created_at, updated_at)
-                        VALUES ($1, $2, $3, $4::"PublicContractProcedure", $5, $6, $7,
-                                $8, $9, $10, $11, $12, $13, 'INGESTED', 'UNDER_REVIEW',
-                                NOW(), NOW())
-                        ON CONFLICT (source_id) DO UPDATE SET
-                            object = CASE
-                              WHEN public_contracts.publication_status = 'PUBLISHED'
-                              THEN public_contracts.object ELSE EXCLUDED.object END,
-                            procedure = CASE
-                              WHEN public_contracts.publication_status = 'PUBLISHED'
-                              THEN public_contracts.procedure ELSE EXCLUDED.procedure END,
-                            cpv_code = CASE
-                              WHEN public_contracts.publication_status = 'PUBLISHED'
-                              THEN public_contracts.cpv_code ELSE EXCLUDED.cpv_code END,
-                            base_value = CASE
-                              WHEN public_contracts.publication_status = 'PUBLISHED'
-                              THEN public_contracts.base_value ELSE EXCLUDED.base_value END,
-                            contract_value = CASE
-                              WHEN public_contracts.publication_status = 'PUBLISHED'
-                              THEN public_contracts.contract_value ELSE EXCLUDED.contract_value END,
-                            decision_at = CASE
-                              WHEN public_contracts.publication_status = 'PUBLISHED'
-                              THEN public_contracts.decision_at ELSE EXCLUDED.decision_at END,
-                            signed_at = CASE
-                              WHEN public_contracts.publication_status = 'PUBLISHED'
-                              THEN public_contracts.signed_at ELSE EXCLUDED.signed_at END,
-                            published_at = CASE
-                              WHEN public_contracts.publication_status = 'PUBLISHED'
-                              THEN public_contracts.published_at ELSE EXCLUDED.published_at END,
-                            execution_days = CASE
-                              WHEN public_contracts.publication_status = 'PUBLISHED'
-                              THEN public_contracts.execution_days ELSE EXCLUDED.execution_days END,
-                            source_document_id = CASE
-                              WHEN public_contracts.publication_status = 'PUBLISHED'
-                              THEN public_contracts.source_document_id
-                              ELSE EXCLUDED.source_document_id END,
-                            updated_at = NOW()
-                        RETURNING id, publication_status::text
-                        """,
-                        _new_id("contract"),
-                        contract.source_id,
-                        contract.object,
-                        contract.procedure.value,
-                        contract.cpv_code,
-                        contract.base_value,
-                        contract.contract_value,
-                        contract.currency,
-                        _database_timestamp(contract.decision_at),
-                        _database_timestamp(contract.signed_at),
-                        _database_timestamp(contract.published_at),
-                        contract.execution_days,
-                        contract_document_id,
-                    )
-                    if contract_row["publication_status"] == "PUBLISHED":
-                        warnings.append(
-                            "Contrato "
-                            f"{contract.source_id} já publicado: a nova fotografia foi "
-                            "conservada como fonte, sem alterar o registo público."
-                        )
-                        continue
-                    await connection.execute(
-                        "DELETE FROM public_contract_parties WHERE public_contract_id = $1",
-                        contract_row["id"],
-                    )
-                    parties = [*contract.contracting_authorities, *contract.contractors]
-                    for party in parties:
-                        normalised = _normalise_name(party.name)
-                        role_kind = (
-                            "PUBLIC_BODY"
-                            if party.role.value == "CONTRACTING_AUTHORITY"
-                            else "COMPANY"
-                        )
-                        source_key = hashlib.sha256(
-                            f"{role_kind}:{normalised}".encode()
-                        ).hexdigest()[:32]
-                        organisation_row = await connection.fetchrow(
-                            """
-                            INSERT INTO organisations
-                                (id, source_id, legal_name, normalised_name, kind,
-                                 public_nipc, official_url, source_document_id,
-                                 verification_status, created_at, updated_at)
-                            VALUES ($1, $2, $3, $4, $5::"InterestEntityKind", NULL, NULL,
-                                    $6, 'INGESTED', NOW(), NOW())
-                            ON CONFLICT (source_id) DO UPDATE SET updated_at = NOW()
-                            RETURNING id
-                            """,
-                            _new_id("organisation"),
-                            f"base-party:{source_key}",
-                            party.name,
-                            normalised,
-                            role_kind,
-                            dataset_document_id,
-                        )
-                        entity_row = await connection.fetchrow(
-                            """
-                            INSERT INTO interest_entities
-                                (id, kind, public_label, organisation_id,
-                                 verification_status, publication_status,
-                                 created_at, updated_at)
-                            VALUES ($1, $2::"InterestEntityKind", $3, $4,
-                                    'INGESTED', 'UNDER_REVIEW', NOW(), NOW())
-                            ON CONFLICT (organisation_id) DO UPDATE SET updated_at = NOW()
-                            RETURNING id
-                            """,
-                            _new_id("entity"),
-                            role_kind,
-                            party.name,
-                            organisation_row["id"],
-                        )
-                        await connection.execute(
-                            """
-                            INSERT INTO public_contract_parties
-                                (id, public_contract_id, interest_entity_id, role,
-                                 source_name, source_public_id, created_at)
-                            VALUES ($1, $2, $3, $4::"ContractPartyRole", $5, NULL, NOW())
-                            ON CONFLICT (public_contract_id, interest_entity_id, role) DO UPDATE SET
-                                source_name = EXCLUDED.source_name
-                            """,
-                            _new_id("contract_party"),
-                            contract_row["id"],
-                            entity_row["id"],
-                            party.role.value,
-                            party.name,
-                        )
-                        written += 1
-                    written += 1
-            await self._finish_sync_run(
-                sync_id,
-                status_value="PARTIAL" if warnings else "SUCCEEDED",
-                records_read=records_read,
-                records_written=written,
-                warnings=warnings,
-            )
-        except Exception as exc:
-            await self._finish_sync_run(
-                sync_id,
-                status_value="FAILED",
-                records_read=records_read,
-                records_written=0,
-                warnings=warnings,
-                error_message=str(exc),
-            )
-            raise
-        return {"records_read": records_read, "records_written": written}
+        # Fail closed antes de criar SyncRun, adquirir uma ligação ou executar qualquer escrita.
+        raise RuntimeError(BASE_PERSISTENCE_DISABLED_MESSAGE)
 
     async def review_publication(
         self,

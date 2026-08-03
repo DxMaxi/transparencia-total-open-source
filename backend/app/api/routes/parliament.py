@@ -1,12 +1,17 @@
 import httpx
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.config import get_settings
+from app.core.security import require_admin_key
 from app.models.api import ParliamentDataset
 from app.services.http import OfficialHttpClient
 from app.services.parlamento import ParlamentoCollector
 
-router = APIRouter(prefix="/parliament", tags=["Assembleia da República"])
+router = APIRouter(
+    prefix="/parliament",
+    tags=["Assembleia da República"],
+    dependencies=[Depends(require_admin_key)],
+)
 
 
 @router.get("/deputies", response_model=ParliamentDataset)

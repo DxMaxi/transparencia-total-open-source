@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import json
 from pathlib import Path
 
@@ -22,6 +23,17 @@ class JsonResponse:
     def __init__(self, url: str, payload: object) -> None:
         self.url = url
         self.content = json.dumps(payload, ensure_ascii=False).encode()
+
+
+class RawJsonHttp:
+    def __init__(self, content: bytes) -> None:
+        self.content = content
+
+    async def get(self, url: str, *, max_bytes: int | None = None) -> JsonResponse:
+        del max_bytes
+        response = JsonResponse(url, {})
+        response.content = self.content
+        return response
 
 
 class JsonHttp:
@@ -402,3 +414,42 @@ def test_collect_votes_uses_dedicated_official_file_limit() -> None:
 
     assert len(dataset.votes) == 1
     assert http.requested == [("https://app.parlamento.pt/IniciativasXVII_json.txt", 100_000_000)]
+
+
+def test_fetch_json_hashes_the_exact_received_bytes() -> None:
+    raw_document = b'\xef\xbb\xbf{"id": "139080", "resultado": "Aprovado"}'
+    http = RawJsonHttp(raw_document)
+    parliament = ParlamentoCollector(Settings(environment="test"), http)  # type: ignore[arg-type]
+
+    payload, digest, source_url = asyncio.run(
+        parliament.fetch_json("https://app.parlamento.pt/IniciativasXVII_json.txt")
+    )
+
+    assert payload["id"] == "139080"
+    assert source_url == "https://app.parlamento.pt/IniciativasXVII_json.txt"
+    assert digest == hashlib.sha256(raw_document).hexdigest()
+    assert digest != hashlib.sha256(raw_document.decode("utf-8-sig").encode()).hexdigest()
+
+
+def test_collect_votes_warns_when_positions_are_not_normalised() -> None:
+    payload = {
+        "id": "139080",
+        "data": "2025-07-04",
+        "detalhe": None,
+        "reuniao": "9",
+        "resultado": "Aprovado",
+    }
+    http = JsonHttp(payload)
+    parliament = ParlamentoCollector(
+        Settings(
+            environment="test",
+            parlamento_votes_url="https://app.parlamento.pt/IniciativasXVII_json.txt",
+        ),
+        http,  # type: ignore[arg-type]
+    )
+
+    dataset = asyncio.run(parliament.collect_votes("XVII"))
+
+    assert len(dataset.votes) == 1
+    assert dataset.votes[0].records == []
+    assert any("dados indisponíveis" in warning for warning in dataset.warnings)

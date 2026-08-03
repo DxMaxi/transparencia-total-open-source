@@ -19,6 +19,8 @@ export const demoPolitician: PoliticianProfileData = {
   constituency: "Círculo eleitoral demonstrativo",
   legislature: "XVII Legislatura",
   attendanceRate: 94,
+  nominalVotesAvailable: true,
+  nominalVoteCount: 3,
   attendanceLabel: "Valor fictício para demonstrar a interface",
   verifiedAt: "Modo de demonstração",
   profileSource: parliamentOpenData,
