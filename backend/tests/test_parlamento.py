@@ -18,6 +18,22 @@ class FakeResponse:
         self.text = text
 
 
+class JsonResponse:
+    def __init__(self, url: str, payload: object) -> None:
+        self.url = url
+        self.content = json.dumps(payload, ensure_ascii=False).encode()
+
+
+class JsonHttp:
+    def __init__(self, payload: object) -> None:
+        self.payload = payload
+        self.requested: list[tuple[str, int | None]] = []
+
+    async def get(self, url: str, *, max_bytes: int | None = None) -> JsonResponse:
+        self.requested.append((url, max_bytes))
+        return JsonResponse(url, self.payload)
+
+
 class CatalogueHttp:
     def __init__(self, responses: list[FakeResponse]) -> None:
         self.responses = responses
@@ -257,7 +273,7 @@ def test_rejects_snapshot_without_party_and_constituency() -> None:
 
 
 def test_only_marks_explicit_person_records_as_nominal() -> None:
-    payload = json.loads((FIXTURES / "parliament_votes.json").read_text())
+    payload = json.loads((FIXTURES / "parliament_votes.json").read_text(encoding="utf-8"))
     events = collector().normalise_votes(
         payload,
         source_url="https://app.parlamento.pt/teste-votos.json",
@@ -283,3 +299,106 @@ def test_free_text_party_positions_are_not_attributed_to_people() -> None:
     )
     assert events[0].is_nominal is False
     assert {item.actor_type.value for item in events[0].records} == {"UNKNOWN"}
+
+
+def test_normalises_official_nested_vote_shape_and_all_position_choices() -> None:
+    payload = [
+        {
+            "IniEventos": [
+                {
+                    "Votacao": [
+                        {
+                            "id": "139080",
+                            "data": "2025-07-04",
+                            "descricao": "Votação em Plenário",
+                            "detalhe": (
+                                "A Favor: <I>PSD</I>, <I> PS</I>"
+                                "<BR>Contra:<I>CH</I>"
+                                "<BR>Abstenção:<I>IL</I>"
+                                "<BR>Ausência: <I>JPP</I>"
+                            ),
+                            "reuniao": "9",
+                            "resultado": "Aprovado",
+                        }
+                    ],
+                    "Comissao": [
+                        {
+                            "Votacao": [
+                                {
+                                    "id": "139081",
+                                    "data": "2025-07-05",
+                                    "detalhe": "A Favor: <I>PSD</I>",
+                                    "reuniao": "3",
+                                    "resultado": "Aprovado",
+                                }
+                            ]
+                        }
+                    ],
+                }
+            ]
+        }
+    ]
+
+    events = collector().normalise_votes(
+        payload,
+        source_url="https://app.parlamento.pt/IniciativasXVII_json.txt",
+        document_sha256="3" * 64,
+    )
+
+    assert {event.source_id for event in events} == {"139080", "139081"}
+    plenary = next(event for event in events if event.source_id == "139080")
+    assert plenary.is_nominal is False
+    assert plenary.voted_at is not None
+    assert plenary.voted_at.date().isoformat() == "2025-07-04"
+    assert {record.actor_label: record.choice.value for record in plenary.records} == {
+        "PSD": "FAVOR",
+        "PS": "FAVOR",
+        "CH": "AGAINST",
+        "IL": "ABSTENTION",
+        "JPP": "ABSENT",
+    }
+    assert {record.actor_type.value for record in plenary.records} == {"UNKNOWN"}
+
+
+def test_marks_exactly_repeated_actor_with_conflicting_positions_as_unknown() -> None:
+    payload = {
+        "id": "171147",
+        "data": "2026-07-01",
+        "descricao": "Votação contraditória na fonte",
+        "detalhe": "A Favor: <I>PSD</I><BR>Contra: <I> PSD </I>",
+        "reuniao": "101",
+        "resultado": "Aprovado",
+    }
+
+    events = collector().normalise_votes(
+        payload,
+        source_url="https://app.parlamento.pt/IniciativasXVII_json.txt",
+        document_sha256="4" * 64,
+    )
+
+    assert len(events) == 1
+    assert len(events[0].records) == 1
+    assert events[0].records[0].actor_label == "PSD"
+    assert events[0].records[0].choice.value == "UNKNOWN"
+
+
+def test_collect_votes_uses_dedicated_official_file_limit() -> None:
+    payload = {
+        "id": "139080",
+        "data": "2025-07-04",
+        "detalhe": "A Favor: <I>PSD</I>",
+        "reuniao": "9",
+        "resultado": "Aprovado",
+    }
+    http = JsonHttp(payload)
+    settings = Settings(
+        environment="test",
+        parlamento_votes_url="https://app.parlamento.pt/IniciativasXVII_json.txt",
+        parlamento_votes_max_bytes=100_000_000,
+    )
+    parliament = ParlamentoCollector(settings, http)  # type: ignore[arg-type]
+
+    dataset = asyncio.run(parliament.collect_votes("XVII"))
+
+    assert len(dataset.votes) == 1
+    assert http.requested == [("https://app.parlamento.pt/IniciativasXVII_json.txt", 100_000_000)]

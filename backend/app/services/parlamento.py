@@ -7,6 +7,7 @@ from typing import Any, cast
 from urllib.parse import parse_qs, unquote, urljoin, urlparse
 
 from bs4 import BeautifulSoup
+from dateutil.parser import isoparse
 from dateutil.parser import parse as parse_datetime
 from pydantic import HttpUrl
 
@@ -28,6 +29,11 @@ MIN_DEPUTIES_PER_LEGISLATURE = 100
 MAX_DEPUTIES_PER_LEGISLATURE = 500
 MIN_DEPUTY_METADATA_COVERAGE = 0.70
 JSON_RESOURCE_NAME = re.compile(r"(?:\.json(?:\.txt)?|_json\.txt)$", re.IGNORECASE)
+VOTE_DETAIL_SECTION = re.compile(
+    r"(?P<choice>A\s+Favor|Contra|Absten(?:ção|cao)|Aus(?:ência|encia)(?:s)?|Ausentes?)"
+    r"\s*:\s*",
+    re.IGNORECASE,
+)
 MANDATE_HOLDER_SITUATIONS = frozenset(
     {
         "efetivo",
@@ -85,7 +91,12 @@ def _parse_date(value: Any | None) -> datetime | None:
     if not text:
         return None
     try:
-        parsed = cast(datetime, parse_datetime(text, dayfirst=True))
+        parsed = cast(
+            datetime,
+            isoparse(text)
+            if re.fullmatch(r"\d{4}-\d{2}-\d{2}(?:[T ].*)?", text)
+            else parse_datetime(text, dayfirst=True),
+        )
         return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
     except (ValueError, OverflowError):
         return None
@@ -203,8 +214,17 @@ class ParlamentoCollector:
 
         raise LookupError(f"Ficheiro JSON não encontrado para {legislature!r} em {catalogue_url}")
 
-    async def fetch_json(self, url: str) -> tuple[Any, str, str]:
-        response = await self.http.get(url)
+    async def fetch_json(
+        self,
+        url: str,
+        *,
+        max_bytes: int | None = None,
+    ) -> tuple[Any, str, str]:
+        response = (
+            await self.http.get(url, max_bytes=max_bytes)
+            if max_bytes is not None
+            else await self.http.get(url)
+        )
         text = response.content.decode("utf-8-sig", errors="replace")
         try:
             return json.loads(text), sha256_text(text), str(response.url)
@@ -313,8 +333,13 @@ class ParlamentoCollector:
         events: dict[str, VoteEvent] = {}
 
         for record in _walk(payload):
-            vote_id = _as_text(_field(record, "VotacaoId", "idVotacao", "voteId", "VotId", "evtId"))
             result = _as_text(_field(record, "VotacaoResultado", "Resultado", "result"))
+            vote_id = _as_text(_field(record, "VotacaoId", "idVotacao", "voteId", "VotId", "evtId"))
+            if not vote_id and result and _field(record, "reuniao") is not None:
+                # No JSON oficial de iniciativas, a votação usa uma chave genérica
+                # ``id``. Exigimos também resultado e reunião para não confundir os
+                # muitos outros objetos aninhados que contêm ``id`` e ``data``.
+                vote_id = _as_text(_field(record, "id"))
             details = _field(record, "VotacaoDetalhe", "Detalhe", "details", "Votacoes")
             date_value = _field(record, "VotacaoData", "Data", "date", "evtData")
             title = _as_text(
@@ -372,25 +397,34 @@ class ParlamentoCollector:
         if not isinstance(details, str):
             return []
 
-        text = BeautifulSoup(details.replace("<BR>", "<br>"), "html.parser").get_text("\n")
-        records = []
-        for line in filter(None, (_normalise_space(part) for part in text.splitlines())):
-            match = re.match(r"(A Favor|Contra|Absten(?:ção|cao)|Ausente)s?\s*:\s*(.+)", line, re.I)
-            if not match:
-                continue
-            choice = self._choice(match.group(1))
-            for actor in re.split(r"\s*[,;]\s*", match.group(2)):
-                actor = _normalise_space(actor)
-                if actor:
-                    # Texto livre não permite afirmar se é pessoa ou grupo parlamentar.
-                    records.append(
-                        VoteRecord(
-                            actor_label=actor,
-                            actor_type=VoteActorType.UNKNOWN,
-                            choice=choice,
-                        )
+        text = BeautifulSoup(details, "html.parser").get_text(" ")
+        sections = list(VOTE_DETAIL_SECTION.finditer(text))
+        records_by_actor: dict[str, VoteRecord] = {}
+        for position, section in enumerate(sections):
+            end = sections[position + 1].start() if position + 1 < len(sections) else len(text)
+            choice = self._choice(section.group("choice"))
+            for actor_value in re.split(r"\s*[,;]\s*", text[section.end() : end]):
+                actor = _normalise_space(actor_value)
+                if not actor:
+                    continue
+
+                # Esta chave só elimina repetições textuais exatas após normalizar
+                # espaços e caixa. Não associa nomes a pessoas nem faz fuzzy matching.
+                actor_key = actor.casefold()
+                previous = records_by_actor.get(actor_key)
+                if previous is None:
+                    records_by_actor[actor_key] = VoteRecord(
+                        actor_label=actor,
+                        actor_type=VoteActorType.UNKNOWN,
+                        choice=choice,
                     )
-        return records
+                elif previous.choice is not choice:
+                    # A fonte atribui por vezes sentidos incompatíveis ao mesmo ator.
+                    # Preservamos a incerteza em vez de escolher silenciosamente um deles.
+                    records_by_actor[actor_key] = previous.model_copy(
+                        update={"choice": VoteChoice.UNKNOWN}
+                    )
+        return list(records_by_actor.values())
 
     @staticmethod
     def _choice(value: str) -> VoteChoice:
@@ -401,7 +435,14 @@ class ParlamentoCollector:
             return VoteChoice.AGAINST
         if normalised in {"abstencao", "abstem", "abstencoes"}:
             return VoteChoice.ABSTENTION
-        if normalised in {"ausente", "faltou", "naopresente"}:
+        if normalised in {
+            "ausencia",
+            "ausencias",
+            "ausente",
+            "ausentes",
+            "faltou",
+            "naopresente",
+        }:
             return VoteChoice.ABSENT
         return VoteChoice.UNKNOWN
 
@@ -435,7 +476,10 @@ class ParlamentoCollector:
                 self.settings.parlamento_initiatives_catalogue_path,
                 legislature,
             )
-        payload, digest, final_url = await self.fetch_json(url)
+        payload, digest, final_url = await self.fetch_json(
+            url,
+            max_bytes=self.settings.parlamento_votes_max_bytes,
+        )
         votes = self.normalise_votes(payload, source_url=final_url, document_sha256=digest)
         warnings = []
         if not votes:

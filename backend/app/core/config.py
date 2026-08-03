@@ -52,6 +52,11 @@ class Settings(BaseSettings):
     parlamento_initiatives_catalogue_path: str = "/Cidadania/Paginas/DAIniciativas.aspx"
     parlamento_deputies_url: AnyHttpUrl | None = None
     parlamento_votes_url: AnyHttpUrl | None = None
+    parlamento_votes_max_bytes: int = Field(
+        default=100_000_000,
+        ge=1_000_000,
+        le=200_000_000,
+    )
 
     dre_rss_url: AnyHttpUrl | None = None
 
