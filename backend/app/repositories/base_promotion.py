@@ -22,6 +22,8 @@ import json
 from datetime import UTC, datetime
 from typing import Any
 
+import asyncpg
+
 
 def _new_id(prefix: str) -> str:
     import uuid
@@ -31,6 +33,8 @@ def _new_id(prefix: str) -> str:
 
 class BasePromotionRepositoryMixin:
     """Mixin do repositório PostgreSQL para a promoção de contratos BASE."""
+
+    pool: asyncpg.Pool | None
 
     async def mark_base_batch_publication_eligible(
         self,
