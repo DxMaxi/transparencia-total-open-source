@@ -1,17 +1,7 @@
-"""Teste de integração real do circuito de promoção BASE (staging -> revisão -> público).
+"""Teste real do circuito BASE: staging -> revisão -> público.
 
-Ao contrário dos restantes testes de staging BASE (que usam pools falsos para
-testar barreiras sem tocar em base de dados nenhuma), este teste exige um
-PostgreSQL real e descartável — é o primeiro do projeto a fazê-lo. Fica
-automaticamente ignorado se DATABASE_URL não estiver definido, para nunca
-bloquear `pytest` num ambiente sem Postgres (ex.: máquina de desenvolvimento
-sem serviço de base de dados a correr).
-
-Para correr localmente:
-    createdb tt_test_promotion
-    export DATABASE_URL=postgresql://user:pass@localhost/tt_test_promotion
-    # aplicar as 6 migrações de prisma/migrations em ordem, depois:
-    pytest backend/tests/test_base_promotion_integration.py -v
+Exige um PostgreSQL descartável com todas as migrações aplicadas. Sem
+`DATABASE_URL`, o módulo é ignorado para não bloquear desenvolvimento local.
 """
 
 import os
@@ -24,14 +14,13 @@ from app.repositories.postgres import PostgresRepository
 
 pytestmark = pytest.mark.skipif(
     not os.environ.get("DATABASE_URL"),
-    reason="Teste de integração real: exige DATABASE_URL para um PostgreSQL descartável",
+    reason="Teste de integração real: exige DATABASE_URL para PostgreSQL descartável",
 )
 
 
 @pytest.fixture
 async def repo() -> PostgresRepository:
-    settings = Settings()
-    repository = PostgresRepository(settings)
+    repository = PostgresRepository(Settings())
     await repository.connect()
     try:
         yield repository
@@ -40,12 +29,9 @@ async def repo() -> PostgresRepository:
 
 
 async def _seed_evidence_chain(repo: PostgresRepository) -> dict[str, str]:
-    """Cria a cadeia oficial completa (documento -> atestação -> sync_run -> lote ->
-    contrato -> parte), do mesmo modo que store_base_collection faria, mas com SQL
-    direto para isolar este teste da lógica de ingestão (já testada em
-    test_base_persistence_guard.py)."""
+    """Cria uma cadeia oficial completa para isolar a promoção da ingestão."""
     suffix = uuid.uuid4().hex[:12]
-    sha = uuid.uuid4().hex + uuid.uuid4().hex[:32]  # 64 carateres hex
+    sha = uuid.uuid4().hex + uuid.uuid4().hex[:32]
     url = f"https://dados.gov.pt/pt/datasets/teste-{suffix}"
 
     async with repo.pool.acquire() as conn, conn.transaction():
@@ -53,7 +39,9 @@ async def _seed_evidence_chain(repo: PostgresRepository) -> dict[str, str]:
             """INSERT INTO source_documents
                (id, publisher, kind, title, url, retrieved_at, content_sha256)
                VALUES ($1, 'BASE_GOV', 'OPEN_DATASET', 'teste', $2, NOW(), $3)""",
-            f"doc_{suffix}", url, sha,
+            f"doc_{suffix}",
+            url,
+            sha,
         )
         await conn.execute(
             """INSERT INTO source_archive_attestations
@@ -61,34 +49,53 @@ async def _seed_evidence_chain(repo: PostgresRepository) -> dict[str, str]:
                 byte_size, retrieval_url, retrieved_at, archived_at, archived_by,
                 attestation_sha256)
                VALUES ($1, $2, 'LOCAL_FS', $3, $4, 1000, $5, NOW(), NOW(), 'teste', $4)""",
-            f"att_{suffix}", f"doc_{suffix}", f"sha256/{sha[:2]}/{sha}", sha, url,
+            f"att_{suffix}",
+            f"doc_{suffix}",
+            f"sha256/{sha[:2]}/{sha}",
+            sha,
+            url,
         )
         await conn.execute(
-            """INSERT INTO sync_runs (id, source_name, dataset_url, status, code_version)
+            """INSERT INTO sync_runs
+               (id, source_name, dataset_url, status, code_version)
                VALUES ($1, 'BASE_GOV', $2, 'SUCCEEDED', 'test-parser')""",
-            f"run_{suffix}", url,
+            f"run_{suffix}",
+            url,
         )
         await conn.execute(
             """INSERT INTO base_staging_batches
                (id, source_document_id, sync_run_id, resource_year, resource_title,
                 resource_format, parser_version, normalised_sha256,
                 identifier_digests_stored, contract_count, party_count, collected_at)
-               VALUES ($1, $2, $3, 2025, 'teste', 'JSON', 'test-parser', $4, true, 1, 1, NOW())""",
-            f"batch_{suffix}", f"doc_{suffix}", f"run_{suffix}", sha,
+               VALUES ($1, $2, $3, 2025, 'teste', 'JSON', 'test-parser',
+                       $4, true, 1, 1, NOW())""",
+            f"batch_{suffix}",
+            f"doc_{suffix}",
+            f"run_{suffix}",
+            sha,
         )
         await conn.execute(
-            """INSERT INTO base_contract_snapshots (id, batch_id, source_id, object, currency)
+            """INSERT INTO base_contract_snapshots
+               (id, batch_id, source_id, object, currency)
                VALUES ($1, $2, $3, 'objeto de teste', 'EUR')""",
-            f"contract_{suffix}", f"batch_{suffix}", f"BASE-TEST-{suffix}",
+            f"contract_{suffix}",
+            f"batch_{suffix}",
+            f"BASE-TEST-{suffix}",
         )
         await conn.execute(
             """INSERT INTO base_contract_party_snapshots
                (id, contract_snapshot_id, ordinal, role, source_name,
                 protected_identifier_digest)
                VALUES ($1, $2, 0, 'CONTRACTOR', 'Fornecedor de Teste, Lda.', $3)""",
-            f"party_{suffix}", f"contract_{suffix}", sha,
+            f"party_{suffix}",
+            f"contract_{suffix}",
+            sha,
         )
-    return {"batch_id": f"batch_{suffix}", "contract_snapshot_id": f"contract_{suffix}"}
+    return {
+        "batch_id": f"batch_{suffix}",
+        "contract_snapshot_id": f"contract_{suffix}",
+        "digest": sha,
+    }
 
 
 @pytest.mark.asyncio
@@ -96,7 +103,8 @@ async def test_propose_before_eligible_is_rejected(repo: PostgresRepository) -> 
     ids = await _seed_evidence_chain(repo)
     with pytest.raises(ValueError, match="elegível"):
         await repo.propose_base_contract_for_review(
-            contract_snapshot_id=ids["contract_snapshot_id"], reviewer_alias="teste"
+            contract_snapshot_id=ids["contract_snapshot_id"],
+            reviewer_alias="teste",
         )
 
 
@@ -107,16 +115,30 @@ async def test_full_promotion_and_withdrawal_cycle(repo: PostgresRepository) -> 
     await repo.mark_base_batch_publication_eligible(
         batch_id=ids["batch_id"], reviewed_by="editor-teste"
     )
-
     proposal = await repo.propose_base_contract_for_review(
-        contract_snapshot_id=ids["contract_snapshot_id"], reviewer_alias="editor-teste"
+        contract_snapshot_id=ids["contract_snapshot_id"],
+        reviewer_alias="editor-teste",
     )
     assert proposal["publication_status"] == "DRAFT"
 
-    # Não pode ser proposto duas vezes.
+    async with repo.pool.acquire() as conn:
+        projection = await conn.fetchrow(
+            """
+            SELECT party.source_public_id, organisation.source_id
+            FROM public_contract_parties party
+            JOIN interest_entities entity ON entity.id = party.interest_entity_id
+            JOIN organisations organisation ON organisation.id = entity.organisation_id
+            WHERE party.public_contract_id = $1
+            """,
+            proposal["public_contract_id"],
+        )
+    assert projection["source_public_id"] is None
+    assert ids["digest"] not in projection["source_id"]
+
     with pytest.raises(ValueError, match="já tem um registo"):
         await repo.propose_base_contract_for_review(
-            contract_snapshot_id=ids["contract_snapshot_id"], reviewer_alias="editor-teste"
+            contract_snapshot_id=ids["contract_snapshot_id"],
+            reviewer_alias="editor-teste",
         )
 
     decision = await repo.review_publication(
@@ -129,11 +151,11 @@ async def test_full_promotion_and_withdrawal_cycle(repo: PostgresRepository) -> 
     assert decision["publishable"] is True
 
     async with repo.pool.acquire() as conn:
-        published = await conn.fetchrow(
+        published = await conn.fetchval(
             "SELECT publication_status FROM public_contracts WHERE id = $1",
             proposal["public_contract_id"],
         )
-    assert published["publication_status"] == "PUBLISHED"
+    assert published == "PUBLISHED"
 
     withdrawal = await repo.review_publication(
         entity_type="PUBLIC_CONTRACT",
@@ -145,7 +167,7 @@ async def test_full_promotion_and_withdrawal_cycle(repo: PostgresRepository) -> 
     assert withdrawal["publishable"] is False
 
     async with repo.pool.acquire() as conn:
-        withdrawn = await conn.fetchrow(
+        withdrawn = await conn.fetchval(
             "SELECT publication_status FROM public_contracts WHERE id = $1",
             proposal["public_contract_id"],
         )
@@ -153,16 +175,14 @@ async def test_full_promotion_and_withdrawal_cycle(repo: PostgresRepository) -> 
             "SELECT count(*) FROM audit_events WHERE entity_id = $1",
             proposal["public_contract_id"],
         )
-    assert withdrawn["publication_status"] == "WITHDRAWN"
-    assert audit_count == 3  # proposto -> publicado -> retirado, nada apagado
+    assert withdrawn == "WITHDRAWN"
+    assert audit_count == 3
 
 
 @pytest.mark.asyncio
 async def test_batch_data_columns_stay_immutable_after_eligibility_update(
     repo: PostgresRepository,
 ) -> None:
-    """A decisão de elegibilidade não pode ser usada como porta lateral para
-    alterar os dados recolhidos do lote."""
     ids = await _seed_evidence_chain(repo)
     await repo.mark_base_batch_publication_eligible(
         batch_id=ids["batch_id"], reviewed_by="editor-teste"
