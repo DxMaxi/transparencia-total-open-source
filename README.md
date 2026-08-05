@@ -182,7 +182,7 @@ fora do intervalo e hashes de resposta inválidos.
 ### 1. Obter o projeto e configurar o ambiente
 
 ```bash
-git clone https://github.com/SEU_UTILIZADOR/transparencia-total.git
+git clone https://github.com/DxMaxi/transparencia-total-open-source.git
 cd transparencia-total
 cp .env.example .env
 ```

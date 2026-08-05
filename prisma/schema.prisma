@@ -767,6 +767,9 @@ model BaseStagingBatch {
   partyCount              Int                    @map("party_count")
   collectedAt             DateTime               @map("collected_at")
   createdAt               DateTime               @default(now()) @map("created_at")
+  publicationEligible     Boolean                @default(false) @map("publication_eligible")
+  eligibilityReviewedBy   String?                @map("eligibility_reviewed_by")
+  eligibilityReviewedAt   DateTime?              @map("eligibility_reviewed_at")
   sourceDocument          SourceDocument         @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
   syncRun                 SyncRun                @relation(fields: [syncRunId], references: [id], onDelete: Restrict)
   contracts               BaseContractSnapshot[]

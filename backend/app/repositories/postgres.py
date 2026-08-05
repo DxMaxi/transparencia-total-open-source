@@ -19,6 +19,7 @@ from app.models.api import (
     RightOfReplyRequest,
 )
 from app.models.archive import RawArchiveReceipt
+from app.repositories.base_promotion import BasePromotionRepositoryMixin
 from app.repositories.base_staging import BaseStagingRepositoryMixin
 
 logger = logging.getLogger(__name__)
@@ -89,6 +90,14 @@ def _source_from_row(row: Any, prefix: str = "source_") -> dict[str, Any]:
 
 
 def _warning_count(value: Any) -> int:
+    # asyncpg devolve colunas JSONB como texto bruto (sem codec registado),
+    # por isso "[]" chega aqui como string, não como lista Python.
+    # Sem este passo, "[]" era truthy e contava como 1 aviso falso.
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except json.JSONDecodeError:
+            return 1 if value else 0
     if isinstance(value, list):
         return len(value)
     if isinstance(value, dict):
@@ -141,7 +150,7 @@ def _archive_attestation_sha256(
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
-class PostgresRepository(BaseStagingRepositoryMixin):
+class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixin):
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         self.pool: asyncpg.Pool | None = None

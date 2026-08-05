@@ -24,7 +24,10 @@ export function PoliticianProfile({ profile }: { profile: PoliticianProfileData 
           <h1>{profile.name}</h1>
           <p>{profile.role}</p>
           <div className="profile-meta">
-            <span><strong>{profile.partyShort}</strong> {profile.party}</span>
+            <span>
+              <strong>{profile.partyShort}</strong>
+              {profile.party && profile.party !== profile.partyShort ? ` ${profile.party}` : ""}
+            </span>
             <span>{profile.constituency}</span>
             <span>{profile.legislature}</span>
           </div>
