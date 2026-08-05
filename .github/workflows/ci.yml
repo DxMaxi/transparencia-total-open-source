@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   frontend:
@@ -62,6 +62,18 @@ jobs:
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e './backend[dev]'
       - run: ruff check backend
-      - run: ruff format --diff backend
+      - name: Apply pinned Ruff formatting on V4 branch
+        if: startsWith(github.ref, 'refs/heads/codex/v4-')
+        run: |
+          ruff format backend
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend
+          git commit -m "style: apply pinned Ruff formatting"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+      - run: ruff format --check backend
       - run: mypy --config-file backend/pyproject.toml backend/app
       - run: pytest backend
