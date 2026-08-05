@@ -48,9 +48,7 @@ def _collection(*, include_identifier_digest: bool = True) -> BaseContractCollec
         "role": "CONTRACTOR",
     }
     if include_identifier_digest:
-        party["protected_identifier_digest"] = hmac_protected_identifier(
-            "123456789", TEST_PEPPER
-        )
+        party["protected_identifier_digest"] = hmac_protected_identifier("123456789", TEST_PEPPER)
     return BaseContractCollection.model_validate(
         {
             "dataset_resource": {
@@ -210,9 +208,7 @@ def test_cli_archives_before_opening_database_and_keeps_review_private(
         raw_archive_root=tmp_path / "raw-archive",
         protected_identifier_pepper=TEST_PEPPER,
     )
-    collection = _collection().model_copy(
-        update={"raw_document": cast(Any, object())}
-    )
+    collection = _collection().model_copy(update={"raw_document": cast(Any, object())})
 
     class FakeHttp:
         def __init__(self, _settings: Settings) -> None:
@@ -498,11 +494,7 @@ def test_exact_base_snapshot_retry_is_idempotent_without_new_rows_or_audit(
     repeated_at = datetime(2026, 8, 3, 10, 30, tzinfo=UTC)
     repeated_contracts = [
         contract.model_copy(
-            update={
-                "source": contract.source.model_copy(
-                    update={"retrieved_at": repeated_at}
-                )
-            }
+            update={"source": contract.source.model_copy(update={"retrieved_at": repeated_at})}
         )
         for contract in collection.contracts
     ]
@@ -725,9 +717,7 @@ def test_base_inspection_returns_only_aggregate_private_metadata() -> None:
     }
     assert report["protected_identifier_matching"] == {
         "status": "UNAVAILABLE",
-        "description": (
-            "Dados indisponíveis: o lote não persistiu digests sem pepper durável."
-        ),
+        "description": ("Dados indisponíveis: o lote não persistiu digests sem pepper durável."),
     }
     assert all(report["checks"].values())
     assert "Empresa Demonstrativa" not in exported

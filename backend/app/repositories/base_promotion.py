@@ -197,11 +197,7 @@ class BasePromotionRepositoryMixin:
                     connection,
                     organisation_id=organisation_id,
                     public_label=party["source_name"],
-                    kind=(
-                        "PUBLIC_BODY"
-                        if party["role"] == "CONTRACTING_AUTHORITY"
-                        else "COMPANY"
-                    ),
+                    kind=("PUBLIC_BODY" if party["role"] == "CONTRACTING_AUTHORITY" else "COMPANY"),
                 )
                 await connection.execute(
                     """

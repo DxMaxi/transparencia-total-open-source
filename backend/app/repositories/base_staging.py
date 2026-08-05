@@ -125,8 +125,7 @@ def _base_snapshot_sha256(
                 party_payload = party.model_dump(mode="json")
                 digest = (
                     party.protected_identifier_digest.get_secret_value()
-                    if persist_identifier_digests
-                    and party.protected_identifier_digest is not None
+                    if persist_identifier_digests and party.protected_identifier_digest is not None
                     else None
                 )
                 party_payload["protected_identifier_digest"] = digest
@@ -278,8 +277,7 @@ def _base_party_rows(
         for ordinal, party in enumerate(parties):
             digest = (
                 party.protected_identifier_digest.get_secret_value()
-                if persist_identifier_digests
-                and party.protected_identifier_digest is not None
+                if persist_identifier_digests and party.protected_identifier_digest is not None
                 else None
             )
             yield (
@@ -303,7 +301,6 @@ def _fits_decimal_20_2(value: Decimal) -> bool:
     scale = max(-exponent, 0)
     integer_digits = max(len(digits) + exponent, 0)
     return scale <= 2 and integer_digits <= 18
-
 
 
 class BaseStagingRepositoryMixin:
@@ -418,9 +415,7 @@ class BaseStagingRepositoryMixin:
                     connection,
                     publisher="BASE_GOV",
                     kind="OPEN_DATASET",
-                    title=(
-                        f"Portal BASE — contratos — {collection.dataset_resource.year}"
-                    ),
+                    title=(f"Portal BASE — contratos — {collection.dataset_resource.year}"),
                     url=str(collection.dataset_resource.url),
                     retrieved_at=collection.collected_at,
                     content_sha256=collection.document_sha256,
@@ -731,9 +726,7 @@ class BaseStagingRepositoryMixin:
             expected_attestation_sha256 = _archive_attestation_sha256(
                 source_document_id=str(snapshot["source_document_id"]),
                 receipt=archived_receipt,
-                archived_at=_millisecond_utc(
-                    _utc_database_timestamp(snapshot["archived_at"])
-                ),
+                archived_at=_millisecond_utc(_utc_database_timestamp(snapshot["archived_at"])),
                 archived_by=str(snapshot["archived_by"]),
             )
             attestation_hash_matches = expected_attestation_sha256 == str(
@@ -797,9 +790,7 @@ class BaseStagingRepositoryMixin:
             "counts": {
                 "contracts": observed_contract_count,
                 "parties": observed_party_count,
-                "protected_identifier_digests": int(
-                    snapshot["protected_identifier_digest_count"]
-                ),
+                "protected_identifier_digests": int(snapshot["protected_identifier_digest_count"]),
             },
             "distributions": {"procedures": procedures, "roles": roles},
             "protected_identifier_matching": {
@@ -822,16 +813,12 @@ class BaseStagingRepositoryMixin:
                 "parser_matches_sync_code_version": (
                     snapshot["parser_version"] == snapshot["code_version"]
                 ),
-                "contract_count_matches_batch": (
-                    observed_contract_count == stored_contract_count
-                ),
+                "contract_count_matches_batch": (observed_contract_count == stored_contract_count),
                 "party_count_matches_batch": observed_party_count == stored_party_count,
                 "procedure_distribution_matches_contracts": (
                     sum(procedures.values()) == observed_contract_count
                 ),
-                "role_distribution_matches_parties": (
-                    sum(roles.values()) == observed_party_count
-                ),
+                "role_distribution_matches_parties": (sum(roles.values()) == observed_party_count),
                 "archive_attested": archive_present,
                 "archive_hash_matches_source": (
                     archive_present and snapshot["archive_content_sha256"] == source_sha256
