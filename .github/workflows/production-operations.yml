@@ -51,12 +51,14 @@ jobs:
           python-version: '3.12'
           cache: pip
 
-      - name: Validar segredos obrigatórios
+      - name: Validar configuração obrigatória
         shell: bash
         run: |
           test -n "$DATABASE_URL"
-          test -n "$ADMIN_API_KEY"
           test -n "$OFFICIAL_USER_AGENT"
+          if [ "${{ inputs.operation }}" = "bootstrap-parliament-publication" ]; then
+            test -n "$ADMIN_API_KEY"
+          fi
 
       - name: Aplicar migrações Prisma
         if: ${{ inputs.operation == 'migrate' }}
