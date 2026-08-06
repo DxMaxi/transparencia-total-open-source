@@ -7,6 +7,8 @@ import asyncpg
 
 from app.core.config import get_settings
 from app.repositories.official_index_staging import OfficialIndexStagingRepository
+from app.services.http import OfficialHttpClient
+from app.services.parlamento import ParlamentoCollector
 
 EXPECTED_PARLIAMENT_SHA256 = "e54b30869212ea3d50a401637a31847339e29dcfdac9ec7b66e51c0def0cd9b9"
 EXPECTED_PARLIAMENT_COUNT = 286
@@ -38,6 +40,38 @@ async def apply_rollout_schema(database_url: str) -> None:
         await connection.close()
 
 
+async def restore_exact_parliament_archive(
+    repository: OfficialIndexStagingRepository,
+    *,
+    snapshot: dict[str, object],
+) -> dict[str, object]:
+    """Reobtém e atesta apenas o mesmo documento oficial, byte por byte."""
+
+    settings = repository.settings
+    source_url = str(snapshot["source_url"])
+    source_document_id = str(snapshot["source_document_id"])
+    async with OfficialHttpClient(settings) as http:
+        collector = ParlamentoCollector(settings, http)
+        _, raw_document = await collector.fetch_json(source_url)
+
+    if raw_document.content_sha256 != EXPECTED_PARLIAMENT_SHA256:
+        raise RuntimeError(
+            "O documento parlamentar actual diverge do SHA-256 auditado; "
+            "a publicação foi bloqueada"
+        )
+    if str(raw_document.source_url) != source_url:
+        raise RuntimeError(
+            "A URL final do documento parlamentar diverge da fonte persistida; "
+            "a publicação foi bloqueada"
+        )
+
+    return await repository.attest_existing_source_bytes(
+        source_document_id=source_document_id,
+        raw_document=raw_document,
+        archived_by="bootstrap:v4-exact-reattestation",
+    )
+
+
 async def bootstrap() -> None:
     settings = get_settings()
     if settings.environment != "production":
@@ -56,7 +90,14 @@ async def bootstrap() -> None:
         if snapshot["candidate_count"] != EXPECTED_PARLIAMENT_COUNT:
             raise RuntimeError("A contagem parlamentar diverge da fotografia auditada")
         if not snapshot["archive_attested"]:
-            raise RuntimeError("O original parlamentar não está atestado no arquivo privado")
+            await restore_exact_parliament_archive(repository, snapshot=snapshot)
+            snapshot = await repository.inspect_parliament_people_publication(
+                legislature="XVII"
+            )
+        if not snapshot["archive_attested"]:
+            raise RuntimeError(
+                "O original parlamentar continua sem uma atestação de arquivo válida"
+            )
         if snapshot["already_published"] == EXPECTED_PARLIAMENT_COUNT:
             return
         await repository.publish_parliament_people_snapshot(
