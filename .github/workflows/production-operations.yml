@@ -10,8 +10,9 @@ on:
         options:
           - migrate
           - refresh-official-indexes
-          - verify-archive-integrity
           - bootstrap-parliament-publication
+          - verify-archive-integrity
+          - check-operational-status
       confirmation:
         description: Escreva PRODUCAO para confirmar
         required: true
@@ -37,6 +38,7 @@ jobs:
       ADMIN_API_KEY: ${{ secrets.PRODUCTION_ADMIN_API_KEY }}
       OFFICIAL_USER_AGENT: ${{ secrets.PRODUCTION_OFFICIAL_USER_AGENT }}
       PROTECTED_IDENTIFIER_PEPPER: ${{ secrets.PRODUCTION_IDENTIFIER_PEPPER }}
+      V4_SOURCE_MAX_AGE_HOURS: "36"
     steps:
       - uses: actions/checkout@v4
 
@@ -78,12 +80,17 @@ jobs:
         working-directory: backend
         run: python -m scripts.refresh_v4_indexes
 
+      - name: Publicar fotografia parlamentar auditada
+        if: ${{ inputs.operation == 'bootstrap-parliament-publication' }}
+        working-directory: backend
+        run: python -m scripts.bootstrap_v4_public
+
       - name: Verificar integridade do arquivo
         if: ${{ inputs.operation == 'verify-archive-integrity' }}
         working-directory: backend
         run: python -m scripts.verify_v4_archive
 
-      - name: Publicar fotografia parlamentar auditada
-        if: ${{ inputs.operation == 'bootstrap-parliament-publication' }}
+      - name: Verificar estado operacional
+        if: ${{ inputs.operation == 'check-operational-status' }}
         working-directory: backend
-        run: python -m scripts.bootstrap_v4_public
+        run: python -m scripts.check_v4_operational_status
