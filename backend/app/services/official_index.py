@@ -65,6 +65,9 @@ class OfficialIndexCollector:
         )
 
 
-TRIBUNAL_CONTAS_INDEX_URL = "https://www.tcontas.pt/pt-pt/ProdutosTC/Paginas/default.aspx"
+TRIBUNAL_CONTAS_INDEX_URL = (
+    "https://www.tcontas.pt/pt-pt/TribunalContas/Publicacoes/Pages/"
+    "Publicacoes-do-Tribunal-de-Contas.aspx"
+)
 EUROPEAN_PARLIAMENT_INDEX_URL = "https://data.europarl.europa.eu/en/developer-corner/opendata-api"
 SNS_RADAR_INDEX_URL = "https://www.sns.gov.pt/"

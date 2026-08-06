@@ -1,6 +1,7 @@
 """Operações controladas para activar a cobertura pública da V4."""
 
 import hashlib
+import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Literal
@@ -21,6 +22,8 @@ from app.services.official_index import (
     OfficialIndexCollector,
 )
 from app.services.transparency_entity import TransparencyEntityCollector
+
+logger = logging.getLogger(__name__)
 
 RolloutSource = Literal[
     "BASE_CONTRACTS",
@@ -154,5 +157,20 @@ class V4RolloutService:
     ) -> list[dict[str, object]]:
         results: list[dict[str, object]] = []
         for source in sources:
-            results.append(await self.sync_source(source))
+            try:
+                results.append(await self.sync_source(source))
+            except Exception as exc:
+                logger.exception(
+                    "v4_official_index_source_refresh_failed source_name=%s",
+                    source,
+                )
+                results.append(
+                    {
+                        "source_name": source,
+                        "status": "FAILED",
+                        "publication_performed": False,
+                        "error_type": type(exc).__name__,
+                        "error": str(exc),
+                    }
+                )
         return results
