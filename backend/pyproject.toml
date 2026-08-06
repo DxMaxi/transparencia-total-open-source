@@ -50,6 +50,9 @@ target-version = "py312"
 select = ["E", "F", "I", "B", "UP", "SIM", "ASYNC"]
 ignore = ["UP038"]
 
+[tool.ruff.lint.per-file-ignores]
+"app/repositories/public_parliament.py" = ["I001"]
+
 [tool.mypy]
 python_version = "3.12"
 plugins = ["pydantic.mypy"]
