@@ -72,7 +72,7 @@ def _validate_dre_staging_input(
 
 
 class DreStagingRepository(PostgresRepository):
-    """Repositório isolado para staging jurídico DRE; sem métodos de promoção."""
+    """Repositório DRE que não cria projeções nem invoca promoção pública."""
 
     async def store_dre_document(
         self,
@@ -114,17 +114,6 @@ class DreStagingRepository(PostgresRepository):
                     mime_type=archive_receipt.mime_type,
                     parser_version=code_version,
                 )
-                await connection.execute(
-                    """
-                    UPDATE source_documents
-                    SET official_identifier = COALESCE(official_identifier, $2),
-                        published_at = COALESCE(published_at, $3)
-                    WHERE id = $1
-                    """,
-                    source_document_id,
-                    document.official_identifier,
-                    _database_timestamp(document.published_at),
-                )
                 attestation = await self._attest_source_archive(
                     connection,
                     source_document_id=source_document_id,
@@ -143,7 +132,7 @@ class DreStagingRepository(PostgresRepository):
                          title, document_kind, published_at, parser_version,
                          normalised_text_sha256, extracted_text, text_length,
                          collected_at, created_at)
-                    VALUES ($1, $2, $3, $4, $5, $6::\"DocumentKind\", $7, $8,
+                    VALUES ($1, $2, $3, $4, $5, $6::"DocumentKind", $7, $8,
                             $9, $10, $11, $12, NOW())
                     ON CONFLICT (source_document_id, parser_version) DO NOTHING
                     RETURNING id
@@ -242,7 +231,11 @@ class DreStagingRepository(PostgresRepository):
             "document_kind": kind,
         }
 
-    async def inspect_dre_staging(self, *, official_identifier: str | None = None) -> dict[str, Any]:
+    async def inspect_dre_staging(
+        self,
+        *,
+        official_identifier: str | None = None,
+    ) -> dict[str, Any]:
         """Devolve apenas metadados e verificações; nunca o texto jurídico."""
         if self.pool is None:
             raise RuntimeError("Base de dados não configurada")
