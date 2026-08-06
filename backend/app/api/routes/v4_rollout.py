@@ -2,7 +2,7 @@
 
 from typing import Annotated, cast
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, field_validator
 
 from app.api.dependencies import get_repository
@@ -20,7 +20,7 @@ router = APIRouter(
 
 
 class IndexSyncRequest(BaseModel):
-    sources: list[RolloutSource] = Field(min_length=1, max_length=4)
+    sources: list[RolloutSource] = Field(min_length=1, max_length=6)
 
     @field_validator("sources")
     @classmethod
@@ -51,7 +51,10 @@ async def parliament_publish(
     repository: Annotated[PostgresRepository, Depends(get_repository)],
 ) -> dict[str, object]:
     if not payload.confirm_source_reviewed:
-        raise ValueError("A publicação exige confirmação humana explícita da fonte")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A publicação exige confirmação humana explícita da fonte",
+        )
     return await repository.publish_parliament_people_snapshot(
         legislature=payload.legislature,
         expected_source_sha256=payload.source_sha256,
