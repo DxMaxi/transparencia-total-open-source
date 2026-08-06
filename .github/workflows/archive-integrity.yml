@@ -22,6 +22,7 @@ jobs:
       ENVIRONMENT: production
       CORS_ORIGINS: https://www.transparenciatotal.pt
       OFFICIAL_USER_AGENT: ${{ secrets.PRODUCTION_OFFICIAL_USER_AGENT }}
+      RAW_ARCHIVE_WARNING_BYTES: ${{ vars.RAW_ARCHIVE_WARNING_BYTES || '400000000' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -36,6 +37,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e './backend'
+      - name: Medir capacidade do arquivo
+        working-directory: backend
+        run: python -m scripts.report_archive_capacity
       - name: Verificar todos os objetos arquivados
         working-directory: backend
         run: python -m scripts.verify_v4_archive
