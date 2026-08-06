@@ -51,7 +51,10 @@ def _validate_dre_staging_input(
         raise ValueError("A versão do parser DRE é inválida")
     if len(document.title.strip()) > 500:
         raise ValueError("O título DRE excede o limite seguro")
-    if document.official_identifier is not None and len(document.official_identifier.strip()) > 500:
+    if (
+        document.official_identifier is not None
+        and len(document.official_identifier.strip()) > 500
+    ):
         raise ValueError("O identificador oficial DRE excede o limite seguro")
     if not 100 <= len(document.text) <= 5_000_000:
         raise ValueError("O texto jurídico DRE está vazio ou excede o limite seguro")
@@ -67,7 +70,10 @@ def _validate_dre_staging_input(
         raise ValueError("O documento DRE não transporta os bytes oficiais privados")
     if raw_document.content_sha256 != document.content_sha256:
         raise ValueError("Os bytes privados DRE não correspondem ao hash do documento")
-    if raw_document.retrieved_at.astimezone(UTC) != archive_receipt.retrieved_at.astimezone(UTC):
+    if (
+        raw_document.retrieved_at.astimezone(UTC)
+        != archive_receipt.retrieved_at.astimezone(UTC)
+    ):
         raise ValueError("O recibo DRE não corresponde à data de recolha dos bytes")
 
 
