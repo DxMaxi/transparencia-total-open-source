@@ -116,8 +116,7 @@ async def bootstrap() -> None:
                 "status": "REVIEW_REQUIRED",
                 "publication_performed": False,
                 "reason": (
-                    "A fotografia mais recente em staging não é a fotografia "
-                    "auditada no rollout."
+                    "A fotografia mais recente em staging não é a fotografia auditada no rollout."
                 ),
                 "audited_source_sha256": EXPECTED_PARLIAMENT_SHA256,
                 "current_source_sha256": snapshot["source_sha256"],
@@ -135,9 +134,7 @@ async def bootstrap() -> None:
             print(json.dumps(result, ensure_ascii=False, default=str))
             if result["status"] == "REVIEW_REQUIRED":
                 return
-            snapshot = await repository.inspect_parliament_people_publication(
-                legislature="XVII"
-            )
+            snapshot = await repository.inspect_parliament_people_publication(legislature="XVII")
         if not snapshot["archive_attested"]:
             raise RuntimeError(
                 "O original parlamentar continua sem uma atestação de arquivo válida"
