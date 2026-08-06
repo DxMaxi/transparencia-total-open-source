@@ -31,9 +31,7 @@ logger = logging.getLogger(__name__)
 
 async def _refresh_v4_indexes(repository: OfficialIndexStagingRepository) -> None:
     try:
-        await V4RolloutService(settings, repository).sync_sources(
-            list(DEFAULT_ROLLOUT_SOURCES)
-        )
+        await V4RolloutService(settings, repository).sync_sources(list(DEFAULT_ROLLOUT_SOURCES))
     except Exception:
         logger.exception("v4_official_index_refresh_failed")
 
