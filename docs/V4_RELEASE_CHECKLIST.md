@@ -1,0 +1,57 @@
+# Checklist de fecho da V4
+
+## Princípios obrigatórios
+
+- [x] A fonte oficial precede qualquer conclusão.
+- [x] Ausência de dados é apresentada como indisponibilidade, nunca como ausência de factos.
+- [x] Ingestão, revisão e publicação são estados separados.
+- [x] Bytes oficiais são identificados por SHA-256 antes da normalização.
+- [x] Conteúdo bruto privado é excluído de serialização pública.
+- [x] Identificadores sensíveis do BASE não são publicados em claro.
+- [x] Tabelas de staging DRE e EPT são append-only.
+- [x] Nenhum novo conector promove dados automaticamente.
+
+## Fontes V4
+
+| Fonte | Gate técnico V4 | Publicação automática |
+|---|---|---|
+| Assembleia da República | Colector e persistência existentes com arquivo bruto | Não |
+| Portal BASE | Arquivo, staging privado, deduplicação e promoção exacta sob revisão | Não |
+| Diário da República | Arquivo, snapshot privado, inspector sem texto e testes de imutabilidade | Não |
+| Entidade para a Transparência | Colector de índice e schema privado com revisão jurídica obrigatória | Não |
+| Tribunal de Contas | Colector mínimo fail-closed do índice oficial | Não |
+| Parlamento Europeu | Colector mínimo fail-closed do índice oficial | Não |
+| Radar SNS | Colector mínimo fail-closed como origem inicial | Não |
+
+## Verificação automatizada
+
+O PR só deve ser considerado pronto quando o CI confirmar:
+
+- migrações Prisma em PostgreSQL 17;
+- Ruff lint e formatação;
+- mypy no backend;
+- pytest no backend, incluindo integrações PostgreSQL;
+- lint e testes frontend;
+- validação e geração Prisma;
+- build Next.js.
+
+## Gates operacionais posteriores ao merge
+
+Estes passos não são executados automaticamente pelo código nem pelo PR:
+
+1. ensaio controlado do EPT em ambiente de staging;
+2. confirmação jurídica e de protecção de dados antes de qualquer tratamento de declarações;
+3. escolha documentada dos recursos concretos do Tribunal de Contas e Parlamento Europeu;
+4. definição de cobertura territorial explícita para cada conector Radar;
+5. revisão humana positiva antes de criar qualquer projecção pública;
+6. deploy separado, autorizado e acompanhado de verificação pós-deploy.
+
+## Fora da V4
+
+- painel de administração;
+- revisão editorial automatizada;
+- correspondência difusa de pessoas ou entidades;
+- publicação em massa;
+- ingestão de imprensa como fonte probatória;
+- cobertura automática de todos os municípios;
+- decisões substantivas por IA.
