@@ -32,7 +32,7 @@ dev = [
   "pytest>=8.4,<9",
   "pytest-asyncio>=1.1,<2",
   "respx>=0.22,<1",
-  "ruff>=0.12,<1"
+  "ruff==0.12.12"
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -48,6 +48,7 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM", "ASYNC"]
+ignore = ["UP038"]
 
 [tool.mypy]
 python_version = "3.12"

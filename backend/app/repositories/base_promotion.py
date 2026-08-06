@@ -7,19 +7,22 @@ de decisão humana em `PostgresRepository.review_publication`.
 Fluxo completo, sempre com decisão humana explícita em cada passo:
 
     BaseContractSnapshot (staging, append-only)
-        -> mark_base_batch_publication_eligible()   [decisão 1: o lote pode ser considerado]
-        -> propose_base_contract_for_review()        [materializa candidato DRAFT, ainda não público]
-        -> review_publication(publish=True)          [decisão 2: publicar este contrato em concreto]
+        -> mark_base_batch_publication_eligible()
+        -> propose_base_contract_for_review()
+        -> review_publication(publish=True)
 
-Nenhuma função aqui cria uma correspondência entre uma parte contratante e
-qualquer outra entidade de interesse já conhecida (deputados, titulares de
-cargos, etc.). Isso pertence ao circuito separado de `ContractMatchReview`,
-que exige revisão humana própria e não é criado automaticamente.
+A elegibilidade do lote, a criação do candidato DRAFT e a publicação são três
+operações distintas. Nenhuma função aqui cria uma correspondência entre uma
+parte contratante e qualquer entidade já conhecida. Os HMAC de identificadores
+fiscais permanecem exclusivamente no staging privado e no circuito separado de
+`ContractMatchReview`, que exige revisão humana própria.
 """
 
 import json
 from datetime import UTC, datetime
 from typing import Any
+
+import asyncpg
 
 
 def _new_id(prefix: str) -> str:
@@ -31,6 +34,8 @@ def _new_id(prefix: str) -> str:
 class BasePromotionRepositoryMixin:
     """Mixin do repositório PostgreSQL para a promoção de contratos BASE."""
 
+    pool: asyncpg.Pool | None
+
     async def mark_base_batch_publication_eligible(
         self,
         *,
@@ -38,11 +43,10 @@ class BasePromotionRepositoryMixin:
         reviewed_by: str,
         eligible: bool = True,
     ) -> dict[str, Any]:
-        """Decisão humana explícita: este LOTE pode entrar em consideração.
+        """Regista a decisão humana sobre a elegibilidade editorial do lote.
 
-        Isto não publica nenhum contrato. Só destranca a possibilidade de
-        propor contratos individuais desse lote para revisão. Reversível:
-        pode ser chamado de novo com eligible=False sem apagar histórico.
+        A operação não publica contratos. Apenas permite ou bloqueia a criação
+        posterior de candidatos individuais em estado DRAFT.
         """
         if self.pool is None:
             raise RuntimeError("Base de dados não configurada")
@@ -105,14 +109,10 @@ class BasePromotionRepositoryMixin:
         contract_snapshot_id: str,
         reviewer_alias: str,
     ) -> dict[str, Any]:
-        """Materializa UM contrato do staging BASE como candidato DRAFT.
+        """Materializa um contrato do staging BASE como candidato DRAFT.
 
-        Não publica nada — cria apenas registos com verification_status
-        pendente e publication_status DRAFT, prontos para serem decididos
-        via `review_publication(entity_type="PUBLIC_CONTRACT", ...)`.
-
-        Exige que o lote de origem já tenha sido marcado como elegível
-        (ver mark_base_batch_publication_eligible). Sem isso, recusa.
+        Não publica nada. Cria apenas registos pendentes, prontos para decisão
+        através de `review_publication(entity_type="PUBLIC_CONTRACT", ...)`.
         """
         if self.pool is None:
             raise RuntimeError("Base de dados não configurada")
@@ -154,7 +154,7 @@ class BasePromotionRepositoryMixin:
 
             parties = await connection.fetch(
                 """
-                SELECT id, ordinal, role::text AS role, source_name, protected_identifier_digest
+                SELECT id, ordinal, role::text AS role, source_name
                 FROM base_contract_party_snapshots
                 WHERE contract_snapshot_id = $1
                 ORDER BY ordinal
@@ -196,27 +196,25 @@ class BasePromotionRepositoryMixin:
                     contract_snapshot_id=contract_snapshot_id,
                     ordinal=party["ordinal"],
                     source_name=party["source_name"],
-                    protected_identifier_digest=party["protected_identifier_digest"],
                 )
                 entity_id = await self._find_or_create_interest_entity_for_organisation(
                     connection,
                     organisation_id=organisation_id,
                     public_label=party["source_name"],
-                    kind="PUBLIC_BODY" if party["role"] == "CONTRACTING_AUTHORITY" else "COMPANY",
+                    kind=("PUBLIC_BODY" if party["role"] == "CONTRACTING_AUTHORITY" else "COMPANY"),
                 )
                 await connection.execute(
                     """
                     INSERT INTO public_contract_parties
                         (id, public_contract_id, interest_entity_id, role,
                          source_name, source_public_id, created_at)
-                    VALUES ($1, $2, $3, $4::"ContractPartyRole", $5, $6, NOW())
+                    VALUES ($1, $2, $3, $4::"ContractPartyRole", $5, NULL, NOW())
                     """,
                     _new_id("contract_party"),
                     public_contract_id,
                     entity_id,
                     party["role"],
                     party["source_name"],
-                    party["protected_identifier_digest"],
                 )
                 party_entity_ids.append(entity_id)
 
@@ -252,25 +250,19 @@ class BasePromotionRepositoryMixin:
         contract_snapshot_id: str,
         ordinal: int,
         source_name: str,
-        protected_identifier_digest: str | None,
     ) -> str:
-        """Encontra ou cria uma Organisation para uma parte contratante.
+        """Cria uma organização isolada para a parte deste contrato.
 
-        Com digest (NIF/NIPC protegido): reutiliza por correspondência EXATA
-        de digest — nunca por semelhança de nome. Sem digest: cria uma
-        organização isolada a este contrato, sem tentar adivinhar se é "a
-        mesma" que qualquer outra já registada (evita inferência a partir de
-        nome, que a metodologia do projeto proíbe).
+        A promoção não reutiliza organizações por nome ou por HMAC. O HMAC fica
+        no staging privado para uma eventual proposta de correspondência em
+        `ContractMatchReview`, sempre separada e sujeita a revisão humana.
         """
-        if protected_identifier_digest:
-            source_id = f"base-party-digest:{protected_identifier_digest}"
-            existing = await connection.fetchval(
-                "SELECT id FROM organisations WHERE source_id = $1", source_id
-            )
-            if existing:
-                return str(existing)
-        else:
-            source_id = f"base-contract-party:{contract_snapshot_id}:{ordinal}"
+        source_id = f"base-contract-party:{contract_snapshot_id}:{ordinal}"
+        existing = await connection.fetchval(
+            "SELECT id FROM organisations WHERE source_id = $1", source_id
+        )
+        if existing:
+            return str(existing)
 
         organisation_id = _new_id("org")
         await connection.execute(
