@@ -68,7 +68,10 @@ async def restore_or_stage_parliament_source(
         return {
             "status": "REVIEW_REQUIRED",
             "publication_performed": False,
-            "reason": "A fonte oficial mudou após a auditoria; a nova fotografia foi preservada em staging.",
+            "reason": (
+                "A fonte oficial mudou após a auditoria; a nova fotografia foi "
+                "preservada em staging."
+            ),
             "audited_source_sha256": EXPECTED_PARLIAMENT_SHA256,
             "current_source_sha256": raw_document.content_sha256,
             "current_candidate_count": len(current_dataset.deputies),
@@ -112,7 +115,10 @@ async def bootstrap() -> None:
             result = {
                 "status": "REVIEW_REQUIRED",
                 "publication_performed": False,
-                "reason": "A fotografia mais recente em staging não é a fotografia auditada no rollout.",
+                "reason": (
+                    "A fotografia mais recente em staging não é a fotografia "
+                    "auditada no rollout."
+                ),
                 "audited_source_sha256": EXPECTED_PARLIAMENT_SHA256,
                 "current_source_sha256": snapshot["source_sha256"],
                 "current_candidate_count": snapshot["candidate_count"],
