@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass
-from typing import Any
+from datetime import UTC, datetime
 
 import asyncpg
 
+from app.models.archive import RawArchiveReceipt
 from app.models.parliamentary import ParliamentActivityDataset
 
 
@@ -13,22 +16,76 @@ class ParliamentActivityPersistResult:
     source_document_id: str
     sessions_written: int
     initiatives_written: int
+    archive_attestation_written: bool
+
+
+def _database_timestamp(value: datetime) -> datetime:
+    utc_value = value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+    return utc_value.replace(tzinfo=None)
+
+
+def _new_id(prefix: str, stable_value: str) -> str:
+    digest = hashlib.sha256(stable_value.encode("utf-8")).hexdigest()
+    return f"{prefix}_{digest[:24]}"
+
+
+def _attestation_digest(
+    *,
+    source_document_id: str,
+    receipt: RawArchiveReceipt,
+    archived_at: datetime,
+    archived_by: str,
+) -> str:
+    canonical = json.dumps(
+        {
+            "source_document_id": source_document_id,
+            "storage_backend": receipt.storage_backend,
+            "storage_key": receipt.storage_key,
+            "content_sha256": receipt.content_sha256,
+            "byte_size": receipt.byte_size,
+            "mime_type": receipt.mime_type,
+            "retrieval_url": str(receipt.source_url),
+            "retrieved_at": receipt.retrieved_at.astimezone(UTC).isoformat(),
+            "archived_at": archived_at.astimezone(UTC).isoformat(),
+            "archived_by": archived_by,
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 class ParliamentActivityRepository:
-    """Persistência incremental de atividade parlamentar já arquivada e atestada.
+    """Arquivo, atestação e persistência incremental da atividade parlamentar.
 
-    Esta classe não cria nem publica prova. Exige que o SourceDocument e a respetiva
-    atestação append-only já existam. Assim, uma recolha nunca se transforma
-    silenciosamente em publicação.
+    A operação é atómica: se a prova não puder ser registada ou os dados não
+    puderem ser persistidos, toda a transação é anulada. Nenhum registo é
+    publicado automaticamente.
     """
 
     def __init__(self, pool: asyncpg.Pool) -> None:
         self.pool = pool
 
-    async def persist(self, dataset: ParliamentActivityDataset) -> ParliamentActivityPersistResult:
+    async def persist(
+        self,
+        dataset: ParliamentActivityDataset,
+        *,
+        archive_receipt: RawArchiveReceipt | None = None,
+        archived_by: str = "parliament-activity-ingestion-v1",
+    ) -> ParliamentActivityPersistResult:
         async with self.pool.acquire() as connection, connection.transaction():
-            source_document_id = await self._require_attested_source(connection, dataset)
+            attestation_written = False
+            if archive_receipt is not None:
+                source_document_id, attestation_written = await self._register_attested_source(
+                    connection,
+                    dataset,
+                    archive_receipt,
+                    archived_by=archived_by,
+                )
+            else:
+                source_document_id = await self._require_attested_source(connection, dataset)
+
             sessions_written = await self._upsert_sessions(
                 connection, dataset, source_document_id
             )
@@ -39,7 +96,92 @@ class ParliamentActivityRepository:
                 source_document_id=source_document_id,
                 sessions_written=sessions_written,
                 initiatives_written=initiatives_written,
+                archive_attestation_written=attestation_written,
             )
+
+    @staticmethod
+    async def _register_attested_source(
+        connection: asyncpg.Connection,
+        dataset: ParliamentActivityDataset,
+        receipt: RawArchiveReceipt,
+        *,
+        archived_by: str,
+    ) -> tuple[str, bool]:
+        if receipt.content_sha256 != dataset.document_sha256:
+            raise RuntimeError("O recibo de arquivo não corresponde ao SHA-256 do dataset")
+        if str(receipt.source_url) != str(dataset.dataset_url):
+            raise RuntimeError("O recibo de arquivo não corresponde à URL oficial do dataset")
+
+        source_document_id = _new_id(
+            "source",
+            f"{dataset.dataset_url}|{dataset.document_sha256}",
+        )
+        await connection.execute(
+            """
+            INSERT INTO source_documents
+                (id, publisher, kind, title, url, retrieved_at,
+                 content_sha256, mime_type, raw_storage_key, parser_version, created_at)
+            VALUES
+                ($1, 'PARLIAMENT', 'OPEN_DATASET', $2, $3, $4,
+                 $5, $6, $7, 'parliament-activity-v1', NOW())
+            ON CONFLICT (url, content_sha256) DO UPDATE SET
+                retrieved_at = EXCLUDED.retrieved_at,
+                mime_type = EXCLUDED.mime_type,
+                raw_storage_key = EXCLUDED.raw_storage_key,
+                parser_version = EXCLUDED.parser_version
+            """,
+            source_document_id,
+            f"Atividade parlamentar — {dataset.legislature}",
+            str(dataset.dataset_url),
+            _database_timestamp(receipt.retrieved_at),
+            receipt.content_sha256,
+            receipt.mime_type,
+            receipt.storage_key,
+        )
+        actual_source_id = await connection.fetchval(
+            """
+            SELECT id FROM source_documents
+            WHERE url = $1 AND content_sha256 = $2
+            LIMIT 1
+            """,
+            str(dataset.dataset_url),
+            dataset.document_sha256,
+        )
+        if actual_source_id is None:
+            raise RuntimeError("Não foi possível registar o documento parlamentar")
+        source_document_id = str(actual_source_id)
+
+        archived_at = datetime.now(UTC)
+        digest = _attestation_digest(
+            source_document_id=source_document_id,
+            receipt=receipt,
+            archived_at=archived_at,
+            archived_by=archived_by,
+        )
+        status = await connection.execute(
+            """
+            INSERT INTO source_archive_attestations
+                (id, source_document_id, storage_backend, storage_key,
+                 content_sha256, byte_size, mime_type, retrieval_url,
+                 retrieved_at, archived_at, archived_by, attestation_sha256, created_at)
+            VALUES
+                ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
+            ON CONFLICT (source_document_id, storage_backend, storage_key) DO NOTHING
+            """,
+            _new_id("archive", digest),
+            source_document_id,
+            receipt.storage_backend,
+            receipt.storage_key,
+            receipt.content_sha256,
+            receipt.byte_size,
+            receipt.mime_type,
+            str(receipt.source_url),
+            _database_timestamp(receipt.retrieved_at),
+            _database_timestamp(archived_at),
+            archived_by,
+            digest,
+        )
+        return source_document_id, status.endswith("1")
 
     @staticmethod
     async def _require_attested_source(
