@@ -1,9 +1,14 @@
 """Operações controladas para activar a cobertura pública da V4."""
 
+import hashlib
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Literal
 
+from pydantic import HttpUrl
+
 from app.core.config import Settings
+from app.models.archive import PrivateRawDocument
 from app.repositories.official_index_staging import (
     OfficialIndexItem,
     OfficialIndexStagingRepository,
@@ -18,6 +23,8 @@ from app.services.official_index import (
 from app.services.transparency_entity import TransparencyEntityCollector
 
 RolloutSource = Literal[
+    "BASE_CONTRACTS",
+    "DRE",
     "TRANSPARENCY_ENTITY",
     "COURT_OF_AUDIT",
     "EUROPEAN_PARLIAMENT",
@@ -33,6 +40,16 @@ class RolloutSourceConfig:
 
 
 SOURCE_CONFIGS: dict[RolloutSource, RolloutSourceConfig] = {
+    "BASE_CONTRACTS": RolloutSourceConfig(
+        publisher="BASE_GOV",
+        title="Portal BASE — catálogo oficial de contratos",
+        url="https://dados.gov.pt/api/1/datasets/66d72d488ca4b7cb2de28712/",
+    ),
+    "DRE": RolloutSourceConfig(
+        publisher="DRE",
+        title="Diário da República — índice oficial",
+        url="https://diariodarepublica.pt/",
+    ),
     "COURT_OF_AUDIT": RolloutSourceConfig(
         publisher="COURT_OF_AUDIT",
         title="Tribunal de Contas — índice oficial",
@@ -54,6 +71,15 @@ SOURCE_CONFIGS: dict[RolloutSource, RolloutSourceConfig] = {
         url="https://www.tribunalconstitucional.pt/tc/ept/",
     ),
 }
+
+DEFAULT_ROLLOUT_SOURCES: tuple[RolloutSource, ...] = (
+    "BASE_CONTRACTS",
+    "DRE",
+    "TRANSPARENCY_ENTITY",
+    "COURT_OF_AUDIT",
+    "EUROPEAN_PARLIAMENT",
+    "LOCAL_SNS",
+)
 
 
 class V4RolloutService:
@@ -84,6 +110,23 @@ class V4RolloutService:
                         category=resource.category,
                     )
                     for resource in resources
+                ]
+            elif source_name == "BASE_CONTRACTS":
+                response = await http.get(config.url)
+                retrieved_at = datetime.now(UTC)
+                raw_document = PrivateRawDocument(
+                    source_url=HttpUrl(str(response.url)),
+                    retrieved_at=retrieved_at,
+                    content_sha256=hashlib.sha256(response.content).hexdigest(),
+                    mime_type=response.headers.get("content-type"),
+                    content=response.content,
+                )
+                items = [
+                    OfficialIndexItem(
+                        title="Catálogo oficial do conjunto de contratos públicos",
+                        url=str(response.url),
+                        category="Catálogo de dados",
+                    )
                 ]
             else:
                 collection = await OfficialIndexCollector(http).collect(
