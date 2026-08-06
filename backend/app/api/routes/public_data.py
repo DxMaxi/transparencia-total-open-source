@@ -10,7 +10,13 @@ from app.models.api import (
     PublishedPoliticianProfile,
     PublishedPromise,
 )
+from app.models.public_parliament import (
+    PublishedParliamentaryInitiative,
+    PublishedParliamentarySession,
+    PublishedParliamentaryVote,
+)
 from app.repositories.postgres import PostgresRepository
+from app.repositories.public_parliament import PublicParliamentRepository
 
 router = APIRouter(prefix="/public", tags=["Leitura pública"])
 
@@ -93,3 +99,60 @@ async def public_investigator(
     except RuntimeError as exc:
         raise _unavailable(exc) from exc
     return PublicInvestigatorDataset.model_validate(row)
+
+
+@router.get("/parliament/sessions", response_model=list[PublishedParliamentarySession])
+async def public_parliament_sessions(
+    response: Response,
+    repository: Annotated[PostgresRepository, Depends(get_repository)],
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+) -> list[PublishedParliamentarySession]:
+    _cache(response)
+    try:
+        rows = await PublicParliamentRepository(repository.pool).list_sessions(
+            limit=limit,
+            offset=offset,
+        )
+    except RuntimeError as exc:
+        raise _unavailable(exc) from exc
+    return [PublishedParliamentarySession.model_validate(row) for row in rows]
+
+
+@router.get(
+    "/parliament/initiatives",
+    response_model=list[PublishedParliamentaryInitiative],
+)
+async def public_parliament_initiatives(
+    response: Response,
+    repository: Annotated[PostgresRepository, Depends(get_repository)],
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+) -> list[PublishedParliamentaryInitiative]:
+    _cache(response)
+    try:
+        rows = await PublicParliamentRepository(repository.pool).list_initiatives(
+            limit=limit,
+            offset=offset,
+        )
+    except RuntimeError as exc:
+        raise _unavailable(exc) from exc
+    return [PublishedParliamentaryInitiative.model_validate(row) for row in rows]
+
+
+@router.get("/parliament/votes", response_model=list[PublishedParliamentaryVote])
+async def public_parliament_votes(
+    response: Response,
+    repository: Annotated[PostgresRepository, Depends(get_repository)],
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+) -> list[PublishedParliamentaryVote]:
+    _cache(response)
+    try:
+        rows = await PublicParliamentRepository(repository.pool).list_votes(
+            limit=limit,
+            offset=offset,
+        )
+    except RuntimeError as exc:
+        raise _unavailable(exc) from exc
+    return [PublishedParliamentaryVote.model_validate(row) for row in rows]
