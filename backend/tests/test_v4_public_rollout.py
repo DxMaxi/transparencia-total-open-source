@@ -1,12 +1,11 @@
 import json
 from pathlib import Path
 
+from app.services.v4_rollout import DEFAULT_ROLLOUT_SOURCES, SOURCE_CONFIGS
 from scripts.bootstrap_v4_public import (
     EXPECTED_PARLIAMENT_COUNT,
     EXPECTED_PARLIAMENT_SHA256,
 )
-
-from app.services.v4_rollout import DEFAULT_ROLLOUT_SOURCES, SOURCE_CONFIGS
 
 
 def test_rollout_covers_every_public_status_source() -> None:
