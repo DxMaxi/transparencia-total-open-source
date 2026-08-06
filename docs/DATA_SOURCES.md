@@ -6,20 +6,24 @@
 |---|---|---|---|
 | Assembleia da República | Funcional | Descoberta de catálogos, JSON, deputados e votações | Estruturas variam por legislatura; nem toda votação é nominal |
 | Diário da República | Funcional em staging | Extração por URL ELI, bytes exactos, arquivo atestado e snapshot privado append-only | Sem promoção pública; feed RSS só após confirmação documental |
-| Entidade para a Transparência | Funcional em staging, mínimo | Índice público, bytes exactos e staging privado de metadados com revisão jurídica obrigatória | Não recolhe conteúdo de declarações nem contorna formulários ou autenticação |
+| Entidade para a Transparência | Colector funcional; staging preparado | Índice público com bytes exactos e schema privado de metadados com revisão jurídica obrigatória | A escrita operacional no staging ainda exige ensaio controlado; não recolhe declarações |
 | Portal BASE / dados.gov.pt | Funcional em staging | Descoberta anual, JSON/XML/ZIP, arquivo, lote append-only e candidatos exactos apenas em ficheiro privado | Sem promoção pública; API directa de grande volume pode exigir registo e autorização |
-| Tribunal de Contas | Funcional, mínimo | Índice oficial arquivado, hash dos bytes exactos e ligações oficiais deduplicadas | Sem interpretação de decisões, sujeitos, culpa ou estado processual; não publicável automaticamente |
-| Parlamento Europeu | Funcional, mínimo | Índice oficial da API aberta arquivado e ligações oficiais deduplicadas | Sem atribuição de posição individual sem registo nominal explícito |
-| Radar local/SNS | Funcional, mínimo | Índice SNS oficial arquivado como ponto inicial de cobertura | Não representa cobertura nacional nem cria factos locais sem conector territorial específico |
+| Tribunal de Contas | Colector mínimo funcional | Hash dos bytes exactos e ligações oficiais deduplicadas em memória privada | Sem persistência automática nem interpretação de decisões ou culpa |
+| Parlamento Europeu | Colector mínimo funcional | Índice oficial da API aberta e ligações oficiais deduplicadas em memória privada | Sem persistência automática nem atribuição individual sem voto nominal explícito |
+| Radar local/SNS | Colector mínimo funcional | Índice SNS oficial como origem inicial de descoberta | Sem persistência automática; não representa cobertura territorial nacional |
 | Imprensa | Modelo preparado | RSS, notícia, menção, prova e revisão previstos no esquema | Fora do fecho V4; allowlist editorial necessária antes de produção |
 
 ## Regra comum de prova bruta V4
 
 Os colectores do Parlamento, BASE, DRE, Entidade para a Transparência, Tribunal de Contas,
 Parlamento Europeu e Radar SNS calculam o SHA-256 sobre os bytes exactos da resposta HTTP e
-transportam-nos apenas num `PrivateRawDocument`, excluído de serialização. Uma persistência só pode
-referenciar o documento depois de o objecto content-addressed ser escrito e verificado e de existir
-uma atestação com o mesmo URL efectivo e hash.
+transportam-nos apenas num `PrivateRawDocument`, excluído de serialização.
+
+Nos fluxos persistentes já activados — Parlamento, BASE e DRE — o documento só pode ser referenciado
+depois de o objecto content-addressed ser escrito, verificado e atestado com o mesmo URL efectivo e
+hash. EPT tem schema privado preparado mas requer ensaio operacional. Tribunal de Contas,
+Parlamento Europeu e Radar SNS ficam nesta versão no limite deliberado de colector privado, sem
+escrita automática.
 
 Ausência de objecto, atestado, acesso ao arquivo ou estrutura suficiente significa “dados
 indisponíveis”; nunca é interpretada como ausência de factos na fonte. Nenhuma recolha constitui
@@ -29,40 +33,22 @@ revisão editorial ou autorização de publicação.
 
 Catálogo: <https://www.parlamento.pt/Cidadania/Paginas/DadosAbertos.aspx>
 
-O portal fornece XML e JSON e organiza ficheiros por catálogo e legislatura. Como os URLs podem ser
-opacos, `ParlamentoCollector.discover_dataset_url`:
+O portal fornece XML e JSON e organiza ficheiros por catálogo e legislatura. O colector descobre o
+recurso oficial, valida o anfitrião após redireccionamentos e calcula o hash antes da normalização.
+Aliases de campo toleram estruturas históricas, mas uma mudança que produza zero registos gera aviso
+e não promove uma tabela vazia como verdade.
 
-1. descarrega a página temática oficial;
-2. localiza a ligação da legislatura pedida;
-3. abre a pasta oficial, quando necessário;
-4. escolhe um ficheiro JSON;
-5. volta a validar o anfitrião após cada redireccionamento;
-6. calcula o hash antes da normalização.
-
-Aliases de campo existem para tolerar nomes históricos. O SHA-256 é calculado sobre os bytes
-recebidos, antes de descodificar e normalizar o JSON. Na operação persistente, os bytes são
-arquivados e verificados antes de o repositório escrever o snapshot em staging. Uma mudança de
-estrutura que produza zero registos gera aviso; não promove uma tabela vazia como verdade.
-
-Na fotografia oficial da legislatura XVII, o detalhe das votações identifica sobretudo grupos
-parlamentares ou rótulos textuais, não deputados através de um identificador individual estável.
-Essas posições permanecem em staging como `UNKNOWN`: uma posição partidária nunca é atribuída a
-uma pessoa. Quando a própria fonte não contém detalhe estruturado, a cobertura é apresentada como
-“dados indisponíveis”, nunca como zero. A leitura pública exige uma revisão humana positiva e
-específica do mesmo documento-fonte.
+Posições de grupos parlamentares nunca são atribuídas automaticamente a deputados. Quando a fonte
+não contém detalhe nominal estruturado, a cobertura é apresentada como “dados indisponíveis”.
 
 ## Diário da República
 
 Portal: <https://diariodarepublica.pt/>
 
-O colector aceita apenas URLs de anfitriões DRE autorizados. URLs ELI podem ser construídos por tipo,
-número e data. O HTML é reduzido a texto após remoção de navegação, scripts, estilos e formulários.
-O `content_sha256` identifica o HTML/PDF bruto; `normalised_text_sha256` identifica separadamente o
-texto extraído.
-
-Em staging, os bytes são arquivados e atestados antes do snapshot privado append-only. O snapshot
-não cria leis públicas, alertas ou registos de revisão, e o inspector nunca devolve o texto extraído.
-A promoção pública continua deliberadamente inexistente.
+O colector aceita apenas URLs DRE autorizados. O `content_sha256` identifica os bytes brutos e o
+`normalised_text_sha256` identifica separadamente o texto extraído. Em staging, os bytes são
+arquivados e atestados antes do snapshot privado append-only. O snapshot não cria leis públicas,
+alertas ou registos de revisão, e o inspector nunca devolve o texto extraído.
 
 Defina `DRE_RSS_URL` apenas quando a equipa confirmar e documentar o feed oficial a usar.
 
@@ -70,9 +56,10 @@ Defina `DRE_RSS_URL` apenas quando a equipa confirmar e documentar o feed oficia
 
 Portal: <https://www.tribunalconstitucional.pt/tc/ept/>
 
-O conector indexa apenas ligações publicamente acessíveis, conserva bytes exactos e guarda em
-staging apenas título, categoria e URL. O estado é sempre `REQUIRES_LEGAL_REVIEW` e `publishable`
-permanece falso.
+O colector indexa apenas ligações publicamente acessíveis e conserva os bytes exactos. O schema de
+staging guarda somente título, categoria e URL, com estado fixo `REQUIRES_LEGAL_REVIEW` e sem
+projecção pública. A ligação operacional entre colector, arquivo e staging fica dependente de ensaio
+controlado antes de qualquer activação.
 
 Não são recolhidos conteúdos de declarações, identificadores pessoais, respostas a formulários ou
 áreas autenticadas. A existência ou ausência de uma ligação nunca é convertida em alegação sobre
@@ -90,46 +77,29 @@ cumprimento, incumprimento ou conteúdo de uma declaração.
 6. deduplica por URL;
 7. devolve sempre `publishable=False`.
 
-No Tribunal de Contas, o índice não interpreta linguagem judicial, culpa, sujeitos ou estado
-processual. No Parlamento Europeu, uma posição de grupo nunca é atribuída a uma pessoa sem voto
-nominal explícito. No Radar SNS, o índice nacional é apenas uma origem inicial e não equivale a
-cobertura territorial; cada município ou unidade precisa de contrato próprio e matriz pública.
-
-## Novas fontes locais
-
-Antes de integrar um município, SNS ou portal sectorial:
-
-1. confirmar organismo competente e licença/regras de reutilização;
-2. preferir API, RSS, CSV ou dados abertos a scraping HTML;
-3. adicionar o domínio exacto à allowlist após revisão;
-4. definir identificador estável e frequência razoável;
-5. criar fixture e contrato de parser;
-6. mapear distrito/município por código oficial, não apenas por nome;
-7. publicar cobertura e data da última sincronização.
-
-O radar não deve apresentar “Portugal” quando só alguns municípios têm cobertura. A página precisa
-de uma matriz pública de cobertura por fonte e território.
+Este colector não persiste automaticamente os índices. No Tribunal de Contas não interpreta
+linguagem judicial, culpa, sujeitos ou estado processual. No Parlamento Europeu não atribui posições
+de grupo a pessoas. No Radar SNS, o índice nacional é apenas uma origem inicial e não equivale a
+cobertura territorial.
 
 ## Portal BASE e dados.gov.pt
 
 Catálogo oficial: <https://dados.gov.pt/pt/datasets/contratos-publicos-portal-base-impic-contratos-de-2012-a-2026/>
 
-O colector lê metadados do catálogo e escolhe o recurso correspondente ao ano. Aceita JSON, XML e ZIP
-com limites de download, tamanho descomprimido e taxa de compressão; nunca executa conteúdos do
-arquivo. Calcula o hash dos bytes exactos e mantém-nos privados durante a recolha. Uma operação
-explicitamente confirmada em staging arquiva e atesta os bytes antes de carregar um lote
-append-only; não cria contratos públicos, entidades, candidatos ou publicação.
+O colector aceita JSON, XML e ZIP com limites de download, tamanho descomprimido e taxa de compressão.
+Uma operação explicitamente confirmada em staging arquiva e atesta os bytes antes de carregar um
+lote append-only; não cria contratos públicos, entidades ou publicação.
 
-Recursos com o mesmo identificador e conteúdo normalizado equivalente são conservados uma única
-vez; versões materialmente diferentes do mesmo identificador são excluídas e remetidas para revisão.
-
-No formato textual oficial `NIF/NIPC - Nome`, o separador só é aceite por correspondência estrita.
-O identificador é convertido imediatamente para HMAC-SHA-256 com pepper e o valor em claro não entra
-na colecção. Sem pepper configurado, não são persistidas correspondências por identificador.
-
-Qualquer sequência autónoma de nove algarismos Unicode num nome ou texto livre publicável coloca o
-contrato em quarentena privada. Campos fiscais explícitos inválidos têm o mesmo tratamento.
+Identificadores fiscais são convertidos imediatamente para HMAC-SHA-256 com pepper e nunca entram
+em claro na colecção pública. Sem pepper configurado, não são persistidas correspondências por
+identificador. Texto livre com sequências fiscais suspeitas entra em quarentena privada.
 
 Extrações de grande volume através da API directa do Portal BASE devem seguir o procedimento oficial
 do IMPIC. A existência de dados públicos não autoriza contornar autenticação, limites ou requisitos
 de reutilização.
+
+## Novas fontes locais
+
+Antes de integrar um município, SNS ou portal sectorial é obrigatório confirmar organismo, licença,
+identificador estável, frequência, fixture de parser e mapeamento territorial por código oficial.
+O radar nunca deve apresentar “Portugal” quando só alguns territórios têm cobertura.
