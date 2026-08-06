@@ -62,6 +62,6 @@ jobs:
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e './backend[dev]'
       - run: ruff check backend
-      - run: ruff format --diff backend && exit 1
+      - run: ruff format --check backend
       - run: mypy --config-file backend/pyproject.toml backend/app
       - run: pytest backend
