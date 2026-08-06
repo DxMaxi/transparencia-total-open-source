@@ -70,6 +70,4 @@ async def sync_official_indexes(
     repository: Annotated[PostgresRepository, Depends(get_repository)],
 ) -> list[dict[str, object]]:
     staging_repository = cast(OfficialIndexStagingRepository, repository)
-    return await V4RolloutService(
-        get_settings(), staging_repository
-    ).sync_sources(payload.sources)
+    return await V4RolloutService(get_settings(), staging_repository).sync_sources(payload.sources)
