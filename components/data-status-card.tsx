@@ -4,10 +4,10 @@ import type { PublicDataStatus } from "@/types/public-data";
 const sourceLabels: Record<string, string> = {
   PARLIAMENT_DEPUTIES: "Deputados AR",
   PARLIAMENT_VOTES: "Votações AR",
-  BASE_CONTRACTS: "Contratos BASE",
-  DRE: "Diplomas DRE",
-  TRANSPARENCY_ENTITY: "Entidade Transparência",
-  LOCAL_SNS: "Radar local / SNS",
+  BASE_CONTRACTS: "Catálogo BASE",
+  DRE: "Índice DRE",
+  TRANSPARENCY_ENTITY: "Índice EPT",
+  LOCAL_SNS: "Índice SNS",
 };
 
 export function DataStatusCard({ status }: { status: PublicDataStatus }) {
@@ -42,7 +42,7 @@ export function DataStatusCard({ status }: { status: PublicDataStatus }) {
             </div>
           ))}
         </div>
-        <div className="audit-note"><CheckIcon /> Ingestão e publicação são etapas separadas; falhas e lacunas permanecem visíveis.</div>
+        <div className="audit-note"><CheckIcon /> Recolha e publicação são etapas separadas; índices recolhidos não equivalem a factos aprovados.</div>
       </div>
     </div>
   );

@@ -45,7 +45,7 @@ export default async function Home() {
       <section className="hero-section">
         <div className="hero-grid shell">
           <div className="hero-copy">
-            <div className="hero-kicker"><ShieldCheckIcon /> V3 · Dados reais sem publicação automática</div>
+            <div className="hero-kicker"><ShieldCheckIcon /> V4 · Dados oficiais com publicação controlada</div>
             <h1>Realidade nacional.<br /><span>Cada ligação com prova.</span></h1>
             <p>
               Cruze contratos públicos, cargos, votações, declarações e impacto das leis.
@@ -60,7 +60,7 @@ export default async function Home() {
               </a>
             </div>
             <div className="source-stack">
-              <span>Fontes integradas</span>
+              <span>Fontes oficiais acompanhadas</span>
               <div>
                 {officialSources.map((source) => <SourceLink source={source} compact key={source.publisher} />)}
               </div>
@@ -82,8 +82,8 @@ export default async function Home() {
             <h2>Do contrato público ao impacto no cidadão</h2>
           </div>
           <p>
-            A V3 torna visíveis proveniência, cobertura, exclusões metodológicas,
-            lacunas e datas de atualização.
+            A V4 torna visíveis proveniência, cobertura, exclusões metodológicas,
+            lacunas, datas de actualização e decisões de publicação.
           </p>
         </div>
 
@@ -105,7 +105,7 @@ export default async function Home() {
             <div className="feature-icon"><ChartIcon /></div>
             <span className="eyebrow">Guia Neutro do Cidadão</span>
             <h3>Primeiro calcula a regra. Depois a IA explica.</h3>
-            <p>Perfis genéricos, sem NIF nem rendimento exato, com fonte e incerteza visíveis.</p>
+            <p>Perfis genéricos, sem NIF nem rendimento exacto, com fonte e incerteza visíveis.</p>
             <span className="text-link">Testar simulador privado <ArrowRightIcon /></span>
           </a>
 
@@ -113,7 +113,7 @@ export default async function Home() {
             <div className="feature-icon"><MapPinIcon /></div>
             <span className="eyebrow">Promessómetro + Radar local</span>
             <h3>O que foi prometido e o que muda perto de si.</h3>
-            <p>Diplomas, execução e alertas regionais continuam rastreáveis na V3.</p>
+            <p>Diplomas, execução e alertas regionais permanecem rastreáveis e sujeitos a revisão.</p>
             <div className="region-preview">
               <span>Histórico</span>
               <strong>Versionado e auditável</strong>
@@ -128,7 +128,7 @@ export default async function Home() {
             <span className="eyebrow eyebrow--light">Contrato de confiança</span>
             <h2>Uma ligação não é uma acusação.<br />É uma hipótese a provar.</h2>
             <p>
-              A V3 separa ingestão, correspondência técnica, prova oficial, revisão editorial
+              A V4 separa ingestão, correspondência técnica, prova oficial, revisão editorial
               e publicação. O estado de cada passo permanece visível.
             </p>
             <a className="button button--light" href="/metodologia">Ler metodologia completa</a>
@@ -136,7 +136,7 @@ export default async function Home() {
           <div className="principle-list">
             <div><span>01</span><div><strong>Correspondência não é conclusão</strong><p>Nome ou NIF coincidente gera revisão, nunca uma acusação.</p></div></div>
             <div><span>02</span><div><strong>Direito de resposta imutável</strong><p>A contestação é anexada com timestamp e SHA-256.</p></div></div>
-            <div><span>03</span><div><strong>IA com direito a abster-se</strong><p>Sem factos suficientes, a resposta correta é “não é possível determinar”.</p></div></div>
+            <div><span>03</span><div><strong>IA com direito a abster-se</strong><p>Sem factos suficientes, a resposta correcta é “não é possível determinar”.</p></div></div>
           </div>
         </div>
       </section>
@@ -145,9 +145,9 @@ export default async function Home() {
         <div className="local-alert-copy">
           <LandmarkIcon />
           <div>
-          <span className="eyebrow">PWA V3 instalável</span>
+            <span className="eyebrow">PWA V4 instalável</span>
             <h2>Alertas úteis, não propaganda.</h2>
-            <p>Escolha apenas região e temas cívicos. Sem publicidade, filiação política, geolocalização exata ou recomendação eleitoral.</p>
+            <p>Escolha apenas região e temas cívicos. Sem publicidade, filiação política, geolocalização exacta ou recomendação eleitoral.</p>
           </div>
         </div>
         <PushSubscribe />
