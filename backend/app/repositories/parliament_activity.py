@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 
 import asyncpg
 
+from app.models.api import VoteActorType
 from app.models.archive import RawArchiveReceipt
 from app.models.parliamentary import ParliamentActivityDataset
 
@@ -16,6 +17,8 @@ class ParliamentActivityPersistResult:
     source_document_id: str
     sessions_written: int
     initiatives_written: int
+    vote_events_written: int
+    vote_records_written: int
     archive_attestation_written: bool
 
 
@@ -59,9 +62,9 @@ def _attestation_digest(
 class ParliamentActivityRepository:
     """Arquivo, atestação e persistência incremental da atividade parlamentar.
 
-    A operação é atómica: se a prova não puder ser registada ou os dados não
-    puderem ser persistidos, toda a transação é anulada. Nenhum registo é
-    publicado automaticamente.
+    A operação é atómica. Votos partidários permanecem partidários; apenas atores
+    explicitamente nominais podem ser ligados a pessoas. Nada é publicado
+    automaticamente.
     """
 
     def __init__(self, pool: asyncpg.Pool) -> None:
@@ -86,16 +89,19 @@ class ParliamentActivityRepository:
             else:
                 source_document_id = await self._require_attested_source(connection, dataset)
 
-            sessions_written = await self._upsert_sessions(
+            sessions_written = await self._upsert_sessions(connection, dataset, source_document_id)
+            initiatives_written = await self._upsert_initiatives(
                 connection, dataset, source_document_id
             )
-            initiatives_written = await self._upsert_initiatives(
+            vote_events_written, vote_records_written = await self._upsert_votes(
                 connection, dataset, source_document_id
             )
             return ParliamentActivityPersistResult(
                 source_document_id=source_document_id,
                 sessions_written=sessions_written,
                 initiatives_written=initiatives_written,
+                vote_events_written=vote_events_written,
+                vote_records_written=vote_records_written,
                 archive_attestation_written=attestation_written,
             )
 
@@ -112,10 +118,7 @@ class ParliamentActivityRepository:
         if str(receipt.source_url) != str(dataset.dataset_url):
             raise RuntimeError("O recibo de arquivo não corresponde à URL oficial do dataset")
 
-        source_document_id = _new_id(
-            "source",
-            f"{dataset.dataset_url}|{dataset.document_sha256}",
-        )
+        source_document_id = _new_id("source", f"{dataset.dataset_url}|{dataset.document_sha256}")
         await connection.execute(
             """
             INSERT INTO source_documents
@@ -139,11 +142,7 @@ class ParliamentActivityRepository:
             receipt.storage_key,
         )
         actual_source_id = await connection.fetchval(
-            """
-            SELECT id FROM source_documents
-            WHERE url = $1 AND content_sha256 = $2
-            LIMIT 1
-            """,
+            "SELECT id FROM source_documents WHERE url = $1 AND content_sha256 = $2 LIMIT 1",
             str(dataset.dataset_url),
             dataset.document_sha256,
         )
@@ -196,8 +195,7 @@ class ParliamentActivityRepository:
               AND sd.content_sha256 = $2
               AND sd.publisher = 'PARLIAMENT'
               AND EXISTS (
-                  SELECT 1
-                  FROM source_archive_attestations attestation
+                  SELECT 1 FROM source_archive_attestations attestation
                   WHERE attestation.source_document_id = sd.id
                     AND attestation.content_sha256 = sd.content_sha256
                     AND attestation.retrieval_url = sd.url
@@ -228,8 +226,7 @@ class ParliamentActivityRepository:
                 INSERT INTO parliamentary_sessions
                     (id, source_id, legislature, session_number, title,
                      starts_at, ends_at, source_document_id)
-                VALUES
-                    ('session_' || md5($1), $1, $2, $3, $4, $5, $6, $7)
+                VALUES ('session_' || md5($1), $1, $2, $3, $4, $5, $6, $7)
                 ON CONFLICT (source_id) DO UPDATE SET
                     legislature = EXCLUDED.legislature,
                     session_number = EXCLUDED.session_number,
@@ -242,8 +239,8 @@ class ParliamentActivityRepository:
                 session.legislature,
                 session.session_number,
                 session.title,
-                session.starts_at.replace(tzinfo=None),
-                session.ends_at.replace(tzinfo=None) if session.ends_at else None,
+                _database_timestamp(session.starts_at),
+                _database_timestamp(session.ends_at) if session.ends_at else None,
                 source_document_id,
             )
             written += 1
@@ -263,9 +260,8 @@ class ParliamentActivityRepository:
                     (id, source_id, legislature, number, type, title, description,
                      introduced_at, status, official_url, source_document_id,
                      created_at, updated_at)
-                VALUES
-                    ('initiative_' || md5($1), $1, $2, $3, $4, $5, $6,
-                     $7, $8, $9, $10, NOW(), NOW())
+                VALUES ('initiative_' || md5($1), $1, $2, $3, $4, $5, $6,
+                        $7, $8, $9, $10, NOW(), NOW())
                 ON CONFLICT (source_id) DO UPDATE SET
                     legislature = EXCLUDED.legislature,
                     number = EXCLUDED.number,
@@ -284,7 +280,7 @@ class ParliamentActivityRepository:
                 initiative.initiative_type,
                 initiative.title,
                 initiative.description,
-                initiative.introduced_at.replace(tzinfo=None)
+                _database_timestamp(initiative.introduced_at)
                 if initiative.introduced_at
                 else None,
                 initiative.status,
@@ -293,3 +289,108 @@ class ParliamentActivityRepository:
             )
             written += 1
         return written
+
+    @staticmethod
+    async def _upsert_votes(
+        connection: asyncpg.Connection,
+        dataset: ParliamentActivityDataset,
+        source_document_id: str,
+    ) -> tuple[int, int]:
+        events_written = 0
+        records_written = 0
+        for event in dataset.votes:
+            initiative_id = None
+            if event.initiative_number:
+                initiative_id = await connection.fetchval(
+                    """
+                    SELECT id FROM parliamentary_initiatives
+                    WHERE number = $1 AND legislature = $2
+                    ORDER BY updated_at DESC, id DESC LIMIT 1
+                    """,
+                    event.initiative_number,
+                    dataset.legislature,
+                )
+            event_id = _new_id("vote", event.source_id)
+            await connection.execute(
+                """
+                INSERT INTO vote_events
+                    (id, source_id, initiative_id, title, initiative_number,
+                     voted_at, result, is_nominal, source_document_id,
+                     created_at, updated_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+                ON CONFLICT (source_id) DO UPDATE SET
+                    initiative_id = EXCLUDED.initiative_id,
+                    title = EXCLUDED.title,
+                    initiative_number = EXCLUDED.initiative_number,
+                    voted_at = EXCLUDED.voted_at,
+                    result = EXCLUDED.result,
+                    is_nominal = EXCLUDED.is_nominal,
+                    source_document_id = EXCLUDED.source_document_id,
+                    updated_at = NOW()
+                """,
+                event_id,
+                event.source_id,
+                initiative_id,
+                event.title,
+                event.initiative_number,
+                _database_timestamp(event.voted_at) if event.voted_at else None,
+                event.result,
+                event.is_nominal,
+                source_document_id,
+            )
+            actual_event_id = await connection.fetchval(
+                "SELECT id FROM vote_events WHERE source_id = $1 LIMIT 1",
+                event.source_id,
+            )
+            if actual_event_id is None:
+                raise RuntimeError("Não foi possível persistir a votação parlamentar")
+            events_written += 1
+
+            await connection.execute(
+                "DELETE FROM vote_records WHERE vote_event_id = $1",
+                actual_event_id,
+            )
+            for record in event.records:
+                person_id = None
+                party_id = None
+                if record.actor_type is VoteActorType.PERSON:
+                    if not event.is_nominal:
+                        raise RuntimeError(
+                            "Uma votação não nominal não pode conter votos atribuídos a pessoas"
+                        )
+                    if record.actor_source_id:
+                        person_id = await connection.fetchval(
+                            "SELECT id FROM people WHERE source_id = $1 LIMIT 1",
+                            record.actor_source_id,
+                        )
+                elif record.actor_type is VoteActorType.PARTY:
+                    party_id = await connection.fetchval(
+                        """
+                        SELECT id FROM parties
+                        WHERE short_name = $1 OR source_id = $1
+                        ORDER BY id LIMIT 1
+                        """,
+                        record.actor_label,
+                    )
+
+                await connection.execute(
+                    """
+                    INSERT INTO vote_records
+                        (id, vote_event_id, actor_type, actor_label,
+                         person_id, party_id, choice, source_document_id)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                    """,
+                    _new_id(
+                        "vote_record",
+                        f"{actual_event_id}|{record.actor_type.value}|{record.actor_label}",
+                    ),
+                    actual_event_id,
+                    record.actor_type.value,
+                    record.actor_label,
+                    person_id,
+                    party_id,
+                    record.choice.value,
+                    source_document_id,
+                )
+                records_written += 1
+        return events_written, records_written
