@@ -8,7 +8,11 @@ import pytest
 from pydantic import HttpUrl
 
 from app.models.archive import PrivateRawDocument, RawArchiveReceipt
-from app.services.v4_rollout import DEFAULT_ROLLOUT_SOURCES, SOURCE_CONFIGS
+from app.services.v4_rollout import (
+    DEFAULT_ROLLOUT_SOURCES,
+    SOURCE_CONFIGS,
+    V4RolloutService,
+)
 from scripts import bootstrap_v4_public
 from scripts.bootstrap_v4_public import (
     EXPECTED_PARLIAMENT_COUNT,
@@ -30,6 +34,40 @@ def test_rollout_covers_every_public_status_source() -> None:
         assert config.url.startswith("https://")
         assert config.publisher
         assert config.title
+
+
+def test_court_of_audit_uses_current_official_publications_index() -> None:
+    assert SOURCE_CONFIGS["COURT_OF_AUDIT"].url == (
+        "https://www.tcontas.pt/pt-pt/TribunalContas/Publicacoes/Pages/"
+        "Publicacoes-do-Tribunal-de-Contas.aspx"
+    )
+
+
+@pytest.mark.asyncio
+async def test_rollout_refresh_continues_after_one_source_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = V4RolloutService(object(), object())  # type: ignore[arg-type]
+    visited: list[str] = []
+
+    async def fake_sync_source(source_name: str) -> dict[str, object]:
+        visited.append(source_name)
+        if source_name == "DRE":
+            raise RuntimeError("fonte temporariamente indisponível")
+        return {"source_name": source_name, "status": "STAGED"}
+
+    monkeypatch.setattr(service, "sync_source", fake_sync_source)
+    results = await service.sync_sources(
+        ["BASE_CONTRACTS", "DRE", "COURT_OF_AUDIT"]  # type: ignore[list-item]
+    )
+
+    assert visited == ["BASE_CONTRACTS", "DRE", "COURT_OF_AUDIT"]
+    assert results[0] == {"source_name": "BASE_CONTRACTS", "status": "STAGED"}
+    assert results[1]["source_name"] == "DRE"
+    assert results[1]["status"] == "FAILED"
+    assert results[1]["publication_performed"] is False
+    assert results[1]["error_type"] == "RuntimeError"
+    assert results[2] == {"source_name": "COURT_OF_AUDIT", "status": "STAGED"}
 
 
 def test_bootstrap_is_pinned_to_the_audited_parliament_snapshot() -> None:
