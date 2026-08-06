@@ -1,6 +1,7 @@
-"""Aplica o schema de rollout e publica apenas o snapshot AR previamente auditado."""
+"""Aplica o schema V4 e publica apenas uma fotografia parlamentar já auditada."""
 
 import asyncio
+import json
 from pathlib import Path
 
 import asyncpg
@@ -12,6 +13,7 @@ from app.services.parlamento import ParlamentoCollector
 
 EXPECTED_PARLIAMENT_SHA256 = "e54b30869212ea3d50a401637a31847339e29dcfdac9ec7b66e51c0def0cd9b9"
 EXPECTED_PARLIAMENT_COUNT = 286
+PARLIAMENT_CODE_VERSION = "parliament-ingestion-v12"
 REVIEWER_ALIAS = "project-owner-v4-rollout"
 RATIONALE = (
     "Fotografia factual da XVII Legislatura confirmada pelo proprietário do projecto "
@@ -40,36 +42,57 @@ async def apply_rollout_schema(database_url: str) -> None:
         await connection.close()
 
 
-async def restore_exact_parliament_archive(
+async def restore_or_stage_parliament_source(
     repository: OfficialIndexStagingRepository,
     *,
-    snapshot: dict[str, object],
+    audited_snapshot: dict[str, object],
 ) -> dict[str, object]:
-    """Reobtém e atesta apenas o mesmo documento oficial, byte por byte."""
+    """Restaura a versão auditada ou guarda uma versão nova para revisão humana."""
 
     settings = repository.settings
-    source_url = str(snapshot["source_url"])
-    source_document_id = str(snapshot["source_document_id"])
     async with OfficialHttpClient(settings) as http:
-        collector = ParlamentoCollector(settings, http)
-        _, raw_document = await collector.fetch_json(source_url)
+        current_dataset = await ParlamentoCollector(settings, http).collect_deputies("XVII")
+
+    raw_document = current_dataset.raw_document
+    if raw_document is None:
+        raise RuntimeError("A recolha parlamentar não conservou os bytes oficiais")
 
     if raw_document.content_sha256 != EXPECTED_PARLIAMENT_SHA256:
-        raise RuntimeError(
-            "O documento parlamentar actual diverge do SHA-256 auditado; "
-            "a publicação foi bloqueada"
+        receipt = await repository.archive_raw_document(raw_document=raw_document)
+        persistence = await repository.store_parliament_dataset(
+            current_dataset,
+            kind="deputies",
+            code_version=PARLIAMENT_CODE_VERSION,
+            archive_receipt=receipt,
         )
+        return {
+            "status": "REVIEW_REQUIRED",
+            "publication_performed": False,
+            "reason": "A fonte oficial mudou após a auditoria; a nova fotografia foi preservada em staging.",
+            "audited_source_sha256": EXPECTED_PARLIAMENT_SHA256,
+            "current_source_sha256": raw_document.content_sha256,
+            "current_candidate_count": len(current_dataset.deputies),
+            "storage_key": receipt.storage_key,
+            "persistence": persistence,
+        }
+
+    source_url = str(audited_snapshot["source_url"])
     if str(raw_document.source_url) != source_url:
         raise RuntimeError(
-            "A URL final do documento parlamentar diverge da fonte persistida; "
-            "a publicação foi bloqueada"
+            "O SHA-256 coincide, mas a URL final diverge da fonte auditada; "
+            "a publicação permanece bloqueada"
         )
 
-    return await repository.attest_existing_source_bytes(
-        source_document_id=source_document_id,
+    restoration = await repository.attest_existing_source_bytes(
+        source_document_id=str(audited_snapshot["source_document_id"]),
         raw_document=raw_document,
         archived_by="bootstrap:v4-exact-reattestation",
     )
+    return {
+        "status": "RESTORED",
+        "publication_performed": False,
+        "restoration": restoration,
+    }
 
 
 async def bootstrap() -> None:
@@ -86,11 +109,26 @@ async def bootstrap() -> None:
     try:
         snapshot = await repository.inspect_parliament_people_publication(legislature="XVII")
         if snapshot["source_sha256"] != EXPECTED_PARLIAMENT_SHA256:
-            raise RuntimeError("O SHA-256 parlamentar diverge da fotografia auditada")
+            result = {
+                "status": "REVIEW_REQUIRED",
+                "publication_performed": False,
+                "reason": "A fotografia mais recente em staging não é a fotografia auditada no rollout.",
+                "audited_source_sha256": EXPECTED_PARLIAMENT_SHA256,
+                "current_source_sha256": snapshot["source_sha256"],
+                "current_candidate_count": snapshot["candidate_count"],
+            }
+            print(json.dumps(result, ensure_ascii=False, default=str))
+            return
         if snapshot["candidate_count"] != EXPECTED_PARLIAMENT_COUNT:
             raise RuntimeError("A contagem parlamentar diverge da fotografia auditada")
         if not snapshot["archive_attested"]:
-            await restore_exact_parliament_archive(repository, snapshot=snapshot)
+            result = await restore_or_stage_parliament_source(
+                repository,
+                audited_snapshot=snapshot,
+            )
+            print(json.dumps(result, ensure_ascii=False, default=str))
+            if result["status"] == "REVIEW_REQUIRED":
+                return
             snapshot = await repository.inspect_parliament_people_publication(
                 legislature="XVII"
             )
@@ -99,13 +137,35 @@ async def bootstrap() -> None:
                 "O original parlamentar continua sem uma atestação de arquivo válida"
             )
         if snapshot["already_published"] == EXPECTED_PARLIAMENT_COUNT:
+            print(
+                json.dumps(
+                    {
+                        "status": "ALREADY_PUBLISHED",
+                        "publication_performed": False,
+                        "source_sha256": EXPECTED_PARLIAMENT_SHA256,
+                        "candidate_count": EXPECTED_PARLIAMENT_COUNT,
+                    },
+                    ensure_ascii=False,
+                )
+            )
             return
-        await repository.publish_parliament_people_snapshot(
+        publication = await repository.publish_parliament_people_snapshot(
             legislature="XVII",
             expected_source_sha256=EXPECTED_PARLIAMENT_SHA256,
             expected_count=EXPECTED_PARLIAMENT_COUNT,
             reviewer_alias=REVIEWER_ALIAS,
             rationale=RATIONALE,
+        )
+        print(
+            json.dumps(
+                {
+                    "status": "PUBLISHED",
+                    "publication_performed": True,
+                    "publication": publication,
+                },
+                ensure_ascii=False,
+                default=str,
+            )
         )
     finally:
         await repository.close()

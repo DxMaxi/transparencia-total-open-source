@@ -24,6 +24,70 @@ def _new_id(prefix: str) -> str:
 class OfficialIndexStagingRepository(PostgresRepository):
     """Guarda bytes e metadados sem criar qualquer projecção pública."""
 
+    async def archive_raw_document(
+        self,
+        *,
+        raw_document: PrivateRawDocument,
+    ) -> RawArchiveReceipt:
+        """Preserva bytes oficiais em PostgreSQL sem os tornar publicáveis."""
+
+        if self.pool is None:
+            raise RuntimeError("Base de dados não configurada")
+        observed_hash = hashlib.sha256(raw_document.content).hexdigest()
+        if observed_hash != raw_document.content_sha256:
+            raise ValueError("Os bytes recolhidos não correspondem ao SHA-256 declarado")
+
+        storage_key = f"sha256/{raw_document.content_sha256[:2]}/{raw_document.content_sha256}"
+        async with self.pool.acquire() as connection, connection.transaction():
+            await connection.execute(
+                "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
+                f"raw-source-object:{raw_document.content_sha256}",
+            )
+            inserted_object = await connection.fetchval(
+                """
+                INSERT INTO raw_source_objects
+                    (storage_key, content_sha256, byte_size, mime_type, content)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (storage_key) DO NOTHING
+                RETURNING storage_key
+                """,
+                storage_key,
+                raw_document.content_sha256,
+                len(raw_document.content),
+                raw_document.mime_type,
+                raw_document.content,
+            )
+            existing = await connection.fetchrow(
+                """
+                SELECT content_sha256, byte_size, content
+                FROM raw_source_objects
+                WHERE storage_key = $1
+                """,
+                storage_key,
+            )
+            if existing is None:
+                raise RuntimeError("O objecto bruto não foi criado nem encontrado")
+            archived_bytes = bytes(existing["content"])
+            if (
+                hashlib.sha256(archived_bytes).hexdigest() != raw_document.content_sha256
+                or str(existing["content_sha256"]) != raw_document.content_sha256
+                or int(existing["byte_size"]) != len(raw_document.content)
+                or archived_bytes != raw_document.content
+            ):
+                raise ValueError("O objecto bruto existente diverge dos bytes oficiais recolhidos")
+
+        return RawArchiveReceipt(
+            storage_backend="POSTGRES",
+            storage_key=storage_key,
+            content_sha256=raw_document.content_sha256,
+            byte_size=len(raw_document.content),
+            mime_type=raw_document.mime_type,
+            source_url=raw_document.source_url,
+            retrieved_at=raw_document.retrieved_at,
+            recorded_at=datetime.now(UTC),
+            object_created=inserted_object is not None,
+        )
+
     async def attest_existing_source_bytes(
         self,
         *,
@@ -33,13 +97,10 @@ class OfficialIndexStagingRepository(PostgresRepository):
     ) -> dict[str, object]:
         """Reconstitui o arquivo apenas com bytes que coincidam com a fonte persistida."""
 
+        receipt = await self.archive_raw_document(raw_document=raw_document)
         if self.pool is None:
             raise RuntimeError("Base de dados não configurada")
-        observed_hash = hashlib.sha256(raw_document.content).hexdigest()
-        if observed_hash != raw_document.content_sha256:
-            raise ValueError("Os bytes reobtidos não correspondem ao SHA-256 declarado")
 
-        storage_key = f"sha256/{raw_document.content_sha256[:2]}/{raw_document.content_sha256}"
         async with self.pool.acquire() as connection, connection.transaction():
             await connection.execute(
                 "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
@@ -63,50 +124,6 @@ class OfficialIndexStagingRepository(PostgresRepository):
             if raw_document.content_sha256 != source_sha256:
                 raise ValueError("O documento oficial actual diverge do snapshot persistido")
 
-            inserted_object = await connection.fetchval(
-                """
-                INSERT INTO raw_source_objects
-                    (storage_key, content_sha256, byte_size, mime_type, content)
-                VALUES ($1, $2, $3, $4, $5)
-                ON CONFLICT (storage_key) DO NOTHING
-                RETURNING storage_key
-                """,
-                storage_key,
-                source_sha256,
-                len(raw_document.content),
-                raw_document.mime_type,
-                raw_document.content,
-            )
-            existing = await connection.fetchrow(
-                """
-                SELECT content_sha256, byte_size, content
-                FROM raw_source_objects
-                WHERE storage_key = $1
-                """,
-                storage_key,
-            )
-            if existing is None:
-                raise RuntimeError("O objecto bruto não foi criado nem encontrado")
-            archived_bytes = bytes(existing["content"])
-            if (
-                hashlib.sha256(archived_bytes).hexdigest() != source_sha256
-                or str(existing["content_sha256"]) != source_sha256
-                or int(existing["byte_size"]) != len(raw_document.content)
-                or archived_bytes != raw_document.content
-            ):
-                raise ValueError("O objecto bruto existente diverge dos bytes oficiais reobtidos")
-
-            receipt = RawArchiveReceipt(
-                storage_backend="POSTGRES",
-                storage_key=storage_key,
-                content_sha256=source_sha256,
-                byte_size=len(raw_document.content),
-                mime_type=raw_document.mime_type,
-                source_url=raw_document.source_url,
-                retrieved_at=raw_document.retrieved_at,
-                recorded_at=datetime.now(UTC),
-                object_created=inserted_object is not None,
-            )
             attestation = await self._attest_source_archive(
                 connection,
                 source_document_id=source_document_id,
@@ -116,10 +133,10 @@ class OfficialIndexStagingRepository(PostgresRepository):
 
         return {
             "source_document_id": source_document_id,
-            "storage_key": storage_key,
+            "storage_key": receipt.storage_key,
             "content_sha256": source_sha256,
-            "byte_size": len(raw_document.content),
-            "object_created": inserted_object is not None,
+            "byte_size": receipt.byte_size,
+            "object_created": receipt.object_created,
             "attestation_created": bool(attestation["created"]),
             "publishable": False,
         }
