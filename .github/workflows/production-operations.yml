@@ -1,0 +1,81 @@
+name: Production operations
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Operação controlada a executar
+        required: true
+        type: choice
+        options:
+          - migrate
+          - refresh-official-indexes
+          - bootstrap-parliament-publication
+      confirmation:
+        description: Escreva PRODUCAO para confirmar
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: transparencia-total-production-operations
+  cancel-in-progress: false
+
+jobs:
+  operate:
+    if: ${{ inputs.confirmation == 'PRODUCAO' }}
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 45
+    env:
+      DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+      ENVIRONMENT: production
+      CORS_ORIGINS: https://www.transparenciatotal.pt
+      ADMIN_API_KEY: ${{ secrets.PRODUCTION_ADMIN_API_KEY }}
+      OFFICIAL_USER_AGENT: ${{ secrets.PRODUCTION_OFFICIAL_USER_AGENT }}
+      PROTECTED_IDENTIFIER_PEPPER: ${{ secrets.PRODUCTION_IDENTIFIER_PEPPER }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        if: ${{ inputs.operation == 'migrate' }}
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-python@v5
+        if: ${{ inputs.operation != 'migrate' }}
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Validar segredos obrigatórios
+        shell: bash
+        run: |
+          test -n "$DATABASE_URL"
+          test -n "$ADMIN_API_KEY"
+          test -n "$OFFICIAL_USER_AGENT"
+
+      - name: Aplicar migrações Prisma
+        if: ${{ inputs.operation == 'migrate' }}
+        run: |
+          npm ci
+          npm run db:deploy
+
+      - name: Instalar backend
+        if: ${{ inputs.operation != 'migrate' }}
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e './backend'
+
+      - name: Atualizar índices oficiais
+        if: ${{ inputs.operation == 'refresh-official-indexes' }}
+        working-directory: backend
+        run: python -m scripts.refresh_v4_indexes
+
+      - name: Publicar fotografia parlamentar auditada
+        if: ${{ inputs.operation == 'bootstrap-parliament-publication' }}
+        working-directory: backend
+        run: python -m scripts.bootstrap_v4_public
