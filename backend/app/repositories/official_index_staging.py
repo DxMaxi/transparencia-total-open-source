@@ -44,9 +44,7 @@ class OfficialIndexStagingRepository(PostgresRepository):
             dataset_url=str(raw_document.source_url),
             code_version=code_version,
         )
-        storage_key = (
-            f"sha256/{raw_document.content_sha256[:2]}/{raw_document.content_sha256}"
-        )
+        storage_key = f"sha256/{raw_document.content_sha256[:2]}/{raw_document.content_sha256}"
         unique_resources = {item.url: item for item in resources}
         ordered_resources = sorted(
             unique_resources.values(), key=lambda item: (item.title.casefold(), item.url)
@@ -83,10 +81,9 @@ class OfficialIndexStagingRepository(PostgresRepository):
                 if existing is None:
                     raise RuntimeError("O objecto bruto não foi criado nem encontrado")
                 observed_hash = hashlib.sha256(bytes(existing["content"])).hexdigest()
-                if (
-                    observed_hash != raw_document.content_sha256
-                    or int(existing["byte_size"]) != len(raw_document.content)
-                ):
+                if observed_hash != raw_document.content_sha256 or int(
+                    existing["byte_size"]
+                ) != len(raw_document.content):
                     raise ValueError("O objecto bruto existente diverge dos bytes recolhidos")
 
                 source_document_id = await self._ensure_source_document(
