@@ -8,9 +8,7 @@ import asyncpg
 from app.core.config import get_settings
 from app.repositories.official_index_staging import OfficialIndexStagingRepository
 
-EXPECTED_PARLIAMENT_SHA256 = (
-    "e54b30869212ea3d50a401637a31847339e29dcfdac9ec7b66e51c0def0cd9b9"
-)
+EXPECTED_PARLIAMENT_SHA256 = "e54b30869212ea3d50a401637a31847339e29dcfdac9ec7b66e51c0def0cd9b9"
 EXPECTED_PARLIAMENT_COUNT = 286
 REVIEWER_ALIAS = "project-owner-v4-rollout"
 RATIONALE = (
@@ -52,9 +50,7 @@ async def bootstrap() -> None:
     repository = OfficialIndexStagingRepository(settings)
     await repository.connect()
     try:
-        snapshot = await repository.inspect_parliament_people_publication(
-            legislature="XVII"
-        )
+        snapshot = await repository.inspect_parliament_people_publication(legislature="XVII")
         if snapshot["source_sha256"] != EXPECTED_PARLIAMENT_SHA256:
             raise RuntimeError("O SHA-256 parlamentar diverge da fotografia auditada")
         if snapshot["candidate_count"] != EXPECTED_PARLIAMENT_COUNT:
