@@ -50,6 +50,27 @@ mas o job termina com erro visível para obrigar a análise humana.
 
 Recolha não significa publicação.
 
+### `verify-archive-integrity`
+
+Executa:
+
+```bash
+cd backend
+python -m scripts.verify_v4_archive
+```
+
+Verifica todos os objetos privados sem os alterar:
+
+- a chave `sha256/...` tem de corresponder ao hash registado;
+- o SHA-256 calculado dos bytes tem de coincidir com o esperado;
+- o tamanho real tem de coincidir com o tamanho persistido.
+
+Qualquer divergência termina a operação com erro e identifica o objeto afetado. O sistema nunca
+corrige, apaga ou substitui prova automaticamente.
+
+O workflow `.github/workflows/archive-integrity.yml` repete esta verificação semanalmente e pode
+também ser iniciado manualmente.
+
 ### `bootstrap-parliament-publication`
 
 Executa:
@@ -77,10 +98,11 @@ O ambiente deve exigir aprovação manual antes da execução.
 
 1. Executar `migrate`.
 2. Confirmar `/api/v1/health/ready`.
-3. Executar `refresh-official-indexes`.
-4. Rever hashes, contagens, avisos e falhas.
-5. Executar uma publicação apenas quando existir revisão humana concluída.
-6. Confirmar `/api/v1/public/data-status` e as páginas públicas afetadas.
+3. Executar `verify-archive-integrity`.
+4. Executar `refresh-official-indexes`.
+5. Rever hashes, contagens, avisos e falhas.
+6. Executar uma publicação apenas quando existir revisão humana concluída.
+7. Confirmar `/api/v1/public/data-status` e as páginas públicas afetadas.
 
 ## O que nunca deve acontecer
 
@@ -89,4 +111,5 @@ O ambiente deve exigir aprovação manual antes da execução.
 - esconder uma falha de fonte;
 - tratar recolha como aprovação editorial;
 - substituir dados indisponíveis por dados fictícios sem indicação clara;
-- atribuir conclusões políticas ou jurídicas por inferência automática.
+- atribuir conclusões políticas ou jurídicas por inferência automática;
+- aceitar como íntegra uma prova cujo hash ou tamanho não coincida.
