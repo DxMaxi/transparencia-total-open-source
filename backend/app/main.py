@@ -15,10 +15,11 @@ from app.api.routes import (
     push,
     right_of_reply,
     transparency,
+    v4_rollout,
 )
 from app.core.config import get_settings
 from app.core.logging import configure_logging
-from app.repositories.postgres import PostgresRepository
+from app.repositories.official_index_staging import OfficialIndexStagingRepository
 
 settings = get_settings()
 configure_logging(settings.log_level)
@@ -26,7 +27,7 @@ configure_logging(settings.log_level)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    repository = PostgresRepository(settings)
+    repository = OfficialIndexStagingRepository(settings)
     await repository.connect()
     app.state.repository = repository
     try:
@@ -37,7 +38,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title=settings.app_name,
-    version="0.3.0",
+    version="0.4.0",
     description=(
         "API de recolha e normalização de fontes públicas portuguesas. "
         "Cada resposta preserva a origem oficial."
@@ -65,6 +66,7 @@ app.include_router(base_gov.router, prefix=settings.api_prefix)
 app.include_router(right_of_reply.router, prefix=settings.api_prefix)
 app.include_router(open_data.router, prefix=settings.api_prefix)
 app.include_router(public_data.router, prefix=settings.api_prefix)
+app.include_router(v4_rollout.router, prefix=settings.api_prefix)
 
 
 @app.get("/", include_in_schema=False)
