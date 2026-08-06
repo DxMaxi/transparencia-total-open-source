@@ -103,7 +103,11 @@ async def test_changed_parliament_source_is_staged_without_publication(
                 object_created=True,
             )
 
-        async def store_parliament_dataset(self, candidate: object, **kwargs: object) -> dict[str, int]:
+        async def store_parliament_dataset(
+            self,
+            candidate: object,
+            **kwargs: object,
+        ) -> dict[str, int]:
             self.stored_dataset = candidate
             assert kwargs["kind"] == "deputies"
             assert kwargs["archive_receipt"].content_sha256 == current_sha256
@@ -114,7 +118,10 @@ async def test_changed_parliament_source_is_staged_without_publication(
                 "archive_attestations_written": 1,
             }
 
-        async def attest_existing_source_bytes(self, **kwargs: object) -> dict[str, object]:
+        async def attest_existing_source_bytes(
+            self,
+            **kwargs: object,
+        ) -> dict[str, object]:
             self.attestation_called = True
             return {}
 
