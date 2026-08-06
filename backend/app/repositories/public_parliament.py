@@ -1,6 +1,6 @@
-from typing import Any
-
 import asyncpg
+
+from typing import Any
 
 
 _SOURCE_COLUMNS = """
