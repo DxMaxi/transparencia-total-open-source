@@ -10,6 +10,7 @@ on:
         options:
           - migrate
           - refresh-official-indexes
+          - verify-archive-integrity
           - bootstrap-parliament-publication
       confirmation:
         description: Escreva PRODUCAO para confirmar
@@ -76,6 +77,11 @@ jobs:
         if: ${{ inputs.operation == 'refresh-official-indexes' }}
         working-directory: backend
         run: python -m scripts.refresh_v4_indexes
+
+      - name: Verificar integridade do arquivo
+        if: ${{ inputs.operation == 'verify-archive-integrity' }}
+        working-directory: backend
+        run: python -m scripts.verify_v4_archive
 
       - name: Publicar fotografia parlamentar auditada
         if: ${{ inputs.operation == 'bootstrap-parliament-publication' }}
