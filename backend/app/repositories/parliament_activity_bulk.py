@@ -287,10 +287,10 @@ async def _append_votes(
     )
     party_ids: dict[str, str] = {}
     for row in party_rows:
-        party_id = str(row["id"])
+        persisted_party_id = str(row["id"])
         for key in (row["short_name"], row["source_id"]):
             if key is not None:
-                party_ids.setdefault(str(key), party_id)
+                party_ids.setdefault(str(key), persisted_party_id)
 
     record_rows: list[tuple[Any, ...]] = []
     for event in dataset.votes:
