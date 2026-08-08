@@ -33,7 +33,21 @@ async def run(legislature: str) -> dict[str, object]:
     sync_id = f"sync_parliament_activity_{started_at:%Y%m%d%H%M%S%f}"
     dataset_url: str | None = None
     try:
+        print(f"[atividade] início da execução {sync_id}", flush=True)
         async with pool.acquire() as connection:
+            await connection.execute(
+                """
+                UPDATE sync_runs
+                SET status = 'FAILED', finished_at = $1,
+                    error_message = COALESCE(
+                        error_message,
+                        'Execução anterior interrompida antes da conclusão'
+                    )
+                WHERE source_name = $2 AND status = 'RUNNING'
+                """,
+                started_at.replace(tzinfo=None),
+                SOURCE_NAME,
+            )
             await connection.execute(
                 """
                 INSERT INTO sync_runs
@@ -47,6 +61,7 @@ async def run(legislature: str) -> dict[str, object]:
                 CODE_VERSION,
             )
 
+        print("[atividade] a descobrir e descarregar a fonte oficial", flush=True)
         async with OfficialHttpClient(settings) as http:
             collector = ParlamentoCollector(settings, http)
             discovered_url = str(settings.parlamento_votes_url or "")
@@ -61,6 +76,12 @@ async def run(legislature: str) -> dict[str, object]:
             )
             dataset_url = str(raw_document.source_url)
 
+        print(
+            f"[atividade] fonte recebida: {len(raw_document.content)} bytes; "
+            f"sha256={raw_document.content_sha256}",
+            flush=True,
+        )
+        print("[atividade] a normalizar sessões, iniciativas e votações", flush=True)
         sessions = normalise_sessions(
             payload,
             legislature=legislature,
@@ -99,6 +120,13 @@ async def run(legislature: str) -> dict[str, object]:
                 "Fotografia rejeitada: dimensão acima do limite operacional "
                 f"({total_records} > {MAX_SNAPSHOT_RECORDS})"
             )
+        print(
+            "[atividade] normalização concluída: "
+            f"{len(sessions)} sessões, {len(initiatives)} iniciativas, "
+            f"{len(votes)} votações e "
+            f"{sum(len(event.records) for event in votes)} posições",
+            flush=True,
+        )
 
         warnings: list[str] = []
         votes_without_positions = sum(not event.records for event in votes)
@@ -128,11 +156,17 @@ async def run(legislature: str) -> dict[str, object]:
             collected_at=raw_document.retrieved_at,
             raw_document=raw_document,
         )
+        print("[atividade] a arquivar os bytes oficiais", flush=True)
         receipt = await repository.archive_raw_document(raw_document=raw_document)
+        print("[atividade] a persistir a fotografia em lotes", flush=True)
         result = await ParliamentActivityRepository(pool).persist(
             dataset,
             archive_receipt=receipt,
             archived_by=CODE_VERSION,
+        )
+        print(
+            f"[atividade] fotografia persistida: snapshot={result.snapshot_id}",
+            flush=True,
         )
         records_read = total_records
         records_written = (
