@@ -22,13 +22,10 @@ def test_database_timestamp_preserves_none_and_naive_values() -> None:
 
 def test_asyncpg_connection_options_translate_prisma_schema() -> None:
     database_url, server_settings = _asyncpg_connection_options(
-        "postgresql://user:password@localhost:5432/database"
-        "?schema=review&sslmode=require"
+        "postgresql://user:password@localhost:5432/database?schema=review&sslmode=require"
     )
 
-    assert database_url == (
-        "postgresql://user:password@localhost:5432/database?sslmode=require"
-    )
+    assert database_url == ("postgresql://user:password@localhost:5432/database?sslmode=require")
     assert server_settings == {"search_path": "review"}
 
 
