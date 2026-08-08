@@ -1,6 +1,6 @@
 import type { OfficialSource } from "@/types/domain";
 
-export type PublicDataMode = "LIVE" | "EMPTY" | "DEMO" | "UNAVAILABLE";
+export type PublicDataMode = "LIVE" | "EMPTY" | "UNAVAILABLE";
 
 export type PublicRecordCounts = {
   politicians: number;
@@ -48,7 +48,6 @@ export type InterestNodeData = Record<string, unknown> & {
   subtitle: string;
   kind: "person" | "public" | "company" | "contract" | "party" | "other";
   verified: boolean;
-  isDemonstration: boolean;
 };
 
 export type InterestGraphNode = {
@@ -66,7 +65,6 @@ export type InterestEdgeData = Record<string, unknown> & {
   party?: string;
   amount?: number;
   company?: string;
-  isDemonstration: boolean;
 };
 
 export type InterestGraphEdge = {
@@ -78,14 +76,12 @@ export type InterestGraphEdge = {
 };
 
 export type InterestGraphDataset = {
-  isDemonstration: boolean;
   nodes: InterestGraphNode[];
   edges: InterestGraphEdge[];
 };
 
 export type SpeechVoteComparisonData = {
   id?: string;
-  isDemonstration: boolean;
   subject: string;
   statement: {
     quote: string;

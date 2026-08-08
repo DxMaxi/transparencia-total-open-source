@@ -6,6 +6,10 @@ import { SourceLink } from "@/components/source-link";
 import type { GovernmentPromise, PromiseStatus } from "@/types/domain";
 
 const statusMeta: Record<PromiseStatus, { label: string; description: string }> = {
+  UNVERIFIED: {
+    label: "Por verificar",
+    description: "Compromisso oficial catalogado; execução ainda sem avaliação",
+  },
   FULFILLED: { label: "Cumprido", description: "Prova oficial confirma execução integral" },
   IN_PROGRESS: { label: "Em execução", description: "Há atos oficiais, mas a medida não terminou" },
   BROKEN: { label: "Incumprido", description: "Prazo ou objetivo verificável não foi alcançado" },
@@ -14,6 +18,7 @@ const statusMeta: Record<PromiseStatus, { label: string; description: string }> 
 
 const filters: Array<{ value: "ALL" | PromiseStatus; label: string }> = [
   { value: "ALL", label: "Todas" },
+  { value: "UNVERIFIED", label: "Por verificar" },
   { value: "FULFILLED", label: "Cumpridas" },
   { value: "IN_PROGRESS", label: "Em execução" },
   { value: "BROKEN", label: "Incumpridas" },
@@ -40,7 +45,7 @@ export function Promessometro({ promises }: { promises: GovernmentPromise[] }) {
       accumulator[promise.status] += 1;
       return accumulator;
     },
-    { FULFILLED: 0, IN_PROGRESS: 0, BROKEN: 0, ABANDONED: 0 },
+    { UNVERIFIED: 0, FULFILLED: 0, IN_PROGRESS: 0, BROKEN: 0, ABANDONED: 0 },
   );
 
   return (
@@ -95,19 +100,25 @@ export function Promessometro({ promises }: { promises: GovernmentPromise[] }) {
               </span>
             </div>
 
-            <div className="promise-progress-row">
-              <div className="promise-progress-heading">
-                <span>Execução documentada</span>
-                <strong>{promise.progress}%</strong>
+            {promise.status === "UNVERIFIED" ? (
+              <div className="promise-review-pending" role="note">
+                A execução ainda não foi classificada: o compromisso aguarda prova oficial e revisão.
               </div>
-              <div className="progress-track progress-track--large">
-                <span style={{ width: `${promise.progress}%` }} />
+            ) : (
+              <div className="promise-progress-row">
+                <div className="promise-progress-heading">
+                  <span>Execução documentada</span>
+                  <strong>{promise.progress}%</strong>
+                </div>
+                <div className="progress-track progress-track--large">
+                  <span style={{ width: `${promise.progress}%` }} />
+                </div>
               </div>
-            </div>
+            )}
 
             <p className="promise-rationale">{promise.rationale}</p>
 
-            <div className="evidence-box">
+            {promise.evidence.length ? <div className="evidence-box">
               <span className="evidence-box__label">Fundamentação oficial</span>
               {promise.evidence.map((evidence) => (
                 <div className="evidence-row" key={evidence.id}>
@@ -118,7 +129,12 @@ export function Promessometro({ promises }: { promises: GovernmentPromise[] }) {
                   <SourceLink source={evidence.source} compact />
                 </div>
               ))}
-            </div>
+            </div> : (
+              <div className="evidence-box evidence-box--pending">
+                <span className="evidence-box__label">Avaliação de execução</span>
+                <p>Ainda não existe documento oficial associado que permita classificar a execução.</p>
+              </div>
+            )}
 
             <footer className="promise-card__footer">
               <SourceLink source={promise.programmeSource} compact />

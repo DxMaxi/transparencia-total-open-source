@@ -1,0 +1,62 @@
+import assert from "node:assert/strict";
+import { readdir, readFile } from "node:fs/promises";
+import { extname, join } from "node:path";
+import test from "node:test";
+
+const root = new URL("../", import.meta.url);
+
+async function sourceFiles(directory) {
+  const absolute = new URL(`${directory}/`, root);
+  const entries = await readdir(absolute, { withFileTypes: true });
+  const files = [];
+  for (const entry of entries) {
+    const relative = join(directory, entry.name);
+    if (entry.isDirectory()) files.push(...await sourceFiles(relative));
+    else if ([".ts", ".tsx"].includes(extname(entry.name))) files.push(relative);
+  }
+  return files;
+}
+
+test("public interface contains no prototype or demonstration copy", async () => {
+  const files = [
+    ...await sourceFiles("app"),
+    ...await sourceFiles("components"),
+    ...await sourceFiles("lib"),
+  ];
+  const contents = await Promise.all(
+    files.map(async (file) => `${file}\n${await readFile(new URL(file, root), "utf8")}`),
+  );
+  const publicSource = contents.join("\n");
+
+  assert.doesNotMatch(publicSource, /prot[oó]tipo com dados|dados demonstrativos|IA não executada/i);
+  assert.doesNotMatch(publicSource, /demo-data|v2-demo-data|ENABLE_DEMO_DATA/);
+});
+
+test("legal information is reachable and supports real controller identification", async () => {
+  const footer = await readFile(new URL("components/site-footer.tsx", root), "utf8");
+  const site = await readFile(new URL("lib/site.ts", root), "utf8");
+  for (const route of ["privacidade", "cookies", "termos", "acessibilidade", "contacto"]) {
+    assert.match(footer, new RegExp(`href=[\\"']/${route}[\\"']`));
+    await readFile(new URL(`app/${route}/page.tsx`, root), "utf8");
+  }
+  assert.match(site, /NEXT_PUBLIC_LEGAL_RESPONSIBLE_NAME/);
+  assert.match(site, /NEXT_PUBLIC_LEGAL_ADDRESS/);
+  assert.match(site, /NEXT_PUBLIC_LEGAL_TAX_ID/);
+});
+
+test("the public release exposes security headers and removes legacy PWA state", async () => {
+  const config = await readFile(new URL("next.config.ts", root), "utf8");
+  const layout = await readFile(new URL("app/layout.tsx", root), "utf8");
+  assert.match(config, /Content-Security-Policy/);
+  assert.match(config, /X-Content-Type-Options/);
+  assert.match(config, /X-Frame-Options/);
+  assert.match(config, /Strict-Transport-Security/);
+  assert.match(config, /connect-src/);
+  assert.match(layout, /BrowserStorageCleanup/);
+  assert.doesNotMatch(layout, /PwaRegister/);
+});
+
+test("the right-of-reply form never falls back to a query-string submission", async () => {
+  const form = await readFile(new URL("components/right-of-reply-form.tsx", root), "utf8");
+  assert.match(form, /<form[^>]+method=["']post["']/);
+});

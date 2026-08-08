@@ -12,6 +12,7 @@ on:
           - refresh-official-indexes
           - sync-parliament-deputies
           - sync-parliament-activity
+          - publish-government-programme
           - preview-parliament-activity
           - publish-parliament-activity
           - withdraw-parliament-activity
@@ -155,6 +156,11 @@ jobs:
         if: ${{ inputs.operation == 'sync-parliament-activity' }}
         working-directory: backend
         run: python -m scripts.sync_parliament_activity --legislature XVII
+
+      - name: Publicar catálogo inicial do Programa do XXV Governo
+        if: ${{ inputs.operation == 'publish-government-programme' }}
+        working-directory: backend
+        run: python -m scripts.publish_government_programme
 
       - name: Pré-visualizar fotografia parlamentar
         if: ${{ inputs.operation == 'preview-parliament-activity' }}

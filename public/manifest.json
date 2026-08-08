@@ -28,11 +28,6 @@
   ],
   "shortcuts": [
     {
-      "name": "Investigador Cívico",
-      "short_name": "Investigar",
-      "url": "/investigador?source=shortcut"
-    },
-    {
       "name": "Guia do Cidadão",
       "short_name": "Guia",
       "url": "/guia-cidadao?source=shortcut"

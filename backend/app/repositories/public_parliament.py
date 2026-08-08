@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import re
 from typing import Any, Literal
 
 import asyncpg
+
+_NUMERIC_VOTE_TITLE = re.compile(r"^\s*\d+(?:/[A-Z0-9.ª-]+)*\s*$", re.IGNORECASE)
 
 
 def _source(row: Any) -> dict[str, Any]:
@@ -13,6 +16,18 @@ def _source(row: Any) -> dict[str, Any]:
         "retrieved_at": row["source_retrieved_at"],
         "content_sha256": row["source_sha256"],
     }
+
+
+def _vote_title(row: Any) -> str:
+    """Substitui um identificador nu apenas quando há uma iniciativa única na fotografia."""
+
+    title = str(row["title"])
+    initiative_title = row["initiative_title"]
+    if not _NUMERIC_VOTE_TITLE.fullmatch(title) or not initiative_title:
+        return title
+    initiative_type = row["initiative_type"] or "Iniciativa"
+    initiative_number = row["initiative_number"] or title.strip()
+    return f"{initiative_type} n.º {initiative_number} — {initiative_title}"
 
 
 class PublicParliamentRepository:
@@ -174,11 +189,22 @@ class PublicParliamentRepository:
                        event.title, event.initiative_number, event.voted_at,
                        event.result, event.is_nominal, published.verified_at,
                        published.source_url, published.source_retrieved_at,
-                       published.source_sha256, published.source_document_id
+                       published.source_sha256, published.source_document_id,
+                       linked_initiative.initiative_type,
+                       linked_initiative.initiative_title
                 FROM vote_events event
                 JOIN published_snapshot published
                   ON published.id = event.snapshot_id
                  AND published.source_document_id = event.source_document_id
+                LEFT JOIN LATERAL (
+                    SELECT MIN(candidate.type) AS initiative_type,
+                           MIN(candidate.title) AS initiative_title
+                    FROM parliamentary_initiatives candidate
+                    WHERE candidate.snapshot_id = event.snapshot_id
+                      AND candidate.source_document_id = event.source_document_id
+                      AND candidate.number = event.initiative_number
+                    HAVING COUNT(*) = 1
+                ) linked_initiative ON TRUE
                 ORDER BY event.voted_at DESC NULLS LAST, event.id
                 LIMIT $2 OFFSET $3
                 """,
@@ -220,7 +246,7 @@ class PublicParliamentRepository:
                 "id": row["id"],
                 "source_id": row["source_id"],
                 "legislature": row["legislature"],
-                "title": row["title"],
+                "title": _vote_title(row),
                 "initiative_number": row["initiative_number"],
                 "voted_at": row["voted_at"],
                 "result": row["result"],

@@ -11,7 +11,7 @@ from app.models.public_parliament import (
     PublishedParliamentaryVote,
     PublishedVoteRecord,
 )
-from app.repositories.public_parliament import PublicParliamentRepository
+from app.repositories.public_parliament import PublicParliamentRepository, _vote_title
 
 
 class QueryConnection:
@@ -110,6 +110,43 @@ def test_public_models_preserve_source_and_actor_scope(
     assert vote.records[0].person_id is None
 
 
+def test_numeric_vote_title_uses_a_unique_linked_initiative() -> None:
+    title = _vote_title(
+        {
+            "title": "815",
+            "initiative_number": "815",
+            "initiative_type": "Projeto de Lei",
+            "initiative_title": "Título oficial da iniciativa",
+        }
+    )
+
+    assert title == "Projeto de Lei n.º 815 — Título oficial da iniciativa"
+
+
+@pytest.mark.parametrize(
+    ("title", "initiative_title"),
+    [
+        ("Votação final global", "Título oficial da iniciativa"),
+        ("815", None),
+    ],
+)
+def test_vote_title_does_not_infer_without_an_unambiguous_match(
+    title: str,
+    initiative_title: str | None,
+) -> None:
+    assert (
+        _vote_title(
+            {
+                "title": title,
+                "initiative_number": "815",
+                "initiative_type": "Projeto de Lei",
+                "initiative_title": initiative_title,
+            }
+        )
+        == title
+    )
+
+
 @pytest.mark.asyncio
 async def test_all_public_lists_are_bound_to_one_reviewed_snapshot() -> None:
     connection = QueryConnection()
@@ -129,3 +166,4 @@ async def test_all_public_lists_are_bound_to_one_reviewed_snapshot() -> None:
         assert "review.publishable = TRUE" in query
         assert "attestation.content_sha256 = source.content_sha256" in query
         assert "published.id =" in query
+    assert "HAVING COUNT(*) = 1" in connection.queries[-1]

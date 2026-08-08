@@ -111,6 +111,34 @@ def test_normalise_initiatives_does_not_invent_missing_status_or_date() -> None:
     assert str(initiative.official_url).startswith("https://www.parlamento.pt/")
 
 
+def test_normalise_initiatives_uses_explicit_entry_and_latest_phase() -> None:
+    payload = [
+        {
+            "IniId": "ini-activity-1",
+            "IniNr": "815",
+            "IniDescTipo": "Projeto de Resolução",
+            "IniTitulo": "Medida pública documentada",
+            "IniEventos": [
+                {"DataFase": "2026-01-10", "Fase": "Entrada"},
+                {"DataFase": "2026-02-03", "Fase": "Admissão"},
+                {"DataFase": "2026-07-22", "Fase": "Votação na especialidade"},
+            ],
+        }
+    ]
+
+    initiatives = normalise_initiatives(
+        payload,
+        legislature="XVII",
+        source_url=SOURCE_URL,
+        document_sha256=SHA,
+        retrieved_at=RETRIEVED_AT,
+        parliament_base_url="https://www.parlamento.pt",
+    )
+
+    assert initiatives[0].introduced_at == datetime(2026, 1, 10, tzinfo=UTC)
+    assert initiatives[0].status == "Votação na especialidade"
+
+
 def test_normalise_initiatives_deduplicates_by_official_source_id() -> None:
     payload = [
         {

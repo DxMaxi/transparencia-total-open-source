@@ -21,7 +21,6 @@ export function DataModeBanner({
   }
 
   const unavailable = status.mode === "UNAVAILABLE";
-  const empty = status.mode === "EMPTY";
   const liveWithoutDataset = status.mode === "LIVE" && showingFallback;
   return (
     <aside className="data-mode-banner data-mode-banner--fallback" role="note">
@@ -30,16 +29,12 @@ export function DataModeBanner({
         <strong>
           {liveWithoutDataset
             ? "Sem registos publicados neste módulo."
-            : empty
-            ? "Base ligada, ainda sem registos aprovados."
             : unavailable
-              ? "API temporariamente indisponível."
-              : "Protótipo com dados demonstrativos."}
+              ? "Dados oficiais temporariamente indisponíveis."
+              : "Base ligada, ainda sem registos aprovados."}
         </strong>
         <span>
-          {showingFallback
-            ? "A amostra abaixo é fictícia e está isolada dos dados oficiais."
-            : status.message}
+          {status.message}
         </span>
       </div>
     </aside>

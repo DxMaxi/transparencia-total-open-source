@@ -29,6 +29,8 @@ OFFICIAL_HOSTS = frozenset(
         "www.base.gov.pt",
         "dados.gov.pt",
         "www.dados.gov.pt",
+        "portugal.gov.pt",
+        "www.portugal.gov.pt",
         "impic.pt",
         "www.impic.pt",
         "tcontas.pt",

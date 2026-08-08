@@ -12,6 +12,7 @@ e, se possível, uma correção proposta.
 - URLs fornecidos pelo utilizador passam por uma lista de domínios oficiais para reduzir SSRF.
 - Endpoints de sincronização, revisão e envio em massa exigem autenticação administrativa.
 - A aplicação não deve guardar filiação, preferências políticas nem localização exata do cidadão.
-- Subscrições push guardam apenas os filtros regionais escolhidos e devem poder ser eliminadas.
+- A interface pública não ativa subscrições push. Se esta opção vier a ser ativada, deve exigir
+  escolha explícita, guardar apenas os filtros necessários e permitir eliminação e revogação.
 
 Versões suportadas: apenas a versão publicada mais recente.

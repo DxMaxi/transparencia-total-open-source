@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { CheckIcon, ShieldCheckIcon } from "@/components/icons";
+import { CONTACT_EMAIL } from "@/lib/site";
 
 type Receipt = {
   public_reference: string;
@@ -22,7 +23,7 @@ export function RightOfReplyForm() {
     setReceipt(null);
     const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
     if (!apiUrl) {
-      setError("O canal está em modo demonstrativo porque o backend público ainda não foi configurado.");
+      setError("O canal de resposta está temporariamente indisponível. Contacte-nos por email.");
       return;
     }
     const formElement = event.currentTarget;
@@ -48,7 +49,7 @@ export function RightOfReplyForm() {
 
   return (
     <div className="reply-layout">
-      <form className="right-reply-form card" onSubmit={submit}>
+      <form className="right-reply-form card" method="post" onSubmit={submit}>
         <div className="reply-form-heading">
           <span className="eyebrow">Registo imutável</span>
           <h2>Anexar uma resposta ao facto original</h2>
@@ -60,7 +61,11 @@ export function RightOfReplyForm() {
         <div className="reply-fields">
           <label>
             Tipo de registo
-            <select name="target_type" required defaultValue="PUBLIC_CONTRACT">
+            <select name="target_type" required defaultValue="POLITICIAN_PROFILE">
+              <option value="POLITICIAN_PROFILE">Perfil de titular de cargo público</option>
+              <option value="PARLIAMENTARY_INITIATIVE">Iniciativa parlamentar</option>
+              <option value="PARLIAMENTARY_VOTE">Votação parlamentar</option>
+              <option value="GOVERNMENT_PROMISE">Compromisso do Governo</option>
               <option value="PUBLIC_CONTRACT">Contrato público</option>
               <option value="INTEREST_RELATIONSHIP">Ligação de interesses</option>
               <option value="STATEMENT_VOTE_COMPARISON">Discurso vs. voto</option>
@@ -105,7 +110,10 @@ export function RightOfReplyForm() {
 
         <label className="reply-confirmation">
           <input type="checkbox" required />
-          <span>Confirmo que a resposta se refere ao registo indicado e pode ser submetida a verificação editorial.</span>
+          <span>
+            Confirmo que a resposta se refere ao registo indicado, que tenho legitimidade
+            para a apresentar e que li a <a href="/privacidade">política de privacidade</a>.
+          </span>
         </label>
         <button className="button button--primary" type="submit" disabled={pending}>
           {pending ? "A registar…" : "Registar resposta auditável"}
@@ -119,6 +127,11 @@ export function RightOfReplyForm() {
               <span>SHA-256 da declaração: {receipt.statement_sha256}</span>
               <span>SHA-256 do recibo: {receipt.audit_sha256}</span>
               <p>{receipt.notice}</p>
+              <p>
+                Para permitir contacto durante a verificação, envie a referência acima para
+                <a href={`mailto:${CONTACT_EMAIL}`}> {CONTACT_EMAIL}</a>. O formulário não recolhe
+                o seu email.
+              </p>
             </div>
           </div>
         )}
@@ -136,6 +149,10 @@ export function RightOfReplyForm() {
         </ol>
         <p>
           A receção não confirma o mérito da resposta. Rejeições e decisões editoriais ficam igualmente registadas para auditoria interna.
+        </p>
+        <p>
+          Se não tiver o identificador ou o SHA-256 do registo, contacte
+          <a href={`mailto:${CONTACT_EMAIL}`}> {CONTACT_EMAIL}</a> e indique a página em causa.
         </p>
       </aside>
     </div>

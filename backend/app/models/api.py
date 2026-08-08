@@ -573,13 +573,13 @@ class PublishedPromise(BaseModel):
     id: str
     title: str
     area: str
-    status: Literal["FULFILLED", "IN_PROGRESS", "BROKEN", "ABANDONED"]
+    status: Literal["UNVERIFIED", "FULFILLED", "IN_PROGRESS", "BROKEN", "ABANDONED"]
     progress: int = Field(ge=0, le=100)
     programme_page: str
     programme_source: OfficialSource
     rationale: str
     last_reviewed_at: datetime
-    evidence: list[PublishedPromiseEvidence] = Field(min_length=1)
+    evidence: list[PublishedPromiseEvidence] = Field(default_factory=list)
 
 
 class PublishedInterestNode(BaseModel):

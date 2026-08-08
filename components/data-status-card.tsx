@@ -11,6 +11,14 @@ const sourceLabels: Record<string, string> = {
   LOCAL_SNS: "Índice SNS",
 };
 
+const syncStateLabels: Record<string, string> = {
+  NEVER: "Sem recolha",
+  RUNNING: "A atualizar",
+  SUCCEEDED: "Atualizado",
+  PARTIAL: "Parcial",
+  FAILED: "Falhou",
+};
+
 export function DataStatusCard({ status }: { status: PublicDataStatus }) {
   const live = status.mode === "LIVE";
   const total = Object.values(status.counts).reduce((sum, count) => sum + count, 0);
@@ -19,7 +27,7 @@ export function DataStatusCard({ status }: { status: PublicDataStatus }) {
       <div className="hero-dashboard__header">
         <div><span className={live ? "live-dot" : "live-dot live-dot--idle"} /><span>Estado dos dados</span></div>
         <span className={`mode-chip mode-chip--${status.mode.toLowerCase()}`}>
-          {live ? "Dados publicados" : status.mode === "EMPTY" ? "Em revisão" : "Demonstração"}
+          {live ? "Dados publicados" : status.mode === "EMPTY" ? "Em revisão" : "Indisponível"}
         </span>
       </div>
       <div className="hero-dashboard__body">
@@ -31,14 +39,14 @@ export function DataStatusCard({ status }: { status: PublicDataStatus }) {
           <div><strong>{status.counts.politicians}</strong><span>perfis</span></div>
           <div><strong>{status.counts.parliamentInitiatives}</strong><span>iniciativas</span></div>
           <div><strong>{status.counts.parliamentVotes}</strong><span>votações</span></div>
-          <div><strong>{status.counts.contracts}</strong><span>contratos</span></div>
+          <div><strong>{status.counts.parliamentSessions}</strong><span>reuniões</span></div>
         </div>
         <div className="sync-source-list" aria-label="Cobertura das sincronizações">
           {status.sources.slice(0, 7).map((source) => (
             <div key={source.sourceName}>
               <span>{sourceLabels[source.sourceName] ?? source.sourceName}</span>
               <strong className={`sync-state sync-state--${source.status.toLowerCase()}`}>
-                {source.status === "NEVER" ? "Sem recolha" : source.status}
+                {syncStateLabels[source.status] ?? "Estado desconhecido"}
               </strong>
             </div>
           ))}

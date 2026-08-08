@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { DataModeBanner } from "@/components/data-mode-banner";
 import { SourceLink } from "@/components/source-link";
 import { loadPublicParliamentActivity } from "@/lib/public-data";
@@ -19,9 +20,60 @@ const choiceLabels = {
   UNKNOWN: "Não determinado",
 };
 
-export default async function ParliamentActivityPage() {
-  const loaded = await loadPublicParliamentActivity("XVII");
+const SESSION_PAGE_SIZE = 24;
+const INITIATIVE_PAGE_SIZE = 25;
+const VOTE_PAGE_SIZE = 20;
+
+type PageSearchParams = Record<string, string | string[] | undefined>;
+
+function readPage(value: string | string[] | undefined): number {
+  const candidate = Array.isArray(value) ? value[0] : value;
+  const parsed = Number.parseInt(candidate ?? "1", 10);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 1;
+}
+
+function readableSessionTitle(title: string, sessionNumber?: string): string {
+  const abbreviation = /^([A-Z]{2,6})\s+—\s+reunião\s+(.+)$/i.exec(title.trim());
+  if (!abbreviation) return title;
+  return `Reunião parlamentar ${sessionNumber ?? abbreviation[2]} (${abbreviation[1].toUpperCase()})`;
+}
+
+function resultTone(result?: string): "positive" | "negative" | "neutral" {
+  if (!result) return "neutral";
+  if (/rejeitad|chumbad|não aprovad/i.test(result)) return "negative";
+  if (/aprova|adotad/i.test(result)) return "positive";
+  return "neutral";
+}
+
+export default async function ParliamentActivityPage({
+  searchParams,
+}: {
+  searchParams: Promise<PageSearchParams>;
+}) {
+  const params = await searchParams;
+  const pages = {
+    sessoes: readPage(params.sessoes),
+    iniciativas: readPage(params.iniciativas),
+    votacoes: readPage(params.votacoes),
+  };
+  const loaded = await loadPublicParliamentActivity("XVII", {
+    sessions: {
+      limit: SESSION_PAGE_SIZE,
+      offset: (pages.sessoes - 1) * SESSION_PAGE_SIZE,
+    },
+    initiatives: {
+      limit: INITIATIVE_PAGE_SIZE,
+      offset: (pages.iniciativas - 1) * INITIATIVE_PAGE_SIZE,
+    },
+    votes: {
+      limit: VOTE_PAGE_SIZE,
+      offset: (pages.votacoes - 1) * VOTE_PAGE_SIZE,
+    },
+  });
   const { sessions, initiatives, votes, availability } = loaded.data;
+  const initiativesByNumber = new Map(
+    initiatives.map((initiative) => [initiative.number.trim(), initiative]),
+  );
   const publishedSources = Array.from(
     new Map(
       [...sessions, ...initiatives, ...votes].map((item) => [
@@ -84,9 +136,9 @@ export default async function ParliamentActivityPage() {
       </section>
 
       <nav className="parliament-jump-nav" aria-label="Secções da atividade parlamentar">
-        <a href="#sessoes"><strong>{sessions.length}</strong><span>Reuniões mostradas</span></a>
-        <a href="#iniciativas"><strong>{initiatives.length}</strong><span>Iniciativas mostradas</span></a>
-        <a href="#votacoes"><strong>{votes.length}</strong><span>Votações mostradas</span></a>
+        <a href="#sessoes"><strong>{loaded.status.counts.parliamentSessions}</strong><span>reuniões publicadas</span></a>
+        <a href="#iniciativas"><strong>{loaded.status.counts.parliamentInitiatives}</strong><span>iniciativas publicadas</span></a>
+        <a href="#votacoes"><strong>{loaded.status.counts.parliamentVotes}</strong><span>votações publicadas</span></a>
       </nav>
 
       <section className="parliament-section" id="sessoes">
@@ -95,19 +147,29 @@ export default async function ParliamentActivityPage() {
           <p>Não é uma agenda completa: mostra apenas reuniões referidas na fonte de iniciativas.</p>
         </div>
         {sessions.length ? (
-          <div className="parliament-session-grid">
-            {sessions.map((session) => (
-              <article className="parliament-session-card card" key={session.id}>
-                <span>{session.startsAt}</span>
-                <h3>{session.title}</h3>
-                <p>
-                  {session.sessionNumber ? `Reunião ${session.sessionNumber}` : "Número não indicado"}
-                  {session.endsAt ? ` · termina ${session.endsAt}` : ""}
-                </p>
-                <SourceLink source={session.source} compact />
-              </article>
-            ))}
-          </div>
+          <>
+            <div className="parliament-session-grid">
+              {sessions.map((session) => (
+                <article className="parliament-session-card card" key={session.id}>
+                  <span>{session.startsAt}</span>
+                  <h3>{readableSessionTitle(session.title, session.sessionNumber)}</h3>
+                  <p>
+                    {session.sessionNumber ? `Reunião ${session.sessionNumber}` : "Número não indicado"}
+                    {session.endsAt ? ` · termina ${session.endsAt}` : ""}
+                  </p>
+                  <SourceLink source={session.source} compact />
+                </article>
+              ))}
+            </div>
+            <Paginator
+              anchor="sessoes"
+              currentPage={pages.sessoes}
+              pageSize={SESSION_PAGE_SIZE}
+              pages={pages}
+              param="sessoes"
+              total={loaded.status.counts.parliamentSessions}
+            />
+          </>
         ) : (
           <EmptyState
             label={
@@ -125,25 +187,35 @@ export default async function ParliamentActivityPage() {
           <p>O estado só aparece quando está explícito na fonte.</p>
         </div>
         {initiatives.length ? (
-          <div className="parliament-list">
-            {initiatives.map((initiative) => (
-              <article className="parliament-list-card card" key={initiative.id}>
-                <div className="parliament-list-card__meta">
-                  <span>{initiative.initiativeType}</span>
-                  <span>{initiative.number}</span>
-                  <span>{initiative.introducedAt ?? "Data não indicada"}</span>
-                </div>
-                <h3>{initiative.title}</h3>
-                {initiative.description ? <p>{initiative.description}</p> : null}
-                <div className="parliament-list-card__footer">
-                  <span>{initiative.status ?? "Estado não indicado na fonte"}</span>
-                  <a href={initiative.officialUrl} target="_blank" rel="noreferrer noopener">
-                    Abrir iniciativa oficial
-                  </a>
-                </div>
-              </article>
-            ))}
-          </div>
+          <>
+            <div className="parliament-list">
+              {initiatives.map((initiative) => (
+                <article className="parliament-list-card card" key={initiative.id}>
+                  <div className="parliament-list-card__meta">
+                    <span>{initiative.initiativeType}</span>
+                    <span>{initiative.number}</span>
+                    <span>{initiative.introducedAt ?? "Entrada sem data explícita"}</span>
+                  </div>
+                  <h3>{initiative.title}</h3>
+                  {initiative.description ? <p>{initiative.description}</p> : null}
+                  <div className="parliament-list-card__footer">
+                    <span>{initiative.status ? `Última fase registada: ${initiative.status}` : "Fase atual não indicada"}</span>
+                    <a href={initiative.officialUrl} target="_blank" rel="noreferrer noopener">
+                      Abrir iniciativa oficial
+                    </a>
+                  </div>
+                </article>
+              ))}
+            </div>
+            <Paginator
+              anchor="iniciativas"
+              currentPage={pages.iniciativas}
+              pageSize={INITIATIVE_PAGE_SIZE}
+              pages={pages}
+              param="iniciativas"
+              total={loaded.status.counts.parliamentInitiatives}
+            />
+          </>
         ) : (
           <EmptyState
             label={
@@ -161,35 +233,58 @@ export default async function ParliamentActivityPage() {
           <p>“Não determinado” significa que a fonte não identifica inequivocamente o ator.</p>
         </div>
         {votes.length ? (
-          <div className="parliament-list">
-            {votes.map((vote) => (
-              <article className="parliament-list-card parliament-vote-card card" key={vote.id}>
-                <div className="parliament-list-card__meta">
-                  <span>{vote.votedAt ?? "Data não indicada"}</span>
-                  <span>{vote.initiativeNumber ?? "Sem iniciativa indicada"}</span>
-                  <span>{vote.isNominal ? "Voto nominal" : "Posição coletiva ou indeterminada"}</span>
-                </div>
-                <h3>{vote.title}</h3>
-                <strong className="parliament-vote-result">
-                  {vote.result ?? "Resultado não indicado na fonte"}
-                </strong>
-                {vote.records.length ? (
-                  <div className="parliament-position-list" aria-label="Posições registadas">
-                    {vote.records.slice(0, 12).map((record) => (
-                      <span key={`${record.actorType}-${record.actorLabel}`}>
-                        <b>{record.actorLabel}</b>
-                        {choiceLabels[record.choice]}
-                      </span>
-                    ))}
-                    {vote.records.length > 12 ? (
-                      <small>+ {vote.records.length - 12} posições nesta fotografia</small>
-                    ) : null}
-                  </div>
-                ) : <p>Esta votação não inclui posições normalizáveis na fotografia publicada.</p>}
-                <SourceLink source={vote.source} compact />
-              </article>
-            ))}
-          </div>
+          <>
+            <div className="parliament-list">
+              {votes.map((vote) => {
+                const initiative = vote.initiativeNumber
+                  ? initiativesByNumber.get(vote.initiativeNumber.trim())
+                  : undefined;
+                const numericTitle = /^\s*\d+(?:\/[A-Z0-9.ª-]+)*\s*$/i.test(vote.title);
+                const title = numericTitle && initiative
+                  ? `${initiative.initiativeType} n.º ${initiative.number} — ${initiative.title}`
+                  : numericTitle
+                    ? `Votação da iniciativa n.º ${vote.title.trim()}`
+                    : vote.title;
+                return (
+                  <article className="parliament-list-card parliament-vote-card card" key={vote.id}>
+                    <div className="parliament-list-card__meta">
+                      <span>{vote.votedAt ?? "Data não indicada"}</span>
+                      <span>{vote.initiativeNumber ?? "Sem iniciativa indicada"}</span>
+                      <span>{vote.isNominal ? "Voto nominal" : "Posição coletiva ou indeterminada"}</span>
+                    </div>
+                    <h3>{title}</h3>
+                    <strong className={`parliament-vote-result parliament-vote-result--${resultTone(vote.result)}`}>
+                      {vote.result ?? "Resultado não indicado na fonte"}
+                    </strong>
+                    {vote.records.length ? (
+                      <div className="parliament-position-list" aria-label="Posições registadas">
+                        {vote.records.slice(0, 12).map((record) => (
+                          <span key={`${record.actorType}-${record.actorLabel}`}>
+                            <b>{record.actorLabel}</b>
+                            {choiceLabels[record.choice]}
+                          </span>
+                        ))}
+                        {vote.records.length > 12 ? (
+                          <small>+ {vote.records.length - 12} posições nesta fotografia</small>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <p>Esta votação não inclui posições normalizáveis na fotografia publicada.</p>
+                    )}
+                    <SourceLink source={vote.source} compact />
+                  </article>
+                );
+              })}
+            </div>
+            <Paginator
+              anchor="votacoes"
+              currentPage={pages.votacoes}
+              pageSize={VOTE_PAGE_SIZE}
+              pages={pages}
+              param="votacoes"
+              total={loaded.status.counts.parliamentVotes}
+            />
+          </>
         ) : (
           <EmptyState
             label={
@@ -201,6 +296,42 @@ export default async function ParliamentActivityPage() {
         )}
       </section>
     </main>
+  );
+}
+
+function Paginator({
+  anchor,
+  currentPage,
+  pageSize,
+  pages,
+  param,
+  total,
+}: {
+  anchor: string;
+  currentPage: number;
+  pageSize: number;
+  pages: Record<"sessoes" | "iniciativas" | "votacoes", number>;
+  param: "sessoes" | "iniciativas" | "votacoes";
+  total: number;
+}) {
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  if (pageCount === 1) return null;
+
+  const hrefFor = (page: number) => {
+    const query = new URLSearchParams();
+    Object.entries({ ...pages, [param]: page }).forEach(([key, value]) => {
+      if (value > 1) query.set(key, String(value));
+    });
+    const suffix = query.toString();
+    return `${suffix ? `?${suffix}` : ""}#${anchor}`;
+  };
+
+  return (
+    <nav className="parliament-pagination" aria-label={`Paginação de ${anchor}`}>
+      {currentPage > 1 ? <Link href={hrefFor(currentPage - 1)}>Anterior</Link> : <span />}
+      <strong>Página {Math.min(currentPage, pageCount)} de {pageCount}</strong>
+      {currentPage < pageCount ? <Link href={hrefFor(currentPage + 1)}>Seguinte</Link> : <span />}
+    </nav>
   );
 }
 
