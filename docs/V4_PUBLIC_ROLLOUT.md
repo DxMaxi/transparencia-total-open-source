@@ -41,3 +41,4 @@ Os bytes exactos são guardados em armazenamento privado content-addressed no Po
 ## Operação protegida
 
 Os endpoints em `/api/v1/admin/v4-rollout` exigem `X-Admin-Key`. Permitem pré-visualizar e confirmar a fotografia parlamentar com SHA e contagem exactos, ou repetir a recolha dos índices. Não existe endpoint de aprovação automática de votações, contratos, declarações ou relações.
+

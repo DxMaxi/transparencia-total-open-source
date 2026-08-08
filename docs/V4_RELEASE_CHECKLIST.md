@@ -9,13 +9,16 @@
 - [x] Conteúdo bruto privado é excluído de serialização pública.
 - [x] Identificadores sensíveis do BASE não são publicados em claro.
 - [x] Tabelas de staging DRE e EPT são append-only.
+- [x] Fotografias parlamentares, reuniões, iniciativas, votações e posições são append-only.
+- [x] A leitura pública parlamentar seleciona uma única fotografia aprovada por âmbito.
+- [x] Dados de demonstração estão desativados no build de produção.
 - [x] Nenhum novo conector promove dados automaticamente.
 
 ## Fontes V4
 
 | Fonte | Gate técnico V4 | Publicação automática |
 |---|---|---|
-| Assembleia da República | Colector e persistência existentes com arquivo bruto | Não |
+| Assembleia da República | Bytes PostgreSQL, manifesto versionado, associação segura, revisão por hashes/contagens e API fail-closed | Não |
 | Portal BASE | Arquivo, staging privado, deduplicação e promoção exacta sob revisão | Não |
 | Diário da República | Arquivo, snapshot privado, inspector sem texto e testes de imutabilidade | Não |
 | Entidade para a Transparência | Colector de índice e schema privado com revisão jurídica obrigatória | Não |
@@ -45,6 +48,10 @@ Estes passos não são executados automaticamente pelo código nem pelo PR:
 4. definição de cobertura territorial explícita para cada conector Radar;
 5. revisão humana positiva antes de criar qualquer projecção pública;
 6. deploy separado, autorizado e acompanhado de verificação pós-deploy.
+
+Para o Parlamento, a sequência obrigatória é: `migrate` → `sync-parliament-deputies` →
+`sync-parliament-activity` → `preview-parliament-activity` → revisão humana →
+`publish-parliament-activity` → smoke tests. Nenhum destes passos é executado pelo frontend.
 
 ## Fora da V4
 

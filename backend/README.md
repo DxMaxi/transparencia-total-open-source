@@ -1,4 +1,4 @@
-# API Transparência Total / Fator Cívico — V4.2 em desenvolvimento
+# API Transparência Total / Fator Cívico — V4 release candidate
 
 Serviço FastAPI responsável por descobrir, descarregar, preservar e normalizar fontes oficiais.
 Inclui ingestão persistente do Parlamento, pré-visualização BASE JSON/XML/ZIP e staging BASE
@@ -6,10 +6,10 @@ append-only privado, estado de sincronização, projeções públicas, cruzament
 resumos DRE, Guia do Cidadão, direito de resposta e exportações Open Data. A API pública nunca
 trata uma correspondência automática, notícia ou resumo de IA como prova.
 
-`sync_parliament.py` dispõe de um circuito próprio de persistência em staging. Na V4.1, a operação
-exige `RAW_ARCHIVE_ROOT`: conserva e verifica os bytes exatos antes de abrir a ligação à base de
-dados; a transação acrescenta depois `SourceDocument`, `SourceArchiveAttestation`, `AuditEvent` e os
-registos normalizados. O recibo de arquivo nunca equivale a revisão ou publicação.
+`sync_parliament.py` persiste apenas deputados; a persistência legada de votos é recusada.
+`sync_parliament_activity.py` recolhe o recurso oficial de iniciativas uma vez, conserva os bytes
+exatos no PostgreSQL, cria uma atestação e materializa reuniões observadas, iniciativas, votações e
+posições numa fotografia imutável. O recibo de arquivo nunca equivale a revisão ou publicação.
 Na V4.2, `sync_base_contracts.py` mantém o ficheiro JSON privado e permite `--persist` apenas com
 `ENVIRONMENT=staging`, `--confirm-staging`, arquivo prévio e snapshot completo. A carga usa tabelas
 BASE próprias protegidas contra alteração e nunca escreve contratos, entidades, correspondências
@@ -19,36 +19,41 @@ têm de ficar fora do repositório. Para dados elegíveis,
 auditoria e só então torna o registo elegível para `/api/v1/public/*`. Mesmo uma revisão positiva
 fica bloqueada se a fonte associada não tiver uma atestação de arquivo exatamente coerente.
 
-## Arquivo privado V4.1
+## Fotografia parlamentar V4
 
-Configure um caminho absoluto fora do repositório apenas num ambiente privado de desenvolvimento,
-teste ou staging:
-
-```powershell
-$env:ENVIRONMENT = 'staging'
-$env:RAW_ARCHIVE_ROOT = 'D:\transparencia-total-private\raw-evidence'
-```
-
-Recolher e persistir uma fotografia parlamentar:
+Recolher deputados e a fotografia de atividade sem publicar:
 
 ```powershell
-python -m scripts.sync_parliament votes --legislature XVII --persist
+python -m scripts.sync_parliament deputies --legislature XVII --persist
+python -m scripts.sync_parliament_activity --legislature XVII
 ```
 
-Verificar o objeto associado a uma fonte, sem escrever dados:
+Inspecionar URL, hashes e contagens sem escrever uma decisão:
 
 ```powershell
-python -m scripts.inspect_source_archive --source-document-id SOURCE_ID
+python -m scripts.review_parliament_activity --legislature XVII
 ```
 
-Atestar um `SourceDocument` histórico só é permitido em `ENVIRONMENT=staging`, quando o URL efetivo
-e os bytes atuais ainda correspondem exatamente ao URL e SHA-256 guardados:
+Publicar apenas depois de repetir os valores da pré-visualização e confirmar a revisão humana:
+
+```powershell
+python -m scripts.review_parliament_activity --legislature XVII --publish --scope all `
+  --source-sha256 SHA_FONTE --normalised-sha256 SHA_NORMALIZADO `
+  --expected-sessions N --expected-initiatives N --expected-votes N `
+  --expected-vote-records N --reviewer REVISOR `
+  --rationale "Fonte e cobertura confirmadas por revisão humana independente." `
+  --confirm-source-reviewed
+```
+
+`--withdraw` acrescenta uma decisão negativa sem apagar o histórico. O arquivo de ficheiros
+configurado por `RAW_ARCHIVE_ROOT` permanece disponível apenas para circuitos históricos de
+desenvolvimento/staging, incluindo a reatestação explícita de um `SourceDocument`:
 
 ```powershell
 python -m scripts.archive_source_document --source-document-id SOURCE_ID --actor operador-auditavel --persist-attestation --confirm-staging
 ```
 
-O backend local não substitui object storage versionado/WORM em produção. Consulte
+Consulte [`docs/V4_PARLIAMENT_PIPELINE.md`](../docs/V4_PARLIAMENT_PIPELINE.md) e
 [`docs/V4_RAW_EVIDENCE.md`](../docs/V4_RAW_EVIDENCE.md) antes de qualquer operação persistente.
 
 ## Staging BASE V4.2
@@ -78,7 +83,7 @@ python -m scripts.inspect_base_staging --year 2026
 o relatório mostra o cruzamento fiscal como dados indisponíveis. Consulte
 [`docs/V4_BASE_STAGING.md`](../docs/V4_BASE_STAGING.md).
 
-## Rever a fotografia parlamentar em lote
+## Rever o diretório de deputados em lote
 
 Execute primeiro a pré-visualização, a partir da pasta `backend`:
 

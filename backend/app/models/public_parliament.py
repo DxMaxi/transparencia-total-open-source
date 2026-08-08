@@ -43,6 +43,7 @@ class PublishedVoteRecord(BaseModel):
 class PublishedParliamentaryVote(BaseModel):
     id: str
     source_id: str
+    legislature: str
     title: str
     initiative_number: str | None = None
     voted_at: datetime | None = None

@@ -109,14 +109,14 @@ export default async function Home() {
             <span className="text-link">Testar simulador privado <ArrowRightIcon /></span>
           </a>
 
-          <a className="feature-card" id="radar-local" href="/promessas">
+          <a className="feature-card" href="/atividade-parlamentar">
             <div className="feature-icon"><MapPinIcon /></div>
-            <span className="eyebrow">Promessómetro + Radar local</span>
-            <h3>O que foi prometido e o que muda perto de si.</h3>
-            <p>Diplomas, execução e alertas regionais permanecem rastreáveis e sujeitos a revisão.</p>
+            <span className="eyebrow">Atividade parlamentar</span>
+            <h3>Sessões, iniciativas e votações numa fotografia verificável.</h3>
+            <p>O histórico permanece imutável e nenhuma nova recolha é publicada sem revisão.</p>
             <div className="region-preview">
-              <span>Histórico</span>
-              <strong>Versionado e auditável</strong>
+              <span>XVII Legislatura</span>
+              <strong>{dataStatus.counts.parliamentVotes} votações aprovadas</strong>
             </div>
           </a>
         </div>

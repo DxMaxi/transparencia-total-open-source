@@ -6,7 +6,7 @@ devem ser importadas para o Supabase.
 
 Para recolher dados oficiais, execute a partir da pasta backend:
   python -m scripts.sync_parliament deputies --legislature XVII --persist
-  python -m scripts.sync_parliament votes --legislature XVII --persist
+  python -m scripts.sync_parliament_activity --legislature XVII
 """
 
 

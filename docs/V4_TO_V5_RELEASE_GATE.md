@@ -2,6 +2,9 @@
 
 A V5 só começa depois de a V4 estar em produção e cumprir todos os critérios abaixo.
 
+Estado da release candidate: os gates de código estão implementados; CI remoto, migrações,
+recolha/revisão real e validação no domínio oficial continuam pendentes até execução autorizada.
+
 ## Produção
 
 - API pública com liveness e readiness reais.
@@ -13,7 +16,7 @@ A V5 só começa depois de a V4 estar em produção e cumprir todos os critério
 ## Parlamento
 
 - Deputados, sessões, iniciativas e votações recolhidos de fontes oficiais.
-- Atualização incremental e idempotente.
+- Atualização versionada e idempotente, sem sobrescrever fotografias anteriores.
 - Votos nominais separados de posições partidárias.
 - URL, data de recolha e SHA-256 preservados.
 - Campos ausentes permanecem vazios; não existem inferências publicadas como factos.
@@ -31,7 +34,7 @@ A V5 só começa depois de a V4 estar em produção e cumprir todos os critério
 
 - CI verde.
 - Testes de migração desde base vazia.
-- Testes de API e browser.
+- Testes de API, integração PostgreSQL e browser/preview.
 - Smoke test após deploy.
 - Sem bloqueios críticos de segurança ou integridade.
 

@@ -3,6 +3,7 @@ import type { PublicDataStatus } from "@/types/public-data";
 
 const sourceLabels: Record<string, string> = {
   PARLIAMENT_DEPUTIES: "Deputados AR",
+  PARLIAMENT_ACTIVITY: "Atividade AR",
   PARLIAMENT_VOTES: "Votações AR",
   BASE_CONTRACTS: "Catálogo BASE",
   DRE: "Índice DRE",
@@ -28,12 +29,12 @@ export function DataStatusCard({ status }: { status: PublicDataStatus }) {
         </div>
         <div className="dashboard-public-counts">
           <div><strong>{status.counts.politicians}</strong><span>perfis</span></div>
-          <div><strong>{status.counts.promises}</strong><span>promessas</span></div>
+          <div><strong>{status.counts.parliamentInitiatives}</strong><span>iniciativas</span></div>
+          <div><strong>{status.counts.parliamentVotes}</strong><span>votações</span></div>
           <div><strong>{status.counts.contracts}</strong><span>contratos</span></div>
-          <div><strong>{status.counts.relationships}</strong><span>relações</span></div>
         </div>
         <div className="sync-source-list" aria-label="Cobertura das sincronizações">
-          {status.sources.slice(0, 6).map((source) => (
+          {status.sources.slice(0, 7).map((source) => (
             <div key={source.sourceName}>
               <span>{sourceLabels[source.sourceName] ?? source.sourceName}</span>
               <strong className={`sync-state sync-state--${source.status.toLowerCase()}`}>

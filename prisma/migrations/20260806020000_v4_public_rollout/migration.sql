@@ -84,3 +84,4 @@ DROP TRIGGER IF EXISTS official_index_resources_append_only ON official_index_re
 CREATE TRIGGER official_index_resources_append_only
 BEFORE UPDATE OR DELETE ON official_index_resources
 FOR EACH ROW EXECUTE FUNCTION reject_v4_rollout_mutation();
+

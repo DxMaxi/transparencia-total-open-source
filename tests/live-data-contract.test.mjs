@@ -7,8 +7,34 @@ test("frontend distinguishes live, empty, unavailable and demonstration data", a
   const banner = await readFile(new URL("../components/data-mode-banner.tsx", import.meta.url), "utf8");
   assert.match(client, /\/api\/v1\/public\/data-status/);
   assert.match(client, /"UNAVAILABLE"\s*:\s*"DEMO"|"UNAVAILABLE"/);
+  assert.match(client, /process\.env\.NODE_ENV !== "production"/);
+  assert.match(client, /process\.env\.ENABLE_DEMO_DATA !== "false"/);
   assert.match(banner, /Dados oficiais publicados/);
   assert.match(banner, /amostra abaixo é fictícia/);
+});
+
+test("parliament V4 is snapshot-scoped, reviewed and explicit about partial availability", async () => {
+  const repository = await readFile(
+    new URL("../backend/app/repositories/public_parliament.py", import.meta.url),
+    "utf8",
+  );
+  const ingestion = await readFile(
+    new URL("../backend/app/repositories/parliament_activity.py", import.meta.url),
+    "utf8",
+  );
+  const page = await readFile(
+    new URL("../app/atividade-parlamentar/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(repository, /candidate\.entity_id = snapshot\.id/);
+  assert.match(repository, /published\.id = session\.snapshot_id/);
+  assert.match(repository, /published\.id = initiative\.snapshot_id/);
+  assert.match(repository, /published\.id = event\.snapshot_id/);
+  assert.doesNotMatch(ingestion, /UPDATE parliamentary_sessions/);
+  assert.doesNotMatch(ingestion, /DELETE FROM parliamentary_sessions/);
+  assert.match(page, /Consulta parcial/);
+  assert.match(page, /não é uma agenda completa/i);
 });
 
 test("parliamentary observations are not represented as inferred mandate starts", async () => {

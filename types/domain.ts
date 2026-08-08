@@ -23,6 +23,7 @@ export interface OfficialSource {
     | "MUNICIPIO"
     | "OFICIAL";
   retrievedAt?: string;
+  sha256?: string;
 }
 
 export interface VoteRecord {

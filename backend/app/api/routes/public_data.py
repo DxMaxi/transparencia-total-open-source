@@ -105,12 +105,14 @@ async def public_investigator(
 async def public_parliament_sessions(
     response: Response,
     repository: Annotated[PostgresRepository, Depends(get_repository)],
+    legislature: str = Query(default="XVII", pattern=r"^[A-Z0-9.ª ]{1,20}$"),
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
 ) -> list[PublishedParliamentarySession]:
     _cache(response)
     try:
         rows = await PublicParliamentRepository(repository.pool).list_sessions(
+            legislature=legislature,
             limit=limit,
             offset=offset,
         )
@@ -126,12 +128,14 @@ async def public_parliament_sessions(
 async def public_parliament_initiatives(
     response: Response,
     repository: Annotated[PostgresRepository, Depends(get_repository)],
+    legislature: str = Query(default="XVII", pattern=r"^[A-Z0-9.ª ]{1,20}$"),
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
 ) -> list[PublishedParliamentaryInitiative]:
     _cache(response)
     try:
         rows = await PublicParliamentRepository(repository.pool).list_initiatives(
+            legislature=legislature,
             limit=limit,
             offset=offset,
         )
@@ -144,12 +148,14 @@ async def public_parliament_initiatives(
 async def public_parliament_votes(
     response: Response,
     repository: Annotated[PostgresRepository, Depends(get_repository)],
+    legislature: str = Query(default="XVII", pattern=r"^[A-Z0-9.ª ]{1,20}$"),
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
 ) -> list[PublishedParliamentaryVote]:
     _cache(response)
     try:
         rows = await PublicParliamentRepository(repository.pool).list_votes(
+            legislature=legislature,
             limit=limit,
             offset=offset,
         )

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "transparencia-total-api"
-version = "0.3.0"
+version = "0.4.0"
 description = "API e coletores oficiais da plataforma Transparência Total"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -49,16 +49,6 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM", "ASYNC"]
 ignore = ["UP038"]
-
-[tool.ruff.lint.per-file-ignores]
-"app/repositories/public_parliament.py" = ["I001"]
-
-[tool.ruff.format]
-exclude = [
-  "app/repositories/parliament_activity.py",
-  "app/services/parliamentary_activity.py",
-  "tests/test_parliament_activity_repository.py",
-]
 
 [tool.mypy]
 python_version = "3.12"

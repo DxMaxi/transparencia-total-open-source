@@ -11,6 +11,11 @@ from app.core.config import get_settings
 from app.services.v4_rollout import DEFAULT_ROLLOUT_SOURCES
 
 DEFAULT_MAX_AGE_HOURS = 36
+OPERATIONAL_SOURCES = (
+    "PARLIAMENT_DEPUTIES",
+    "PARLIAMENT_ACTIVITY",
+    *DEFAULT_ROLLOUT_SOURCES,
+)
 
 
 async def check_status() -> dict[str, object]:
@@ -34,7 +39,7 @@ async def check_status() -> dict[str, object]:
             WHERE source_name = ANY($1::text[])
             ORDER BY source_name, started_at DESC
             """,
-            list(DEFAULT_ROLLOUT_SOURCES),
+            list(OPERATIONAL_SOURCES),
         )
     finally:
         await connection.close()
@@ -43,7 +48,7 @@ async def check_status() -> dict[str, object]:
     sources: list[dict[str, object]] = []
     unhealthy: list[str] = []
 
-    for source_name in DEFAULT_ROLLOUT_SOURCES:
+    for source_name in OPERATIONAL_SOURCES:
         row = latest.get(source_name)
         if row is None:
             sources.append({"source_name": source_name, "status": "MISSING"})

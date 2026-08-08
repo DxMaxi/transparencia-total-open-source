@@ -340,6 +340,8 @@ model Mandate {
 model ParliamentaryMembershipSnapshot {
   id               String         @id @default(cuid())
   personId         String         @map("person_id")
+  parliamentaryName String?       @map("parliamentary_name")
+  fullName         String?        @map("full_name")
   partyId          String?        @map("party_id")
   legislature      String
   constituency     String?
@@ -355,19 +357,47 @@ model ParliamentaryMembershipSnapshot {
   @@map("parliamentary_membership_snapshots")
 }
 
+/// Manifesto imutável de uma normalização parlamentar. O mesmo documento pode
+/// ser novamente processado por um parser corrigido sem alterar a versão anterior.
+model ParliamentActivitySnapshot {
+  id               String                    @id @default(cuid())
+  sourceDocumentId String                    @map("source_document_id")
+  legislature      String
+  parserVersion    String                    @map("parser_version")
+  normalisedSha256 String                    @db.Char(64) @map("normalised_sha256")
+  collectedAt      DateTime                  @map("collected_at")
+  sessionCount     Int                       @map("session_count")
+  initiativeCount  Int                       @map("initiative_count")
+  voteCount        Int                       @map("vote_count")
+  voteRecordCount  Int                       @map("vote_record_count")
+  createdAt        DateTime                  @default(now()) @map("created_at")
+  sourceDocument   SourceDocument            @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
+  sessions         ParliamentarySession[]
+  initiatives      ParliamentaryInitiative[]
+  voteEvents       VoteEvent[]
+
+  @@unique([sourceDocumentId, legislature, parserVersion])
+  @@index([legislature, collectedAt])
+  @@map("parliament_activity_snapshots")
+}
+
 model ParliamentarySession {
   id                String             @id @default(cuid())
-  sourceId          String             @unique @map("source_id")
+  sourceId          String             @map("source_id")
   legislature       String
   sessionNumber     String?            @map("session_number")
   title             String
   startsAt          DateTime           @map("starts_at")
   endsAt            DateTime?          @map("ends_at")
+  snapshotId        String?            @map("snapshot_id")
   sourceDocumentId  String             @map("source_document_id")
+  snapshot          ParliamentActivitySnapshot? @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
   sourceDocument    SourceDocument     @relation(fields: [sourceDocumentId], references: [id])
   attendanceRecords AttendanceRecord[]
   voteEvents        VoteEvent[]
 
+  @@unique([sourceId, snapshotId])
+  @@index([snapshotId])
   @@index([legislature, startsAt])
   @@map("parliamentary_sessions")
 }
@@ -392,7 +422,7 @@ model AttendanceRecord {
 
 model ParliamentaryInitiative {
   id               String         @id @default(cuid())
-  sourceId         String         @unique @map("source_id")
+  sourceId         String         @map("source_id")
   legislature      String
   number           String
   type             String
@@ -401,13 +431,17 @@ model ParliamentaryInitiative {
   introducedAt     DateTime?      @map("introduced_at")
   status           String?
   officialUrl      String         @map("official_url")
+  snapshotId       String?        @map("snapshot_id")
   sourceDocumentId String         @map("source_document_id")
   createdAt        DateTime       @default(now()) @map("created_at")
   updatedAt        DateTime       @updatedAt @map("updated_at")
+  snapshot         ParliamentActivitySnapshot? @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
   sourceDocument   SourceDocument @relation(fields: [sourceDocumentId], references: [id])
   voteEvents       VoteEvent[]
   laws             Law[]
 
+  @@unique([sourceId, snapshotId])
+  @@index([snapshotId])
   @@index([legislature, type])
   @@index([introducedAt])
   @@map("parliamentary_initiatives")
@@ -415,7 +449,8 @@ model ParliamentaryInitiative {
 
 model VoteEvent {
   id               String                    @id @default(cuid())
-  sourceId         String                    @unique @map("source_id")
+  sourceId         String                    @map("source_id")
+  legislature      String                    @default("UNKNOWN")
   initiativeId     String?                   @map("initiative_id")
   sessionId        String?                   @map("session_id")
   title            String
@@ -423,15 +458,20 @@ model VoteEvent {
   votedAt          DateTime?                 @map("voted_at")
   result           String?
   isNominal        Boolean                   @default(false) @map("is_nominal")
+  snapshotId       String?                   @map("snapshot_id")
   sourceDocumentId String                    @map("source_document_id")
   createdAt        DateTime                  @default(now()) @map("created_at")
   updatedAt        DateTime                  @updatedAt @map("updated_at")
+  snapshot         ParliamentActivitySnapshot? @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
   initiative       ParliamentaryInitiative?  @relation(fields: [initiativeId], references: [id], onDelete: SetNull)
   session          ParliamentarySession?     @relation(fields: [sessionId], references: [id], onDelete: SetNull)
   sourceDocument   SourceDocument            @relation(fields: [sourceDocumentId], references: [id])
   records          VoteRecord[]
   comparisons      StatementVoteComparison[]
 
+  @@unique([sourceId, snapshotId])
+  @@index([snapshotId])
+  @@index([legislature, votedAt])
   @@index([votedAt])
   @@index([initiativeId])
   @@map("vote_events")
@@ -1151,6 +1191,7 @@ model SourceDocument {
   createdAt             DateTime                          @default(now()) @map("created_at")
   mandates              Mandate[]
   membershipSnapshots   ParliamentaryMembershipSnapshot[]
+  parliamentSnapshots   ParliamentActivitySnapshot[]
   sessions              ParliamentarySession[]
   attendanceRecords     AttendanceRecord[]
   initiatives           ParliamentaryInitiative[]

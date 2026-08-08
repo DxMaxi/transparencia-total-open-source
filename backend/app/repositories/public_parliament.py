@@ -1,15 +1,8 @@
+from __future__ import annotations
+
+from typing import Any, Literal
+
 import asyncpg
-
-from typing import Any
-
-
-_SOURCE_COLUMNS = """
-sd.publisher::text AS source_publisher,
-sd.url AS source_url,
-sd.retrieved_at AS source_retrieved_at,
-sd.content_sha256 AS source_sha256,
-review.reviewed_at AS verified_at
-"""
 
 
 def _source(row: Any) -> dict[str, Any]:
@@ -23,7 +16,7 @@ def _source(row: Any) -> dict[str, Any]:
 
 
 class PublicParliamentRepository:
-    """Leitura pública fail-closed da atividade parlamentar revista."""
+    """Leitura pública fail-closed da última fotografia revista por âmbito."""
 
     def __init__(self, pool: asyncpg.Pool | None) -> None:
         self.pool = pool
@@ -33,34 +26,71 @@ class PublicParliamentRepository:
             raise RuntimeError("Base de dados não configurada")
         return self.pool
 
-    async def list_sessions(self, *, limit: int, offset: int) -> list[dict[str, Any]]:
+    @staticmethod
+    def _latest_snapshot_cte(
+        entity_type: Literal[
+            "PARLIAMENT_ACTIVITY_SNAPSHOT",
+            "PARLIAMENT_VOTES_SNAPSHOT",
+        ],
+    ) -> str:
+        return f"""
+            WITH published_snapshot AS (
+                SELECT snapshot.id, snapshot.source_document_id,
+                       snapshot.legislature, review.reviewed_at AS verified_at,
+                       source.url AS source_url,
+                       source.retrieved_at AS source_retrieved_at,
+                       source.content_sha256 AS source_sha256
+                FROM parliament_activity_snapshots snapshot
+                JOIN source_documents source
+                  ON source.id = snapshot.source_document_id
+                JOIN LATERAL (
+                    SELECT candidate.publishable, candidate.reviewed_at
+                    FROM data_publication_reviews candidate
+                    WHERE candidate.entity_type = '{entity_type}'
+                      AND candidate.entity_id = snapshot.id
+                      AND candidate.source_document_id = source.id
+                    ORDER BY candidate.reviewed_at DESC, candidate.id DESC
+                    LIMIT 1
+                ) review ON review.publishable = TRUE
+                WHERE snapshot.legislature = $1
+                  AND source.publisher = 'PARLIAMENT'
+                  AND EXISTS (
+                      SELECT 1 FROM source_archive_attestations attestation
+                      WHERE attestation.source_document_id = source.id
+                        AND attestation.content_sha256 = source.content_sha256
+                        AND attestation.retrieval_url = source.url
+                  )
+                ORDER BY review.reviewed_at DESC, snapshot.collected_at DESC,
+                         snapshot.created_at DESC, snapshot.id DESC
+                LIMIT 1
+            )
+        """
+
+    async def list_sessions(
+        self,
+        *,
+        legislature: str,
+        limit: int,
+        offset: int,
+    ) -> list[dict[str, Any]]:
         pool = self._require_pool()
         async with pool.acquire() as connection:
             rows = await connection.fetch(
-                f"""
-                SELECT ps.id, ps.source_id, ps.legislature, ps.session_number,
-                       ps.title, ps.starts_at, ps.ends_at, {_SOURCE_COLUMNS}
-                FROM parliamentary_sessions ps
-                JOIN source_documents sd ON sd.id = ps.source_document_id
-                JOIN LATERAL (
-                    SELECT r.publishable, r.reviewed_at
-                    FROM data_publication_reviews r
-                    WHERE r.entity_type = 'PARLIAMENT_ACTIVITY_SNAPSHOT'
-                      AND r.entity_id = ps.source_document_id
-                      AND r.source_document_id = ps.source_document_id
-                    ORDER BY r.reviewed_at DESC, r.id DESC
-                    LIMIT 1
-                ) review ON review.publishable = TRUE
-                WHERE sd.publisher = 'PARLIAMENT'
-                  AND EXISTS (
-                      SELECT 1 FROM source_archive_attestations a
-                      WHERE a.source_document_id = sd.id
-                        AND a.content_sha256 = sd.content_sha256
-                        AND a.retrieval_url = sd.url
-                  )
-                ORDER BY ps.starts_at DESC, ps.id
-                LIMIT $1 OFFSET $2
+                self._latest_snapshot_cte("PARLIAMENT_ACTIVITY_SNAPSHOT")
+                + """
+                SELECT session.id, session.source_id, session.legislature,
+                       session.session_number, session.title, session.starts_at,
+                       session.ends_at, published.verified_at,
+                       published.source_url, published.source_retrieved_at,
+                       published.source_sha256
+                FROM parliamentary_sessions session
+                JOIN published_snapshot published
+                  ON published.id = session.snapshot_id
+                 AND published.source_document_id = session.source_document_id
+                ORDER BY session.starts_at DESC, session.id
+                LIMIT $2 OFFSET $3
                 """,
+                legislature,
                 limit,
                 offset,
             )
@@ -79,35 +109,34 @@ class PublicParliamentRepository:
             for row in rows
         ]
 
-    async def list_initiatives(self, *, limit: int, offset: int) -> list[dict[str, Any]]:
+    async def list_initiatives(
+        self,
+        *,
+        legislature: str,
+        limit: int,
+        offset: int,
+    ) -> list[dict[str, Any]]:
         pool = self._require_pool()
         async with pool.acquire() as connection:
             rows = await connection.fetch(
-                f"""
-                SELECT pi.id, pi.source_id, pi.legislature, pi.number,
-                       pi.type AS initiative_type, pi.title, pi.description,
-                       pi.introduced_at, pi.status, pi.official_url, {_SOURCE_COLUMNS}
-                FROM parliamentary_initiatives pi
-                JOIN source_documents sd ON sd.id = pi.source_document_id
-                JOIN LATERAL (
-                    SELECT r.publishable, r.reviewed_at
-                    FROM data_publication_reviews r
-                    WHERE r.entity_type = 'PARLIAMENT_ACTIVITY_SNAPSHOT'
-                      AND r.entity_id = pi.source_document_id
-                      AND r.source_document_id = pi.source_document_id
-                    ORDER BY r.reviewed_at DESC, r.id DESC
-                    LIMIT 1
-                ) review ON review.publishable = TRUE
-                WHERE sd.publisher = 'PARLIAMENT'
-                  AND EXISTS (
-                      SELECT 1 FROM source_archive_attestations a
-                      WHERE a.source_document_id = sd.id
-                        AND a.content_sha256 = sd.content_sha256
-                        AND a.retrieval_url = sd.url
-                  )
-                ORDER BY pi.introduced_at DESC NULLS LAST, pi.number, pi.id
-                LIMIT $1 OFFSET $2
+                self._latest_snapshot_cte("PARLIAMENT_ACTIVITY_SNAPSHOT")
+                + """
+                SELECT initiative.id, initiative.source_id, initiative.legislature,
+                       initiative.number, initiative.type AS initiative_type,
+                       initiative.title, initiative.description,
+                       initiative.introduced_at, initiative.status,
+                       initiative.official_url, published.verified_at,
+                       published.source_url, published.source_retrieved_at,
+                       published.source_sha256
+                FROM parliamentary_initiatives initiative
+                JOIN published_snapshot published
+                  ON published.id = initiative.snapshot_id
+                 AND published.source_document_id = initiative.source_document_id
+                ORDER BY initiative.introduced_at DESC NULLS LAST,
+                         initiative.number, initiative.id
+                LIMIT $2 OFFSET $3
                 """,
+                legislature,
                 limit,
                 offset,
             )
@@ -129,46 +158,46 @@ class PublicParliamentRepository:
             for row in rows
         ]
 
-    async def list_votes(self, *, limit: int, offset: int) -> list[dict[str, Any]]:
+    async def list_votes(
+        self,
+        *,
+        legislature: str,
+        limit: int,
+        offset: int,
+    ) -> list[dict[str, Any]]:
         pool = self._require_pool()
         async with pool.acquire() as connection:
             rows = await connection.fetch(
-                f"""
-                SELECT ve.id, ve.source_id, ve.title, ve.initiative_number,
-                       ve.voted_at, ve.result, ve.is_nominal, {_SOURCE_COLUMNS}
-                FROM vote_events ve
-                JOIN source_documents sd ON sd.id = ve.source_document_id
-                JOIN LATERAL (
-                    SELECT r.publishable, r.reviewed_at
-                    FROM data_publication_reviews r
-                    WHERE r.entity_type = 'PARLIAMENT_VOTES_SNAPSHOT'
-                      AND r.entity_id = ve.source_document_id
-                      AND r.source_document_id = ve.source_document_id
-                    ORDER BY r.reviewed_at DESC, r.id DESC
-                    LIMIT 1
-                ) review ON review.publishable = TRUE
-                WHERE sd.publisher = 'PARLIAMENT'
-                  AND EXISTS (
-                      SELECT 1 FROM source_archive_attestations a
-                      WHERE a.source_document_id = sd.id
-                        AND a.content_sha256 = sd.content_sha256
-                        AND a.retrieval_url = sd.url
-                  )
-                ORDER BY ve.voted_at DESC NULLS LAST, ve.id
-                LIMIT $1 OFFSET $2
+                self._latest_snapshot_cte("PARLIAMENT_VOTES_SNAPSHOT")
+                + """
+                SELECT event.id, event.source_id, event.legislature,
+                       event.title, event.initiative_number, event.voted_at,
+                       event.result, event.is_nominal, published.verified_at,
+                       published.source_url, published.source_retrieved_at,
+                       published.source_sha256, published.source_document_id
+                FROM vote_events event
+                JOIN published_snapshot published
+                  ON published.id = event.snapshot_id
+                 AND published.source_document_id = event.source_document_id
+                ORDER BY event.voted_at DESC NULLS LAST, event.id
+                LIMIT $2 OFFSET $3
                 """,
+                legislature,
                 limit,
                 offset,
             )
-            vote_ids = [row["id"] for row in rows]
+            vote_ids = [str(row["id"]) for row in rows]
             record_rows = (
                 await connection.fetch(
                     """
-                    SELECT vote_event_id, actor_label, actor_type::text,
-                           choice::text, person_id, party_id
-                    FROM vote_records
-                    WHERE vote_event_id = ANY($1::text[])
-                    ORDER BY vote_event_id, actor_type, actor_label
+                    SELECT record.vote_event_id, record.actor_label,
+                           record.actor_type::text, record.choice::text,
+                           record.person_id, record.party_id
+                    FROM vote_records record
+                    JOIN vote_events event ON event.id = record.vote_event_id
+                    WHERE record.vote_event_id = ANY($1::text[])
+                      AND record.source_document_id = event.source_document_id
+                    ORDER BY record.vote_event_id, record.actor_type, record.actor_label
                     """,
                     vote_ids,
                 )
@@ -190,6 +219,7 @@ class PublicParliamentRepository:
             {
                 "id": row["id"],
                 "source_id": row["source_id"],
+                "legislature": row["legislature"],
                 "title": row["title"],
                 "initiative_number": row["initiative_number"],
                 "voted_at": row["voted_at"],

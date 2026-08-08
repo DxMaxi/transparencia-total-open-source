@@ -35,6 +35,44 @@ def test_normalise_sessions_preserves_only_official_fields() -> None:
     assert sessions[0].source.content_sha256 == SHA
 
 
+def test_normalise_sessions_uses_the_official_vote_meeting_natural_key() -> None:
+    payload = {
+        "IniEventos": [
+            {
+                "Votacao": [
+                    {
+                        "id": "139080",
+                        "data": "2025-07-04",
+                        "reuniao": "9",
+                        "tipoReuniao": "RP",
+                        "resultado": "Aprovado",
+                    },
+                    {
+                        "id": "139081",
+                        "data": "2025-07-04",
+                        "reuniao": "9",
+                        "tipoReuniao": "RP",
+                        "resultado": "Aprovado",
+                    },
+                ]
+            }
+        ]
+    }
+
+    sessions = normalise_sessions(
+        payload,
+        legislature="XVII",
+        source_url=SOURCE_URL,
+        document_sha256=SHA,
+        retrieved_at=RETRIEVED_AT,
+    )
+
+    assert len(sessions) == 1
+    assert sessions[0].source_id == "reuniao:rp:9:2025-07-04"
+    assert sessions[0].session_number == "9"
+    assert sessions[0].title == "RP — reunião 9"
+
+
 def test_normalise_initiatives_does_not_invent_missing_status_or_date() -> None:
     payload = {
         "iniciativas": [
@@ -43,6 +81,8 @@ def test_normalise_initiatives_does_not_invent_missing_status_or_date() -> None:
                 "IniNr": "1/XVII/1",
                 "IniDescTipo": "Projeto de Lei",
                 "IniTitulo": "Medida de transparência pública",
+                "dataInicioleg": "2025-06-03",
+                "IniObs": "Observação oficial",
                 "IniLinkTexto": "/ActividadeParlamentar/Paginas/DetalheIniciativa.aspx?BID=123",
             },
             {
@@ -67,6 +107,7 @@ def test_normalise_initiatives_does_not_invent_missing_status_or_date() -> None:
     assert initiative.source_id == "ini-123"
     assert initiative.status is None
     assert initiative.introduced_at is None
+    assert initiative.description == "Observação oficial"
     assert str(initiative.official_url).startswith("https://www.parlamento.pt/")
 
 

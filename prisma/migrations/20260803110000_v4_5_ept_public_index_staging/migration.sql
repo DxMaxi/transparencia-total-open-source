@@ -112,3 +112,4 @@ FOR EACH ROW EXECUTE FUNCTION "reject_ept_staging_mutation"();
 CREATE TRIGGER "ept_resource_snapshots_append_only"
 BEFORE UPDATE OR DELETE ON "ept_resource_snapshots"
 FOR EACH ROW EXECUTE FUNCTION "reject_ept_staging_mutation"();
+

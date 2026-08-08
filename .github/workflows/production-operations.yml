@@ -10,12 +10,58 @@ on:
         options:
           - migrate
           - refresh-official-indexes
+          - sync-parliament-deputies
+          - sync-parliament-activity
+          - preview-parliament-activity
+          - publish-parliament-activity
+          - withdraw-parliament-activity
           - bootstrap-parliament-publication
           - verify-archive-integrity
           - check-operational-status
       confirmation:
         description: Escreva PRODUCAO para confirmar
         required: true
+        type: string
+      parliament_scope:
+        description: Âmbito da atividade parlamentar
+        required: false
+        default: all
+        type: choice
+        options:
+          - all
+          - activity
+          - votes
+      parliament_source_sha256:
+        description: SHA-256 dos bytes confirmado na pré-visualização
+        required: false
+        type: string
+      parliament_normalised_sha256:
+        description: SHA-256 normalizado confirmado na pré-visualização
+        required: false
+        type: string
+      expected_sessions:
+        description: Contagem confirmada de sessões
+        required: false
+        type: string
+      expected_initiatives:
+        description: Contagem confirmada de iniciativas
+        required: false
+        type: string
+      expected_votes:
+        description: Contagem confirmada de votações
+        required: false
+        type: string
+      expected_vote_records:
+        description: Contagem confirmada de posições de voto
+        required: false
+        type: string
+      reviewer_alias:
+        description: Pseudónimo público do revisor
+        required: false
+        type: string
+      review_rationale:
+        description: Fundamentação da decisão (mínimo 20 caracteres)
+        required: false
         type: string
 
 permissions:
@@ -39,6 +85,15 @@ jobs:
       OFFICIAL_USER_AGENT: ${{ secrets.PRODUCTION_OFFICIAL_USER_AGENT }}
       PROTECTED_IDENTIFIER_PEPPER: ${{ secrets.PRODUCTION_IDENTIFIER_PEPPER }}
       V4_SOURCE_MAX_AGE_HOURS: "36"
+      PARLIAMENT_SCOPE: ${{ inputs.parliament_scope }}
+      PARLIAMENT_SOURCE_SHA256: ${{ inputs.parliament_source_sha256 }}
+      PARLIAMENT_NORMALISED_SHA256: ${{ inputs.parliament_normalised_sha256 }}
+      EXPECTED_SESSIONS: ${{ inputs.expected_sessions }}
+      EXPECTED_INITIATIVES: ${{ inputs.expected_initiatives }}
+      EXPECTED_VOTES: ${{ inputs.expected_votes }}
+      EXPECTED_VOTE_RECORDS: ${{ inputs.expected_vote_records }}
+      REVIEWER_ALIAS: ${{ inputs.reviewer_alias }}
+      REVIEW_RATIONALE: ${{ inputs.review_rationale }}
     steps:
       - uses: actions/checkout@v4
 
@@ -62,6 +117,16 @@ jobs:
           if [ "${{ inputs.operation }}" = "bootstrap-parliament-publication" ]; then
             test -n "$ADMIN_API_KEY"
           fi
+          if [ "${{ inputs.operation }}" = "publish-parliament-activity" ] || [ "${{ inputs.operation }}" = "withdraw-parliament-activity" ]; then
+            test -n "$PARLIAMENT_SOURCE_SHA256"
+            test -n "$PARLIAMENT_NORMALISED_SHA256"
+            test -n "$EXPECTED_SESSIONS"
+            test -n "$EXPECTED_INITIATIVES"
+            test -n "$EXPECTED_VOTES"
+            test -n "$EXPECTED_VOTE_RECORDS"
+            test -n "$REVIEWER_ALIAS"
+            test -n "$REVIEW_RATIONALE"
+          fi
 
       - name: Aplicar migrações Prisma
         if: ${{ inputs.operation == 'migrate' }}
@@ -79,6 +144,51 @@ jobs:
         if: ${{ inputs.operation == 'refresh-official-indexes' }}
         working-directory: backend
         run: python -m scripts.refresh_v4_indexes
+
+      - name: Recolher deputados em staging
+        if: ${{ inputs.operation == 'sync-parliament-deputies' }}
+        working-directory: backend
+        run: python -m scripts.sync_parliament deputies --legislature XVII --persist
+
+      - name: Recolher atividade parlamentar em staging
+        if: ${{ inputs.operation == 'sync-parliament-activity' }}
+        working-directory: backend
+        run: python -m scripts.sync_parliament_activity --legislature XVII
+
+      - name: Pré-visualizar fotografia parlamentar
+        if: ${{ inputs.operation == 'preview-parliament-activity' }}
+        working-directory: backend
+        run: python -m scripts.review_parliament_activity --legislature XVII
+
+      - name: Publicar fotografia parlamentar revista
+        if: ${{ inputs.operation == 'publish-parliament-activity' }}
+        working-directory: backend
+        run: >-
+          python -m scripts.review_parliament_activity --legislature XVII
+          --publish --scope "$PARLIAMENT_SCOPE"
+          --source-sha256 "$PARLIAMENT_SOURCE_SHA256"
+          --normalised-sha256 "$PARLIAMENT_NORMALISED_SHA256"
+          --expected-sessions "$EXPECTED_SESSIONS"
+          --expected-initiatives "$EXPECTED_INITIATIVES"
+          --expected-votes "$EXPECTED_VOTES"
+          --expected-vote-records "$EXPECTED_VOTE_RECORDS"
+          --reviewer "$REVIEWER_ALIAS" --rationale "$REVIEW_RATIONALE"
+          --confirm-source-reviewed
+
+      - name: Retirar fotografia parlamentar
+        if: ${{ inputs.operation == 'withdraw-parliament-activity' }}
+        working-directory: backend
+        run: >-
+          python -m scripts.review_parliament_activity --legislature XVII
+          --withdraw --scope "$PARLIAMENT_SCOPE"
+          --source-sha256 "$PARLIAMENT_SOURCE_SHA256"
+          --normalised-sha256 "$PARLIAMENT_NORMALISED_SHA256"
+          --expected-sessions "$EXPECTED_SESSIONS"
+          --expected-initiatives "$EXPECTED_INITIATIVES"
+          --expected-votes "$EXPECTED_VOTES"
+          --expected-vote-records "$EXPECTED_VOTE_RECORDS"
+          --reviewer "$REVIEWER_ALIAS" --rationale "$REVIEW_RATIONALE"
+          --confirm-source-reviewed
 
       - name: Publicar fotografia parlamentar auditada
         if: ${{ inputs.operation == 'bootstrap-parliament-publication' }}

@@ -1,4 +1,4 @@
-"""Recolhe, arquiva e persiste sessões e iniciativas parlamentares.
+"""Recolhe, arquiva e persiste a fotografia parlamentar completa.
 
 A operação não publica dados. Apenas cria prova, staging factual e SyncRun auditável.
 """
@@ -10,30 +10,30 @@ from datetime import UTC, datetime
 
 from app.core.config import get_settings
 from app.models.parliamentary import ParliamentActivityDataset
+from app.repositories.official_index_staging import OfficialIndexStagingRepository
 from app.repositories.parliament_activity import ParliamentActivityRepository
-from app.repositories.postgres import PostgresRepository
 from app.services.http import OfficialHttpClient
 from app.services.parlamento import ParlamentoCollector
 from app.services.parliamentary_activity import normalise_initiatives, normalise_sessions
-from app.services.raw_archive import ContentAddressedFileArchive
 
-CODE_VERSION = "parliament-activity-ingestion-v1"
+CODE_VERSION = "parliament-activity-v2"
 SOURCE_NAME = "PARLIAMENT_ACTIVITY"
+MAX_SNAPSHOT_RECORDS = 250_000
 
 
 async def run(legislature: str) -> dict[str, object]:
     settings = get_settings()
-    archive = ContentAddressedFileArchive.from_settings(settings)
-    repository = PostgresRepository(settings)
+    repository = OfficialIndexStagingRepository(settings)
     await repository.connect()
-    if repository.pool is None:
+    pool = repository.pool
+    if pool is None:
         raise RuntimeError("Base de dados não configurada")
 
     started_at = datetime.now(UTC)
     sync_id = f"sync_parliament_activity_{started_at:%Y%m%d%H%M%S%f}"
     dataset_url: str | None = None
     try:
-        async with repository.pool.acquire() as connection:
+        async with pool.acquire() as connection:
             await connection.execute(
                 """
                 INSERT INTO sync_runs
@@ -49,14 +49,17 @@ async def run(legislature: str) -> dict[str, object]:
 
         async with OfficialHttpClient(settings) as http:
             collector = ParlamentoCollector(settings, http)
-            dataset_url = await collector.discover_dataset_url(
-                settings.parlamento_initiatives_catalogue_path,
-                legislature,
-            )
+            discovered_url = str(settings.parlamento_votes_url or "")
+            if not discovered_url:
+                discovered_url = await collector.discover_dataset_url(
+                    settings.parlamento_initiatives_catalogue_path,
+                    legislature,
+                )
             payload, raw_document = await collector.fetch_json(
-                dataset_url,
+                discovered_url,
                 max_bytes=settings.parlamento_votes_max_bytes,
             )
+            dataset_url = str(raw_document.source_url)
 
         sessions = normalise_sessions(
             payload,
@@ -73,32 +76,74 @@ async def run(legislature: str) -> dict[str, object]:
             retrieved_at=raw_document.retrieved_at,
             parliament_base_url=str(settings.parlamento_base_url),
         )
-        warnings: list[str] = []
+        votes = collector.normalise_votes(
+            payload,
+            source_url=dataset_url,
+            document_sha256=raw_document.content_sha256,
+            retrieved_at=raw_document.retrieved_at,
+        )
         if not sessions:
-            warnings.append("A fonte não produziu sessões normalizáveis.")
+            raise ValueError("Fotografia rejeitada: nenhuma sessão oficial normalizável")
         if not initiatives:
-            warnings.append("A fonte não produziu iniciativas normalizáveis.")
+            raise ValueError("Fotografia rejeitada: nenhuma iniciativa oficial normalizável")
+        if not votes:
+            raise ValueError("Fotografia rejeitada: nenhuma votação oficial normalizável")
+        total_records = (
+            len(sessions)
+            + len(initiatives)
+            + len(votes)
+            + sum(len(event.records) for event in votes)
+        )
+        if total_records > MAX_SNAPSHOT_RECORDS:
+            raise ValueError(
+                "Fotografia rejeitada: dimensão acima do limite operacional "
+                f"({total_records} > {MAX_SNAPSHOT_RECORDS})"
+            )
+
+        warnings: list[str] = []
+        votes_without_positions = sum(not event.records for event in votes)
+        if votes_without_positions:
+            warnings.append(
+                f"{votes_without_positions} votações não incluem posições normalizáveis; "
+                "o resultado oficial é preservado sem inventar atores."
+            )
+        unknown_positions = sum(
+            record.actor_type.value == "UNKNOWN" for event in votes for record in event.records
+        )
+        if unknown_positions:
+            warnings.append(
+                f"{unknown_positions} posições conservam ator UNKNOWN e não foram "
+                "atribuídas a pessoas ou partidos."
+            )
 
         dataset = ParliamentActivityDataset(
             legislature=legislature,
             dataset_url=dataset_url,
             document_sha256=raw_document.content_sha256,
+            parser_version=CODE_VERSION,
             sessions=sessions,
             initiatives=initiatives,
+            votes=votes,
             warnings=warnings,
+            collected_at=raw_document.retrieved_at,
             raw_document=raw_document,
         )
-        receipt = archive.archive(raw_document)
-        result = await ParliamentActivityRepository(repository.pool).persist(
+        receipt = await repository.archive_raw_document(raw_document=raw_document)
+        result = await ParliamentActivityRepository(pool).persist(
             dataset,
             archive_receipt=receipt,
             archived_by=CODE_VERSION,
         )
-        records_read = len(sessions) + len(initiatives)
-        records_written = result.sessions_written + result.initiatives_written
+        records_read = total_records
+        records_written = (
+            result.sessions_written
+            + result.initiatives_written
+            + result.vote_events_written
+            + result.vote_records_written
+        )
         status = "PARTIAL" if warnings else "SUCCEEDED"
 
-        async with repository.pool.acquire() as connection:
+        async with pool.acquire() as connection:
             await connection.execute(
                 """
                 UPDATE sync_runs
@@ -119,8 +164,12 @@ async def run(legislature: str) -> dict[str, object]:
             "status": status,
             "dataset_url": dataset_url,
             "document_sha256": raw_document.content_sha256,
+            "normalised_snapshot_id": result.snapshot_id,
+            "snapshot_created": result.snapshot_created,
             "sessions": result.sessions_written,
             "initiatives": result.initiatives_written,
+            "votes": result.vote_events_written,
+            "vote_records": result.vote_records_written,
             "archive_attestation_written": result.archive_attestation_written,
             "warnings": warnings,
             "publication": "PENDING_HUMAN_REVIEW",

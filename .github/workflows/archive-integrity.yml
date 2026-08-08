@@ -43,3 +43,4 @@ jobs:
       - name: Verificar todos os objetos arquivados
         working-directory: backend
         run: python -m scripts.verify_v4_archive
+

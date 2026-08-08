@@ -108,3 +108,4 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER "dre_document_snapshots_append_only"
 BEFORE UPDATE OR DELETE ON "dre_document_snapshots"
 FOR EACH ROW EXECUTE FUNCTION "reject_dre_staging_mutation"();
+

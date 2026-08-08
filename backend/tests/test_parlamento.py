@@ -317,6 +317,7 @@ def test_free_text_party_positions_are_not_attributed_to_people() -> None:
 def test_normalises_official_nested_vote_shape_and_all_position_choices() -> None:
     payload = [
         {
+            "IniNr": "1/XVII/1",
             "IniEventos": [
                 {
                     "Votacao": [
@@ -348,7 +349,7 @@ def test_normalises_official_nested_vote_shape_and_all_position_choices() -> Non
                         }
                     ],
                 }
-            ]
+            ],
         }
     ]
 
@@ -359,6 +360,7 @@ def test_normalises_official_nested_vote_shape_and_all_position_choices() -> Non
     )
 
     assert {event.source_id for event in events} == {"139080", "139081"}
+    assert {event.initiative_number for event in events} == {"1/XVII/1"}
     plenary = next(event for event in events if event.source_id == "139080")
     assert plenary.is_nominal is False
     assert plenary.voted_at is not None
@@ -371,6 +373,28 @@ def test_normalises_official_nested_vote_shape_and_all_position_choices() -> Non
         "JPP": "ABSENT",
     }
     assert {record.actor_type.value for record in plenary.records} == {"UNKNOWN"}
+
+
+def test_shared_vote_is_not_arbitrarily_linked_to_one_of_multiple_initiatives() -> None:
+    vote = {
+        "id": "139080",
+        "data": "2025-07-04",
+        "reuniao": "9",
+        "resultado": "Aprovado",
+    }
+    payload = [
+        {"IniNr": "1/XVII/1", "IniEventos": [{"Votacao": [vote]}]},
+        {"IniNr": "2/XVII/1", "IniEventos": [{"Votacao": [vote]}]},
+    ]
+
+    events = collector().normalise_votes(
+        payload,
+        source_url="https://app.parlamento.pt/IniciativasXVII_json.txt",
+        document_sha256="3" * 64,
+    )
+
+    assert len(events) == 1
+    assert events[0].initiative_number is None
 
 
 def test_marks_exactly_repeated_actor_with_conflicting_positions_as_unknown() -> None:

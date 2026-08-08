@@ -24,58 +24,68 @@ A Fase 2 fecha quatro circuitos:
 - Mudanças de estrutura ou quedas anormais de contagem bloqueiam a promoção.
 - Campos ausentes são apresentados como indisponíveis, não preenchidos por inferência.
 
-## Trabalho técnico
+## Implementação entregue
 
-### 1. Modelos de recolha
+### 1. Modelos e manifesto
 
-Criar contratos Pydantic explícitos para:
+Os contratos Pydantic explícitos cobrem:
 
 - sessão parlamentar;
 - iniciativa;
 - votação;
 - ator de voto;
-- ligação entre iniciativa, sessão e votação.
+- ligação segura entre iniciativa, reunião observada e votação;
+- `ParliamentActivityDataset`, vinculado a uma legislatura, documento e versão de parser;
+- `ParliamentActivitySnapshot`, com SHA-256 normalizado e quatro contagens de controlo.
 
-### 2. Coletores
+### 2. Recolha e normalização
 
-- descobrir os recursos oficiais por legislatura;
-- recolher bytes exatos;
-- normalizar datas e identificadores;
-- deduplicar por identificador oficial;
-- manter avisos de cobertura e estrutura.
+- o coletor descobre o JSON oficial por legislatura ou usa `PARLAMENTO_VOTES_URL` explícito;
+- cada resposta é descarregada uma vez e os bytes exatos são preservados antes da normalização;
+- iniciativas herdam apenas as suas próprias chaves oficiais;
+- votações repetidas em várias iniciativas não são ligadas arbitrariamente a uma delas;
+- “reunião” é uma observação derivada do número, tipo e data publicados no evento de votação; não
+  representa a agenda parlamentar completa;
+- posições textuais sem identificador individual permanecem `UNKNOWN`.
 
-### 3. Persistência privada
+### 3. Persistência privada append-only
 
-- `SourceDocument` para cada snapshot;
-- `SyncRun` por recolha;
-- upsert idempotente de sessões, iniciativas e votações;
-- histórico de alterações sem apagar versões anteriores;
-- registos de voto sem associação automática ambígua.
+- `raw_source_objects` conserva os bytes por SHA-256;
+- `SourceDocument` e `SourceArchiveAttestation` ancoram URL e hash;
+- `SyncRun` regista resultado, contagens, avisos e versão do código;
+- sessões, iniciativas, votações e posições usam `INSERT … ON CONFLICT DO NOTHING` dentro de uma
+  fotografia identificada por documento, legislatura e parser;
+- triggers PostgreSQL recusam `UPDATE` e `DELETE` nas tabelas parlamentares factuais;
+- repetir a mesma recolha é idempotente; uma correção exige nova versão do parser.
 
 ### 4. Revisão e publicação
 
-- pré-visualização com contagens e diferenças;
-- confirmação humana por SHA-256 e contagem;
-- publicação separada por conjunto;
-- retirada sem apagamento do histórico;
-- estado público de cobertura e frescura.
+- `review_parliament_activity` pré-visualiza URL, dois hashes, arquivo e quatro contagens;
+- publicar ou retirar exige repetir todos esses valores, pseudónimo e fundamentação;
+- `activity` e `votes` têm decisões separadas e append-only;
+- uma decisão negativa mais recente revoga a positiva para a mesma fotografia;
+- a leitura pública escolhe uma única fotografia aprovada por âmbito e legislatura.
 
-### 5. API para o cidadão
+### 5. API e PWA
 
-- lista de iniciativas;
-- detalhe da iniciativa;
-- votações associadas;
-- posição nominal ou partidária claramente identificada;
-- fonte, data e limitações junto do dado.
+- `/api/v1/public/parliament/sessions`, `/initiatives` e `/votes` são paginados e fail-closed;
+- `/atividade-parlamentar` mostra reuniões observadas, iniciativas, votações, fonte e SHA-256;
+- falhas parciais da API são distinguidas de conjuntos aprovados vazios;
+- a produção não apresenta dados demonstrativos quando a API está ausente.
 
 ## Critérios de conclusão
 
-A Fase 2 só fica concluída quando:
+A implementação é considerada tecnicamente concluída quando:
 
-- os coletores passam testes com fixtures oficiais;
-- duas execuções iguais não criam duplicados;
-- uma alteração oficial cria nova evidência auditável;
-- votos partidários e nominais permanecem distintos;
-- falhas parciais não publicam dados incompletos;
-- a API pública mostra a cobertura real e as limitações;
-- o frontend não apresenta inferências como factos.
+- [x] os coletores passam testes com formas documentadas pela fonte oficial;
+- [x] duas execuções iguais não criam duplicados;
+- [x] uma alteração de parser cria nova evidência auditável;
+- [x] posições coletivas, desconhecidas e nominais permanecem distintas;
+- [x] falhas parciais não são apresentadas como conjuntos vazios confirmados;
+- [x] a API pública mostra proveniência e apenas uma fotografia aprovada;
+- [x] o frontend não apresenta inferências como factos;
+- [ ] a migração, a recolha real, a revisão editorial e os smoke tests foram executados no ambiente
+  de produção autorizado.
+
+O último item é um gate operacional e não é cumprido por merge ou deploy automático. Consulte
+`V4_PRODUCTION_OPERATIONS.md` e `V4_TO_V5_RELEASE_GATE.md`.

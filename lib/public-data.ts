@@ -13,11 +13,14 @@ import type {
 import type {
   PublicDataStatus,
   PublicInvestigatorDataset,
+  PublicParliamentActivity,
   PublicPersonSummary,
   SourceSyncState,
 } from "@/types/public-data";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, "") ?? "";
+const demoDataEnabled =
+  process.env.NODE_ENV !== "production" && process.env.ENABLE_DEMO_DATA !== "false";
 
 type ApiResult<T> =
   | { ok: true; data: T }
@@ -37,6 +40,9 @@ type RawDataStatus = {
   database_configured: boolean;
   counts: {
     politicians: number;
+    parliament_sessions: number;
+    parliament_initiatives: number;
+    parliament_votes: number;
     promises: number;
     contracts: number;
     relationships: number;
@@ -196,8 +202,54 @@ function toOfficialSource(source: RawSource): OfficialSource {
     url: source.url,
     publisher: source.publisher as OfficialSource["publisher"],
     retrievedAt: source.retrieved_at,
+    sha256: source.content_sha256 ?? undefined,
   };
 }
+
+type RawParliamentarySession = {
+  id: string;
+  source_id: string;
+  legislature: string;
+  session_number?: string | null;
+  title: string;
+  starts_at: string;
+  ends_at?: string | null;
+  verified_at: string;
+  source: RawSource;
+};
+
+type RawParliamentaryInitiative = {
+  id: string;
+  source_id: string;
+  legislature: string;
+  number: string;
+  initiative_type: string;
+  title: string;
+  description?: string | null;
+  introduced_at?: string | null;
+  status?: string | null;
+  official_url: string;
+  verified_at: string;
+  source: RawSource;
+};
+
+type RawParliamentaryVote = {
+  id: string;
+  source_id: string;
+  legislature: string;
+  title: string;
+  initiative_number?: string | null;
+  voted_at?: string | null;
+  result?: string | null;
+  is_nominal: boolean;
+  records: Array<{
+    actor_label: string;
+    actor_type: "PERSON" | "PARTY" | "UNKNOWN";
+    choice: "FAVOR" | "AGAINST" | "ABSTENTION" | "ABSENT" | "UNKNOWN";
+  }>;
+  verified_at: string;
+  source: RawSource;
+};
 
 function mapStatus(raw: RawDataStatus): PublicDataStatus {
   return {
@@ -206,6 +258,9 @@ function mapStatus(raw: RawDataStatus): PublicDataStatus {
     databaseConfigured: raw.database_configured,
     counts: {
       politicians: raw.counts.politicians,
+      parliamentSessions: raw.counts.parliament_sessions,
+      parliamentInitiatives: raw.counts.parliament_initiatives,
+      parliamentVotes: raw.counts.parliament_votes,
       promises: raw.counts.promises,
       contracts: raw.counts.contracts,
       relationships: raw.counts.relationships,
@@ -236,6 +291,9 @@ function fallbackStatus(mode: "DEMO" | "UNAVAILABLE"): PublicDataStatus {
     databaseConfigured: false,
     counts: {
       politicians: 0,
+      parliamentSessions: 0,
+      parliamentInitiatives: 0,
+      parliamentVotes: 0,
       promises: 0,
       contracts: 0,
       relationships: 0,
@@ -244,6 +302,7 @@ function fallbackStatus(mode: "DEMO" | "UNAVAILABLE"): PublicDataStatus {
     },
     sources: [
       "PARLIAMENT_DEPUTIES",
+      "PARLIAMENT_ACTIVITY",
       "PARLIAMENT_VOTES",
       "BASE_CONTRACTS",
       "DRE",
@@ -258,7 +317,9 @@ function fallbackStatus(mode: "DEMO" | "UNAVAILABLE"): PublicDataStatus {
     })),
     message: configured
       ? "A API não respondeu; a interface não apresenta estes exemplos como factos reais."
-      : "A URL da API ainda não está configurada; a interface encontra-se em demonstração.",
+      : mode === "DEMO"
+        ? "A URL da API ainda não está configurada; a interface encontra-se em demonstração."
+        : "A URL da API não está configurada; os dados oficiais estão indisponíveis.",
     publicationRule:
       "Amostras fictícias permanecem isoladas até existirem registos oficiais aprovados.",
   };
@@ -267,7 +328,7 @@ function fallbackStatus(mode: "DEMO" | "UNAVAILABLE"): PublicDataStatus {
 export const loadPublicDataStatus = cache(async (): Promise<PublicDataStatus> => {
   const result = await apiFetch<RawDataStatus>("/api/v1/public/data-status");
   if (result.ok) return mapStatus(result.data);
-  return fallbackStatus(apiBaseUrl ? "UNAVAILABLE" : "DEMO");
+  return fallbackStatus(!apiBaseUrl && demoDataEnabled ? "DEMO" : "UNAVAILABLE");
 });
 
 function mapPerson(raw: RawPerson): PublicPersonSummary {
@@ -294,6 +355,9 @@ export async function loadPublicPoliticians(): Promise<LoadedData<PublicPersonSu
   if (result.ok && result.data.length) {
     return { data: result.data.map(mapPerson), status, showingFallback: false };
   }
+  if (!demoDataEnabled) {
+    return { data: [], status, showingFallback: false };
+  }
   const fallback: PublicPersonSummary = {
     id: demoPolitician.id,
     slug: demoPolitician.slug,
@@ -307,6 +371,83 @@ export async function loadPublicPoliticians(): Promise<LoadedData<PublicPersonSu
     profileSource: demoPolitician.profileSource,
   };
   return { data: [fallback], status, showingFallback: true };
+}
+
+export async function loadPublicParliamentActivity(
+  legislature = "XVII",
+): Promise<LoadedData<PublicParliamentActivity>> {
+  const legislatureQuery = `legislature=${encodeURIComponent(legislature)}`;
+  const [status, sessions, initiatives, votes] = await Promise.all([
+    loadPublicDataStatus(),
+    apiFetch<RawParliamentarySession[]>(
+      `/api/v1/public/parliament/sessions?${legislatureQuery}&limit=100`,
+    ),
+    apiFetch<RawParliamentaryInitiative[]>(
+      `/api/v1/public/parliament/initiatives?${legislatureQuery}&limit=100`,
+    ),
+    apiFetch<RawParliamentaryVote[]>(
+      `/api/v1/public/parliament/votes?${legislatureQuery}&limit=40`,
+    ),
+  ]);
+  return {
+    status,
+    showingFallback: false,
+    data: {
+      availability: {
+        sessions: sessions.ok,
+        initiatives: initiatives.ok,
+        votes: votes.ok,
+      },
+      sessions: sessions.ok
+        ? sessions.data.map((item) => ({
+            id: item.id,
+            sourceId: item.source_id,
+            legislature: item.legislature,
+            sessionNumber: item.session_number ?? undefined,
+            title: item.title,
+            startsAt: formatDate(item.starts_at),
+            endsAt: item.ends_at ? formatDate(item.ends_at) : undefined,
+            verifiedAt: formatDate(item.verified_at),
+            source: toOfficialSource(item.source),
+          }))
+        : [],
+      initiatives: initiatives.ok
+        ? initiatives.data.map((item) => ({
+            id: item.id,
+            sourceId: item.source_id,
+            legislature: item.legislature,
+            number: item.number,
+            initiativeType: item.initiative_type,
+            title: item.title,
+            description: item.description ?? undefined,
+            introducedAt: item.introduced_at ? formatDate(item.introduced_at) : undefined,
+            status: item.status ?? undefined,
+            officialUrl: item.official_url,
+            verifiedAt: formatDate(item.verified_at),
+            source: toOfficialSource(item.source),
+          }))
+        : [],
+      votes: votes.ok
+        ? votes.data.map((item) => ({
+            id: item.id,
+            sourceId: item.source_id,
+            legislature: item.legislature,
+            title: item.title,
+            initiativeNumber: item.initiative_number ?? undefined,
+            votedAt: item.voted_at ? formatDate(item.voted_at) : undefined,
+            result: item.result ?? undefined,
+            isNominal: item.is_nominal,
+            records: item.records.map((record) => ({
+              actorLabel: record.actor_label,
+              actorType: record.actor_type,
+              choice: record.choice,
+            })),
+            verifiedAt: formatDate(item.verified_at),
+            source: toOfficialSource(item.source),
+          }))
+        : [],
+    },
+  };
 }
 
 export async function loadPublicPolitician(
@@ -345,7 +486,7 @@ export async function loadPublicPolitician(
       },
     };
   }
-  if (slug === demoPolitician.slug) {
+  if (demoDataEnabled && slug === demoPolitician.slug) {
     return { data: demoPolitician, status, showingFallback: true };
   }
   return { data: null, status, showingFallback: false };
@@ -382,7 +523,9 @@ export async function loadPublicPromises(): Promise<LoadedData<GovernmentPromise
       })),
     };
   }
-  return { data: demoPromises, status, showingFallback: true };
+  return demoDataEnabled
+    ? { data: demoPromises, status, showingFallback: true }
+    : { data: [], status, showingFallback: false };
 }
 
 export async function loadPublicInvestigator(): Promise<LoadedData<PublicInvestigatorDataset>> {
@@ -460,12 +603,18 @@ export async function loadPublicInvestigator(): Promise<LoadedData<PublicInvesti
       },
     };
   }
-  return {
-    status,
-    showingFallback: true,
-    data: {
-      ...interestGraphDemo,
-      comparisons: [speechVoteDemo],
-    },
-  };
+  return demoDataEnabled
+    ? {
+        status,
+        showingFallback: true,
+        data: {
+          ...interestGraphDemo,
+          comparisons: [speechVoteDemo],
+        },
+      }
+    : {
+        status,
+        showingFallback: false,
+        data: { isDemonstration: false, nodes: [], edges: [], comparisons: [] },
+      };
 }

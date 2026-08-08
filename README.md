@@ -1,14 +1,14 @@
-# Transparência Total / Fator Cívico — V4.2 em desenvolvimento
+# Transparência Total / Fator Cívico — V4 release candidate
 
 Plataforma cívica, neutra, open-source e sem fins lucrativos para acompanhar atividade
 política em Portugal através de dados oficiais auditáveis.
 
-> **Estado do projeto:** V3 funcional com circuito completo entre recolha, staging PostgreSQL,
-> revisão humana, API pública e PWA. A V4.1 acrescenta o arquivo privado dos bytes oficiais e a
-> respetiva atestação append-only; a V4.2 acrescenta snapshots BASE privados e append-only,
-> deliberadamente separados das tabelas públicas. Ainda não está autorizada para produção. Sem
-> uma API configurada ou sem registos aprovados, a interface usa uma amostra fictícia sempre
-> assinalada. Ingestão nunca significa publicação.
+> **Estado do projeto:** a implementação técnica da V4 está em fase de release candidate. Inclui
+> arquivo PostgreSQL dos bytes oficiais, fotografias parlamentares versionadas e append-only,
+> revisão humana por âmbito, API pública fail-closed e uma área parlamentar na PWA. A versão em
+> `www.transparenciatotal.pt` só deve ser atualizada depois de CI, migrações, sincronização privada,
+> revisão dos hashes/contagens e smoke tests. Em produção, dados de demonstração estão desativados:
+> falha ou ausência da API aparece como indisponibilidade, nunca como facto real.
 
 ## Princípios
 
@@ -29,11 +29,10 @@ política em Portugal através de dados oficiais auditáveis.
 O nome “Transparência Total” descreve a ambição. Nenhum sistema pode garantir a completude de
 uma fonte pública; a plataforma torna também visíveis falhas, atrasos e limites conhecidos.
 
-## O que está incluído na V3 e na base V4.2
+## O que está incluído na V4
 
-- Persistência transacional dos snapshots parlamentares e BASE, com `SyncRun`, contagens, avisos e
-  versão do coletor. BASE escreve apenas tabelas privadas de staging e mantém o JSON de revisão
-  separado.
+- Persistência transacional das fotografias parlamentares e BASE, com `SyncRun`, contagens, avisos
+  e versão do coletor. Correções de parser criam uma nova fotografia e preservam a anterior.
 - `ParliamentaryMembershipSnapshot`: regista “observado na fonte em”, sem inventar uma data de
   início de mandato quando o dataset não a fornece.
 - API de leitura pública para estado dos dados, diretório e perfil de políticos, Promessómetro e
@@ -48,6 +47,11 @@ uma fonte pública; a plataforma torna também visíveis falhas, atrasos e limit
   parlamentar, `SourceArchiveAttestation` imutável e projeções públicas em modo fail-closed.
 - Ferramentas separadas para atestar um `SourceDocument` histórico em staging e para verificar o
   objeto em modo exclusivamente de leitura; nenhuma destas operações cria revisão ou publicação.
+- Recolha conjunta de reuniões observadas, iniciativas e votações da Assembleia da República,
+  arquivo dos bytes antes da normalização, manifesto com SHA-256 normalizado e revisão humana
+  separada para atividade e posições de voto.
+- API e página pública de atividade parlamentar que selecionam uma única fotografia aprovada por
+  legislatura e mostram lacunas sem preencher dados por inferência.
 
 - PWA Next.js responsiva, instalável, com ecrã offline e Service Worker próprio.
 - Modo Investigador Cívico com filtros por ano, partido, montante e empresa.
@@ -85,7 +89,7 @@ flowchart TD
   E --> F["Revisão humana"]
   F --> G["Registos publicáveis"]
   G --> H["API pública + Open Data"]
-  H --> I["PWA: LIVE / EMPTY / DEMO"]
+  H --> I["PWA: LIVE / EMPTY / UNAVAILABLE / DEMO"]
   E --> J["IA: proposta"]
   J --> F
 ```
@@ -97,6 +101,9 @@ coletores, revisão e envio push ficam no backend. Consulte [Arquitetura](docs/A
 [circuito de dados reais V3](docs/V3_LIVE_DATA.md), além do
 [arquivo privado de prova V4.1](docs/V4_RAW_EVIDENCE.md) e do
 [staging BASE append-only V4.2](docs/V4_BASE_STAGING.md), bem como do
+[pipeline parlamentar V4](docs/V4_PARLIAMENT_PIPELINE.md), das
+[operações de produção](docs/V4_PRODUCTION_OPERATIONS.md) e do
+[gate V4 → V5](docs/V4_TO_V5_RELEASE_GATE.md), além do
 [modelo de AIPD/RGPD](docs/DPIA_TEMPLATE.md).
 
 ## Estrutura do projeto
@@ -105,6 +112,7 @@ coletores, revisão e envio push ficam no backend. Consulte [Arquitetura](docs/A
 transparencia-total/
 ├── app/                         # Rotas e layout Next.js App Router
 │   ├── direito-de-resposta/
+│   ├── atividade-parlamentar/
 │   ├── guia-cidadao/
 │   ├── investigador/
 │   ├── metodologia/
@@ -144,13 +152,15 @@ transparencia-total/
 Os ficheiros `.openai/`, `build/`, `worker/` e os scripts `sites-*` suportam o preview público
 do projeto. A publicação Next.js normal usa `npm run build:next`.
 
-## Modelo de dados V3/V4.2
+## Modelo de dados V4
 
 O esquema integral está em `prisma/schema.prisma`. A V3 acrescenta a migração
 `prisma/migrations/20260801020000_v3_live_data/migration.sql` e a V4.1 acrescenta
 `prisma/migrations/20260803070000_v4_raw_evidence_archive/migration.sql`. A V4.2 acrescenta
-`prisma/migrations/20260803080000_v4_base_staging/migration.sql`; as migrações anteriores continuam
-necessárias e são aplicadas por ordem.
+`prisma/migrations/20260803080000_v4_base_staging/migration.sql`. A fotografia parlamentar
+versionada é concluída por
+`prisma/migrations/20260808090000_v4_parliament_activity_snapshots/migration.sql`; todas as
+migrações anteriores continuam necessárias e são aplicadas por ordem.
 
 | Área pedida | Modelos principais | Regra de publicação |
 |---|---|---|
@@ -162,7 +172,7 @@ necessárias e são aplicadas por ordem.
 | Guia e alertas | `CitizenImpactRule`, `CitizenAlert` | Regra determinística, vigência, território e fonte obrigatórios |
 | Retificação | `RightOfReply`, `AuditEvent` | Acrescenta versão e hashes; não apaga o alvo |
 | RGPD | `ProtectedIdentifierDigest`, `DataPublicationReview` | HMAC e decisão de necessidade/proporcionalidade |
-| Fotografias parlamentares | `ParliamentaryMembershipSnapshot`, `SyncRun` | “Observado em” é distinto de início de mandato; ingestão fica privada |
+| Fotografias parlamentares | `ParliamentActivitySnapshot`, `ParliamentaryMembershipSnapshot`, `ParliamentarySession`, `ParliamentaryInitiative`, `VoteEvent` | Manifesto e factos são append-only; uma decisão humana por âmbito escolhe a fotografia pública |
 | Prova bruta | `SourceArchiveAttestation`, `AuditEvent` | Objeto privado e atestação são obrigatórios, mas nunca equivalem a revisão ou publicação |
 | Staging BASE | `BaseStagingBatch`, `BaseContractSnapshot`, `BaseContractPartySnapshot` | Append-only, privado e sem ligação automática às projeções públicas |
 
@@ -267,6 +277,9 @@ de produção servido por HTTPS ou em `localhost`.
 | `GET` | `/api/v1/public/politicians/{slug}` | Perfil, assiduidade e votos nominais aprovados |
 | `GET` | `/api/v1/public/promises` | Medidas com prova e última revisão aceite |
 | `GET` | `/api/v1/public/investigator` | Grafo e comparações publicadas e verificadas |
+| `GET` | `/api/v1/public/parliament/sessions` | Reuniões observadas da fotografia de atividade aprovada |
+| `GET` | `/api/v1/public/parliament/initiatives` | Iniciativas da fotografia de atividade aprovada |
+| `GET` | `/api/v1/public/parliament/votes` | Votações da fotografia de votos aprovada |
 | `GET` | `/api/v1/parliament/deputies?legislature=XVII` | Descobrir e normalizar deputados; exige `X-Admin-Key` |
 | `GET` | `/api/v1/parliament/votes?legislature=XVII` | Descobrir e normalizar votações; exige `X-Admin-Key` |
 | `GET` | `/api/v1/dre/document?source_url=…` | Extrair um diploma oficial autorizado; exige `X-Admin-Key` |
@@ -282,9 +295,10 @@ de produção servido por HTTPS ou em `localhost`.
 | `GET` | `/api/v1/open-data/{dataset}.json` | Exportar registos publicados e verificados |
 | `GET` | `/api/v1/open-data/{dataset}.csv` | Exportar os mesmos registos em CSV |
 
-### Recolha manual ou agendada
+### Recolha e publicação parlamentar
 
-Execute dentro de `backend/`, com o ambiente virtual ativo:
+Execute dentro de `backend/`, com o ambiente virtual ativo. Os comandos antigos continuam úteis
+para pré-visualizações locais:
 
 ```bash
 cd backend
@@ -292,38 +306,41 @@ python -m scripts.sync_parliament deputies --legislature XVII --output ../data/d
 python -m scripts.sync_parliament votes --legislature XVII --output ../data/votes.json
 ```
 
-Para conservar os snapshots no PostgreSQL em estado privado de revisão, acrescente `--persist`:
+A persistência de votos pelo comando antigo é recusada. Para conservar deputados e a fotografia
+completa de atividade no PostgreSQL privado:
 
 ```bash
-ENVIRONMENT=staging RAW_ARCHIVE_ROOT=/caminho/absoluto/fora-do-repositorio \
-  python -m scripts.sync_parliament deputies --legislature XVII --persist
-ENVIRONMENT=staging RAW_ARCHIVE_ROOT=/caminho/absoluto/fora-do-repositorio \
-  python -m scripts.sync_parliament votes --legislature XVII --persist
+python -m scripts.sync_parliament deputies --legislature XVII --persist
+python -m scripts.sync_parliament_activity --legislature XVII
 ```
 
-O caminho do arquivo tem de ser absoluto, privado e exterior ao repositório. Os bytes são
-arquivados e verificados antes de qualquer escrita na base de dados; depois, cada execução cria um
-`SyncRun` e uma atestação append-only. Pessoas e votos não ficam publicáveis por este comando.
-Votos cujo identificador individual não corresponda exatamente a uma pessoa recolhida permanecem
-`UNKNOWN` e nunca são atribuídos por nome.
-
-Depois da primeira persistência de votos, inspecione a fotografia privada sem criar revisão ou
-publicação:
+Os bytes exatos são guardados de forma content-addressed em `raw_source_objects`, atestados e só
+depois materializados. A operação não publica. Para inspecionar a fotografia mais recente sem
+escrever uma decisão:
 
 ```bash
-python -m scripts.inspect_parliament_votes --legislature XVII
+python -m scripts.review_parliament_activity --legislature XVII
 ```
 
-Para verificar separadamente a conservação do original sem qualquer escrita:
+O relatório devolve URL, SHA-256 da fonte, SHA-256 normalizado e quatro contagens. A publicação
+exige repetir exatamente esses valores e uma fundamentação humana:
 
 ```bash
-python -m scripts.inspect_source_archive --source-document-id SOURCE_ID
+python -m scripts.review_parliament_activity --legislature XVII \
+  --publish --scope all \
+  --source-sha256 SHA_FONTE \
+  --normalised-sha256 SHA_NORMALIZADO \
+  --expected-sessions N --expected-initiatives N \
+  --expected-votes N --expected-vote-records N \
+  --reviewer revisor-01 \
+  --rationale "Fonte, cobertura e limitações confirmadas na revisão editorial." \
+  --confirm-source-reviewed
 ```
 
-Enquanto o modelo de votações não tiver versões append-only, a primeira fotografia é inserida sem
-`UPDATE`/`DELETE` e uma segunda persistência é recusada antes de alterar eventos ou posições. As
-projeções públicas do perfil e do Investigador só devolvem posições nominais individuais cuja
-fotografia tenha uma revisão humana positiva ligada exatamente ao mesmo `SourceDocument`.
+Use `--withdraw` para acrescentar uma decisão negativa sem apagar a fotografia nem a decisão
+anterior. `activity` controla reuniões/iniciativas; `votes` controla votações. Perfis e Investigador
+usam o mesmo gate de fotografia e só mostram votos individuais quando a fonte os identifica
+explicitamente.
 
 Os URLs dos datasets do Parlamento podem mudar. O coletor navega o catálogo oficial e escolhe o
 JSON da legislatura em vez de codificar um URL opaco. Para uma integração controlada, defina
@@ -538,7 +555,7 @@ Backend:
 ```bash
 ruff check backend
 ruff format --check backend
-mypy backend/app backend/scripts
+mypy --config-file backend/pyproject.toml backend/app
 pytest backend
 ```
 

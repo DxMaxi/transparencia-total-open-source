@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     raw_archive_root: Path | None = None
 
     official_user_agent: str = (
-        "TransparenciaTotal/0.3 (+https://github.com/DxMaxi/transparencia-total-open-source; "
+        "TransparenciaTotal/0.4 (+https://github.com/DxMaxi/transparencia-total-open-source; "
         "contacto: maximiano.jp.moreira@gmail.com)"
     )
     http_timeout_seconds: float = Field(default=30.0, gt=0, le=120)
