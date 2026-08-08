@@ -6,6 +6,7 @@ import unicodedata
 import uuid
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import asyncpg
 from pydantic import HttpUrl
@@ -105,6 +106,29 @@ def _warning_count(value: Any) -> int:
     return 1 if value else 0
 
 
+def _asyncpg_connection_options(database_url: str) -> tuple[str, dict[str, str]]:
+    """Traduz opções específicas do Prisma para parâmetros aceites pelo asyncpg.
+
+    O Prisma usa ``?schema=...`` no URL. O asyncpg interpreta parâmetros URI
+    desconhecidos como definições PostgreSQL e tentaria executar
+    ``SET schema = ...``, que não existe. Removemos essa opção do DSN e
+    preservamos a intenção através de ``search_path``.
+    """
+    parsed = urlsplit(database_url)
+    query: list[tuple[str, str]] = []
+    schema: str | None = None
+
+    for key, value in parse_qsl(parsed.query, keep_blank_values=True):
+        if key.casefold() == "schema":
+            schema = value.strip() or None
+        else:
+            query.append((key, value))
+
+    asyncpg_url = urlunsplit(parsed._replace(query=urlencode(query)))
+    server_settings = {"search_path": schema} if schema is not None else {}
+    return asyncpg_url, server_settings
+
+
 def _database_timestamp(value: datetime | None) -> datetime | None:
     """Normaliza datas para as colunas PostgreSQL TIMESTAMP(3) geridas pelo Prisma."""
     if value is None or value.tzinfo is None:
@@ -159,11 +183,15 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
         if self.settings.database_url is None:
             logger.warning("database_not_configured")
             return
+        database_url, server_settings = _asyncpg_connection_options(
+            self.settings.database_url.get_secret_value()
+        )
         self.pool = await asyncpg.create_pool(
-            self.settings.database_url.get_secret_value(),
+            database_url,
             min_size=1,
             max_size=5,
             command_timeout=20,
+            server_settings=server_settings,
         )
 
     async def close(self) -> None:
