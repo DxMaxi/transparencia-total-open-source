@@ -16,7 +16,7 @@ from app.services.http import OfficialHttpClient
 from app.services.parlamento import ParlamentoCollector
 from app.services.parliamentary_activity import normalise_initiatives, normalise_sessions
 
-CODE_VERSION = "parliament-activity-v3"
+CODE_VERSION = "parliament-activity-v4"
 SOURCE_NAME = "PARLIAMENT_ACTIVITY"
 MAX_SNAPSHOT_RECORDS = 250_000
 
