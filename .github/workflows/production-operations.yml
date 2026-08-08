@@ -76,8 +76,9 @@ jobs:
     if: ${{ inputs.confirmation == 'PRODUCAO' }}
     runs-on: ubuntu-latest
     environment: production
-    timeout-minutes: 45
+    timeout-minutes: 90
     env:
+      PYTHONUNBUFFERED: "1"
       DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
       ENVIRONMENT: production
       CORS_ORIGINS: https://www.transparenciatotal.pt
