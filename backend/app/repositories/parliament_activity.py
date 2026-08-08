@@ -10,6 +10,7 @@ import asyncpg
 from app.models.api import VoteActorType
 from app.models.archive import RawArchiveReceipt
 from app.models.parliamentary import ParliamentActivityDataset
+from app.repositories.parliament_activity_bulk import append_activity_snapshot
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,19 +123,12 @@ class ParliamentActivityRepository:
                 dataset,
                 source_document_id,
             )
-            sessions_written = await self._append_sessions(
-                connection,
-                dataset,
-                source_document_id,
-                snapshot_id,
-            )
-            initiatives_written = await self._append_initiatives(
-                connection,
-                dataset,
-                source_document_id,
-                snapshot_id,
-            )
-            vote_events_written, vote_records_written = await self._append_votes(
+            (
+                sessions_written,
+                initiatives_written,
+                vote_events_written,
+                vote_records_written,
+            ) = await append_activity_snapshot(
                 connection,
                 dataset,
                 source_document_id,
