@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { DemoBanner } from "@/components/demo-banner";
 import { RightOfReplyForm } from "@/components/right-of-reply-form";
 
 export const metadata: Metadata = {
@@ -10,9 +9,8 @@ export const metadata: Metadata = {
 export default function RightOfReplyPage() {
   return (
     <main className="page-shell shell">
-      <DemoBanner />
       <div className="page-heading page-heading--wide">
-        <span className="eyebrow">Compliance V4</span>
+        <span className="eyebrow">Retificação e contraditório</span>
         <h1>Responder sem reescrever o passado.</h1>
         <p>
           Contestações oficiais são anexadas ao facto correspondente. O original, a resposta, as decisões de revisão e cada alteração mantêm a sua própria impressão digital.

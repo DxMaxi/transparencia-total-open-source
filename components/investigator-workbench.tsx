@@ -36,7 +36,6 @@ export function InvestigatorWorkbench({ dataset }: { dataset: PublicInvestigator
   });
   const connectedNodes = new Set(filteredEdges.flatMap((edge) => [edge.source, edge.target]));
   const filteredGraph = {
-    isDemonstration: dataset.isDemonstration,
     edges: filteredEdges,
     nodes: dataset.nodes.filter((node) => connectedNodes.has(node.id)),
   };

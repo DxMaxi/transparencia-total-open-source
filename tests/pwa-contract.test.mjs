@@ -33,3 +33,20 @@ test("service worker implements offline and push paths", async () => {
   assert.match(worker, /addEventListener\("notificationclick"/);
   assert.match(worker, /url\.origin !== self\.location\.origin/);
 });
+
+test("the public layout does not register device storage without an explicit choice", async () => {
+  const layout = await readFile(new URL("app/layout.tsx", root), "utf8");
+  assert.doesNotMatch(layout, /PwaRegister/);
+  assert.match(layout, /BrowserStorageCleanup/);
+  assert.doesNotMatch(layout, /manifest:\s*["']\/manifest\.json/);
+});
+
+test("legacy browser storage cleanup is restricted to this project's PWA assets", async () => {
+  const cleanup = await readFile(
+    new URL("components/browser-storage-cleanup.tsx", root),
+    "utf8",
+  );
+  assert.match(cleanup, /pathname === ["']\/sw\.js["']/);
+  assert.match(cleanup, /startsWith\(LEGACY_CACHE_PREFIX\)/);
+  assert.doesNotMatch(cleanup, /localStorage|sessionStorage|indexedDB/);
+});

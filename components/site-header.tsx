@@ -4,11 +4,10 @@ import { useState } from "react";
 import { LandmarkIcon, MenuIcon } from "@/components/icons";
 
 const navItems = [
-  { href: "/investigador", label: "Investigador" },
-  { href: "/guia-cidadao", label: "Guia do Cidadão" },
-  { href: "/promessas", label: "Promessómetro" },
   { href: "/politicos", label: "Políticos" },
   { href: "/atividade-parlamentar", label: "Parlamento" },
+  { href: "/promessas", label: "Promessómetro" },
+  { href: "/guia-cidadao", label: "Guia do Cidadão" },
   { href: "/metodologia", label: "Metodologia" },
 ];
 

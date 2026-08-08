@@ -1,11 +1,10 @@
-/* Transparência Total / Fator Cívico V4 — Service Worker PWA */
+/* Infraestrutura PWA desativada na interface pública; mantida apenas para compatibilidade. */
 const CACHE_VERSION = "tt-v3";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const OFFLINE_URL = "/offline.html";
 const PRECACHE = [
   "/",
-  "/investigador",
   "/guia-cidadao",
   "/promessas",
   "/metodologia",

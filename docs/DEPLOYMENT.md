@@ -2,49 +2,21 @@
 
 ## Topologia recomendada
 
-- Vercel: Next.js PWA e CDN.
+- Vercel: Next.js e CDN.
 - Render ou Fly.io: FastAPI.
-- PostgreSQL gerido: dados normalizados, auditoria e arquivo privado content-addressed dos bytes.
-- Object storage privado e versionado/WORM: evolução recomendada quando o volume exigir separação.
+- Supabase/PostgreSQL gerido: dados normalizados, auditoria e arquivo dos bytes oficiais.
+- Object storage versionado: opção futura quando o volume ultrapassar a capacidade PostgreSQL.
 - Scheduler/worker: sincronizações, resumos e alertas, separado da API pública.
 
 ## Preparação
 
 1. Execute todos os testes.
 2. Altere o contacto em `OFFICIAL_USER_AGENT`.
-3. Gere VAPID e guarde a chave privada num gestor de segredos.
+3. Identifique o responsável real nas variáveis legais públicas; não publique placeholders.
 4. Crie `ADMIN_API_KEY` aleatória com pelo menos 32 bytes.
-5. Defina backups, retenção e alertas do PostgreSQL.
+5. Documente retenção, capacidade de recuperação e alertas do PostgreSQL. Se o plano não tiver
+   backup, registe expressamente esse risco e não anuncie recuperação garantida.
 6. Não ative IA antes de existir fila de revisão.
-7. Não ative a V4 em produção sem backups restauráveis, controlo de acesso, capacidade suficiente
-   para `raw_source_objects` e todas as fontes publicadas atestadas e verificadas.
-
-## Porta de implantação V4
-
-`RAW_ARCHIVE_ROOT` configura apenas o backend local de desenvolvimento, testes e staging
-controlado. Não o aponte para o sistema de ficheiros efémero do Render, Fly.io, Vercel, CI ou para
-uma pasta servida pela aplicação. O caminho tem de ser absoluto, privado e exterior ao
-repositório.
-
-As projeções públicas recusam qualquer facto cuja fonte não tenha uma atestação coerente. Os bytes
-dos fluxos V4 são guardados em `raw_source_objects` com hash, tamanho e triggers append-only. Os
-snapshots BASE da V4.2 são adicionalmente privados e sem promoção pública automática.
-Aplicar a migração e publicar o código antes de arquivar as fontes históricas pode, por desenho,
-fazer os dados atuais passar para `EMPTY`/`UNAVAILABLE`. Isso é preferível a mostrar prova não
-conservada, mas exige um rollout deliberado:
-
-1. ensaiar a migração e os triggers numa cópia restaurável da base;
-2. confirmar backups, restauração, acesso restrito e alertas de capacidade do arquivo PostgreSQL;
-3. arquivar cada `SourceDocument` histórico apenas quando os bytes ainda coincidirem exatamente;
-4. tratar fontes alteradas como novas versões, nunca como substituições do documento anterior;
-5. executar verificações de arquivo e reconciliar contagens, hashes e objetos indisponíveis;
-6. executar a sincronização parlamentar privada e rever os dois hashes e quatro contagens;
-7. executar `inspect_base_staging` para cada ano BASE carregado, sem exportar nomes ou HMAC;
-8. rever separadamente cada projeção antes de promover a API e o frontend.
-
-Enquanto estes passos não forem concluídos, a release candidate V4 deve permanecer fora de
-produção. Object storage WORM continua recomendado como hardening posterior, sem autorizar o uso
-de disco efémero como alternativa.
 
 ## Vercel
 
@@ -54,8 +26,11 @@ de disco efémero como alternativa.
    adaptador do preview incluído no projeto.
 4. Configure:
    - `NEXT_PUBLIC_API_URL=https://api.example.org`
-   - `NEXT_PUBLIC_VAPID_PUBLIC_KEY=…`
-5. Publique, confirme `/manifest.json`, `/sw.js` e os cabeçalhos do Service Worker.
+   - `NEXT_PUBLIC_LEGAL_RESPONSIBLE_NAME=…`
+   - `NEXT_PUBLIC_LEGAL_ADDRESS=…` (se aplicável)
+   - `NEXT_PUBLIC_LEGAL_TAX_ID=…` (se aplicável)
+   - `NEXT_PUBLIC_LEGAL_REGISTRATION=…` (se aplicável)
+5. Publique e confirme os cabeçalhos de segurança, `robots.txt`, `sitemap.xml` e páginas legais.
 6. Adicione os domínios de Production e Preview ao `CORS_ORIGINS` do backend.
 
 ## Render
@@ -98,9 +73,10 @@ Uma falha deve marcar `SyncRun=FAILED/PARTIAL`, alertar a equipa e manter a últ
 - HTTPS e redirecionamento ativo em frontend e API.
 - CORS contém apenas origens reais.
 - Swagger/ReDoc desativados em produção.
-- PWA instalável em Android e iOS; offline testado.
-- Push testado com subscrição, envio e remoção.
-- Migrações aplicadas e backups restauráveis testados.
+- Não existe registo de Service Worker, pedido de notificações ou armazenamento não essencial.
+- Registos e caches PWA de versões anteriores são removidos de forma restrita ao projeto.
+- Migrações aplicadas e capacidade real de recuperação descrita sem garantias inexistentes.
 - URLs oficiais, hashes e datas visíveis nos dados reais.
-- Dados de demonstração ausentes do domínio oficial (`ENABLE_DEMO_DATA=false` ou build de produção).
+- Dados de demonstração ausentes do domínio oficial.
 - Política de correções e contacto público disponíveis.
+- Privacidade, cookies, termos/aviso legal e acessibilidade publicados.

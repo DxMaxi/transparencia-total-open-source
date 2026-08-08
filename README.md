@@ -1,14 +1,14 @@
-# Transparência Total / Fator Cívico — V4 release candidate
+# Transparência Total / Fator Cívico — V4
 
-Plataforma cívica, neutra, open-source e sem fins lucrativos para acompanhar atividade
-política em Portugal através de dados oficiais auditáveis.
+Plataforma cívica, neutra e sem fins lucrativos para acompanhar atividade política em
+Portugal através de dados oficiais auditáveis. O código usa licença MIT; o repositório deve
+ser tornado público antes de o projeto se apresentar como open source.
 
-> **Estado do projeto:** a implementação técnica da V4 está em fase de release candidate. Inclui
-> arquivo PostgreSQL dos bytes oficiais, fotografias parlamentares versionadas e append-only,
-> revisão humana por âmbito, API pública fail-closed e uma área parlamentar na PWA. A versão em
-> `www.transparenciatotal.pt` só deve ser atualizada depois de CI, migrações, sincronização privada,
-> revisão dos hashes/contagens e smoke tests. Em produção, dados de demonstração estão desativados:
-> falha ou ausência da API aparece como indisponibilidade, nunca como facto real.
+> **Estado do projeto:** esta release fecha o produto público da V4. Inclui arquivo PostgreSQL
+> dos bytes oficiais, fotografias parlamentares versionadas e append-only, revisão humana por
+> âmbito, API pública fail-closed, catálogo inicial do Programa do XXV Governo e páginas legais.
+> O domínio oficial nunca substitui uma falha da API por dados fictícios. Consulte o
+> [gate V4 → V5](docs/V4_TO_V5_RELEASE_GATE.md) para a validação operacional da release.
 
 ## Princípios
 
@@ -23,8 +23,8 @@ política em Portugal através de dados oficiais auditáveis.
   candidato privado de revisão; nunca prova conflito, benefício, corrupção ou ilícito.
 - **Histórico imutável:** correções acrescentam versões e eventos de auditoria; não apagam o
   fundamento anterior.
-- **Privacidade mínima:** alertas guardam uma subscrição técnica e os filtros regionais escolhidos,
-  não preferências políticas nem localização exata.
+- **Privacidade mínima:** o website público não usa analítica, publicidade, cookies não essenciais,
+  notificações ou perfis de visitantes.
 
 O nome “Transparência Total” descreve a ambição. Nenhum sistema pode garantir a completude de
 uma fonte pública; a plataforma torna também visíveis falhas, atrasos e limites conhecidos.
@@ -36,9 +36,9 @@ uma fonte pública; a plataforma torna também visíveis falhas, atrasos e limit
 - `ParliamentaryMembershipSnapshot`: regista “observado na fonte em”, sem inventar uma data de
   início de mandato quando o dataset não a fornece.
 - API de leitura pública para estado dos dados, diretório e perfil de políticos, Promessómetro e
-  Investigador Cívico.
-- Quatro modos explícitos na interface: `LIVE`, `EMPTY`, `UNAVAILABLE` e `DEMO`; a PWA nunca mostra
-  uma amostra fictícia como se fosse um facto real.
+  atividade parlamentar. Conjuntos de investigação permanecem privados até terem revisão efetiva.
+- Três modos públicos explícitos: `LIVE`, `EMPTY` e `UNAVAILABLE`; não existe fallback de
+  demonstração no domínio oficial.
 - Promoção editorial por linha de comando com confirmação explícita, teste de dependências,
   `DataPublicationReview` e `AuditEvent`; a decisão pode ser retirada sem apagar o histórico.
 - A persistência BASE exige `ENVIRONMENT=staging`, confirmação explícita, arquivo atestado e carga
@@ -53,17 +53,21 @@ uma fonte pública; a plataforma torna também visíveis falhas, atrasos e limit
 - API e página pública de atividade parlamentar que selecionam uma única fotografia aprovada por
   legislatura e mostram lacunas sem preencher dados por inferência.
 
-- PWA Next.js responsiva, instalável, com ecrã offline e Service Worker próprio.
-- Modo Investigador Cívico com filtros por ano, partido, montante e empresa.
-- Grafo React Flow de relações verificadas, painel de prova, hash e lista textual acessível.
-- Comparador “discurso público vs. voto” com universo comparável, exclusões e fórmula visível.
+- Frontend Next.js responsivo. O manifesto, Service Worker e notificações permanecem
+  desligados da interface pública até existir uma escolha explícita do utilizador.
+- Pipeline do Investigador Cívico preservado na API, sem página pública até existir um conjunto
+  de relações efetivamente revisto.
+- Componentes de grafo e de comparação preservados para trabalho futuro, sem exposição pública
+  enquanto não existirem relações e pares comparáveis aprovados.
 - Guia do Cidadão com perfil genérico, cálculo determinístico separado da explicação por IA e
   alertas com fontes, vigência, ressalvas e incertezas.
 - Formulário de direito de resposta com recibo temporal e hashes SHA-256 sem apagar o original.
 - Exportação Open Data em JSON/CSV de contratos, grafo, notícias, alertas e direitos de resposta.
-- Perfil visual de político com votos nominais, assiduidade, declaração e comparador factual.
-- Promessómetro filtrável com quatro estados e fundamentação oficial por medida.
-- Web Push com VAPID, registo de subscrições no PostgreSQL e endpoint administrativo de envio.
+- Perfil de político com cobertura explícita, votos individuais apenas quando nominais,
+  posições coletivas separadas e ligação à declaração de interesses.
+- Promessómetro filtrável com cinco estados, incluindo “Por verificar”, catálogo inicial do
+  programa e fundamentação oficial por medida avaliada.
+- Infraestrutura Web Push disponível no backend, mas sem registo automático no website público.
 - API FastAPI com documentação OpenAPI, CORS restrito e endpoints de saúde.
 - Descoberta e normalização resiliente dos datasets da Assembleia da República e dos recursos
   anuais JSON/XML/ZIP do Portal BASE publicados através do dados.gov.pt.
@@ -89,7 +93,7 @@ flowchart TD
   E --> F["Revisão humana"]
   F --> G["Registos publicáveis"]
   G --> H["API pública + Open Data"]
-  H --> I["PWA: LIVE / EMPTY / UNAVAILABLE / DEMO"]
+  H --> I["Website: LIVE / EMPTY / UNAVAILABLE"]
   E --> J["IA: proposta"]
   J --> F
 ```
@@ -114,17 +118,17 @@ transparencia-total/
 │   ├── direito-de-resposta/
 │   ├── atividade-parlamentar/
 │   ├── guia-cidadao/
-│   ├── investigador/
+│   ├── investigador/             # Redireciona para metodologia enquanto não há dados revistos
 │   ├── metodologia/
 │   ├── politicos/               # Diretório e perfis por slug
 │   └── promessas/
-├── components/                  # Grafo, comparador, guia, perfil, Promessómetro e PWA
-├── lib/                         # Cliente tipado da API e fallback fictício isolado
+├── components/                  # Navegação, guia, perfis, Promessómetro e módulos opcionais
+├── lib/                         # Cliente tipado da API e catálogo oficial versionado
 ├── public/
 │   ├── icons/                   # Ícones PWA 96/192/512
 │   ├── manifest.json
 │   ├── offline.html
-│   └── sw.js                    # Cache, offline, push e notificationclick
+│   └── sw.js                    # Infraestrutura inativa; versões antigas são removidas no cliente
 ├── types/                       # Contratos TypeScript da interface
 ├── backend/
 │   ├── app/
@@ -264,8 +268,7 @@ Noutro terminal:
 npm run dev:next
 ```
 
-Abra `http://localhost:3000`. O Service Worker e a instalação PWA devem ser testados num build
-de produção servido por HTTPS ou em `localhost`.
+Abra `http://localhost:3000`. A configuração pública não regista automaticamente o Service Worker.
 
 ## API principal
 
@@ -448,14 +451,13 @@ Tipos aceites: `PERSON`, `PROMISE`, `PUBLIC_CONTRACT`, `INTEREST_ENTITY` e
 verificados e publicados. Para retirar sem apagar o histórico, use `--withdraw` com nova
 fundamentação. Cada decisão acrescenta `DataPublicationReview` e `AuditEvent`.
 
-### Modos visíveis na PWA
+### Modos visíveis no website
 
 | Modo | Significado |
 |---|---|
 | `LIVE` | A API respondeu e existem registos aprovados; são mostrados dados reais com fonte |
 | `EMPTY` | A base está ligada, mas nenhum registo cumpre ainda a regra de publicação |
 | `UNAVAILABLE` | A API configurada não respondeu; não se presume que os dados estão atualizados |
-| `DEMO` | `NEXT_PUBLIC_API_URL` não está configurado; apenas a amostra fictícia é mostrada |
 
 ## Pipeline de IA
 
@@ -518,7 +520,14 @@ Antes de tratar dados reais, conclua uma AIPD, revisão por encarregado de prote
 aconselhamento jurídico português independente. O código fornece controlos técnicos; não constitui
 parecer jurídico nem, por si só, prova conformidade.
 
-## PWA e notificações push
+## PWA e notificações push opcionais
+
+O website público não regista atualmente `public/sw.js` nem pede autorização de notificações.
+Esta infraestrutura só deve ser ativada depois de acrescentar uma escolha explícita, atualizar
+a política de cookies/armazenamento e validar o fluxo de revogação.
+
+O layout executa uma limpeza limitada a registos `/sw.js` e caches com o prefixo do projeto para
+retirar instalações de versões anteriores. Não cria identificadores nem armazenamento novo.
 
 Gere um par VAPID:
 
@@ -529,7 +538,7 @@ npx web-push generate-vapid-keys
 Configure a chave pública tanto em `NEXT_PUBLIC_VAPID_PUBLIC_KEY` como em `VAPID_PUBLIC_KEY`, e a
 privada apenas em `VAPID_PRIVATE_KEY`. Configure ainda `NEXT_PUBLIC_API_URL` e `VAPID_SUBJECT`.
 
-O browser regista `public/sw.js`, que fornece:
+Quando ativado por escolha explícita, `public/sw.js` fornece:
 
 - instalação com `public/manifest.json` e ícones maskable;
 - fallback `offline.html` para navegação sem rede;
@@ -570,7 +579,10 @@ As instruções completas estão em [Publicação](docs/DEPLOYMENT.md). Resumo:
 
 1. Publique o repositório no GitHub e importe-o no Vercel.
 2. Mantenha a raiz do projeto e o preset Next.js; `vercel.json` executa `npm run build:next`.
-3. Defina `NEXT_PUBLIC_API_URL` e `NEXT_PUBLIC_VAPID_PUBLIC_KEY` em Production e Preview.
+3. Defina `NEXT_PUBLIC_API_URL` e a identificação pública aplicável em
+   `NEXT_PUBLIC_LEGAL_RESPONSIBLE_NAME`; use `NEXT_PUBLIC_LEGAL_ADDRESS`,
+   `NEXT_PUBLIC_LEGAL_TAX_ID` e `NEXT_PUBLIC_LEGAL_REGISTRATION` apenas quando juridicamente
+   aplicáveis. Não use placeholders em produção.
 4. Faça deploy e adicione o domínio HTTPS à variável `CORS_ORIGINS` do backend.
 
 ### Backend e PostgreSQL no Render
@@ -586,8 +598,8 @@ As instruções completas estão em [Publicação](docs/DEPLOYMENT.md). Resumo:
 4. Defina o URL Render como `NEXT_PUBLIC_API_URL` no Vercel e volte a publicar o frontend.
 
 O plano gratuito do Render suspende serviços sem tráfego, causando arranques frios, e a base de
-dados gratuita tem retenção limitada. É adequado a demonstração, não a um arquivo cívico de
-produção.
+dados gratuita tem retenção limitada. A disponibilidade e a recuperação devem ser reavaliadas
+antes de aumentar a criticidade ou o volume do serviço.
 
 ### Backend no Fly.io
 
@@ -607,5 +619,6 @@ subscrições. Confirme sempre a oferta e os custos atuais do fornecedor.
 Código sob [licença MIT](LICENSE). Consulte [CONTRIBUTING.md](CONTRIBUTING.md),
 [SECURITY.md](SECURITY.md) e [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
-Um lançamento de produção deve ainda definir entidade mantenedora, política editorial pública,
-conselho de revisão plural, procedimento de correção e arquivo durável dos documentos recolhidos.
+Um lançamento de produção deve identificar o responsável real, manter política editorial pública,
+procedimento de correção e arquivo verificável dos documentos recolhidos. Uma revisão plural é
+recomendada antes de publicar avaliações substantivas ou relações entre pessoas e entidades.

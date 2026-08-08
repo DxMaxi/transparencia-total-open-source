@@ -42,3 +42,4 @@ recolha/revisão real e validação no domínio oficial continuam pendentes até
 
 A versão é marcada como V4 concluída apenas após validação em produção. A criação de funcionalidades
 exclusivas da V5 não deve ocultar, adiar ou contornar falhas pendentes da V4.
+

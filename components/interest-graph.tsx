@@ -84,11 +84,11 @@ export function InterestGraph({ dataset }: { dataset: InterestGraphDataset }) {
           <span className="eyebrow">Grafo de interesses</span>
           <h2 id="graph-title">Ligações documentadas, não insinuações</h2>
         </div>
-        <span className="v2-demo-chip">{dataset.isDemonstration ? "Amostra fictícia" : "Dados publicados"}</span>
+        <span className="review-state-chip">Dados publicados</span>
       </div>
 
       <div className="graph-layout">
-        <div className="graph-canvas" aria-label="Mapa demonstrativo de relações verificáveis">
+        <div className="graph-canvas" aria-label="Mapa de relações verificadas">
           <ReactFlow<Node<InterestNodeData>, Edge<InterestEdgeData>>
             nodes={nodes}
             edges={edges}
@@ -151,7 +151,7 @@ export function InterestGraph({ dataset }: { dataset: InterestGraphDataset }) {
               <span className="graph-inspector__type">Nó selecionado</span>
               <h3>{activeSelection.data.label}</h3>
               <p>{activeSelection.data.subtitle}</p>
-              <span className="verified-chip"><ShieldCheckIcon /> {dataset.isDemonstration ? "Exemplo revisto" : "Entidade verificada"}</span>
+              <span className="verified-chip"><ShieldCheckIcon /> Entidade verificada</span>
               <p className="graph-legal-note">
                 Abra uma relação para consultar período, prova e impressão digital da fonte.
               </p>

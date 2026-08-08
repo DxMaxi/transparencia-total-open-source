@@ -19,7 +19,7 @@
 | Fonte | Gate técnico V4 | Publicação automática |
 |---|---|---|
 | Assembleia da República | Bytes PostgreSQL, manifesto versionado, associação segura, revisão por hashes/contagens e API fail-closed | Não |
-| Portal BASE | Arquivo, staging privado, deduplicação e promoção exacta sob revisão | Não |
+| Portal BASE | Arquivo, staging privado, deduplicação e promoção exata sob revisão | Não |
 | Diário da República | Arquivo, snapshot privado, inspector sem texto e testes de imutabilidade | Não |
 | Entidade para a Transparência | Colector de índice e schema privado com revisão jurídica obrigatória | Não |
 | Tribunal de Contas | Colector mínimo fail-closed do índice oficial | Não |
@@ -43,7 +43,7 @@ O PR só deve ser considerado pronto quando o CI confirmar:
 Estes passos não são executados automaticamente pelo código nem pelo PR:
 
 1. ensaio controlado do EPT em ambiente de staging;
-2. confirmação jurídica e de protecção de dados antes de qualquer tratamento de declarações;
+2. confirmação jurídica e de proteção de dados antes de qualquer tratamento de declarações;
 3. escolha documentada dos recursos concretos do Tribunal de Contas e Parlamento Europeu;
 4. definição de cobertura territorial explícita para cada conector Radar;
 5. revisão humana positiva antes de criar qualquer projecção pública;

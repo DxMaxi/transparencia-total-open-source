@@ -375,6 +375,41 @@ def test_normalises_official_nested_vote_shape_and_all_position_choices() -> Non
     assert {record.actor_type.value for record in plenary.records} == {"UNKNOWN"}
 
 
+def test_vote_without_description_inherits_the_official_initiative_title() -> None:
+    payload = [
+        {
+            "IniNr": "815",
+            "IniDescTipo": "Projeto de Resolução",
+            "IniTitulo": "Recomenda a implementação coordenada da terapia fágica",
+            "IniEventos": [
+                {
+                    "Votacao": [
+                        {
+                            "id": "182700",
+                            "data": "2026-07-22",
+                            "descricao": None,
+                            "detalhe": None,
+                            "reuniao": "56",
+                            "resultado": "Aprovado",
+                        }
+                    ]
+                }
+            ],
+        }
+    ]
+
+    events = collector().normalise_votes(
+        payload,
+        source_url="https://app.parlamento.pt/IniciativasXVII_json.txt",
+        document_sha256="3" * 64,
+    )
+
+    assert events[0].title == (
+        "Projeto de Resolução n.º 815 — Recomenda a implementação coordenada da terapia fágica"
+    )
+    assert events[0].initiative_number == "815"
+
+
 def test_shared_vote_is_not_arbitrarily_linked_to_one_of_multiple_initiatives() -> None:
     vote = {
         "id": "139080",

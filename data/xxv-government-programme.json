@@ -1,0 +1,71 @@
+{
+  "governmentNumber": "XXV",
+  "title": "Programa do XXV Governo Constitucional",
+  "sourceUrl": "https://portugal.gov.pt/api/media/edge/Project/Portal-do-Governo/Portal-do-Governo/gc25/Files/Governo/programa-do-governo/ProgramaXXVGovernoConstitucional2025.pdf",
+  "sourceSha256": "b309badfd59b990774d1552cae8f19968c3d15f202c65ac0d9c2b9c1e3ae1580",
+  "sourceByteSize": 3543075,
+  "retrievedAt": "2026-08-08T00:00:00Z",
+  "methodologyVersion": "government-programme-catalogue-v1",
+  "commitments": [
+    {
+      "stableKey": "xxv-programme-income-targets",
+      "title": "Salário mínimo de 1 100 €, salário médio de 2 000 € e nenhum pensionista com rendimento abaixo de 870 €",
+      "area": "Rendimentos e pensões",
+      "programmePage": "p. 13"
+    },
+    {
+      "stableKey": "xxv-programme-irs-reduction",
+      "title": "Reduzir o IRS em 2 000 milhões de euros ao longo da legislatura",
+      "area": "Fiscalidade",
+      "programmePage": "p. 13"
+    },
+    {
+      "stableKey": "xxv-programme-single-social-benefit",
+      "title": "Simplificar prestações sociais não contributivas, incluindo uma Prestação Social Única",
+      "area": "Proteção social",
+      "programmePage": "pp. 13–14"
+    },
+    {
+      "stableKey": "xxv-programme-public-deadline-portal",
+      "title": "Criar um portal público com estatísticas de cumprimento de prazos por entidade",
+      "area": "Reforma do Estado",
+      "programmePage": "p. 17"
+    },
+    {
+      "stableKey": "xxv-programme-health-access",
+      "title": "Concluir o Plano de Emergência e Transformação da Saúde 2024–2029, incluindo acesso a médico de família",
+      "area": "Saúde",
+      "programmePage": "p. 27"
+    },
+    {
+      "stableKey": "xxv-programme-health-record",
+      "title": "Criar o Registo de Saúde Eletrónico Único",
+      "area": "Saúde",
+      "programmePage": "p. 27"
+    },
+    {
+      "stableKey": "xxv-programme-preschool",
+      "title": "Assegurar acesso universal e gratuito à educação pré-escolar a partir dos 3 anos",
+      "area": "Educação",
+      "programmePage": "p. 28"
+    },
+    {
+      "stableKey": "xxv-programme-mobile-schools",
+      "title": "Proibir o uso do telemóvel nas escolas até ao 6.º ano",
+      "area": "Educação",
+      "programmePage": "p. 28"
+    },
+    {
+      "stableKey": "xxv-programme-airport",
+      "title": "Concluir a negociação e lançar a construção do Aeroporto Luís de Camões",
+      "area": "Infraestruturas",
+      "programmePage": "p. 35"
+    },
+    {
+      "stableKey": "xxv-programme-water-loss",
+      "title": "Executar o Programa de Ação para a Redução de Perdas de Água",
+      "area": "Ambiente e água",
+      "programmePage": "p. 38"
+    }
+  ]
+}

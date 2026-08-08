@@ -365,6 +365,40 @@ class ParlamentoCollector:
         )
         events: dict[str, VoteEvent] = {}
         initiative_numbers: dict[str, set[str]] = {}
+        initiative_titles: dict[str, str] = {}
+
+        for initiative_record in _walk(payload):
+            initiative_number = _as_text(
+                _field(
+                    initiative_record,
+                    "IniNr",
+                    "IniciativaNumero",
+                    "initiativeNumber",
+                )
+            )
+            initiative_title = _as_text(
+                _field(
+                    initiative_record,
+                    "IniTitulo",
+                    "IniciativaTitulo",
+                    "initiativeTitle",
+                )
+            )
+            initiative_type = _as_text(
+                _field(
+                    initiative_record,
+                    "IniDescTipo",
+                    "IniciativaTipo",
+                    "initiativeType",
+                )
+            )
+            if initiative_number and initiative_title:
+                prefix = (
+                    f"{initiative_type} n.º {initiative_number}"
+                    if initiative_type
+                    else f"Iniciativa n.º {initiative_number}"
+                )
+                initiative_titles[initiative_number] = f"{prefix} — {initiative_title}"
 
         for record, inherited_initiative_number in _walk_with_initiative(payload):
             result = _as_text(_field(record, "VotacaoResultado", "Resultado", "result"))
@@ -392,7 +426,12 @@ class ParlamentoCollector:
                 initiative_numbers.setdefault(vote_id, set()).add(initiative)
             candidate = VoteEvent(
                 source_id=vote_id,
-                title=title or initiative or f"Votação {vote_id}",
+                title=(
+                    title
+                    or (initiative_titles.get(initiative) if initiative else None)
+                    or (f"Votação da iniciativa n.º {initiative}" if initiative else None)
+                    or f"Votação {vote_id}"
+                ),
                 voted_at=_parse_date(date_value),
                 result=result,
                 initiative_number=initiative,

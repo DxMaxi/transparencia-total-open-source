@@ -2,15 +2,16 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("frontend distinguishes live, empty, unavailable and demonstration data", async () => {
+test("public frontend never replaces unavailable official data with demonstrations", async () => {
   const client = await readFile(new URL("../lib/public-data.ts", import.meta.url), "utf8");
   const banner = await readFile(new URL("../components/data-mode-banner.tsx", import.meta.url), "utf8");
   assert.match(client, /\/api\/v1\/public\/data-status/);
-  assert.match(client, /"UNAVAILABLE"\s*:\s*"DEMO"|"UNAVAILABLE"/);
-  assert.match(client, /process\.env\.NODE_ENV !== "production"/);
-  assert.match(client, /process\.env\.ENABLE_DEMO_DATA !== "false"/);
+  assert.match(client, /mode:\s*"UNAVAILABLE"/);
+  assert.doesNotMatch(client, /demo-data|v2-demo-data/);
+  assert.doesNotMatch(client, /ENABLE_DEMO_DATA/);
   assert.match(banner, /Dados oficiais publicados/);
-  assert.match(banner, /amostra abaixo é fictícia/);
+  assert.match(banner, /Dados oficiais temporariamente indisponíveis/);
+  assert.doesNotMatch(banner, /fictícia|demonstrativos/i);
 });
 
 test("parliament V4 is snapshot-scoped, reviewed and explicit about partial availability", async () => {
@@ -86,28 +87,27 @@ test("ingestion paths fail closed without auto-publication", async () => {
   assert.doesNotMatch(baseRepository, /INSERT INTO contract_match_reviews/);
 });
 
-test("unreviewed nominal vote coverage is shown as unavailable rather than zero", async () => {
+test("profiles separate individual votes from collective party positions", async () => {
   const client = await readFile(new URL("../lib/public-data.ts", import.meta.url), "utf8");
   const types = await readFile(new URL("../types/domain.ts", import.meta.url), "utf8");
   const profile = await readFile(
     new URL("../components/politician-profile.tsx", import.meta.url),
     "utf8",
   );
-  const demo = await readFile(new URL("../lib/demo-data.ts", import.meta.url), "utf8");
 
   assert.match(client, /nominal_votes_available:\s*boolean/);
   assert.match(client, /nominal_vote_count:\s*number/);
   assert.match(client, /nominalVotesAvailable:\s*result\.data\.nominal_votes_available/);
   assert.match(client, /nominalVoteCount:\s*result\.data\.nominal_vote_count/);
+  assert.match(client, /vote\.is_nominal\s*&&\s*allowedChoices\.has/);
   assert.match(types, /nominalVotesAvailable:\s*boolean/);
   assert.match(types, /nominalVoteCount:\s*number/);
-  assert.match(demo, /nominalVotesAvailable:\s*true/);
-  assert.match(demo, /nominalVoteCount:\s*3/);
-  assert.match(
-    profile,
-    /profile\.nominalVotesAvailable[\s\S]*profile\.nominalVoteCount[\s\S]*"Dados indisponíveis"/,
-  );
+  assert.match(types, /groupPositions:\s*VoteRecord\[\]/);
+  assert.match(client, /actor_type !== "PERSON"/);
+  assert.match(client, /actor_label\.replace/);
+  assert.match(profile, /profile\.nominalVotesAvailable[\s\S]*profile\.nominalVoteCount/);
   assert.doesNotMatch(profile, /profile\.votes\.filter\([\s\S]*\.length/);
-  assert.match(profile, /Não existem posições nominais individuais aprovadas para este perfil/);
-  assert.match(profile, /Dados indisponíveis:[\s\S]*posições nominais individuais/);
+  assert.match(profile, /Sem votos individuais publicáveis nesta fonte/);
+  assert.match(profile, /Não são votos individuais/);
+  assert.match(profile, /Posições recentes do grupo/);
 });

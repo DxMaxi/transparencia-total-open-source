@@ -11,6 +11,8 @@ const allowedHosts = new Set([
   "www.tribunalconstitucional.pt",
   "tribunalconstitucional.pt",
   "dados.gov.pt",
+  "portugal.gov.pt",
+  "www.portugal.gov.pt",
   "www.base.gov.pt",
   "base.gov.pt",
   "www.sns.gov.pt",
@@ -20,26 +22,15 @@ const allowedHosts = new Set([
   "data.europarl.europa.eu",
 ]);
 
-test("all URLs embedded in demonstration data point to official sources", async () => {
-  const source = [
-    await readFile(new URL("../lib/demo-data.ts", import.meta.url), "utf8"),
-    await readFile(new URL("../lib/v2-demo-data.ts", import.meta.url), "utf8"),
-  ].join("\n");
-  const urls = [...source.matchAll(/url:\s*"(https:[^"]+)"/g)].map((match) => match[1]);
-  assert.ok(urls.length >= 3);
-  for (const value of urls) {
-    const url = new URL(value);
-    assert.equal(url.protocol, "https:");
-    assert.ok(allowedHosts.has(url.hostname), `host oficial esperado: ${url.hostname}`);
-  }
-});
+test("the government programme catalogue is pinned to an official document", async () => {
+  const catalogue = JSON.parse(
+    await readFile(new URL("../data/xxv-government-programme.json", import.meta.url), "utf8"),
+  );
+  const source = new URL(catalogue.sourceUrl);
 
-test("the UI labels all sample political data as demonstration", async () => {
-  const data = [
-    await readFile(new URL("../lib/demo-data.ts", import.meta.url), "utf8"),
-    await readFile(new URL("../lib/v2-demo-data.ts", import.meta.url), "utf8"),
-  ].join("\n");
-  const banner = await readFile(new URL("../components/demo-banner.tsx", import.meta.url), "utf8");
-  assert.match(data, /isDemonstration:\s*true/g);
-  assert.match(banner, /dados demonstrativos/i);
+  assert.equal(source.protocol, "https:");
+  assert.ok(allowedHosts.has(source.hostname));
+  assert.match(catalogue.sourceSha256, /^[0-9a-f]{64}$/);
+  assert.ok(catalogue.sourceByteSize > 1_000_000);
+  assert.ok(catalogue.commitments.length >= 10);
 });

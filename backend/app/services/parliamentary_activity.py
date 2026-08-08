@@ -93,6 +93,31 @@ def _source(source_url: str, document_sha256: str, retrieved_at: datetime) -> Of
     )
 
 
+def _initiative_timeline(record: dict[str, Any]) -> tuple[datetime | None, str | None]:
+    """Extrai factos temporais explícitos sem transformar fases em conclusões editoriais."""
+
+    raw_events = _field(record, "IniEventos", "initiativeEvents", "eventosIniciativa")
+    if not isinstance(raw_events, list):
+        return None, None
+
+    dated_phases: list[tuple[datetime, str]] = []
+    entry_dates: list[datetime] = []
+    for event in raw_events:
+        if not isinstance(event, dict):
+            continue
+        event_date = _date(_field(event, "DataFase", "eventDate", "dataEvento"))
+        phase = _text(_field(event, "Fase", "eventPhase", "fase"))
+        if event_date is None or phase is None:
+            continue
+        dated_phases.append((event_date, phase))
+        if _normalise_key(phase) == "entrada":
+            entry_dates.append(event_date)
+
+    introduced_at = min(entry_dates) if entry_dates else None
+    latest_phase = max(dated_phases, key=lambda item: item[0])[1] if dated_phases else None
+    return introduced_at, latest_phase
+
+
 def normalise_sessions(
     payload: Any,
     *,
@@ -183,6 +208,7 @@ def normalise_initiatives(
             _field(record, "IniLinkTexto", "IniUrl", "officialUrl", "urlIniciativa")
         )
         official_url = urljoin(parliament_base_url, official_path) if official_path else source_url
+        event_introduced_at, latest_phase = _initiative_timeline(record)
         initiatives[source_id] = ParliamentaryInitiativeRecord(
             source_id=source_id,
             legislature=legislature,
@@ -190,8 +216,12 @@ def normalise_initiatives(
             initiative_type=initiative_type,
             title=title,
             description=_text(_field(record, "IniObs", "IniDescricao", "description")),
-            introduced_at=_date(_field(record, "IniDataEntrada", "introducedAt")),
-            status=_text(_field(record, "IniSituacao", "status", "situacaoIniciativa")),
+            introduced_at=(
+                _date(_field(record, "IniDataEntrada", "introducedAt")) or event_introduced_at
+            ),
+            status=(
+                _text(_field(record, "IniSituacao", "status", "situacaoIniciativa")) or latest_phase
+            ),
             official_url=HttpUrl(official_url),
             source=source,
         )

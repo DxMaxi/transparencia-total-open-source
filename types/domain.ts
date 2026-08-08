@@ -1,6 +1,7 @@
 export type VoteChoice = "FAVOR" | "AGAINST" | "ABSTENTION" | "ABSENT";
 
 export type PromiseStatus =
+  | "UNVERIFIED"
   | "FULFILLED"
   | "IN_PROGRESS"
   | "BROKEN"
@@ -55,7 +56,7 @@ export interface PoliticianProfileData {
   profileSource: OfficialSource;
   declarationSource: OfficialSource;
   votes: VoteRecord[];
-  isDemonstration?: boolean;
+  groupPositions: VoteRecord[];
 }
 
 export interface PromiseEvidence {
@@ -77,5 +78,4 @@ export interface GovernmentPromise {
   rationale: string;
   lastReviewedAt: string;
   evidence: PromiseEvidence[];
-  isDemonstration?: boolean;
 }

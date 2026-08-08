@@ -1,6 +1,6 @@
 import { CheckIcon, ClockIcon, UserIcon } from "@/components/icons";
 import { SourceLink } from "@/components/source-link";
-import type { PoliticianProfileData, VoteChoice } from "@/types/domain";
+import type { PoliticianProfileData, VoteChoice, VoteRecord } from "@/types/domain";
 
 const voteLabels: Record<VoteChoice, string> = {
   FAVOR: "A favor",
@@ -8,6 +8,29 @@ const voteLabels: Record<VoteChoice, string> = {
   ABSTENTION: "Abstenção",
   ABSENT: "Ausente",
 };
+
+function VoteRows({ votes }: { votes: VoteRecord[] }) {
+  return (
+    <tbody>
+      {votes.map((vote) => (
+        <tr key={vote.id}>
+          <td>
+            <strong>{vote.title}</strong>
+            <small>{vote.initiativeNumber}</small>
+          </td>
+          <td><span className="table-date"><ClockIcon /> {vote.date}</span></td>
+          <td>
+            <span className={`vote-pill vote-pill--${vote.choice.toLowerCase()}`}>
+              {voteLabels[vote.choice]}
+            </span>
+          </td>
+          <td>{vote.result}</td>
+          <td><SourceLink source={vote.source} compact /></td>
+        </tr>
+      ))}
+    </tbody>
+  );
+}
 
 export function PoliticianProfile({ profile }: { profile: PoliticianProfileData }) {
   return (
@@ -18,8 +41,8 @@ export function PoliticianProfile({ profile }: { profile: PoliticianProfileData 
         </div>
         <div className="profile-heading">
           <div className="eyebrow-row">
-            <span className="eyebrow">Ficha individual</span>
-            <span className="verified-chip"><CheckIcon /> Origem identificada</span>
+            <span className="eyebrow">Ficha parlamentar</span>
+            <span className="verified-chip"><CheckIcon /> Fonte oficial aprovada</span>
           </div>
           <h1>{profile.name}</h1>
           <p>{profile.role}</p>
@@ -33,103 +56,91 @@ export function PoliticianProfile({ profile }: { profile: PoliticianProfileData 
           </div>
         </div>
         <div className="profile-source">
-          <span>Ficha verificada</span>
+          <span>Fonte observada em</span>
           <strong>{profile.verifiedAt}</strong>
           <SourceLink source={profile.profileSource} compact />
         </div>
       </section>
 
-      <section className="profile-stats" aria-label="Indicadores do mandato">
+      <section className="profile-stats" aria-label="Cobertura disponível">
         <div className="stat-card card">
-          <span className="stat-card__label">Assiduidade</span>
-          <strong>{profile.attendanceRate == null ? "Sem dados" : `${profile.attendanceRate}%`}</strong>
-          <div className="progress-track"><span style={{ width: `${profile.attendanceRate ?? 0}%` }} /></div>
+          <span className="stat-card__label">Presenças individuais</span>
+          <strong>{profile.attendanceRate == null ? "Não publicadas" : `${profile.attendanceRate}%`}</strong>
+          {profile.attendanceRate != null ? (
+            <div className="progress-track"><span style={{ width: `${profile.attendanceRate}%` }} /></div>
+          ) : null}
           <small>{profile.attendanceLabel}</small>
         </div>
         <div className="stat-card card">
-          <span className="stat-card__label">Votações nominais</span>
-          <strong>
-            {profile.nominalVotesAvailable
-              ? profile.nominalVoteCount
-              : "Dados indisponíveis"}
-          </strong>
+          <span className="stat-card__label">Votos individuais</span>
+          <strong>{profile.nominalVotesAvailable ? profile.nominalVoteCount : "Não publicados"}</strong>
           <small>
-            {profile.nominalVotesAvailable
-              ? "Não atribui votos partidários a pessoas individuais."
-              : "Não existem posições nominais individuais aprovadas para este perfil."}
+            Só contamos registos nominais. Uma posição partidária nunca é apresentada
+            como voto pessoal.
           </small>
         </div>
         <div className="stat-card card">
-          <span className="stat-card__label">Declaração de interesses</span>
-          <strong>Consultar fonte</strong>
+          <span className="stat-card__label">Declarações de interesses</span>
+          <strong>Pesquisa na fonte oficial</strong>
           <SourceLink source={profile.declarationSource} compact />
         </div>
       </section>
 
+      {profile.nominalVotesAvailable && profile.votes.length ? (
+        <section className="card profile-section">
+          <div className="section-heading-row">
+            <div>
+              <span className="eyebrow">Registos nominais</span>
+              <h2>Votos individuais publicados</h2>
+            </div>
+          </div>
+          <div className="vote-table-wrap">
+            <table className="vote-table">
+              <thead>
+                <tr><th>Iniciativa</th><th>Data</th><th>Voto</th><th>Resultado</th><th>Prova</th></tr>
+              </thead>
+              <VoteRows votes={profile.votes} />
+            </table>
+          </div>
+        </section>
+      ) : (
+        <aside className="profile-coverage-note card">
+          <strong>Sem votos individuais publicáveis nesta fonte</strong>
+          <p>
+            Isto não significa que a pessoa não votou. Significa que a fotografia oficial
+            publicada não permite atribuir inequivocamente uma posição individual.
+          </p>
+        </aside>
+      )}
+
       <section className="card profile-section">
         <div className="section-heading-row">
           <div>
-            <span className="eyebrow">Histórico auditável</span>
-            <h2>Votações recentes</h2>
+            <span className="eyebrow">Contexto parlamentar</span>
+            <h2>Posições recentes do grupo {profile.partyShort}</h2>
           </div>
-          <div className="vote-legend" aria-label="Legenda dos votos">
-            <span><i className="dot dot--favor" /> A favor</span>
-            <span><i className="dot dot--against" /> Contra</span>
-            <span><i className="dot dot--abstention" /> Abstenção</span>
+          <span className="collective-position-label">Não são votos individuais</span>
+        </div>
+        <p className="profile-section-intro">
+          As linhas abaixo são aquelas em que a fonte usa exatamente a sigla do grupo
+          parlamentar. São apresentadas como contexto coletivo e nunca como ação pessoal
+          de {profile.name}.
+        </p>
+        {profile.groupPositions.length ? (
+          <div className="vote-table-wrap">
+            <table className="vote-table">
+              <thead>
+                <tr><th>Iniciativa</th><th>Data</th><th>Posição</th><th>Resultado</th><th>Prova</th></tr>
+              </thead>
+              <VoteRows votes={profile.groupPositions} />
+            </table>
           </div>
-        </div>
-        <div className="vote-table-wrap">
-          <table className="vote-table">
-            <thead>
-              <tr>
-                <th>Iniciativa</th>
-                <th>Data</th>
-                <th>Voto</th>
-                <th>Resultado</th>
-                <th>Prova</th>
-              </tr>
-            </thead>
-            <tbody>
-              {profile.nominalVotesAvailable ? (
-                profile.votes.map((vote) => (
-                  <tr key={vote.id}>
-                    <td>
-                      <strong>{vote.title}</strong>
-                      <small>{vote.initiativeNumber}</small>
-                    </td>
-                    <td><span className="table-date"><ClockIcon /> {vote.date}</span></td>
-                    <td><span className={`vote-pill vote-pill--${vote.choice.toLowerCase()}`}>{voteLabels[vote.choice]}</span></td>
-                    <td>{vote.result}</td>
-                    <td><SourceLink source={vote.source} compact /></td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5}>
-                    Dados indisponíveis: não existem posições nominais individuais
-                    aprovadas para este perfil.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section className="comparison-panel card">
-        <div>
-          <span className="eyebrow">Discurso e decisão</span>
-          <h2>Comparador de declarações e votos</h2>
-          <p>
-            Uma comparação só é publicada quando existem transcrição ou vídeo oficial,
-            votação identificável e revisão humana. A IA pode sugerir relações; não decide
-            se existe contradição.
-          </p>
-        </div>
-        <div className="comparison-empty">
-          <strong>Sem comparação validada</strong>
-          <span>Nenhuma conclusão editorial é inferida a partir dos dados de demonstração.</span>
-        </div>
+        ) : (
+          <div className="empty-state">
+            <strong>Sem posições coletivas normalizadas para este grupo</strong>
+            <span>A fonte pode não indicar posições por grupo em todas as votações.</span>
+          </div>
+        )}
       </section>
     </article>
   );

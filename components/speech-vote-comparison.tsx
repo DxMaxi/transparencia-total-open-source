@@ -21,7 +21,7 @@ export function SpeechVoteComparison({ data }: { data: SpeechVoteComparisonData 
           <span className="eyebrow">Discurso público vs. voto real</span>
           <h2 id="comparison-v2-title">A mesma matéria, lado a lado</h2>
         </div>
-        <span className="v2-demo-chip">{data.isDemonstration ? "Amostra fictícia" : "Comparação revista"}</span>
+        <span className="review-state-chip">Comparação revista</span>
       </div>
 
       <div className="comparison-topic">
@@ -72,7 +72,7 @@ export function SpeechVoteComparison({ data }: { data: SpeechVoteComparisonData 
           aria-label={comparison.score == null ? "Índice agregado ainda indisponível" : `${comparison.score} por cento nos pares comparáveis`}
         >
           <strong>{comparison.score == null ? "—" : `${comparison.score}%`}</strong>
-          <span>{data.isDemonstration ? "nesta amostra" : "pares revistos"}</span>
+          <span>pares revistos</span>
         </div>
         <div className="coherence-copy">
           <span className="outcome-chip"><CheckIcon /> {outcomeLabel}</span>

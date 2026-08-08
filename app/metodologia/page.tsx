@@ -1,4 +1,11 @@
+import type { Metadata } from "next";
 import { SourceLink } from "@/components/source-link";
+
+export const metadata: Metadata = {
+  title: "Metodologia e neutralidade",
+  description:
+    "Critérios de recolha, proveniência, revisão, publicação, correção e neutralidade da Transparência Total.",
+};
 
 const sources = [
   {
@@ -66,7 +73,7 @@ export default function MethodologyPage() {
           <li>Calcular coerência apenas sobre pares comparáveis revistos, publicando o denominador e as exclusões.</li>
           <li>Usar “dados indisponíveis” em vez de transformar ausência de dados em falta, incumprimento ou suspeita.</li>
           <li>Publicar correções sem apagar o histórico, incluindo autor, data e fundamento.</li>
-          <li>Separar cálculo determinístico, explicação de IA e decisão humana de publicação.</li>
+          <li>Separar cálculo técnico, prova documental e decisão humana de publicação.</li>
         </ul>
       </section>
 

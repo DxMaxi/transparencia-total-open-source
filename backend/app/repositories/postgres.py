@@ -449,8 +449,9 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                   ) AS parliament_votes,
                   (
                     SELECT COUNT(*) FROM promises p
-                    WHERE p.status IN ('FULFILLED', 'IN_PROGRESS', 'BROKEN', 'ABANDONED')
-                      AND EXISTS (SELECT 1 FROM promise_evidence pe WHERE pe.promise_id = p.id)
+                    WHERE p.status IN (
+                      'UNVERIFIED', 'FULFILLED', 'IN_PROGRESS', 'BROKEN', 'ABANDONED'
+                    )
                       AND EXISTS (
                         SELECT 1
                         FROM government_programmes gp
@@ -463,7 +464,7 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                               programme_source.content_sha256
                           AND programme_archive.retrieval_url = programme_source.url
                       )
-                      AND EXISTS (
+                      AND (p.status = 'UNVERIFIED' OR EXISTS (
                         SELECT 1
                         FROM promise_evidence archived_proof
                         JOIN source_documents evidence_source
@@ -473,7 +474,7 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                         WHERE archived_proof.promise_id = p.id
                           AND evidence_archive.content_sha256 = evidence_source.content_sha256
                           AND evidence_archive.retrieval_url = evidence_source.url
-                      )
+                      ))
                       AND (
                         SELECT pr.decision::text FROM promise_reviews pr
                         WHERE pr.promise_id = p.id
@@ -956,7 +957,9 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                       ON selected_programme.id = p.programme_id
                     JOIN source_documents selected_programme_source
                       ON selected_programme_source.id = selected_programme.source_document_id
-                    WHERE p.status IN ('FULFILLED', 'IN_PROGRESS', 'BROKEN', 'ABANDONED')
+                    WHERE p.status IN (
+                        'UNVERIFIED', 'FULFILLED', 'IN_PROGRESS', 'BROKEN', 'ABANDONED'
+                    )
                       AND EXISTS (
                         SELECT 1
                         FROM source_archive_attestations selected_programme_archive
@@ -967,7 +970,7 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                           AND selected_programme_archive.retrieval_url =
                               selected_programme_source.url
                       )
-                      AND EXISTS (
+                      AND (p.status = 'UNVERIFIED' OR EXISTS (
                         SELECT 1
                         FROM promise_evidence selected_proof
                         JOIN source_documents selected_evidence_source
@@ -980,7 +983,7 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                               selected_evidence_source.content_sha256
                           AND selected_evidence_archive.retrieval_url =
                               selected_evidence_source.url
-                      )
+                      ))
                     ORDER BY p.area, p.title, p.id
                     LIMIT $1 OFFSET $2
                 )
@@ -1001,8 +1004,8 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                 FROM selected p
                 JOIN government_programmes gp ON gp.id = p.programme_id
                 JOIN source_documents programme_sd ON programme_sd.id = gp.source_document_id
-                JOIN promise_evidence pe ON pe.promise_id = p.id
-                JOIN source_documents evidence_sd ON evidence_sd.id = pe.source_document_id
+                LEFT JOIN promise_evidence pe ON pe.promise_id = p.id
+                LEFT JOIN source_documents evidence_sd ON evidence_sd.id = pe.source_document_id
                 LEFT JOIN laws l ON l.id = pe.law_id
                 WHERE EXISTS (
                     SELECT 1
@@ -1011,13 +1014,13 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                       AND programme_archive.content_sha256 = programme_sd.content_sha256
                       AND programme_archive.retrieval_url = programme_sd.url
                 )
-                  AND EXISTS (
+                  AND (pe.id IS NULL OR EXISTS (
                     SELECT 1
                     FROM source_archive_attestations evidence_archive
                     WHERE evidence_archive.source_document_id = evidence_sd.id
                       AND evidence_archive.content_sha256 = evidence_sd.content_sha256
                       AND evidence_archive.retrieval_url = evidence_sd.url
-                  )
+                  ))
                 ORDER BY p.area, p.title, pe.created_at, pe.id
                 """,
                 limit,
@@ -1041,15 +1044,16 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                     "evidence": [],
                 },
             )
-            promise["evidence"].append(
-                {
-                    "id": row["evidence_id"],
-                    "legal_reference": row["legal_reference"],
-                    "summary": row["evidence_summary"],
-                    "source": _source_from_row(row, "evidence_source_"),
-                    "published_at": row["evidence_published_at"],
-                }
-            )
+            if row["evidence_id"] is not None:
+                promise["evidence"].append(
+                    {
+                        "id": row["evidence_id"],
+                        "legal_reference": row["legal_reference"],
+                        "summary": row["evidence_summary"],
+                        "source": _source_from_row(row, "evidence_source_"),
+                        "published_at": row["evidence_published_at"],
+                    }
+                )
         return list(promises.values())
 
     async def get_public_investigator_dataset(self, *, limit: int) -> dict[str, Any]:
@@ -2172,13 +2176,24 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                 sensitivity = "PUBLIC_PERSONAL"
             elif entity_type == "PROMISE":
                 current = await connection.fetchrow(
-                    "SELECT id, status::text AS status FROM promises WHERE id = $1",
+                    """
+                    SELECT promise.id, promise.status::text AS status,
+                           programme.source_document_id
+                    FROM promises promise
+                    JOIN government_programmes programme
+                      ON programme.id = promise.programme_id
+                    WHERE promise.id = $1
+                    """,
                     entity_id,
                 )
-                evidence_exists = await connection.fetchval(
-                    "SELECT EXISTS (SELECT 1 FROM promise_evidence WHERE promise_id = $1)",
-                    entity_id,
-                )
+                evidence_exists = bool(current and current["status"] == "UNVERIFIED")
+                if not evidence_exists:
+                    evidence_exists = await connection.fetchval(
+                        "SELECT EXISTS (SELECT 1 FROM promise_evidence WHERE promise_id = $1)",
+                        entity_id,
+                    )
+                if current is not None:
+                    review_source_document_id = str(current["source_document_id"])
                 sensitivity = "PUBLIC_OFFICIAL"
             elif entity_type == "PUBLIC_CONTRACT":
                 current = await connection.fetchrow(
@@ -2261,9 +2276,9 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                     """
                     INSERT INTO promise_reviews
                         (id, promise_id, previous_status, proposed_status, decision,
-                         reviewer_alias, rationale, reviewed_at)
+                         reviewer_alias, rationale, source_document_id, reviewed_at)
                     VALUES ($1, $2, $3::"PromiseStatus", $3::"PromiseStatus",
-                            $4::"ReviewDecision", $5, $6, NOW())
+                            $4::"ReviewDecision", $5, $6, $7, NOW())
                     """,
                     _new_id("promise_review"),
                     entity_id,
@@ -2271,6 +2286,7 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                     "ACCEPT" if publish else "REJECT",
                     reviewer_alias,
                     rationale,
+                    review_source_document_id,
                 )
             elif entity_type in {
                 "PUBLIC_CONTRACT",
