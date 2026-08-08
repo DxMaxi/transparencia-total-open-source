@@ -76,18 +76,15 @@ cd backend
 python -m scripts.sync_parliament votes --legislature XVII --output ../data/votes.json
 ```
 
-Para uma persistência autorizada em staging, confirme primeiro o destino de `DATABASE_URL` e a
-raiz privada. Só depois execute:
+Para a persistência V4, confirme primeiro o destino de `DATABASE_URL`. Os bytes são guardados no
+arquivo content-addressed PostgreSQL antes da fotografia:
 
 ```bash
-ENVIRONMENT=staging \
-RAW_ARCHIVE_ROOT=/srv/transparencia-total-private/raw-evidence \
-python -m scripts.sync_parliament votes --legislature XVII --persist
+python -m scripts.sync_parliament_activity --legislature XVII
 ```
 
-O comando arquiva e atesta; não cria revisão humana nem publica posições. A proteção append-only
-das votações continua a recusar uma segunda fotografia enquanto não existir versionamento próprio
-dos eventos e posições.
+O comando arquiva e atesta; não cria revisão humana nem publica posições. Repetir a mesma fonte e
+parser é idempotente; uma correção exige nova versão e preserva a fotografia anterior.
 
 ## Arquivar um `SourceDocument` histórico
 
@@ -127,8 +124,10 @@ não substitui a revisão humana.
 
 ## Limite de produção
 
-O backend de ficheiros local não é apresentado como arquivo cívico durável de produção. Antes de
-recolha persistente em produção é necessário implementar e testar um adaptador de object storage
-privado com versionamento ou retenção WORM, controlo de acesso, encriptação, backups e política de
-retenção. A atestação foi desenhada para aceitar esse backend futuro sem alterar as regras de
-proveniência ou publicação.
+O backend de ficheiros local mantém-se reservado a desenvolvimento, testes e staging controlado.
+O circuito parlamentar da V4 conserva os bytes oficiais diretamente no PostgreSQL, por SHA-256,
+antes de criar a fotografia normalizada. Esse arquivo só é adequado a produção quando a base tem
+armazenamento persistente, backups testados, encriptação, controlo de acesso e política de retenção;
+um plano gratuito com disco efémero não cumpre este gate. Para volumes maiores, object storage
+privado com versionamento ou retenção WORM continua a ser a evolução recomendada. Nenhum destes
+backends altera as regras de proveniência, revisão ou publicação.

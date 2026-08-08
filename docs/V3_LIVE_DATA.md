@@ -33,10 +33,8 @@ pela última revisão; contratos, entidades e relações exigem também `VERIFIE
 
 ```bash
 cd backend
-ENVIRONMENT=staging RAW_ARCHIVE_ROOT=/caminho/privado/fora-do-repositorio \
-  python -m scripts.sync_parliament deputies --legislature XVII --persist
-ENVIRONMENT=staging RAW_ARCHIVE_ROOT=/caminho/privado/fora-do-repositorio \
-  python -m scripts.sync_parliament votes --legislature XVII --persist
+python -m scripts.sync_parliament deputies --legislature XVII --persist
+python -m scripts.sync_parliament_activity --legislature XVII
 python -m scripts.sync_base_contracts \
   --year 2026 --output /caminho/privado/base-review.json
 ```
@@ -45,21 +43,17 @@ O exemplo BASE acima é apenas uma pré-visualização. Uma persistência autori
 privado fora do repositório, `ENVIRONMENT=staging`, `RAW_ARCHIVE_ROOT`, `--persist` e
 `--confirm-staging`; consulte `V4_BASE_STAGING.md` antes da operação.
 
-Nas sincronizações parlamentares, confirme primeiro o destino de `DATABASE_URL` e configure uma
-raiz absoluta, privada e exterior ao repositório. Inspecione o documento, a atestação, o objeto, o
-hash, as contagens e os avisos em `source_documents`, `source_archive_attestations` e `sync_runs`.
-`scripts.review_publication --confirm-source-reviewed` aplica-se apenas aos tipos de entidade
-explicitamente suportados; não existe nesta versão um comando para aprovar uma fotografia de
-votações.
+Nas sincronizações parlamentares, confirme primeiro o destino de `DATABASE_URL`. A V4 guarda os
+bytes novos no arquivo PostgreSQL. Inspecione o documento, a atestação, os dois hashes, contagens e
+avisos com `scripts.review_parliament_activity`; esse mesmo comando publica ou retira atividade e
+votos com confirmação explícita.
 
 Use `python -m scripts.inspect_source_archive --source-document-id SOURCE_ID` para verificar
 metadados, tamanho e SHA-256 sem ler o conteúdo para a saída e sem escrever na base de dados.
 
-Para a fotografia de votações, use `python -m scripts.inspect_parliament_votes --legislature XVII`.
-O comando é exclusivamente de leitura e nunca cria uma decisão. Até existir versionamento
-append-only, a primeira fotografia usa apenas inserções e uma segunda persistência de votos é
-recusada antes de alterar eventos ou posições. Tanto o perfil como o modo Investigador exigem a
-última revisão positiva ligada exatamente ao documento-fonte do voto.
+`inspect_parliament_votes` permanece apenas para fotografias legadas. O caminho V4 é versionado,
+idempotente e append-only. Tanto o perfil como o modo Investigador exigem a última revisão positiva
+ligada exatamente ao manifesto da fotografia do voto.
 
 O comando BASE produz sempre um JSON privado de pré-visualização/revisão. Na V4.2, `--persist` só é
 aceite com confirmação explícita de staging, snapshot completo e arquivo prévio. A carga cria

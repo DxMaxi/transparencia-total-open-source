@@ -4,8 +4,8 @@
 
 - Vercel: Next.js PWA e CDN.
 - Render ou Fly.io: FastAPI.
-- PostgreSQL gerido: dados normalizados, auditoria e push.
-- Object storage privado e versionado/WORM: documentos brutos; obrigatório antes de produção real.
+- PostgreSQL gerido: dados normalizados, auditoria e arquivo privado content-addressed dos bytes.
+- Object storage privado e versionado/WORM: evolução recomendada quando o volume exigir separação.
 - Scheduler/worker: sincronizações, resumos e alertas, separado da API pública.
 
 ## Preparação
@@ -16,32 +16,35 @@
 4. Crie `ADMIN_API_KEY` aleatória com pelo menos 32 bytes.
 5. Defina backups, retenção e alertas do PostgreSQL.
 6. Não ative IA antes de existir fila de revisão.
-7. Não ative a V4.1/V4.2 em produção até existir um backend externo de arquivo e todas as fontes
-   publicadas estarem atestadas e verificadas.
+7. Não ative a V4 em produção sem backups restauráveis, controlo de acesso, capacidade suficiente
+   para `raw_source_objects` e todas as fontes publicadas atestadas e verificadas.
 
-## Porta de implantação V4.1/V4.2
+## Porta de implantação V4
 
 `RAW_ARCHIVE_ROOT` configura apenas o backend local de desenvolvimento, testes e staging
 controlado. Não o aponte para o sistema de ficheiros efémero do Render, Fly.io, Vercel, CI ou para
 uma pasta servida pela aplicação. O caminho tem de ser absoluto, privado e exterior ao
 repositório.
 
-As projeções públicas recusam qualquer facto cuja fonte não tenha uma atestação coerente. Os
-snapshots BASE da V4.2 são adicionalmente privados, append-only e sem promoção pública automática.
+As projeções públicas recusam qualquer facto cuja fonte não tenha uma atestação coerente. Os bytes
+dos fluxos V4 são guardados em `raw_source_objects` com hash, tamanho e triggers append-only. Os
+snapshots BASE da V4.2 são adicionalmente privados e sem promoção pública automática.
 Aplicar a migração e publicar o código antes de arquivar as fontes históricas pode, por desenho,
 fazer os dados atuais passar para `EMPTY`/`UNAVAILABLE`. Isso é preferível a mostrar prova não
 conservada, mas exige um rollout deliberado:
 
-1. implementar o adaptador de object storage privado com versionamento ou retenção WORM;
-2. ensaiar a migração e os triggers numa cópia restaurável da base;
+1. ensaiar a migração e os triggers numa cópia restaurável da base;
+2. confirmar backups, restauração, acesso restrito e alertas de capacidade do arquivo PostgreSQL;
 3. arquivar cada `SourceDocument` histórico apenas quando os bytes ainda coincidirem exatamente;
 4. tratar fontes alteradas como novas versões, nunca como substituições do documento anterior;
-5. executar `inspect_source_archive` e reconciliar contagens, hashes e objetos indisponíveis;
-6. executar `inspect_base_staging` para cada ano BASE carregado, sem exportar nomes ou HMAC;
-7. implementar e rever separadamente a promoção humana BASE antes de expor qualquer contrato;
-8. só depois promover a versão da API, mantendo as revisões humanas como circuito independente.
+5. executar verificações de arquivo e reconciliar contagens, hashes e objetos indisponíveis;
+6. executar a sincronização parlamentar privada e rever os dois hashes e quatro contagens;
+7. executar `inspect_base_staging` para cada ano BASE carregado, sem exportar nomes ou HMAC;
+8. rever separadamente cada projeção antes de promover a API e o frontend.
 
-Enquanto estes passos não forem concluídos, a V4.1/V4.2 deve permanecer fora de produção.
+Enquanto estes passos não forem concluídos, a release candidate V4 deve permanecer fora de
+produção. Object storage WORM continua recomendado como hardening posterior, sem autorizar o uso
+de disco efémero como alternativa.
 
 ## Vercel
 
@@ -99,5 +102,5 @@ Uma falha deve marcar `SyncRun=FAILED/PARTIAL`, alertar a equipa e manter a últ
 - Push testado com subscrição, envio e remoção.
 - Migrações aplicadas e backups restauráveis testados.
 - URLs oficiais, hashes e datas visíveis nos dados reais.
-- Dados de demonstração removidos ou mantidos numa rota explicitamente separada.
+- Dados de demonstração ausentes do domínio oficial (`ENABLE_DEMO_DATA=false` ou build de produção).
 - Política de correções e contacto público disponíveis.

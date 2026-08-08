@@ -111,3 +111,4 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER "source_archive_attestations_append_only"
 BEFORE UPDATE OR DELETE ON "source_archive_attestations"
 FOR EACH ROW EXECUTE FUNCTION "reject_source_archive_attestation_mutation"();
+

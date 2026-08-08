@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { LandmarkIcon, MenuIcon, SearchIcon } from "@/components/icons";
+import { LandmarkIcon, MenuIcon } from "@/components/icons";
 
 const navItems = [
   { href: "/investigador", label: "Investigador" },
   { href: "/guia-cidadao", label: "Guia do Cidadão" },
   { href: "/promessas", label: "Promessómetro" },
   { href: "/politicos", label: "Políticos" },
+  { href: "/atividade-parlamentar", label: "Parlamento" },
   { href: "/metodologia", label: "Metodologia" },
 ];
 
@@ -40,9 +41,6 @@ export function SiteHeader() {
           </nav>
 
           <div className="header-actions">
-            <button className="icon-button" type="button" aria-label="Pesquisar">
-              <SearchIcon />
-            </button>
             <button
               className="icon-button mobile-menu-button"
               type="button"

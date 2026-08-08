@@ -9,7 +9,7 @@ def test_health_contract() -> None:
         response = client.get("/api/v1/health")
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
-    assert response.json()["version"] == "0.3.0"
+    assert response.json()["version"] == "0.4.0"
 
 
 def test_push_broadcast_requires_admin_configuration() -> None:

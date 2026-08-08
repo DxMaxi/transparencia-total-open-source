@@ -15,7 +15,6 @@ from app.repositories.postgres import (
     PostgresRepository,
     _archive_attestation_sha256,
 )
-from app.services.raw_archive import RawArchiveConfigurationError
 from scripts import archive_source_document, sync_parliament
 
 SOURCE_ID = "source-votes-1"
@@ -214,7 +213,7 @@ def test_source_document_conflict_uses_a_fresh_read_without_mutation() -> None:
     assert connection.queries[1].lstrip().startswith("SELECT id")
 
 
-def test_parliament_persistence_requires_archive_before_database_access() -> None:
+def test_deputy_persistence_requires_archive_before_database_access() -> None:
     repository = PostgresRepository.__new__(PostgresRepository)
     repository.pool = None
     dataset = ParliamentDataset(
@@ -227,7 +226,7 @@ def test_parliament_persistence_requires_archive_before_database_access() -> Non
         asyncio.run(
             repository.store_parliament_dataset(
                 dataset,
-                kind="votes",
+                kind="deputies",
                 code_version="v12",
             )
         )
@@ -271,7 +270,7 @@ def test_archive_cli_rejects_non_staging_before_repository_access(
         )
 
 
-def test_parliament_persist_rejects_missing_archive_before_network(
+def test_legacy_vote_persistence_redirects_to_versioned_pipeline_before_network(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from app.core.config import Settings
@@ -282,7 +281,7 @@ def test_parliament_persist_rejects_missing_archive_before_network(
         lambda: Settings(environment="test", raw_archive_root=None),
     )
 
-    with pytest.raises(RawArchiveConfigurationError, match="RAW_ARCHIVE_ROOT"):
+    with pytest.raises(ValueError, match="sync_parliament_activity"):
         asyncio.run(sync_parliament.collect("votes", "XVII", persist=True))
 
 

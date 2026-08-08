@@ -4,7 +4,7 @@
 
 | Fonte | Estado técnico | Implementado | Limite conhecido |
 |---|---|---|---|
-| Assembleia da República | Funcional | Descoberta de catálogos, JSON, deputados e votações | Estruturas variam por legislatura; nem toda votação é nominal |
+| Assembleia da República | Release candidate | Catálogos, bytes PostgreSQL, deputados, reuniões observadas, iniciativas, votações, snapshots e revisão/publicação fail-closed | Reuniões são as referidas nos eventos de votação, não a agenda completa; nem toda votação é nominal |
 | Diário da República | Funcional em staging | Extração por URL ELI, bytes exactos, arquivo atestado e snapshot privado append-only | Sem promoção pública; feed RSS só após confirmação documental |
 | Entidade para a Transparência | Colector funcional; staging preparado | Índice público com bytes exactos e schema privado de metadados com revisão jurídica obrigatória | A escrita operacional no staging ainda exige ensaio controlado; não recolhe declarações |
 | Portal BASE / dados.gov.pt | Funcional em staging | Descoberta anual, JSON/XML/ZIP, arquivo, lote append-only e candidatos exactos apenas em ficheiro privado | Sem promoção pública; API directa de grande volume pode exigir registo e autorização |
@@ -35,11 +35,14 @@ Catálogo: <https://www.parlamento.pt/Cidadania/Paginas/DadosAbertos.aspx>
 
 O portal fornece XML e JSON e organiza ficheiros por catálogo e legislatura. O colector descobre o
 recurso oficial, valida o anfitrião após redireccionamentos e calcula o hash antes da normalização.
-Aliases de campo toleram estruturas históricas, mas uma mudança que produza zero registos gera aviso
-e não promove uma tabela vazia como verdade.
+O pipeline rejeita fotografias sem reuniões observáveis, iniciativas ou votações e impõe um limite
+de dimensão. A publicação exige arquivo atestado, SHA-256 da fonte, SHA-256 normalizado, quatro
+contagens e revisão humana. Uma nova recolha não altera a fotografia anterior.
 
 Posições de grupos parlamentares nunca são atribuídas automaticamente a deputados. Quando a fonte
-não contém detalhe nominal estruturado, a cobertura é apresentada como “dados indisponíveis”.
+não contém detalhe nominal estruturado, o ator permanece `UNKNOWN`. Uma votação associada a mais
+de uma iniciativa não é ligada arbitrariamente a uma delas. As reuniões expostas são observações
+dos campos `reuniao`, `tipoReuniao` e `data` da votação, não uma afirmação de agenda completa.
 
 ## Diário da República
 

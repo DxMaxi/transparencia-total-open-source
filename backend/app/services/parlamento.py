@@ -69,6 +69,25 @@ def _walk(value: Any) -> Iterator[dict[str, Any]]:
             yield from _walk(child)
 
 
+def _walk_with_initiative(
+    value: Any,
+    initiative_number: str | None = None,
+) -> Iterator[tuple[dict[str, Any], str | None]]:
+    """Percorre o JSON mantendo apenas a chave oficial da iniciativa ascendente."""
+
+    if isinstance(value, dict):
+        current_number = (
+            _as_text(_field(value, "IniNr", "IniciativaNumero", "initiativeNumber"))
+            or initiative_number
+        )
+        yield value, current_number
+        for child in value.values():
+            yield from _walk_with_initiative(child, current_number)
+    elif isinstance(value, list):
+        for child in value:
+            yield from _walk_with_initiative(child, initiative_number)
+
+
 def _field(record: dict[str, Any], *aliases: str) -> Any | None:
     index = {_normalise_key(str(key)): value for key, value in record.items()}
     for alias in aliases:
@@ -345,8 +364,9 @@ class ParlamentoCollector:
             content_sha256=document_sha256,
         )
         events: dict[str, VoteEvent] = {}
+        initiative_numbers: dict[str, set[str]] = {}
 
-        for record in _walk(payload):
+        for record, inherited_initiative_number in _walk_with_initiative(payload):
             result = _as_text(_field(record, "VotacaoResultado", "Resultado", "result"))
             vote_id = _as_text(_field(record, "VotacaoId", "idVotacao", "voteId", "VotId", "evtId"))
             if not vote_id and result and _field(record, "reuniao") is not None:
@@ -367,10 +387,10 @@ class ParlamentoCollector:
             is_nominal = bool(records) and all(
                 item.actor_type is VoteActorType.PERSON for item in records
             )
-            initiative = _as_text(
-                _field(record, "IniNr", "IniciativaNumero", "initiativeNumber", "IniDescTipo")
-            )
-            events[vote_id] = VoteEvent(
+            initiative = inherited_initiative_number
+            if initiative:
+                initiative_numbers.setdefault(vote_id, set()).add(initiative)
+            candidate = VoteEvent(
                 source_id=vote_id,
                 title=title or initiative or f"Votação {vote_id}",
                 voted_at=_parse_date(date_value),
@@ -379,6 +399,30 @@ class ParlamentoCollector:
                 is_nominal=is_nominal,
                 records=records,
                 source=source,
+            )
+
+            previous = events.get(vote_id)
+            if previous is None or (
+                len(candidate.records),
+                candidate.voted_at is not None,
+                candidate.result is not None,
+                candidate.title != f"Votação {vote_id}",
+            ) > (
+                len(previous.records),
+                previous.voted_at is not None,
+                previous.result is not None,
+                previous.title != f"Votação {vote_id}",
+            ):
+                events[vote_id] = candidate
+
+        for vote_id, event in list(events.items()):
+            observed_numbers = initiative_numbers.get(vote_id, set())
+            events[vote_id] = event.model_copy(
+                update={
+                    "initiative_number": (
+                        next(iter(observed_numbers)) if len(observed_numbers) == 1 else None
+                    )
+                }
             )
 
         return sorted(

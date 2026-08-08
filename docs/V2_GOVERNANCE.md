@@ -100,3 +100,4 @@ notas de revisão e segredos. Limites, paginação, licença e data de geração
 - revisão periódica de fontes, allowlists, taxonomia e modelos;
 - aconselhamento jurídico independente sobre RGPD, direitos de personalidade, segredo de justiça,
   reutilização de informação pública e responsabilidade editorial.
+

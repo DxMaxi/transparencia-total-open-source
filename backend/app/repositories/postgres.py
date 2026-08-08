@@ -6,6 +6,7 @@ import unicodedata
 import uuid
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import asyncpg
 from pydantic import HttpUrl
@@ -105,6 +106,29 @@ def _warning_count(value: Any) -> int:
     return 1 if value else 0
 
 
+def _asyncpg_connection_options(database_url: str) -> tuple[str, dict[str, str]]:
+    """Traduz opções específicas do Prisma para parâmetros aceites pelo asyncpg.
+
+    O Prisma usa ``?schema=...`` no URL. O asyncpg interpreta parâmetros URI
+    desconhecidos como definições PostgreSQL e tentaria executar
+    ``SET schema = ...``, que não existe. Removemos essa opção do DSN e
+    preservamos a intenção através de ``search_path``.
+    """
+    parsed = urlsplit(database_url)
+    query: list[tuple[str, str]] = []
+    schema: str | None = None
+
+    for key, value in parse_qsl(parsed.query, keep_blank_values=True):
+        if key.casefold() == "schema":
+            schema = value.strip() or None
+        else:
+            query.append((key, value))
+
+    asyncpg_url = urlunsplit(parsed._replace(query=urlencode(query)))
+    server_settings = {"search_path": schema} if schema is not None else {}
+    return asyncpg_url, server_settings
+
+
 def _database_timestamp(value: datetime | None) -> datetime | None:
     """Normaliza datas para as colunas PostgreSQL TIMESTAMP(3) geridas pelo Prisma."""
     if value is None or value.tzinfo is None:
@@ -159,11 +183,15 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
         if self.settings.database_url is None:
             logger.warning("database_not_configured")
             return
+        database_url, server_settings = _asyncpg_connection_options(
+            self.settings.database_url.get_secret_value()
+        )
         self.pool = await asyncpg.create_pool(
-            self.settings.database_url.get_secret_value(),
+            database_url,
             min_size=1,
             max_size=5,
             command_timeout=20,
+            server_settings=server_settings,
         )
 
     async def close(self) -> None:
@@ -275,6 +303,9 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
     async def get_public_data_status(self) -> dict[str, Any]:
         empty_counts = {
             "politicians": 0,
+            "parliament_sessions": 0,
+            "parliament_initiatives": 0,
+            "parliament_votes": 0,
             "promises": 0,
             "contracts": 0,
             "relationships": 0,
@@ -283,6 +314,7 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
         }
         canonical_sources = (
             "PARLIAMENT_DEPUTIES",
+            "PARLIAMENT_ACTIVITY",
             "PARLIAMENT_VOTES",
             "BASE_CONTRACTS",
             "DRE",
@@ -303,39 +335,118 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
         async with self.pool.acquire() as connection:
             count_row = await connection.fetchrow(
                 """
+                WITH reviewed_people_sources AS (
+                  SELECT membership.source_document_id, membership.legislature,
+                         MAX(latest_review.reviewed_at) AS fully_reviewed_at,
+                         source.retrieved_at
+                  FROM parliamentary_membership_snapshots membership
+                  JOIN source_documents source
+                    ON source.id = membership.source_document_id
+                  JOIN LATERAL (
+                    SELECT review.publishable, review.reviewed_at
+                    FROM data_publication_reviews review
+                    WHERE review.entity_type = 'PERSON'
+                      AND review.entity_id = membership.person_id
+                      AND review.source_document_id = membership.source_document_id
+                    ORDER BY review.reviewed_at DESC, review.id DESC
+                    LIMIT 1
+                  ) latest_review ON latest_review.publishable = TRUE
+                  WHERE source.publisher = 'PARLIAMENT'
+                    AND EXISTS (
+                      SELECT 1 FROM source_archive_attestations archive
+                      WHERE archive.source_document_id = source.id
+                        AND archive.content_sha256 = source.content_sha256
+                        AND archive.retrieval_url = source.url
+                    )
+                  GROUP BY membership.source_document_id, membership.legislature,
+                           source.retrieved_at
+                  HAVING COUNT(*) = (
+                    SELECT COUNT(*)
+                    FROM parliamentary_membership_snapshots candidate
+                    WHERE candidate.source_document_id = membership.source_document_id
+                      AND candidate.legislature = membership.legislature
+                  )
+                ),
+                published_people_sources AS (
+                  SELECT DISTINCT ON (legislature) source_document_id, legislature
+                  FROM reviewed_people_sources
+                  ORDER BY legislature, fully_reviewed_at DESC,
+                           retrieved_at DESC, source_document_id DESC
+                ),
+                published_activity_snapshots AS (
+                  SELECT DISTINCT ON (snapshot.legislature) snapshot.id
+                  FROM parliament_activity_snapshots snapshot
+                  JOIN source_documents source
+                    ON source.id = snapshot.source_document_id
+                  JOIN LATERAL (
+                    SELECT review.publishable, review.reviewed_at
+                    FROM data_publication_reviews review
+                    WHERE review.entity_type = 'PARLIAMENT_ACTIVITY_SNAPSHOT'
+                      AND review.entity_id = snapshot.id
+                      AND review.source_document_id = source.id
+                    ORDER BY review.reviewed_at DESC, review.id DESC
+                    LIMIT 1
+                  ) latest_review ON latest_review.publishable = TRUE
+                  WHERE source.publisher = 'PARLIAMENT'
+                    AND EXISTS (
+                      SELECT 1 FROM source_archive_attestations archive
+                      WHERE archive.source_document_id = source.id
+                        AND archive.content_sha256 = source.content_sha256
+                        AND archive.retrieval_url = source.url
+                    )
+                  ORDER BY snapshot.legislature, latest_review.reviewed_at DESC,
+                           snapshot.collected_at DESC, snapshot.id DESC
+                ),
+                published_vote_snapshots AS (
+                  SELECT DISTINCT ON (snapshot.legislature) snapshot.id
+                  FROM parliament_activity_snapshots snapshot
+                  JOIN source_documents source
+                    ON source.id = snapshot.source_document_id
+                  JOIN LATERAL (
+                    SELECT review.publishable, review.reviewed_at
+                    FROM data_publication_reviews review
+                    WHERE review.entity_type = 'PARLIAMENT_VOTES_SNAPSHOT'
+                      AND review.entity_id = snapshot.id
+                      AND review.source_document_id = source.id
+                    ORDER BY review.reviewed_at DESC, review.id DESC
+                    LIMIT 1
+                  ) latest_review ON latest_review.publishable = TRUE
+                  WHERE source.publisher = 'PARLIAMENT'
+                    AND EXISTS (
+                      SELECT 1 FROM source_archive_attestations archive
+                      WHERE archive.source_document_id = source.id
+                        AND archive.content_sha256 = source.content_sha256
+                        AND archive.retrieval_url = source.url
+                    )
+                  ORDER BY snapshot.legislature, latest_review.reviewed_at DESC,
+                           snapshot.collected_at DESC, snapshot.id DESC
+                )
                 SELECT
                   (
-                    SELECT COUNT(*) FROM people p
-                    WHERE p.active = TRUE
-                      AND EXISTS (
-                        SELECT 1 FROM parliamentary_membership_snapshots snapshot
-                        WHERE snapshot.person_id = p.id
-                      )
-                      AND (
-                        SELECT dpr.publishable
-                        FROM data_publication_reviews dpr
-                        WHERE dpr.entity_type = 'PERSON'
-                          AND dpr.entity_id = p.id
-                          AND dpr.source_document_id = (
-                            SELECT snapshot.source_document_id
-                            FROM parliamentary_membership_snapshots snapshot
-                            WHERE snapshot.person_id = p.id
-                            ORDER BY snapshot.observed_at DESC, snapshot.id DESC
-                            LIMIT 1
-                          )
-                          AND EXISTS (
-                            SELECT 1
-                            FROM source_documents reviewed_source
-                            JOIN source_archive_attestations reviewed_archive
-                              ON reviewed_archive.source_document_id = reviewed_source.id
-                            WHERE reviewed_source.id = dpr.source_document_id
-                              AND reviewed_archive.content_sha256 =
-                                  reviewed_source.content_sha256
-                              AND reviewed_archive.retrieval_url = reviewed_source.url
-                          )
-                        ORDER BY dpr.reviewed_at DESC, dpr.id DESC LIMIT 1
-                      ) = TRUE
+                    SELECT COUNT(DISTINCT membership.person_id)
+                    FROM parliamentary_membership_snapshots membership
+                    JOIN published_people_sources source
+                      ON source.source_document_id = membership.source_document_id
+                     AND source.legislature = membership.legislature
                   ) AS politicians,
+                  (
+                    SELECT COUNT(*) FROM parliamentary_sessions session
+                    WHERE session.snapshot_id IN (
+                      SELECT id FROM published_activity_snapshots
+                    )
+                  ) AS parliament_sessions,
+                  (
+                    SELECT COUNT(*) FROM parliamentary_initiatives initiative
+                    WHERE initiative.snapshot_id IN (
+                      SELECT id FROM published_activity_snapshots
+                    )
+                  ) AS parliament_initiatives,
+                  (
+                    SELECT COUNT(*) FROM vote_events event
+                    WHERE event.snapshot_id IN (
+                      SELECT id FROM published_vote_snapshots
+                    )
+                  ) AS parliament_votes,
                   (
                     SELECT COUNT(*) FROM promises p
                     WHERE p.status IN ('FULFILLED', 'IN_PROGRESS', 'BROKEN', 'ABANDONED')
@@ -507,8 +618,60 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
         async with self.pool.acquire() as connection:
             rows = await connection.fetch(
                 """
+                WITH reviewed_sources AS (
+                    SELECT membership.source_document_id, membership.legislature,
+                           MAX(latest_review.reviewed_at) AS fully_reviewed_at,
+                           source.retrieved_at
+                    FROM parliamentary_membership_snapshots membership
+                    JOIN source_documents source
+                      ON source.id = membership.source_document_id
+                    JOIN LATERAL (
+                        SELECT review.publishable, review.reviewed_at
+                        FROM data_publication_reviews review
+                        WHERE review.entity_type = 'PERSON'
+                          AND review.entity_id = membership.person_id
+                          AND review.source_document_id = membership.source_document_id
+                        ORDER BY review.reviewed_at DESC, review.id DESC
+                        LIMIT 1
+                    ) latest_review ON latest_review.publishable = TRUE
+                    WHERE source.publisher = 'PARLIAMENT'
+                      AND EXISTS (
+                          SELECT 1 FROM source_archive_attestations archive
+                          WHERE archive.source_document_id = source.id
+                            AND archive.content_sha256 = source.content_sha256
+                            AND archive.retrieval_url = source.url
+                      )
+                    GROUP BY membership.source_document_id, membership.legislature,
+                             source.retrieved_at
+                    HAVING COUNT(*) = (
+                        SELECT COUNT(*)
+                        FROM parliamentary_membership_snapshots candidate
+                        WHERE candidate.source_document_id = membership.source_document_id
+                          AND candidate.legislature = membership.legislature
+                    )
+                ),
+                latest_sources AS (
+                    SELECT DISTINCT ON (legislature)
+                           source_document_id, legislature, fully_reviewed_at
+                    FROM reviewed_sources
+                    ORDER BY legislature, fully_reviewed_at DESC,
+                             retrieved_at DESC, source_document_id DESC
+                ),
+                selected_memberships AS (
+                    SELECT membership.*,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY membership.person_id
+                               ORDER BY membership.observed_at DESC,
+                                        membership.id DESC
+                           ) AS membership_rank
+                    FROM parliamentary_membership_snapshots membership
+                    JOIN latest_sources selected
+                      ON selected.source_document_id = membership.source_document_id
+                     AND selected.legislature = membership.legislature
+                )
                 SELECT p.id, p.slug,
-                       COALESCE(p.parliamentary_name, p.full_name) AS name,
+                       COALESCE(ms.parliamentary_name,
+                                p.parliamentary_name, p.full_name) AS name,
                        p.role::text AS role, p.photo_url,
                        COALESCE(pa.name, 'Sem filiação indicada') AS party,
                        COALESCE(pa.short_name, '—') AS party_short,
@@ -519,13 +682,8 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                        sd.url AS source_url, sd.retrieved_at AS source_retrieved_at,
                        sd.content_sha256 AS source_sha256
                 FROM people p
-                JOIN LATERAL (
-                    SELECT snapshot.party_id, snapshot.constituency, snapshot.legislature,
-                           snapshot.source_document_id
-                    FROM parliamentary_membership_snapshots snapshot
-                    WHERE snapshot.person_id = p.id
-                    ORDER BY snapshot.observed_at DESC, snapshot.id DESC LIMIT 1
-                ) ms ON TRUE
+                JOIN selected_memberships ms
+                  ON ms.person_id = p.id AND ms.membership_rank = 1
                 JOIN LATERAL (
                     SELECT dpr.publishable, dpr.reviewed_at
                     FROM data_publication_reviews dpr
@@ -536,8 +694,7 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                 ) review ON review.publishable = TRUE
                 JOIN source_documents sd ON sd.id = ms.source_document_id
                 LEFT JOIN parties pa ON pa.id = ms.party_id
-                WHERE p.active = TRUE
-                  AND EXISTS (
+                WHERE EXISTS (
                       SELECT 1
                       FROM source_archive_attestations profile_archive
                       WHERE profile_archive.source_document_id = sd.id
@@ -585,6 +742,32 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
         async with self.pool.acquire() as connection:
             attendance = await connection.fetchrow(
                 """
+                WITH latest_published_vote_snapshot AS (
+                    SELECT snapshot.id
+                    FROM parliament_activity_snapshots snapshot
+                    JOIN source_documents source
+                      ON source.id = snapshot.source_document_id
+                    JOIN LATERAL (
+                        SELECT review.publishable, review.reviewed_at
+                        FROM data_publication_reviews review
+                        WHERE review.entity_type = 'PARLIAMENT_VOTES_SNAPSHOT'
+                          AND review.entity_id = snapshot.id
+                          AND review.source_document_id = source.id
+                        ORDER BY review.reviewed_at DESC, review.id DESC
+                        LIMIT 1
+                    ) latest_review ON latest_review.publishable = TRUE
+                    WHERE snapshot.legislature = $2
+                      AND source.publisher = 'PARLIAMENT'
+                      AND EXISTS (
+                          SELECT 1 FROM source_archive_attestations archive
+                          WHERE archive.source_document_id = source.id
+                            AND archive.content_sha256 = source.content_sha256
+                            AND archive.retrieval_url = source.url
+                      )
+                    ORDER BY latest_review.reviewed_at DESC,
+                             snapshot.collected_at DESC, snapshot.id DESC
+                    LIMIT 1
+                )
                 SELECT COUNT(*) FILTER (WHERE ar.present IS NOT NULL) AS total,
                        COUNT(*) FILTER (WHERE ar.present = TRUE) AS present,
                        (
@@ -592,18 +775,10 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                            FROM vote_records available_record
                            JOIN vote_events available_event
                              ON available_event.id = available_record.vote_event_id
+                           JOIN latest_published_vote_snapshot published_snapshot
+                             ON published_snapshot.id = available_event.snapshot_id
                            JOIN source_documents available_source
                              ON available_source.id = available_event.source_document_id
-                           JOIN LATERAL (
-                               SELECT review.publishable
-                               FROM data_publication_reviews review
-                               WHERE review.entity_type = 'PARLIAMENT_VOTES_SNAPSHOT'
-                                 AND review.entity_id = available_event.source_document_id
-                                 AND review.source_document_id = available_event.source_document_id
-                               ORDER BY review.reviewed_at DESC, review.id DESC
-                               LIMIT 1
-                           ) latest_snapshot_review
-                             ON latest_snapshot_review.publishable = TRUE
                            WHERE available_record.person_id = $1
                              AND available_record.actor_type = 'PERSON'
                              AND available_record.choice IN (
@@ -639,9 +814,36 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                   )
                 """,
                 row["id"],
+                row["legislature"],
             )
             vote_rows = await connection.fetch(
                 """
+                WITH latest_published_vote_snapshot AS (
+                    SELECT snapshot.id
+                    FROM parliament_activity_snapshots snapshot
+                    JOIN source_documents source
+                      ON source.id = snapshot.source_document_id
+                    JOIN LATERAL (
+                        SELECT review.publishable, review.reviewed_at
+                        FROM data_publication_reviews review
+                        WHERE review.entity_type = 'PARLIAMENT_VOTES_SNAPSHOT'
+                          AND review.entity_id = snapshot.id
+                          AND review.source_document_id = source.id
+                        ORDER BY review.reviewed_at DESC, review.id DESC
+                        LIMIT 1
+                    ) latest_review ON latest_review.publishable = TRUE
+                    WHERE snapshot.legislature = $2
+                      AND source.publisher = 'PARLIAMENT'
+                      AND EXISTS (
+                          SELECT 1 FROM source_archive_attestations archive
+                          WHERE archive.source_document_id = source.id
+                            AND archive.content_sha256 = source.content_sha256
+                            AND archive.retrieval_url = source.url
+                      )
+                    ORDER BY latest_review.reviewed_at DESC,
+                             snapshot.collected_at DESC, snapshot.id DESC
+                    LIMIT 1
+                )
                 SELECT vr.id, ve.title, ve.voted_at, vr.choice::text AS choice,
                        COALESCE(ve.result, 'Resultado não indicado na fonte') AS result,
                        COALESCE(ve.initiative_number, 'Sem número indicado') AS initiative_number,
@@ -651,16 +853,9 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                        sd.content_sha256 AS source_sha256
                 FROM vote_records vr
                 JOIN vote_events ve ON ve.id = vr.vote_event_id
+                JOIN latest_published_vote_snapshot published_snapshot
+                  ON published_snapshot.id = ve.snapshot_id
                 JOIN source_documents sd ON sd.id = ve.source_document_id
-                JOIN LATERAL (
-                    SELECT review.publishable
-                    FROM data_publication_reviews review
-                    WHERE review.entity_type = 'PARLIAMENT_VOTES_SNAPSHOT'
-                      AND review.entity_id = ve.source_document_id
-                      AND review.source_document_id = ve.source_document_id
-                    ORDER BY review.reviewed_at DESC, review.id DESC
-                    LIMIT 1
-                ) latest_snapshot_review ON latest_snapshot_review.publishable = TRUE
                 WHERE vr.person_id = $1 AND vr.actor_type = 'PERSON'
                   AND ve.is_nominal = TRUE
                   AND vr.choice IN ('FAVOR', 'AGAINST', 'ABSTENTION', 'ABSENT')
@@ -677,6 +872,7 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                 LIMIT 50
                 """,
                 row["id"],
+                row["legislature"],
             )
             declaration = await connection.fetchrow(
                 """
@@ -917,6 +1113,32 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
             )
             comparison_rows = await connection.fetch(
                 """
+                WITH published_vote_snapshots AS (
+                    SELECT DISTINCT ON (snapshot.legislature)
+                           snapshot.id, snapshot.legislature
+                    FROM parliament_activity_snapshots snapshot
+                    JOIN source_documents source
+                      ON source.id = snapshot.source_document_id
+                    JOIN LATERAL (
+                        SELECT review.publishable, review.reviewed_at
+                        FROM data_publication_reviews review
+                        WHERE review.entity_type = 'PARLIAMENT_VOTES_SNAPSHOT'
+                          AND review.entity_id = snapshot.id
+                          AND review.source_document_id = source.id
+                        ORDER BY review.reviewed_at DESC, review.id DESC
+                        LIMIT 1
+                    ) latest_review ON latest_review.publishable = TRUE
+                    WHERE source.publisher = 'PARLIAMENT'
+                      AND EXISTS (
+                          SELECT 1
+                          FROM source_archive_attestations archive
+                          WHERE archive.source_document_id = source.id
+                            AND archive.content_sha256 = source.content_sha256
+                            AND archive.retrieval_url = source.url
+                      )
+                    ORDER BY snapshot.legislature, latest_review.reviewed_at DESC,
+                             snapshot.collected_at DESC, snapshot.id DESC
+                )
                 SELECT c.id, c.outcome::text, c.rationale, c.methodology_version,
                        ps.title AS statement_title, ps.statement_text, ps.stated_at,
                        COALESCE(p.parliamentary_name, p.full_name) AS speaker,
@@ -952,19 +1174,12 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                 JOIN source_documents statement_sd ON statement_sd.id = ps.source_document_id
                 JOIN source_documents comparison_sd ON comparison_sd.id = c.source_document_id
                 JOIN vote_events ve ON ve.id = c.vote_event_id
+                JOIN published_vote_snapshots published_vote_snapshot
+                  ON published_vote_snapshot.id = ve.snapshot_id
                 JOIN vote_records vr ON vr.vote_event_id = ve.id
                   AND vr.person_id = ps.person_id AND vr.actor_type = 'PERSON'
                   AND vr.source_document_id = ve.source_document_id
                 JOIN source_documents vote_sd ON vote_sd.id = ve.source_document_id
-                JOIN LATERAL (
-                    SELECT review.publishable
-                    FROM data_publication_reviews review
-                    WHERE review.entity_type = 'PARLIAMENT_VOTES_SNAPSHOT'
-                      AND review.entity_id = ve.source_document_id
-                      AND review.source_document_id = ve.source_document_id
-                    ORDER BY review.reviewed_at DESC, review.id DESC
-                    LIMIT 1
-                ) latest_snapshot_review ON latest_snapshot_review.publishable = TRUE
                 LEFT JOIN LATERAL (
                     SELECT cs.score, cs.comparable_count
                     FROM coherence_snapshots cs
@@ -1497,69 +1712,6 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
             },
         }
 
-    @staticmethod
-    async def _deactivate_stale_parliament_people(
-        connection: asyncpg.Connection,
-        *,
-        legislature: str,
-        incoming_source_ids: list[str],
-    ) -> int:
-        """Desativa pessoas ausentes do snapshot autoritativo sem apagar o histórico."""
-
-        count = await connection.fetchval(
-            """
-            WITH stale_people AS (
-                UPDATE people AS person
-                SET active = FALSE, updated_at = NOW()
-                WHERE person.role = 'DEPUTY'
-                  AND person.active = TRUE
-                  AND (
-                    person.source_id IS NULL
-                    OR person.source_id <> ALL($2::text[])
-                  )
-                  AND EXISTS (
-                    SELECT 1
-                    FROM parliamentary_membership_snapshots AS snapshot
-                    JOIN source_documents AS source
-                      ON source.id = snapshot.source_document_id
-                    WHERE snapshot.person_id = person.id
-                      AND snapshot.legislature = $1
-                      AND source.publisher = 'PARLIAMENT'
-                  )
-                RETURNING person.id
-            )
-            SELECT COUNT(*) FROM stale_people
-            """,
-            legislature,
-            incoming_source_ids,
-        )
-        return int(count or 0)
-
-    @staticmethod
-    async def _ensure_initial_parliament_vote_snapshot(
-        connection: asyncpg.Connection,
-    ) -> None:
-        """Impede reingestão destrutiva enquanto não existirem versões append-only."""
-
-        await connection.execute(
-            "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
-            "parliament-votes-initial-snapshot",
-        )
-        snapshot_exists = await connection.fetchval(
-            """
-            SELECT EXISTS (
-                SELECT 1
-                FROM vote_events
-            )
-            """
-        )
-        if snapshot_exists:
-            raise ValueError(
-                "A reingestão de votações parlamentares está bloqueada: "
-                "já existem eventos em staging e qualquer nova fotografia exige "
-                "versionamento append-only."
-            )
-
     async def store_parliament_dataset(
         self,
         dataset: ParliamentDataset,
@@ -1570,6 +1722,11 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
     ) -> dict[str, int]:
         if kind not in {"deputies", "votes"}:
             raise ValueError("Tipo de dataset parlamentar desconhecido")
+        if kind == "votes":
+            raise ValueError(
+                "A persistência legada de votações foi encerrada; use "
+                "scripts.sync_parliament_activity para criar fotografias append-only."
+            )
         if archive_receipt is None:
             raise ValueError("A persistência parlamentar exige arquivo prévio dos bytes oficiais")
         if archive_receipt.content_sha256 != dataset.document_sha256:
@@ -1578,19 +1735,16 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
             raise ValueError("O recibo de arquivo não corresponde ao URL efetivo do dataset")
         if self.pool is None:
             raise RuntimeError("Base de dados não configurada")
-        source_name = f"PARLIAMENT_{kind.upper()}"
-        records_read = len(dataset.deputies) if kind == "deputies" else len(dataset.votes)
+        source_name = "PARLIAMENT_DEPUTIES"
+        records_read = len(dataset.deputies)
         sync_id = await self._start_sync_run(
             source_name=source_name,
             dataset_url=str(dataset.dataset_url),
             code_version=code_version,
         )
         written = 0
-        deactivated = 0
         try:
             async with self.pool.acquire() as connection, connection.transaction():
-                if kind == "votes":
-                    await self._ensure_initial_parliament_vote_snapshot(connection)
                 source_document_id = await self._ensure_source_document(
                     connection,
                     publisher="PARLIAMENT",
@@ -1609,11 +1763,6 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                     archived_by=f"sync:{code_version}",
                 )
                 if kind == "deputies":
-                    deactivated = await self._deactivate_stale_parliament_people(
-                        connection,
-                        legislature=dataset.legislature,
-                        incoming_source_ids=[item.source_id for item in dataset.deputies],
-                    )
                     for deputy in dataset.deputies:
                         party_id: str | None = None
                         if deputy.party_short:
@@ -1623,8 +1772,7 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                                     (id, source_id, name, short_name, official_url,
                                      created_at, updated_at)
                                 VALUES ($1, $2, $3, $3, $4, NOW(), NOW())
-                                ON CONFLICT (source_id) DO UPDATE SET
-                                    short_name = EXCLUDED.short_name, updated_at = NOW()
+                                ON CONFLICT (source_id) DO NOTHING
                                 RETURNING id
                                 """,
                                 _new_id("party"),
@@ -1632,17 +1780,20 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                                 deputy.party_short,
                                 str(dataset.dataset_url),
                             )
-                            party_id = str(party_row["id"])
+                            if party_row is None:
+                                party_id = await connection.fetchval(
+                                    "SELECT id FROM parties WHERE source_id = $1 LIMIT 1",
+                                    f"ar-party:{deputy.party_short}",
+                                )
+                            else:
+                                party_id = str(party_row["id"])
                         person_row = await connection.fetchrow(
                             """
                             INSERT INTO people
                                 (id, source_id, full_name, parliamentary_name, slug,
                                  role, active, created_at, updated_at)
                             VALUES ($1, $2, $3, $4, $5, 'DEPUTY', TRUE, NOW(), NOW())
-                            ON CONFLICT (source_id) DO UPDATE SET
-                                full_name = EXCLUDED.full_name,
-                                parliamentary_name = EXCLUDED.parliamentary_name,
-                                active = TRUE, updated_at = NOW()
+                            ON CONFLICT (source_id) DO NOTHING
                             RETURNING id
                             """,
                             _new_id("person"),
@@ -1651,70 +1802,35 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                             deputy.parliamentary_name,
                             _slug(deputy.parliamentary_name, deputy.source_id),
                         )
+                        deputy_person_id = (
+                            str(person_row["id"])
+                            if person_row is not None
+                            else await connection.fetchval(
+                                "SELECT id FROM people WHERE source_id = $1 LIMIT 1",
+                                deputy.source_id,
+                            )
+                        )
+                        if deputy_person_id is None:
+                            raise RuntimeError("Não foi possível registar o deputado")
                         await connection.execute(
                             """
                             INSERT INTO parliamentary_membership_snapshots
-                                (id, person_id, party_id, legislature, constituency,
-                                 observed_at, source_document_id)
-                            VALUES ($1, $2, $3, $4, $5, $6, $7)
-                            ON CONFLICT (person_id, legislature, source_document_id) DO UPDATE SET
-                                party_id = EXCLUDED.party_id,
-                                constituency = EXCLUDED.constituency,
-                                observed_at = EXCLUDED.observed_at
+                                (id, person_id, parliamentary_name, full_name,
+                                 party_id, legislature, constituency, observed_at,
+                                 source_document_id)
+                            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                            ON CONFLICT (person_id, legislature, source_document_id) DO NOTHING
                             """,
                             _new_id("membership"),
-                            person_row["id"],
+                            deputy_person_id,
+                            deputy.parliamentary_name,
+                            deputy.full_name,
                             party_id,
                             dataset.legislature,
                             deputy.constituency,
                             _database_timestamp(dataset.collected_at),
                             source_document_id,
                         )
-                        written += 1
-                else:
-                    for event in dataset.votes:
-                        event_row = await connection.fetchrow(
-                            """
-                            INSERT INTO vote_events
-                                (id, source_id, title, initiative_number, voted_at, result,
-                                 is_nominal, source_document_id, created_at, updated_at)
-                            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
-                            RETURNING id
-                            """,
-                            _new_id("vote_event"),
-                            event.source_id,
-                            event.title,
-                            event.initiative_number,
-                            _database_timestamp(event.voted_at),
-                            event.result,
-                            event.is_nominal,
-                            source_document_id,
-                        )
-                        for record in event.records:
-                            person_id: str | None = None
-                            if record.actor_source_id:
-                                person_id = await connection.fetchval(
-                                    "SELECT id FROM people WHERE source_id = $1",
-                                    record.actor_source_id,
-                                )
-                            actor_type = "PERSON" if person_id else "UNKNOWN"
-                            await connection.execute(
-                                """
-                                INSERT INTO vote_records
-                                    (id, vote_event_id, actor_type, actor_label, person_id,
-                                     party_id, choice, source_document_id)
-                                VALUES ($1, $2, $3::"VoteActorType", $4, $5, NULL,
-                                        $6::"VoteChoice", $7)
-                                """,
-                                _new_id("vote_record"),
-                                event_row["id"],
-                                actor_type,
-                                record.actor_label,
-                                person_id,
-                                record.choice.value,
-                                source_document_id,
-                            )
-                            written += 1
                         written += 1
             await self._finish_sync_run(
                 sync_id,
@@ -1736,7 +1852,6 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
         return {
             "records_read": records_read,
             "records_written": written,
-            "records_deactivated": deactivated,
             "archive_attestations_written": int(archive_attestation["created"]),
         }
 
@@ -2300,7 +2415,8 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
 
         people_query = """
             SELECT person.id, person.source_id,
-                   COALESCE(person.parliamentary_name, person.full_name) AS name,
+                   COALESCE(snapshot.parliamentary_name,
+                            person.parliamentary_name, person.full_name) AS name,
                    COALESCE(party.short_name, '—') AS party_short,
                    COALESCE(snapshot.constituency, 'Não disponível') AS constituency,
                    latest_review.publishable AS latest_publishable
@@ -2319,7 +2435,6 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
             WHERE snapshot.source_document_id = $1
               AND snapshot.legislature = $2
               AND person.role = 'DEPUTY'
-              AND person.active = TRUE
             ORDER BY name, person.id
         """
         if lock_people:

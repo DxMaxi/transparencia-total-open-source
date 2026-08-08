@@ -12,7 +12,7 @@ export default function RightOfReplyPage() {
     <main className="page-shell shell">
       <DemoBanner />
       <div className="page-heading page-heading--wide">
-        <span className="eyebrow">Compliance V3</span>
+        <span className="eyebrow">Compliance V4</span>
         <h1>Responder sem reescrever o passado.</h1>
         <p>
           Contestações oficiais são anexadas ao facto correspondente. O original, a resposta, as decisões de revisão e cada alteração mantêm a sua própria impressão digital.

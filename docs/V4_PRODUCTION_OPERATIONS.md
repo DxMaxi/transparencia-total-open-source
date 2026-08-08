@@ -50,6 +50,33 @@ mas o job termina com erro visível para obrigar a análise humana.
 
 Recolha não significa publicação.
 
+### `sync-parliament-deputies` e `sync-parliament-activity`
+
+Executam, separadamente:
+
+```bash
+cd backend
+python -m scripts.sync_parliament deputies --legislature XVII --persist
+python -m scripts.sync_parliament_activity --legislature XVII
+```
+
+Ambas escrevem apenas dados privados. A segunda operação guarda os bytes em PostgreSQL, cria o
+manifesto imutável e recusa cobertura vazia. O workflow diário `parliament-sync.yml` executa estas
+duas recolhas sem publicar.
+
+### `preview-parliament-activity`
+
+Executa `review_parliament_activity` sem ação. O resultado contém a URL, SHA-256 dos bytes,
+SHA-256 normalizado, atestação, parser e contagens de reuniões, iniciativas, votações e posições.
+Não cria `DataPublicationReview` nem `AuditEvent`.
+
+### `publish-parliament-activity` e `withdraw-parliament-activity`
+
+Exigem âmbito, os dois hashes, as quatro contagens, pseudónimo e fundamentação. O repositório volta
+a ler e bloquear a fotografia mais recente antes de acrescentar uma decisão e evento de auditoria
+por âmbito. `activity` controla reuniões/iniciativas; `votes` controla votações. Retirar não apaga
+dados nem decisões anteriores.
+
 ### `verify-archive-integrity`
 
 Executa:
@@ -71,7 +98,7 @@ corrige, apaga ou substitui prova automaticamente.
 O workflow `.github/workflows/archive-integrity.yml` repete esta verificação semanalmente e pode
 também ser iniciado manualmente.
 
-### `bootstrap-parliament-publication`
+### `bootstrap-parliament-publication` (diretório inicial)
 
 Executa:
 
@@ -80,8 +107,9 @@ cd backend
 python -m scripts.bootstrap_v4_public
 ```
 
-Só publica a fotografia parlamentar previamente auditada quando coincidem SHA-256, URL oficial,
-contagem esperada e atestação do arquivo. Qualquer divergência bloqueia a publicação.
+Só publica o diretório inicial de deputados previamente auditado quando coincidem SHA-256, URL
+oficial, contagem esperada e atestação do arquivo. Não publica reuniões, iniciativas ou votações;
+essas usam as operações de atividade descritas acima. Qualquer divergência bloqueia a publicação.
 
 ## Segredos necessários
 
@@ -100,9 +128,10 @@ O ambiente deve exigir aprovação manual antes da execução.
 2. Confirmar `/api/v1/health/ready`.
 3. Executar `verify-archive-integrity`.
 4. Executar `refresh-official-indexes`.
-5. Rever hashes, contagens, avisos e falhas.
-6. Executar uma publicação apenas quando existir revisão humana concluída.
-7. Confirmar `/api/v1/public/data-status` e as páginas públicas afetadas.
+5. Executar `sync-parliament-deputies` e `sync-parliament-activity`.
+6. Executar `preview-parliament-activity` e rever hashes, contagens, avisos e atores desconhecidos.
+7. Executar `publish-parliament-activity` apenas nos âmbitos aprovados.
+8. Confirmar `/api/v1/public/data-status`, os três endpoints parlamentares e as páginas públicas.
 
 ## O que nunca deve acontecer
 

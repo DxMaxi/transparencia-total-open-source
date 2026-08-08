@@ -121,3 +121,4 @@ Produção exige object storage privado com versionamento ou retenção WORM, en
 acesso, backups e política de retenção. A V4.2 também não implementa o circuito humano que promove
 um snapshot para `PublicContract`; essa etapa tem de comparar a prova, criar uma decisão explícita
 e preservar todas as versões antes de qualquer dado chegar à API pública.
+

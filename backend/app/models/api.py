@@ -218,7 +218,7 @@ class PushBroadcastResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str = "ok"
-    version: str = "0.3.0"
+    version: str = "0.4.0"
     environment: str
     database_configured: bool
     ai_provider: str
@@ -492,6 +492,9 @@ class PublicDataMode(StrEnum):
 
 class PublicRecordCounts(BaseModel):
     politicians: int = 0
+    parliament_sessions: int = 0
+    parliament_initiatives: int = 0
+    parliament_votes: int = 0
     promises: int = 0
     contracts: int = 0
     relationships: int = 0

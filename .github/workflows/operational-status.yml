@@ -40,3 +40,4 @@ jobs:
       - name: Verificar frescura e estado das fontes
         working-directory: backend
         run: python -m scripts.check_v4_operational_status
+

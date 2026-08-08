@@ -61,16 +61,24 @@ Triggers rejeitam `UPDATE` e `DELETE` nestes snapshots e em `AuditEvent`; uma no
 do parser acrescenta outro lote. Repetições exatas são idempotentes. A ausência de pepper elimina o
 digest efémero antes da escrita e fica registada como capacidade indisponível.
 
+Na release candidate V4, `ParliamentActivitySnapshot` é o manifesto imutável de uma normalização:
+liga documento, legislatura, parser, SHA-256 normalizado e contagens esperadas. Reuniões observadas,
+iniciativas, votações e posições referenciam esse manifesto. Triggers recusam alterações e a API
+pública escolhe uma única fotografia cuja decisão humana mais recente seja positiva, separadamente
+para atividade e votos.
+
 ### Arquivo privado de originais
 
 `PrivateRawDocument` transporta os bytes apenas dentro do processo de ingestão e exclui-os de
-serialização e representação. O backend local escreve com chave
-`sha256/<prefixo>/<sha256 completo>`, sem operações de substituição, leitura de conteúdo ou
-eliminação. Um recibo validado é a única entrada aceite pelo repositório para criar a atestação.
+serialização e representação. Os fluxos V4 de produção guardam-nos em `raw_source_objects` no
+PostgreSQL com chave `sha256/<prefixo>/<sha256 completo>`, verificação de hash/tamanho e triggers
+append-only. Um recibo validado é a única entrada aceite para criar a atestação.
 
-O backend de ficheiros serve desenvolvimento, testes e staging controlado. O adaptador de produção
-para object storage privado, versionado ou WORM, continua por implementar; por isso a V4.1/V4.2 não
-deve ser ativada em produção apenas com disco local ou efémero.
+O backend de ficheiros configurado por `RAW_ARCHIVE_ROOT` serve apenas desenvolvimento, testes,
+staging controlado e reatestação histórica; nunca deve usar disco efémero de produção. Object
+storage privado com retenção WORM continua recomendado para escala e defesa em profundidade, mas o
+gate V4 é armazenamento PostgreSQL durável, backups restauráveis, acesso restrito e monitorização
+de capacidade.
 
 Identificadores pessoais usados na deduplicação ficam em `ProtectedIdentifierDigest` como HMAC; o
 valor original não pertence ao esquema publicável. Restrições SQL verificam sujeitos exclusivos,
@@ -91,7 +99,7 @@ idempotentes:
 8. criar alertas apenas após promoção.
 
 Cada execução persistente abre um `SyncRun`. Falha parcial conserva avisos e não substitui a última
-versão publicada. Na V3 isto está implementado para as fontes parlamentares; na V4.2, BASE usa uma
+versão publicada. Na V4 isto está implementado para as fontes parlamentares; na V4.2, BASE usa uma
 carga `COPY` append-only ligada ao arquivo e limitada a staging explicitamente confirmado. O lote
 BASE não tem caminho automático para revisão ou publicação.
 
@@ -156,8 +164,8 @@ candidatos e notas internas não fazem parte das projeções SQL.
 - CDN para páginas e ativos públicos.
 - API sem estado, escalável horizontalmente.
 - PostgreSQL com backups e point-in-time recovery.
-- Arquivo content-addressed local apenas para desenvolvimento/teste/staging; object storage
-  privado e versionado continua obrigatório antes de produção.
+- Arquivo content-addressed PostgreSQL em produção, com triggers, backups, controlo de acesso e
+  alertas de capacidade; object storage privado/versionado é a evolução recomendada para escala.
 - Redis/fila para jobs e rate limit distribuído, quando houver mais de uma instância.
 - Observabilidade sem conteúdo sensível: latência, contagens, hash, código do job e falhas.
 

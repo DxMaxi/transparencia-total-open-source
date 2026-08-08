@@ -4,6 +4,9 @@ export type PublicDataMode = "LIVE" | "EMPTY" | "DEMO" | "UNAVAILABLE";
 
 export type PublicRecordCounts = {
   politicians: number;
+  parliamentSessions: number;
+  parliamentInitiatives: number;
+  parliamentVotes: number;
   promises: number;
   contracts: number;
   relationships: number;
@@ -122,4 +125,62 @@ export type PublicPersonSummary = {
   portraitUrl?: string;
   verifiedAt: string;
   profileSource: OfficialSource;
+};
+
+export type PublicParliamentarySession = {
+  id: string;
+  sourceId: string;
+  legislature: string;
+  sessionNumber?: string;
+  title: string;
+  startsAt: string;
+  endsAt?: string;
+  verifiedAt: string;
+  source: OfficialSource;
+};
+
+export type PublicParliamentaryInitiative = {
+  id: string;
+  sourceId: string;
+  legislature: string;
+  number: string;
+  initiativeType: string;
+  title: string;
+  description?: string;
+  introducedAt?: string;
+  status?: string;
+  officialUrl: string;
+  verifiedAt: string;
+  source: OfficialSource;
+};
+
+export type PublicParliamentaryVoteRecord = {
+  actorLabel: string;
+  actorType: "PERSON" | "PARTY" | "UNKNOWN";
+  choice: "FAVOR" | "AGAINST" | "ABSTENTION" | "ABSENT" | "UNKNOWN";
+};
+
+export type PublicParliamentaryVote = {
+  id: string;
+  sourceId: string;
+  legislature: string;
+  title: string;
+  initiativeNumber?: string;
+  votedAt?: string;
+  result?: string;
+  isNominal: boolean;
+  records: PublicParliamentaryVoteRecord[];
+  verifiedAt: string;
+  source: OfficialSource;
+};
+
+export type PublicParliamentActivity = {
+  sessions: PublicParliamentarySession[];
+  initiatives: PublicParliamentaryInitiative[];
+  votes: PublicParliamentaryVote[];
+  availability: {
+    sessions: boolean;
+    initiatives: boolean;
+    votes: boolean;
+  };
 };

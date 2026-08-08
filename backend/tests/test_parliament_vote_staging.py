@@ -233,11 +233,10 @@ def test_latest_negative_vote_review_revokes_an_older_positive_review() -> None:
 def test_review_of_old_source_does_not_authorise_a_new_vote_snapshot() -> None:
     _, connection = _public_profile_result()
 
-    assert "review.entity_id = available_event.source_document_id" in connection.availability_query
-    assert (
-        "review.source_document_id = available_event.source_document_id"
-        in connection.availability_query
-    )
+    for query in (connection.availability_query, connection.vote_query):
+        assert "review.entity_id = snapshot.id" in query
+        assert "review.source_document_id = source.id" in query
+        assert "published_snapshot.id =" in query
     assert "available_record.person_id = $1" in connection.availability_query
     assert "available_record.actor_type = 'PERSON'" in connection.availability_query
     assert "available_record.choice IN" in connection.availability_query
@@ -245,8 +244,6 @@ def test_review_of_old_source_does_not_authorise_a_new_vote_snapshot() -> None:
     assert "'PAIRED'" not in connection.availability_query
     assert "available_record.source_document_id =" in connection.availability_query
     assert "available_event.source_document_id" in connection.availability_query
-    assert "review.entity_id = ve.source_document_id" in connection.vote_query
-    assert "review.source_document_id = ve.source_document_id" in connection.vote_query
     assert "vr.source_document_id = ve.source_document_id" in connection.vote_query
     assert "sd.publisher = 'PARLIAMENT'" in connection.vote_query
     assert "vr.choice IN ('FAVOR', 'AGAINST', 'ABSTENTION', 'ABSENT')" in connection.vote_query
@@ -278,10 +275,11 @@ def test_public_investigator_uses_the_same_vote_snapshot_gate() -> None:
     assert len(connection.queries) == 2
     comparison_query = connection.queries[1]
     assert "review.entity_type = 'PARLIAMENT_VOTES_SNAPSHOT'" in comparison_query
-    assert "review.entity_id = ve.source_document_id" in comparison_query
-    assert "review.source_document_id = ve.source_document_id" in comparison_query
+    assert "review.entity_id = snapshot.id" in comparison_query
+    assert "review.source_document_id = source.id" in comparison_query
     assert "ORDER BY review.reviewed_at DESC, review.id DESC" in comparison_query
-    assert "latest_snapshot_review.publishable = TRUE" in comparison_query
+    assert "latest_review.publishable = TRUE" in comparison_query
+    assert "published_vote_snapshot.id = ve.snapshot_id" in comparison_query
     assert "vr.source_document_id = ve.source_document_id" in comparison_query
     assert "vote_sd.id = ve.source_document_id" in comparison_query
     assert "ve.is_nominal = TRUE" in comparison_query

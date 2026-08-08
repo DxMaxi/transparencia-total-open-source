@@ -10,10 +10,9 @@ import asyncio
 from pathlib import Path
 
 from app.core.config import get_settings
-from app.repositories.postgres import PostgresRepository
+from app.repositories.official_index_staging import OfficialIndexStagingRepository
 from app.services.http import OfficialHttpClient
 from app.services.parlamento import ParlamentoCollector
-from app.services.raw_archive import ContentAddressedFileArchive
 
 CODE_VERSION = "parliament-ingestion-v12"
 
@@ -25,7 +24,10 @@ async def collect(
     persist: bool = False,
 ) -> tuple[str, dict[str, int] | None]:
     settings = get_settings()
-    archive = ContentAddressedFileArchive.from_settings(settings) if persist else None
+    if persist and kind == "votes":
+        raise ValueError(
+            "Use python -m scripts.sync_parliament_activity para persistir votações versionadas."
+        )
     async with OfficialHttpClient(settings) as http:
         collector = ParlamentoCollector(settings, http)
         dataset = (
@@ -35,15 +37,16 @@ async def collect(
         )
     persistence = None
     if persist:
-        assert archive is not None
         if dataset.raw_document is None:
             raise RuntimeError(
                 "A fonte parlamentar não conservou os bytes necessários para o arquivo"
             )
-        archive_receipt = archive.archive(dataset.raw_document)
-        repository = PostgresRepository(settings)
+        repository = OfficialIndexStagingRepository(settings)
         await repository.connect()
         try:
+            archive_receipt = await repository.archive_raw_document(
+                raw_document=dataset.raw_document
+            )
             persistence = await repository.store_parliament_dataset(
                 dataset,
                 kind=kind,
@@ -80,12 +83,10 @@ def main() -> None:
     else:
         print(result)
     if persistence is not None:
-        deactivated = persistence.get("records_deactivated", 0)
         print(
             "Persistência concluída em staging: "
             f"{persistence['records_written']} escritas / "
             f"{persistence['records_read']} lidas; "
-            f"{deactivated} registos antigos desativados; "
             f"{persistence['archive_attestations_written']} atestações de arquivo acrescentadas; "
             "publicação continua pendente."
         )
