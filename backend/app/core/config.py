@@ -81,6 +81,7 @@ class Settings(BaseSettings):
         return value
 
     @field_validator(
+        "admin_api_key",
         "base_resource_url",
         "parlamento_deputies_url",
         "parlamento_votes_url",
