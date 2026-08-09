@@ -9,6 +9,7 @@ from app.services.transparency_entity import (
     EPT_INDEX_URL,
     EPT_PORTAL_FALLBACK_URL,
     EPT_PORTAL_FALLBACK_WARNING,
+    EPT_PORTAL_RATE_LIMIT_WARNING,
     TransparencyEntityCollector,
 )
 
@@ -74,4 +75,55 @@ async def test_direct_ept_resource_endpoint_does_not_hide_the_canonical_failure(
             await TransparencyEntityCollector(settings, client).fetch_public_index()
 
     assert canonical.call_count == 5
+    assert not fallback.called
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_controlled_rollout_treats_canonical_rate_limiting_as_partial(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    canonical = respx.get(EPT_INDEX_URL).mock(return_value=httpx.Response(429))
+    fallback = respx.get(EPT_PORTAL_FALLBACK_URL).mock(
+        return_value=httpx.Response(200, text="portal oficial alternativo")
+    )
+    settings = Settings(
+        environment="test",
+        source_requests_per_second=5,
+        _env_file=None,
+    )
+
+    async with OfficialHttpClient(settings) as client:
+        monkeypatch.setattr(client._fetch_once.retry, "wait", wait_none())
+        collection = await TransparencyEntityCollector(settings, client).fetch_public_index(
+            allow_portal_fallback=True
+        )
+
+    assert canonical.call_count == 1
+    assert fallback.call_count == 1
+    assert collection.canonical_index_available is False
+    assert collection.warnings == (EPT_PORTAL_RATE_LIMIT_WARNING,)
+    assert str(collection.raw_document.source_url) == EPT_PORTAL_FALLBACK_URL
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_controlled_rollout_does_not_hide_a_non_transient_http_error() -> None:
+    canonical = respx.get(EPT_INDEX_URL).mock(return_value=httpx.Response(403))
+    fallback = respx.get(EPT_PORTAL_FALLBACK_URL).mock(
+        return_value=httpx.Response(200, text="não deve ser usado")
+    )
+    settings = Settings(
+        environment="test",
+        source_requests_per_second=5,
+        _env_file=None,
+    )
+
+    async with OfficialHttpClient(settings) as client:
+        with pytest.raises(httpx.HTTPStatusError, match="403 Forbidden"):
+            await TransparencyEntityCollector(settings, client).fetch_public_index(
+                allow_portal_fallback=True
+            )
+
+    assert canonical.call_count == 1
     assert not fallback.called

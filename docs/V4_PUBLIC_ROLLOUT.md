@@ -33,8 +33,9 @@ Uma falha de recolha anterior à obtenção dos bytes também acrescenta um `Syn
 estado operacional mostra a tentativa mais recente e não apresenta um sucesso antigo como se fosse
 uma actualização atual.
 
-Quando o índice canónico da Entidade para a Transparência está inacessível por falha de rede, a
-operação pode arquivar exclusivamente o portal oficial alternativo, ligado pelo próprio índice.
+Quando o índice canónico da Entidade para a Transparência está inacessível por falha de rede,
+timeout ou limitação HTTP 429, a operação pode arquivar exclusivamente o portal oficial
+alternativo, ligado pelo próprio índice.
 Este caso fica `PARTIAL`, com aviso, URL efectiva, data e SHA-256. Não é apresentado como índice
 equivalente, não recolhe declarações, não cria recursos públicos e não dispensa revisão jurídica.
 
