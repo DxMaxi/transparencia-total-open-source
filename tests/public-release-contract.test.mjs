@@ -40,6 +40,7 @@ test("legal information is reachable and supports real controller identification
     await readFile(new URL(`app/${route}/page.tsx`, root), "utf8");
   }
   assert.match(site, /NEXT_PUBLIC_LEGAL_RESPONSIBLE_NAME/);
+  assert.match(site, /Maximiano Moreira/);
   assert.match(site, /NEXT_PUBLIC_LEGAL_ADDRESS/);
   assert.match(site, /NEXT_PUBLIC_LEGAL_TAX_ID/);
 });
