@@ -15,7 +15,9 @@
 3. Identifique o responsável real nas variáveis legais públicas; não publique placeholders.
 4. Crie `ADMIN_API_KEY` aleatória com pelo menos 32 bytes.
 5. Documente retenção, capacidade de recuperação e alertas do PostgreSQL. Se o plano não tiver
-   backup, registe expressamente esse risco e não anuncie recuperação garantida.
+   backup, registe expressamente esse risco e não anuncie recuperação garantida. Siga o
+   [runbook de recuperação](DATABASE_RECOVERY.md) e não feche o gate V4 antes de um restauro
+   isolado ter sido testado.
 6. Não ative IA antes de existir fila de revisão.
 
 ## Vercel

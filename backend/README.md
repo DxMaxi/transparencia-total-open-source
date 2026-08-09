@@ -1,4 +1,4 @@
-# API Transparência Total / Fator Cívico — V4 release candidate
+# API Transparência Total / Fator Cívico — V4
 
 Serviço FastAPI responsável por descobrir, descarregar, preservar e normalizar fontes oficiais.
 Inclui ingestão persistente do Parlamento, pré-visualização BASE JSON/XML/ZIP e staging BASE
