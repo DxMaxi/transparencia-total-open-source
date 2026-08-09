@@ -1,26 +1,30 @@
 # Backup PostgreSQL cifrado no Backblaze B2 EU
 
-Este runbook configura a cópia externa que falta para fechar a V4. O destino escolhido é um bucket
+Este runbook documenta a cópia externa que fechou o gate de recuperação da V4. O destino é um bucket
 privado Backblaze B2 na região **EU Central**, alojada em Amesterdão. A escolha da região é feita ao
 criar a conta Backblaze e não pode ser alterada nessa conta. Consulte a documentação oficial sobre
 [regiões de dados](https://www.backblaze.com/docs/cloud-storage-data-regions).
 
-## Estado do gate
+## Estado do gate: PASS
 
-**IMPLEMENTED no repositório; BLOCKED na operação até existir uma execução real e um restauro
-aprovado.** Ter as workflows e este documento não prova que existe uma cópia recuperável.
+A implementação, a primeira cópia real e o primeiro restauro isolado foram comprovados em
+9 de agosto de 2026:
 
-O fecho exige, por esta ordem:
+1. bucket privado europeu configurado com Object Lock `COMPLIANCE`;
+2. chaves distintas de privilégio mínimo validadas pela API B2;
+3. [backup 31313078924](https://github.com/DxMaxi/transparencia-total-open-source/actions/runs/31313078924)
+   criado, cifrado, enviado e confirmado no B2;
+4. SHA-256 do objeto e do manifesto confirmado antes de decifrar;
+5. [restauro 31318699132](https://github.com/DxMaxi/transparencia-total-open-source/actions/runs/31318699132)
+   concluído num PostgreSQL 17 isolado, sem usar produção como destino;
+6. identidade privada `age` temporária removida do GitHub depois do ensaio.
 
-1. criar e configurar o bucket europeu;
-2. executar manualmente o primeiro backup;
-3. confirmar no B2 o objeto, SHA-256 e Object Lock;
-4. restaurar esse objeto no PostgreSQL efémero da workflow de ensaio;
-5. registar no gate V4 o URL da execução, o SHA-256 da atestação, RPO e RTO observados;
-6. remover do GitHub a chave privada de decifragem usada temporariamente no ensaio.
+A atestação registou `PASS`, arquivo íntegro, estado operacional `HEALTHY`, RPO observado de
+7 759 segundos e RTO de 37 segundos. O SHA-256 da atestação é
+`ed19814bbc93b3fcd8fff918a2465b52a41b2904e5a23d0ee40bea54a7abd859`.
 
-Até estes seis passos passarem, `docs/V4_TO_V5_RELEASE_GATE.md` permanece `BLOCKED`, não se cria a
-tag `v0.4.0` e não se anuncia recuperação garantida.
+Este `PASS` prova aquela cópia e aquele ensaio. Não garante que futuras execuções passem; falhas
+novas permanecem visíveis e exigem investigação.
 
 ## O que a implementação garante
 
@@ -183,7 +187,19 @@ A workflow de restauro não referencia `PRODUCTION_DATABASE_URL`; o destino est�
 
 ## 5. Executar o primeiro backup
 
-Depois de a branch ser fundida e as variáveis estarem configuradas:
+A primeira execução comprovada foi a
+[31313078924](https://github.com/DxMaxi/transparencia-total-open-source/actions/runs/31313078924):
+
+- objeto: `database/daily/2026/08/09/transparencia-total-20260809T122221Z-31313078924-1.dump.age`;
+- tamanho: 27 966 268 bytes cifrados;
+- SHA-256 cifrado: `5255c0fa9a85711d0c0c7f86162376aece2b1d26026e32056916c2234bb41337`;
+- SHA-256 canónico do manifesto:
+  `2f954648dfab7c46df474d6b37caacbbdd9070c59ac6c6bcbb74f9fcfec28232`;
+- SHA-256 do ficheiro de manifesto:
+  `1daa8e5ea2ccd646b490b238efa978a76e672ce792322e9f0653564458f02729`;
+- Object Lock `COMPLIANCE` confirmado até `2026-09-09T12:22:21Z`.
+
+Para executar manualmente uma nova cópia:
 
 1. abra **Actions → Database backup to Backblaze B2 EU**;
 2. escolha **Run workflow**;
@@ -200,6 +216,14 @@ dia; uma execução anterior válida não torna a falha nova invisível.
 
 ## 6. Executar o primeiro restauro
 
+O primeiro ensaio aprovado foi a
+[execução 31318699132](https://github.com/DxMaxi/transparencia-total-open-source/actions/runs/31318699132).
+Restaurou 13 migrações, 54 tabelas, 104 737 linhas e 32 objetos de arquivo num PostgreSQL 17
+efémero. A produção não foi usada como destino, o arquivo passou, o estado operacional ficou
+`HEALTHY`, o RPO observado foi 7 759 segundos e o RTO foi 37 segundos.
+
+Para repetir o ensaio autorizado:
+
 1. Adicione temporariamente `BACKUP_AGE_IDENTITY` ao environment `recovery`.
 2. Abra **Actions → Isolated database restore drill**.
 3. Introduza a chave exata do objeto `.dump.age`, o SHA-256 cifrado e o SHA-256 do ficheiro de
@@ -215,8 +239,8 @@ dia; uma execução anterior válida não torna a falha nova invisível.
    - ligação para o artefacto que contém apenas a atestação.
 
 6. Elimine imediatamente `BACKUP_AGE_IDENTITY` do environment `recovery`.
-7. Atualize `docs/V4_TO_V5_RELEASE_GATE.md` com o URL da execução, objeto, hashes, RPO e RTO. Só
-   essa alteração transforma o gate em `PASS`.
+7. Registe no gate versionado o URL, objeto, hashes, RPO e RTO quando uma nova execução alterar a
+   evidência de referência.
 
 Datas antigas podem tornar `check_v4_operational_status` em `ATTENTION_REQUIRED`. A workflow conserva
 esse resultado como aviso e nunca altera datas para fingir atualidade. Incompatibilidade de hash,
@@ -232,7 +256,8 @@ contagens, migrações ou arquivo falha o ensaio.
 - cópia adicional: mensal, cifrada, num suporte offline separado;
 - falhas: responsabilidade do mantenedor do repositório, através dos alertas e histórico GitHub
   Actions;
-- RPO/RTO: só os valores observados no ensaio podem ser publicados.
+- RPO/RTO de referência da ativação: 7 759 e 37 segundos, respetivamente; ensaios futuros devem
+  acrescentar novas medições sem apagar as anteriores.
 
 Com o tamanho atual, é provável que a retenção fique dentro da franquia inicial do B2, mas o custo
 deve ser verificado nos objetos realmente enviados e na
