@@ -200,7 +200,8 @@ jobs:
           age --decrypt --identity "$identity_file" \
             "$CIPHERTEXT" \
             | docker run --rm --network host -i -e PGDATABASE postgres:17 \
-                pg_restore --clean --if-exists --no-owner --no-privileges \
+                pg_restore --dbname "$PGDATABASE" \
+                  --clean --if-exists --no-owner --no-privileges \
                   --exit-on-error --single-transaction
           rm -f "$identity_file"
 
