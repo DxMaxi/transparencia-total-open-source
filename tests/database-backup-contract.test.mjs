@@ -77,6 +77,7 @@ test("restore drill is manual, isolated and checks proof before decrypting", asy
   assert.ok(identityCheckIndex >= 0 && identityCheckIndex < downloadIndex);
   assert.ok(identityCheckIndex < decryptIndex);
   assert.ok(verifyIndex >= 0 && verifyIndex < decryptIndex);
+  assert.match(workflow, /pg_restore --dbname "\$PGDATABASE"/);
   assert.doesNotMatch(workflow, /BACKUP_AGE_IDENTITY" == \*"AGE-SECRET-KEY-/);
   assert.doesNotMatch(workflow, /PRODUCTION_DATABASE_URL/);
   assert.doesNotMatch(workflow, /schedule:\s*\n/);
