@@ -5,35 +5,45 @@ Não inclui credenciais e não promete uma capacidade que ainda não tenha sido 
 
 ## Estado atual
 
-- Provedor: Supabase/PostgreSQL, projeto de produção `ACTIVE_HEALTHY`.
-- Plano confirmado em 9 de agosto de 2026: Free.
-- Backup gerido ou point-in-time recovery: não demonstrado e, por isso, não garantido.
-- Destino externo configurado em 9 de agosto de 2026: conta Backblaze B2 confirmada em **EU
-  Central**, bucket privado no endpoint `eu-central-003`, cifragem predefinida SSE-B2, Object Lock e
-  retenção `COMPLIANCE` de 30 dias ativos. A regra de ciclo de vida está limitada a `database/`, com
-  ocultação aos 45 dias e eliminação de versões ocultas 1 dia depois.
-- A primeira chave de escrita, demasiado ampla, foi revogada antes de ser usada. As duas chaves de
-  privilégio mínimo ainda têm de ser aprovisionadas e validadas; nenhum segredo revogado é válido.
-- Automatização: preparada em `.github/workflows/database-backup.yml`, incluindo validação
-  fail-closed do âmbito da credencial, mas ainda não demonstrada com credenciais e objeto reais.
-- Cópia lógica externa: ainda não demonstrada.
-- Ensaio de restauro: não executado.
-- RPO e RTO: indisponíveis até existir um ensaio medido.
-- Arquivo interno: 32 objetos, todos verificados, zero corrupção em 9 de agosto de 2026.
-- Migrações: versionadas em `prisma/migrations` e aplicadas por operação separada.
+- Provedor: Supabase/PostgreSQL, projeto de produção `ACTIVE_HEALTHY`, plano Free confirmado em
+  9 de agosto de 2026.
+- Backup gerido ou point-in-time recovery do fornecedor: não demonstrado e, por isso, não usado como
+  base da capacidade de recuperação.
+- Destino externo: Backblaze B2 **EU Central**, bucket privado, SSE-B2, Object Lock
+  `COMPLIANCE` e ciclo de vida limitado ao prefixo `database/`.
+- Credenciais: chave de backup limitada a leitura, escrita e retenção; chave de restauro limitada a
+  leitura. Ambos os âmbitos foram validados pela API B2 antes de usar produção ou descarregar a
+  cópia.
+- Automatização: backup diário às 05:17 UTC em
+  `.github/workflows/database-backup.yml`; restauro exclusivamente manual em
+  `.github/workflows/database-restore-drill.yml`.
+- Primeira cópia real: [execução 31313078924](https://github.com/DxMaxi/transparencia-total-open-source/actions/runs/31313078924),
+  27 966 268 bytes cifrados, SHA-256
+  `5255c0fa9a85711d0c0c7f86162376aece2b1d26026e32056916c2234bb41337`, protegida em
+  `COMPLIANCE` até 9 de setembro de 2026.
+- Primeiro ensaio real: [execução 31318699132](https://github.com/DxMaxi/transparencia-total-open-source/actions/runs/31318699132),
+  resultado `PASS` num PostgreSQL 17 isolado e efémero; produção não foi usada como destino.
+- Conteúdo restaurado: 13 migrações, 54 tabelas, 104 737 linhas e 32 objetos de arquivo íntegros;
+  estado operacional `HEALTHY`.
+- Medição: RPO observado de 7 759 segundos e RTO observado de 37 segundos.
+- Atestação: SHA-256
+  `ed19814bbc93b3fcd8fff918a2465b52a41b2904e5a23d0ee40bea54a7abd859`, conservada como
+  artefacto não sensível durante 90 dias.
+- A identidade privada `age` foi removida do environment `recovery` após o ensaio e permanece
+  guardada fora do GitHub.
 
 O arquivo content-addressed prova a integridade dos bytes existentes. Não protege contra perda do
 projeto inteiro porque está no mesmo PostgreSQL. As migrações reconstroem o esquema, mas não
 reconstroem decisões de revisão, respostas, eventos de auditoria ou documentos arquivados.
 
-A configuração completa, nomes das variáveis e sequência de ativação estão em
-[Backup PostgreSQL cifrado no Backblaze B2 EU](BACKUP_BACKBLAZE_B2.md). A implementação no
-repositório não altera o estado deste runbook enquanto uma execução e um restauro reais não forem
-registados.
+A configuração completa, nomes das variáveis e sequência operacional estão em
+[Backup PostgreSQL cifrado no Backblaze B2 EU](BACKUP_BACKBLAZE_B2.md). A primeira execução e o
+primeiro restauro estão registados acima; futuras alterações de esquema, PostgreSQL, cifragem ou
+fornecedor exigem novo ensaio.
 
 ## Requisitos da cópia externa
 
-A operação só deve ser ativada depois de o responsável definir um destino autorizado. A cópia deve:
+A operação ativa deve continuar a cumprir os requisitos seguintes:
 
 1. ser criada por uma ferramenta PostgreSQL compatível com a versão do servidor;
 2. incluir esquema, dados e objetos necessários à aplicação;
@@ -76,16 +86,18 @@ diagnósticos de segurança não apresentarem `WARN` ou `ERROR`. Após o corte:
 4. registar o incidente e a recuperação num `AuditEvent` ou no diário operacional aplicável;
 5. conservar a base antiga sem mutações até terminar a análise, quando isso for possível e seguro.
 
-## Cadência decidida, ainda por ativar
+## Cadência ativa e manutenção
 
 - backup diário às 05:17 UTC;
 - Object Lock `COMPLIANCE` por pelo menos 30 dias;
 - expiração operacional aproximada aos 46 dias, através de regra 45 + 1 limitada a `database/`;
 - ensaio de restauro inicial e depois trimestral;
 - responsável por falhas: mantenedor do repositório, através do histórico e alertas GitHub Actions;
-- cópia cifrada adicional mensal em suporte offline separado.
+- cópia cifrada adicional mensal em suporte offline separado: recomendada, mas não automatizada nem
+  contada como prova do gate V4.
 
-Esta política só fica **ativa** depois da primeira execução real. Qualquer objetivo de RPO/RTO
-publicado deve resultar do ensaio, não de uma estimativa.
+A política B2 diária está ativa desde a primeira execução real. Os valores de RPO e RTO acima são
+medições desse ensaio, não garantias permanentes; cada ensaio trimestral deve registar novos valores
+sem substituir o histórico.
 
 Referência operacional do provedor: [Backups da base de dados no Supabase](https://supabase.com/docs/guides/platform/backups).
