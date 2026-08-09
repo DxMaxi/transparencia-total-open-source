@@ -22,7 +22,7 @@
     "db:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "api:dev": "cd backend && uvicorn app.main:app --reload --port 8000",
-    "test:frontend": "node --test tests/pwa-contract.test.mjs tests/source-contract.test.mjs tests/live-data-contract.test.mjs tests/public-release-contract.test.mjs",
+    "test:frontend": "node --test tests/pwa-contract.test.mjs tests/source-contract.test.mjs tests/live-data-contract.test.mjs tests/public-release-contract.test.mjs tests/database-backup-contract.test.mjs",
     "test:sites": "node --test tests/rendered-html.test.mjs",
     "test:api": "cd backend && pytest",
     "quality": "npm run lint && npm run db:validate && npm run test:frontend && npm run build:next"

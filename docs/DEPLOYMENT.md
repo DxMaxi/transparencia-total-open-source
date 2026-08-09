@@ -16,7 +16,8 @@
 4. Crie `ADMIN_API_KEY` aleatória com pelo menos 32 bytes.
 5. Documente retenção, capacidade de recuperação e alertas do PostgreSQL. Se o plano não tiver
    backup, registe expressamente esse risco e não anuncie recuperação garantida. Siga o
-   [runbook de recuperação](DATABASE_RECOVERY.md) e não feche o gate V4 antes de um restauro
+   [runbook de recuperação](DATABASE_RECOVERY.md) e a
+   [configuração Backblaze B2 EU](BACKUP_BACKBLAZE_B2.md); não feche o gate V4 antes de um restauro
    isolado ter sido testado.
 6. Não ative IA antes de existir fila de revisão.
 
@@ -78,6 +79,7 @@ Uma falha deve marcar `SyncRun=FAILED/PARTIAL`, alertar a equipa e manter a últ
 - Não existe registo de Service Worker, pedido de notificações ou armazenamento não essencial.
 - Registos e caches PWA de versões anteriores são removidos de forma restrita ao projeto.
 - Migrações aplicadas e capacidade real de recuperação descrita sem garantias inexistentes.
+- Última cópia B2 cifrada e último ensaio de restauro com execução, SHA-256, RPO e RTO registados.
 - URLs oficiais, hashes e datas visíveis nos dados reais.
 - Dados de demonstração ausentes do domínio oficial.
 - Política de correções e contacto público disponíveis.

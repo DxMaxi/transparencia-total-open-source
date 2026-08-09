@@ -1,0 +1,273 @@
+name: Database backup to Backblaze B2 EU
+
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: transparencia-total-database-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 60
+    env:
+      B2_BUCKET_NAME: ${{ vars.B2_BUCKET_NAME }}
+      B2_S3_ENDPOINT: ${{ vars.B2_S3_ENDPOINT }}
+      B2_S3_REGION: ${{ vars.B2_S3_REGION }}
+      BACKUP_AGE_RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
+      AWS_DEFAULT_REGION: ${{ vars.B2_S3_REGION }}
+      AWS_REGION: ${{ vars.B2_S3_REGION }}
+      AWS_EC2_METADATA_DISABLED: "true"
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Validar destino europeu e configuração
+        shell: bash
+        env:
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+          B2_BACKUP_KEY_ID: ${{ secrets.B2_BACKUP_KEY_ID }}
+          B2_BACKUP_APPLICATION_KEY: ${{ secrets.B2_BACKUP_APPLICATION_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$DATABASE_URL"
+          test -n "$B2_BACKUP_KEY_ID"
+          test -n "$B2_BACKUP_APPLICATION_KEY"
+          [[ "$B2_BUCKET_NAME" =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{4,48}[a-zA-Z0-9]$ ]]
+          [[ "$B2_S3_REGION" =~ ^eu-central-[0-9]+$ ]]
+          test "$B2_S3_ENDPOINT" = "https://s3.${B2_S3_REGION}.backblazeb2.com"
+          [[ "$BACKUP_AGE_RECIPIENT" =~ ^age1[0-9a-z]+$ ]]
+
+      - name: Confirmar privilégio mínimo da chave B2
+        working-directory: backend
+        env:
+          B2_KEY_ID: ${{ secrets.B2_BACKUP_KEY_ID }}
+          B2_APPLICATION_KEY: ${{ secrets.B2_BACKUP_APPLICATION_KEY }}
+        run: >-
+          python -m scripts.verify_b2_application_key_scope
+          --role backup
+          --bucket "$B2_BUCKET_NAME"
+          --prefix "database/"
+          --s3-endpoint "$B2_S3_ENDPOINT"
+
+      - name: Preparar ferramentas compatíveis
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes age
+          python -m pip install --upgrade pip
+          python -m pip install -e './backend'
+          aws --version
+          docker --version
+          docker pull postgres:17
+
+      - name: Inventariar produção antes da cópia
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+          ENVIRONMENT: production
+        run: >-
+          python -m scripts.capture_database_inventory
+          --output "$RUNNER_TEMP/database-inventory-before.json"
+
+      - name: Criar cópia lógica cifrada sem plaintext em disco
+        id: backup
+        shell: bash
+        env:
+          PGDATABASE: ${{ secrets.PRODUCTION_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          umask 077
+          stamp="$(date -u +'%Y%m%dT%H%M%SZ')"
+          year="${stamp:0:4}"
+          month="${stamp:4:2}"
+          day="${stamp:6:2}"
+          output_dir="$RUNNER_TEMP/database-backup"
+          ciphertext="$output_dir/transparencia-total-${stamp}.dump.age"
+          manifest="$output_dir/transparencia-total-${stamp}.manifest.json"
+          object_key="database/daily/${year}/${month}/${day}/transparencia-total-${stamp}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.dump.age"
+          manifest_key="${object_key%.dump.age}.manifest.json"
+          started_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          retain_until="$(date -u -d '+31 days' +'%Y-%m-%dT%H:%M:%SZ')"
+          postgres_client="$(docker run --rm postgres:17 pg_dump --version)"
+          test "$(printf '%s' "$postgres_client" | tr -cd '\n' | wc -c)" -eq 0
+          [[ "$postgres_client" == "pg_dump (PostgreSQL) 17."* ]]
+          age_version="$(age --version)"
+          [[ "$age_version" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$ ]]
+          mkdir -p "$output_dir"
+
+          docker run --rm -e PGDATABASE postgres:17 \
+            pg_dump --format=custom --compress=9 --no-owner --no-privileges \
+              --schema=public \
+            | age --recipient "$BACKUP_AGE_RECIPIENT" --output "$ciphertext"
+
+          test -s "$ciphertext"
+          completed_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          {
+            echo "ciphertext=$ciphertext"
+            echo "manifest=$manifest"
+            echo "object_key=$object_key"
+            echo "manifest_key=$manifest_key"
+            echo "started_at=$started_at"
+            echo "completed_at=$completed_at"
+            echo "retain_until=$retain_until"
+            echo "postgres_client=$postgres_client"
+            echo "age_version=$age_version"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Inventariar produção depois da cópia
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+          ENVIRONMENT: production
+        run: >-
+          python -m scripts.capture_database_inventory
+          --output "$RUNNER_TEMP/database-inventory-after.json"
+
+      - name: Construir manifesto e bloquear cópia inconsistente
+        working-directory: backend
+        env:
+          CIPHERTEXT: ${{ steps.backup.outputs.ciphertext }}
+          MANIFEST: ${{ steps.backup.outputs.manifest }}
+          OBJECT_KEY: ${{ steps.backup.outputs.object_key }}
+          BACKUP_STARTED_AT: ${{ steps.backup.outputs.started_at }}
+          BACKUP_COMPLETED_AT: ${{ steps.backup.outputs.completed_at }}
+          RETAIN_UNTIL: ${{ steps.backup.outputs.retain_until }}
+          POSTGRES_CLIENT: ${{ steps.backup.outputs.postgres_client }}
+          AGE_VERSION: ${{ steps.backup.outputs.age_version }}
+        run: >-
+          python -m scripts.build_database_backup_manifest
+          --ciphertext "$CIPHERTEXT"
+          --object-key "$OBJECT_KEY"
+          --started-at "$BACKUP_STARTED_AT"
+          --completed-at "$BACKUP_COMPLETED_AT"
+          --retain-until "$RETAIN_UNTIL"
+          --age-recipient "$BACKUP_AGE_RECIPIENT"
+          --age-version "$AGE_VERSION"
+          --git-sha "$GITHUB_SHA"
+          --repository "$GITHUB_REPOSITORY"
+          --workflow-run-id "$GITHUB_RUN_ID"
+          --workflow-run-attempt "$GITHUB_RUN_ATTEMPT"
+          --postgres-client "$POSTGRES_CLIENT"
+          --inventory-before "$RUNNER_TEMP/database-inventory-before.json"
+          --inventory-after "$RUNNER_TEMP/database-inventory-after.json"
+          --output "$MANIFEST"
+
+      - name: Enviar, aplicar Object Lock e confirmar no B2
+        id: upload
+        shell: bash
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.B2_BACKUP_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.B2_BACKUP_APPLICATION_KEY }}
+          CIPHERTEXT: ${{ steps.backup.outputs.ciphertext }}
+          MANIFEST: ${{ steps.backup.outputs.manifest }}
+          OBJECT_KEY: ${{ steps.backup.outputs.object_key }}
+          MANIFEST_KEY: ${{ steps.backup.outputs.manifest_key }}
+          RETAIN_UNTIL: ${{ steps.backup.outputs.retain_until }}
+        run: |
+          set -euo pipefail
+          ciphertext_sha256="$(jq -r '.backup.ciphertext_sha256' "$MANIFEST")"
+          ciphertext_size="$(jq -r '.backup.ciphertext_size_bytes' "$MANIFEST")"
+          manifest_sha256="$(sha256sum "$MANIFEST" | cut -d ' ' -f 1)"
+          manifest_size="$(stat --format='%s' "$MANIFEST")"
+
+          aws s3api put-object \
+            --bucket "$B2_BUCKET_NAME" \
+            --key "$OBJECT_KEY" \
+            --body "$CIPHERTEXT" \
+            --content-type application/octet-stream \
+            --metadata "ciphertext-sha256=$ciphertext_sha256,manifest-key=$MANIFEST_KEY" \
+            --object-lock-mode COMPLIANCE \
+            --object-lock-retain-until-date "$RETAIN_UNTIL" \
+            --endpoint-url "$B2_S3_ENDPOINT" >/dev/null
+
+          aws s3api put-object \
+            --bucket "$B2_BUCKET_NAME" \
+            --key "$MANIFEST_KEY" \
+            --body "$MANIFEST" \
+            --content-type application/json \
+            --metadata "manifest-sha256=$manifest_sha256,backup-object-key=$OBJECT_KEY" \
+            --object-lock-mode COMPLIANCE \
+            --object-lock-retain-until-date "$RETAIN_UNTIL" \
+            --endpoint-url "$B2_S3_ENDPOINT" >/dev/null
+
+          aws s3api head-object \
+            --bucket "$B2_BUCKET_NAME" --key "$OBJECT_KEY" \
+            --endpoint-url "$B2_S3_ENDPOINT" > "$RUNNER_TEMP/database-backup-head.json"
+          aws s3api head-object \
+            --bucket "$B2_BUCKET_NAME" --key "$MANIFEST_KEY" \
+            --endpoint-url "$B2_S3_ENDPOINT" > "$RUNNER_TEMP/database-manifest-head.json"
+          aws s3api get-object-retention \
+            --bucket "$B2_BUCKET_NAME" --key "$OBJECT_KEY" \
+            --endpoint-url "$B2_S3_ENDPOINT" > "$RUNNER_TEMP/database-backup-retention.json"
+          aws s3api get-object-retention \
+            --bucket "$B2_BUCKET_NAME" --key "$MANIFEST_KEY" \
+            --endpoint-url "$B2_S3_ENDPOINT" > "$RUNNER_TEMP/database-manifest-retention.json"
+
+          jq -e --arg hash "$ciphertext_sha256" --arg key "$MANIFEST_KEY" \
+            --argjson size "$ciphertext_size" \
+            '.ContentLength == $size and .Metadata["ciphertext-sha256"] == $hash
+             and .Metadata["manifest-key"] == $key' \
+            "$RUNNER_TEMP/database-backup-head.json" >/dev/null
+          jq -e --arg hash "$manifest_sha256" --arg key "$OBJECT_KEY" \
+            --argjson size "$manifest_size" \
+            '.ContentLength == $size and .Metadata["manifest-sha256"] == $hash
+             and .Metadata["backup-object-key"] == $key' \
+            "$RUNNER_TEMP/database-manifest-head.json" >/dev/null
+          jq -e '.Retention.Mode == "COMPLIANCE" and (.Retention.RetainUntilDate | length > 0)' \
+            "$RUNNER_TEMP/database-backup-retention.json" >/dev/null
+          jq -e '.Retention.Mode == "COMPLIANCE" and (.Retention.RetainUntilDate | length > 0)' \
+            "$RUNNER_TEMP/database-manifest-retention.json" >/dev/null
+          expected_retention_epoch="$(date -u -d "$RETAIN_UNTIL" +'%s')"
+          backup_retention_epoch="$(date -u -d "$(jq -r '.Retention.RetainUntilDate' "$RUNNER_TEMP/database-backup-retention.json")" +'%s')"
+          manifest_retention_epoch="$(date -u -d "$(jq -r '.Retention.RetainUntilDate' "$RUNNER_TEMP/database-manifest-retention.json")" +'%s')"
+          test "$backup_retention_epoch" -ge "$expected_retention_epoch"
+          test "$manifest_retention_epoch" -ge "$expected_retention_epoch"
+
+          {
+            echo "ciphertext_sha256=$ciphertext_sha256"
+            echo "manifest_sha256=$manifest_sha256"
+            echo "ciphertext_size=$ciphertext_size"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Registar prova não sensível
+        shell: bash
+        run: |
+          {
+            echo "## Backup PostgreSQL cifrado"
+            echo ""
+            echo "- Estado: verificado no Backblaze B2 EU"
+            echo "- Objeto: \`${{ steps.backup.outputs.object_key }}\`"
+            echo "- SHA-256 cifrado: \`${{ steps.upload.outputs.ciphertext_sha256 }}\`"
+            echo "- Tamanho cifrado: ${{ steps.upload.outputs.ciphertext_size }} bytes"
+            echo "- SHA-256 do manifesto: \`${{ steps.upload.outputs.manifest_sha256 }}\`"
+            echo "- Object Lock: COMPLIANCE até ${{ steps.backup.outputs.retain_until }}"
+            echo "- Plaintext persistido: não"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remover ficheiros temporários
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          rm -f \
+            "${{ steps.backup.outputs.ciphertext }}" \
+            "${{ steps.backup.outputs.manifest }}" \
+            "$RUNNER_TEMP/database-inventory-before.json" \
+            "$RUNNER_TEMP/database-inventory-after.json" \
+            "$RUNNER_TEMP/database-backup-head.json" \
+            "$RUNNER_TEMP/database-manifest-head.json" \
+            "$RUNNER_TEMP/database-backup-retention.json" \
+            "$RUNNER_TEMP/database-manifest-retention.json"

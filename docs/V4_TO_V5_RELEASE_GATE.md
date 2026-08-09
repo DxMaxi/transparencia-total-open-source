@@ -32,7 +32,7 @@ existir uma cópia externa cifrada, com retenção definida, e um ensaio de rest
 | Desempenho PostgreSQL | PASS | advisor Supabase com zero `WARN` e zero `ERROR`; avisos informativos de índices permanecem observáveis para reavaliação com carga real |
 | API pública | PASS | readiness HTTP 200 com `database_ready=true`; estado público `LIVE`; 5 106 registos aprovados |
 | Website público | PASS | homepage, políticos, atividade parlamentar, promessas, metodologia, direito de resposta, privacidade, termos e acessibilidade renderizados sem erro |
-| Backup externo e restauro | **BLOCKED** | plano Supabase Free confirmado; nenhuma cópia externa nem ensaio de restauro foram demonstrados nesta validação |
+| Backup externo e restauro | **BLOCKED — execução real** | conta EU Central, bucket privado, cifragem, Object Lock `COMPLIANCE` de 30 dias e ciclo de vida `database/` 45 + 1 confirmados; a chave demasiado ampla foi revogada antes de uso e os fluxos exigem agora capacidades exatas; ainda faltam as duas novas chaves, um objeto real, SHA-256 confirmado no B2 e o ensaio de restauro |
 
 `PASS com limitação visível` não transforma ausência de dados em sucesso silencioso. Significa que
 a operação terminou sem fonte falhada, preservou prova e publicou o estado incompleto como tal.
@@ -47,6 +47,9 @@ a operação terminou sem fonte falhada, preservou prova e publicou o estado inc
   medição atual é 32 645 120 bytes físicos.
 - Nenhuma compra ou serviço de IA foi ativado nesta validação.
 - A capacidade de recuperação continua limitada conforme a secção bloqueadora acima.
+- A implementação Backblaze B2 está descrita em
+  [Backup PostgreSQL cifrado no Backblaze B2 EU](BACKUP_BACKBLAZE_B2.md). Código preparado não é
+  contado como cópia nem como ensaio.
 
 ## Parlamento
 
@@ -110,6 +113,10 @@ a operação terminou sem fonte falhada, preservou prova e publicou o estado inc
    comparar contagens e eventos de auditoria.
 5. Registar resultado, RPO e RTO observados. Só então alterar este gate para `PASS`, repetir CI e
    smoke final e criar a tag/release `v0.4.0`.
+
+O procedimento concreto é: configurar diretamente no GitHub os segredos limitados, executar
+`Database backup to Backblaze B2 EU`, executar `Isolated database restore drill`, remover a chave
+privada temporária do environment de recuperação e acrescentar aqui os URLs e hashes observados.
 
 ## Regra de passagem
 
