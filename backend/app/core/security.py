@@ -23,6 +23,7 @@ OFFICIAL_HOSTS = frozenset(
         "www.diariodarepublica.pt",
         "tribunalconstitucional.pt",
         "www.tribunalconstitucional.pt",
+        "entidadetransparencia.pt",
         "transparencia.gov.pt",
         "www.transparencia.gov.pt",
         "base.gov.pt",

@@ -49,6 +49,13 @@ Atualiza separadamente os índices oficiais da V4. O relatório final distingue 
 mas o job termina com erro visível para obrigar a análise humana. A tentativa falhada fica registada
 como `SyncRun=FAILED`, mesmo quando a falha ocorre antes de existirem bytes para arquivar.
 
+Um estado `PARTIAL` só é aceite com bytes de uma origem oficial autorizada e pelo menos um aviso
+persistido. Na EPT, significa que o índice canónico não respondeu por falha de rede e foi arquivado
+apenas o portal oficial alternativo, sem o tratar como índice equivalente. O job pode terminar com
+sucesso operacional neste estado para preservar as restantes fontes, mas `/api/v1/public/data-status`
+mantém `PARTIAL`, o URL efectivo e a contagem de avisos visíveis. Se nem essa origem oficial puder
+ser atestada, a fonte permanece `FAILED` e o job falha.
+
 Recolha não significa publicação.
 
 ### `sync-parliament-deputies` e `sync-parliament-activity`
@@ -133,6 +140,11 @@ O ambiente deve exigir aprovação manual antes da execução.
 6. Executar `preview-parliament-activity` e rever hashes, contagens, avisos e atores desconhecidos.
 7. Executar `publish-parliament-activity` apenas nos âmbitos aprovados.
 8. Confirmar `/api/v1/public/data-status`, os três endpoints parlamentares e as páginas públicas.
+
+No fecho final da V4, depois de o commit estar efetivamente em produção, os três gates devem correr
+por esta ordem: `refresh-official-indexes`, `verify-archive-integrity` e
+`check-operational-status`. Um `PARTIAL` recente e documentado pode ser operacional; um `FAILED`,
+uma prova sem atestado ou um objeto com hash/tamanho divergente bloqueia a release.
 
 ## O que nunca deve acontecer
 

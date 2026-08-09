@@ -8,12 +8,15 @@ import pytest
 from pydantic import HttpUrl
 
 from app.models.archive import PrivateRawDocument, RawArchiveReceipt
+from app.services.transparency_entity import EPT_PORTAL_FALLBACK_WARNING
 from app.services.v4_rollout import (
     DEFAULT_ROLLOUT_SOURCES,
+    DEFAULT_V4_ROLLOUT_CODE_VERSION,
     SOURCE_CONFIGS,
+    CollectedRolloutSource,
     V4RolloutService,
 )
-from scripts import bootstrap_v4_public
+from scripts import bootstrap_v4_public, refresh_v4_indexes
 from scripts.bootstrap_v4_public import (
     EXPECTED_PARLIAMENT_COUNT,
     EXPECTED_PARLIAMENT_SHA256,
@@ -54,6 +57,54 @@ def test_sns_uses_the_official_transparency_portal() -> None:
 
 
 @pytest.mark.asyncio
+async def test_ept_portal_contingency_is_persisted_as_partial(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    content = b"official portal contingency"
+    content_sha256 = hashlib.sha256(content).hexdigest()
+    raw_document = PrivateRawDocument(
+        source_url=HttpUrl("https://entidadetransparencia.pt/"),
+        retrieved_at=datetime.now(UTC),
+        content_sha256=content_sha256,
+        mime_type="text/html",
+        content=content,
+    )
+
+    class FakeRepository:
+        def __init__(self) -> None:
+            self.stored: dict[str, object] | None = None
+
+        async def store_index(self, **kwargs: object) -> dict[str, object]:
+            self.stored = kwargs
+            return kwargs
+
+    repository = FakeRepository()
+    service = V4RolloutService(
+        object(),  # type: ignore[arg-type]
+        repository,  # type: ignore[arg-type]
+    )
+
+    async def collect_partial(source_name: str) -> CollectedRolloutSource:
+        assert source_name == "TRANSPARENCY_ENTITY"
+        return CollectedRolloutSource(
+            raw_document=raw_document,
+            items=(),
+            title="Entidade para a Transparência — portal oficial de contingência",
+            status="PARTIAL",
+            warnings=(EPT_PORTAL_FALLBACK_WARNING,),
+        )
+
+    monkeypatch.setattr(service, "_collect_source", collect_partial)
+    await service.sync_source("TRANSPARENCY_ENTITY")
+
+    assert repository.stored is not None
+    assert repository.stored["status_value"] == "PARTIAL"
+    assert repository.stored["warnings"] == [EPT_PORTAL_FALLBACK_WARNING]
+    assert repository.stored["raw_document"] is raw_document
+    assert repository.stored["resources"] == []
+
+
+@pytest.mark.asyncio
 async def test_collection_failure_is_recorded_without_publication(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -90,7 +141,7 @@ async def test_collection_failure_is_recorded_without_publication(
     assert repository.failure == {
         "source_name": "LOCAL_SNS",
         "dataset_url": "https://transparencia.sns.gov.pt/pages/home-page/",
-        "code_version": "v4-public-rollout-v2",
+        "code_version": DEFAULT_V4_ROLLOUT_CODE_VERSION,
         "error_message": "fonte temporariamente indisponível",
     }
     assert repository.store_called is False
@@ -121,6 +172,53 @@ async def test_rollout_refresh_continues_after_one_source_fails(
     assert results[1]["publication_performed"] is False
     assert results[1]["error_type"] == "RuntimeError"
     assert results[2] == {"source_name": "COURT_OF_AUDIT", "status": "STAGED"}
+
+
+@pytest.mark.asyncio
+async def test_refresh_reports_an_explicit_partial_without_hiding_or_failing_it(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    class FakeRepository:
+        closed = False
+
+        def __init__(self, settings: object) -> None:
+            self.settings = settings
+
+        async def connect(self) -> None:
+            return None
+
+        async def close(self) -> None:
+            self.closed = True
+
+    class FakeService:
+        def __init__(self, settings: object, repository: FakeRepository) -> None:
+            self.settings = settings
+            self.repository = repository
+
+        async def sync_sources(self, sources: list[str]) -> list[dict[str, object]]:
+            assert "TRANSPARENCY_ENTITY" in sources
+            return [
+                {
+                    "source_name": "TRANSPARENCY_ENTITY",
+                    "status": "PARTIAL",
+                    "publishable": False,
+                },
+                {"source_name": "DRE", "status": "SUCCEEDED", "publishable": False},
+            ]
+
+    settings = SimpleNamespace(environment="staging", database_url=object())
+    monkeypatch.setattr(refresh_v4_indexes, "get_settings", lambda: settings)
+    monkeypatch.setattr(refresh_v4_indexes, "OfficialIndexStagingRepository", FakeRepository)
+    monkeypatch.setattr(refresh_v4_indexes, "V4RolloutService", FakeService)
+
+    await refresh_v4_indexes.refresh()
+
+    report = json.loads(capsys.readouterr().out)
+    assert report["status"] == "PARTIAL"
+    assert report["failed_sources"] == []
+    assert report["partial_sources"] == ["TRANSPARENCY_ENTITY"]
+    assert report["sources"][0]["publishable"] is False
 
 
 def test_bootstrap_is_pinned_to_the_audited_parliament_snapshot() -> None:

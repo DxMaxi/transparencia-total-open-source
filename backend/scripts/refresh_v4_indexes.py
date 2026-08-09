@@ -25,12 +25,14 @@ async def refresh() -> None:
         await repository.close()
 
     failed = [result for result in results if result.get("status") == "FAILED"]
+    partial = [result for result in results if result.get("status") == "PARTIAL"]
     print(
         json.dumps(
             {
-                "status": "PARTIAL" if failed else "SUCCEEDED",
+                "status": "PARTIAL" if failed or partial else "SUCCEEDED",
                 "sources": results,
                 "failed_sources": [result.get("source_name") for result in failed],
+                "partial_sources": [result.get("source_name") for result in partial],
             },
             ensure_ascii=False,
             default=str,

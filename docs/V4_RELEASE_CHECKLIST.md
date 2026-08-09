@@ -21,7 +21,7 @@
 | Assembleia da República | Bytes PostgreSQL, manifesto versionado, associação segura, revisão por hashes/contagens e API fail-closed | Não |
 | Portal BASE | Arquivo, staging privado, deduplicação e promoção exata sob revisão | Não |
 | Diário da República | Arquivo, snapshot privado, inspector sem texto e testes de imutabilidade | Não |
-| Entidade para a Transparência | Colector de índice e schema privado com revisão jurídica obrigatória | Não |
+| Entidade para a Transparência | Índice canónico fail-closed; contingência limitada ao portal oficial, sempre `PARTIAL`, avisada, atestada e privada | Não |
 | Tribunal de Contas | Colector mínimo fail-closed do índice oficial | Não |
 | Parlamento Europeu | Colector mínimo fail-closed do índice oficial | Não |
 | Portal da Transparência do SNS | Colector privado fail-closed como origem inicial | Não |
