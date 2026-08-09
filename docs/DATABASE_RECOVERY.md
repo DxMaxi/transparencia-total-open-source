@@ -8,7 +8,10 @@ Não inclui credenciais e não promete uma capacidade que ainda não tenha sido 
 - Provedor: Supabase/PostgreSQL, projeto de produção `ACTIVE_HEALTHY`.
 - Plano confirmado em 9 de agosto de 2026: Free.
 - Backup gerido ou point-in-time recovery: não demonstrado e, por isso, não garantido.
-- Cópia lógica externa: não demonstrada.
+- Destino aprovado: Backblaze B2, conta na região EU Central e bucket privado.
+- Automatização: preparada em `.github/workflows/database-backup.yml`, mas ainda não demonstrada
+  com credenciais e objeto reais.
+- Cópia lógica externa: ainda não demonstrada.
 - Ensaio de restauro: não executado.
 - RPO e RTO: indisponíveis até existir um ensaio medido.
 - Arquivo interno: 32 objetos, todos verificados, zero corrupção em 9 de agosto de 2026.
@@ -17,6 +20,11 @@ Não inclui credenciais e não promete uma capacidade que ainda não tenha sido 
 O arquivo content-addressed prova a integridade dos bytes existentes. Não protege contra perda do
 projeto inteiro porque está no mesmo PostgreSQL. As migrações reconstroem o esquema, mas não
 reconstroem decisões de revisão, respostas, eventos de auditoria ou documentos arquivados.
+
+A configuração completa, nomes das variáveis e sequência de ativação estão em
+[Backup PostgreSQL cifrado no Backblaze B2 EU](BACKUP_BACKBLAZE_B2.md). A implementação no
+repositório não altera o estado deste runbook enquanto uma execução e um restauro reais não forem
+registados.
 
 ## Requisitos da cópia externa
 
@@ -63,10 +71,16 @@ diagnósticos de segurança não apresentarem `WARN` ou `ERROR`. Após o corte:
 4. registar o incidente e a recuperação num `AuditEvent` ou no diário operacional aplicável;
 5. conservar a base antiga sem mutações até terminar a análise, quando isso for possível e seguro.
 
-## Cadência mínima a decidir
+## Cadência decidida, ainda por ativar
 
-O projeto ainda não declara uma cadência como se já estivesse ativa. Antes da tag `v0.4.0`, o
-responsável deve escolher e testar frequência, retenção, responsável por falhas e alertas de cópia.
-Qualquer objetivo de RPO/RTO publicado deve resultar do ensaio, não de uma estimativa.
+- backup diário às 05:17 UTC;
+- Object Lock `COMPLIANCE` por pelo menos 30 dias;
+- expiração operacional aproximada aos 46 dias, através de regra 45 + 1 limitada a `database/`;
+- ensaio de restauro inicial e depois trimestral;
+- responsável por falhas: mantenedor do repositório, através do histórico e alertas GitHub Actions;
+- cópia cifrada adicional mensal em suporte offline separado.
+
+Esta política só fica **ativa** depois da primeira execução real. Qualquer objetivo de RPO/RTO
+publicado deve resultar do ensaio, não de uma estimativa.
 
 Referência operacional do provedor: [Backups da base de dados no Supabase](https://supabase.com/docs/guides/platform/backups).

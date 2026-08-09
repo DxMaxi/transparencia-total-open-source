@@ -10,7 +10,9 @@ ser tornado público antes de o projeto se apresentar como open source.
 > âmbito, API pública fail-closed, catálogo inicial do Programa do XXV Governo e páginas legais.
 > O domínio oficial nunca substitui uma falha da API por dados fictícios. Consulte o
 > [gate V4 → V5](docs/V4_TO_V5_RELEASE_GATE.md) e o
-> [runbook de recuperação](docs/DATABASE_RECOVERY.md) para o estado operacional real.
+> [runbook de recuperação](docs/DATABASE_RECOVERY.md) para o estado operacional real. O destino
+> escolhido e ainda por ativar está no
+> [runbook Backblaze B2 EU](docs/BACKUP_BACKBLAZE_B2.md).
 
 ## Princípios
 
@@ -110,7 +112,8 @@ coletores, revisão e envio push ficam no backend. Consulte [Arquitetura](docs/A
 [pipeline parlamentar V4](docs/V4_PARLIAMENT_PIPELINE.md), das
 [operações de produção](docs/V4_PRODUCTION_OPERATIONS.md) e do
 [gate V4 → V5](docs/V4_TO_V5_RELEASE_GATE.md), do
-[runbook de recuperação](docs/DATABASE_RECOVERY.md), além do
+[runbook de recuperação](docs/DATABASE_RECOVERY.md), do
+[backup cifrado Backblaze B2 EU](docs/BACKUP_BACKBLAZE_B2.md), além do
 [modelo de AIPD/RGPD](docs/DPIA_TEMPLATE.md).
 
 ## Estrutura do projeto

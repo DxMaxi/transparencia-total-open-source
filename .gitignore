@@ -20,6 +20,8 @@
 # misc
 .DS_Store
 *.pem
+*.agekey
+*-backup-age.key
 
 # debug
 npm-debug.log*

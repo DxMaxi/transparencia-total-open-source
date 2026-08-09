@@ -50,6 +50,8 @@ Estes passos não são executados automaticamente pelo código nem pelo PR:
 4. definição de cobertura territorial explícita para cada conector Radar;
 5. revisão humana positiva antes de criar qualquer projecção pública;
 6. deploy separado, autorizado e acompanhado de verificação pós-deploy.
+7. primeira cópia cifrada no Backblaze B2 EU e primeiro restauro isolado, seguindo
+   [o runbook próprio](BACKUP_BACKBLAZE_B2.md), antes da tag `v0.4.0`.
 
 Para o Parlamento, a sequência obrigatória é: `migrate` → `sync-parliament-deputies` →
 `sync-parliament-activity` → `preview-parliament-activity` → revisão humana →
