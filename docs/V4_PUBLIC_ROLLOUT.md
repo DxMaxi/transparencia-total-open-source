@@ -15,9 +15,10 @@ O directório factual da XVII Legislatura é a primeira projecção pública da 
 
 Qualquer divergência bloqueia o arranque. A decisão cria uma revisão e um evento de auditoria por pessoa e é idempotente.
 
-## Cobertura automática após o arranque
+## Cobertura por operação controlada
 
-O backend recolhe, em segundo plano, apenas índices ou catálogos públicos:
+O backend recolhe fora do arranque e apenas através da operação protegida
+`refresh-official-indexes` os seguintes índices ou catálogos públicos:
 
 - catálogo oficial do Portal BASE;
 - índice público do Diário da República;
@@ -31,6 +32,11 @@ Os bytes exactos são guardados em armazenamento privado content-addressed no Po
 Uma falha de recolha anterior à obtenção dos bytes também acrescenta um `SyncRun=FAILED`. Assim, o
 estado operacional mostra a tentativa mais recente e não apresenta um sucesso antigo como se fosse
 uma actualização atual.
+
+Quando o índice canónico da Entidade para a Transparência está inacessível por falha de rede, a
+operação pode arquivar exclusivamente o portal oficial alternativo, ligado pelo próprio índice.
+Este caso fica `PARTIAL`, com aviso, URL efectiva, data e SHA-256. Não é apresentado como índice
+equivalente, não recolhe declarações, não cria recursos públicos e não dispensa revisão jurídica.
 
 ## Limites públicos
 

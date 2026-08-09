@@ -62,7 +62,7 @@ async def test_retries_transient_network_failures_with_a_bounded_budget(
 
 @pytest.mark.asyncio
 @respx.mock
-async def test_persistent_ept_failure_remains_visible_without_unverified_fallback(
+async def test_generic_http_client_does_not_apply_a_source_specific_fallback(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     url = "https://www.tribunalconstitucional.pt/tc/ept/"

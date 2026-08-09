@@ -1,8 +1,11 @@
 import hashlib
+import logging
 import re
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from urllib.parse import urljoin
 
+import httpx
 from bs4 import BeautifulSoup
 from pydantic import HttpUrl
 
@@ -13,6 +16,20 @@ from app.models.archive import PrivateRawDocument
 from app.services.http import OfficialHttpClient
 
 EPT_INDEX_URL = "https://www.tribunalconstitucional.pt/tc/ept/"
+EPT_PORTAL_FALLBACK_URL = "https://entidadetransparencia.pt/"
+EPT_PORTAL_FALLBACK_WARNING = (
+    "Índice canónico da EPT indisponível; foi preservado apenas o portal oficial alternativo."
+)
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True, slots=True)
+class TransparencyIndexCollection:
+    resources: tuple[TransparencyResource, ...]
+    raw_document: PrivateRawDocument
+    canonical_index_available: bool
+    warnings: tuple[str, ...] = ()
 
 
 class TransparencyEntityCollector:
@@ -29,8 +46,20 @@ class TransparencyEntityCollector:
 
     async def fetch_public_index(
         self,
-    ) -> tuple[list[TransparencyResource], PrivateRawDocument]:
-        response = await self.http.get(EPT_INDEX_URL)
+        *,
+        allow_portal_fallback: bool = False,
+    ) -> TransparencyIndexCollection:
+        canonical_index_available = True
+        warnings: tuple[str, ...] = ()
+        try:
+            response = await self.http.get(EPT_INDEX_URL)
+        except (httpx.NetworkError, httpx.TimeoutException):
+            if not allow_portal_fallback:
+                raise
+            logger.warning("ept_canonical_index_unavailable_using_official_portal_fallback")
+            response = await self.http.get(EPT_PORTAL_FALLBACK_URL)
+            canonical_index_available = False
+            warnings = (EPT_PORTAL_FALLBACK_WARNING,)
         retrieved_at = datetime.now(UTC)
         content_sha256 = hashlib.sha256(response.content).hexdigest()
         raw_document = PrivateRawDocument(
@@ -67,8 +96,13 @@ class TransparencyEntityCollector:
                 category=category,
                 source=source,
             )
-        return sorted(resources.values(), key=lambda item: item.title.casefold()), raw_document
+        return TransparencyIndexCollection(
+            resources=tuple(sorted(resources.values(), key=lambda item: item.title.casefold())),
+            raw_document=raw_document,
+            canonical_index_available=canonical_index_available,
+            warnings=warnings,
+        )
 
     async def public_resources(self) -> list[TransparencyResource]:
-        resources, _ = await self.fetch_public_index()
-        return resources
+        collection = await self.fetch_public_index()
+        return list(collection.resources)

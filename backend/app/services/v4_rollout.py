@@ -25,6 +25,8 @@ from app.services.transparency_entity import EPT_INDEX_URL, TransparencyEntityCo
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_V4_ROLLOUT_CODE_VERSION = "v4-public-rollout-v3"
+
 RolloutSource = Literal[
     "BASE_CONTRACTS",
     "DRE",
@@ -40,6 +42,15 @@ class RolloutSourceConfig:
     publisher: str
     title: str
     url: str
+
+
+@dataclass(frozen=True, slots=True)
+class CollectedRolloutSource:
+    raw_document: PrivateRawDocument
+    items: tuple[OfficialIndexItem, ...]
+    title: str
+    status: Literal["SUCCEEDED", "PARTIAL"] = "SUCCEEDED"
+    warnings: tuple[str, ...] = ()
 
 
 SOURCE_CONFIGS: dict[RolloutSource, RolloutSourceConfig] = {
@@ -98,11 +109,11 @@ class V4RolloutService:
         self,
         source_name: RolloutSource,
         *,
-        code_version: str = "v4-public-rollout-v2",
+        code_version: str = DEFAULT_V4_ROLLOUT_CODE_VERSION,
     ) -> dict[str, object]:
         config = SOURCE_CONFIGS[source_name]
         try:
-            raw_document, items = await self._collect_source(source_name)
+            collection = await self._collect_source(source_name)
         except Exception as exc:
             try:
                 await self.repository.record_failed_index_refresh(
@@ -121,30 +132,40 @@ class V4RolloutService:
         return await self.repository.store_index(
             source_name=source_name,
             publisher=config.publisher,
-            title=config.title,
-            raw_document=raw_document,
-            resources=items,
+            title=collection.title,
+            raw_document=collection.raw_document,
+            resources=list(collection.items),
             code_version=code_version,
+            status_value=collection.status,
+            warnings=list(collection.warnings),
         )
 
     async def _collect_source(
         self,
         source_name: RolloutSource,
-    ) -> tuple[PrivateRawDocument, list[OfficialIndexItem]]:
+    ) -> CollectedRolloutSource:
         config = SOURCE_CONFIGS[source_name]
+        status: Literal["SUCCEEDED", "PARTIAL"] = "SUCCEEDED"
+        warnings: tuple[str, ...] = ()
+        title = config.title
         async with OfficialHttpClient(self.settings) as http:
             if source_name == "TRANSPARENCY_ENTITY":
-                resources, raw_document = await TransparencyEntityCollector(
+                ept_collection = await TransparencyEntityCollector(
                     self.settings, http
-                ).fetch_public_index()
+                ).fetch_public_index(allow_portal_fallback=True)
+                raw_document = ept_collection.raw_document
                 items = [
                     OfficialIndexItem(
                         title=resource.title,
                         url=str(resource.url),
                         category=resource.category,
                     )
-                    for resource in resources
+                    for resource in ept_collection.resources
                 ]
+                if not ept_collection.canonical_index_available:
+                    status = "PARTIAL"
+                    warnings = ept_collection.warnings
+                    title = "Entidade para a Transparência — portal oficial de contingência"
             elif source_name == "BASE_CONTRACTS":
                 response = await http.get(config.url)
                 retrieved_at = datetime.now(UTC)
@@ -163,17 +184,23 @@ class V4RolloutService:
                     )
                 ]
             else:
-                collection = await OfficialIndexCollector(http).collect(
+                official_collection = await OfficialIndexCollector(http).collect(
                     source_name=source_name,
                     index_url=config.url,
                 )
-                raw_document = collection.raw_document
+                raw_document = official_collection.raw_document
                 items = [
                     OfficialIndexItem(title=resource.title, url=str(resource.url))
-                    for resource in collection.resources
+                    for resource in official_collection.resources
                 ]
 
-        return raw_document, items
+        return CollectedRolloutSource(
+            raw_document=raw_document,
+            items=tuple(items),
+            title=title,
+            status=status,
+            warnings=warnings,
+        )
 
     async def sync_sources(
         self,

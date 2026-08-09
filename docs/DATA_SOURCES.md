@@ -6,7 +6,7 @@
 |---|---|---|---|
 | Assembleia da República | Release candidate | Catálogos, bytes PostgreSQL, deputados, reuniões observadas, iniciativas, votações, snapshots e revisão/publicação fail-closed | Reuniões são as referidas nos eventos de votação, não a agenda completa; nem toda votação é nominal |
 | Diário da República | Funcional em staging | Extração por URL ELI, bytes exactos, arquivo atestado e snapshot privado append-only | Sem promoção pública; feed RSS só após confirmação documental |
-| Entidade para a Transparência | Funcional em staging privado | Índice público com bytes exactos, atestado e recursos não publicáveis | Não recolhe declarações nem áreas autenticadas; qualquer tratamento exige revisão jurídica própria |
+| Entidade para a Transparência | Funcional em staging privado, com contingência explícita | Índice canónico com bytes exactos; perante falha de rede, apenas o portal oficial alternativo é arquivado como `PARTIAL` | O portal alternativo não equivale ao índice, não recolhe declarações nem autoriza publicação; qualquer tratamento exige revisão jurídica própria |
 | Portal BASE / dados.gov.pt | Funcional em staging | Descoberta anual, JSON/XML/ZIP, arquivo, lote append-only e candidatos exactos apenas em ficheiro privado | Sem promoção pública; API directa de grande volume pode exigir registo e autorização |
 | Tribunal de Contas | Colector privado funcional | Índice oficial preservado com URL, data, SHA-256 e recursos deduplicados | Sem publicação nem interpretação de decisões ou culpa |
 | Parlamento Europeu | Colector privado funcional | Portal de dados abertos preservado com URL, data, SHA-256 e recursos deduplicados | Sem publicação nem atribuição individual sem voto nominal explícito |
@@ -57,12 +57,23 @@ Defina `DRE_RSS_URL` apenas quando a equipa confirmar e documentar o feed oficia
 
 ## Entidade para a Transparência
 
-Portal: <https://www.tribunalconstitucional.pt/tc/ept/>
+Índice canónico: <https://www.tribunalconstitucional.pt/tc/ept/>
+
+Portal oficial alternativo ligado pelo índice canónico:
+<https://entidadetransparencia.pt/>.
 
 O colector indexa apenas ligações publicamente acessíveis e conserva os bytes exactos. O schema de
 staging guarda somente título, categoria e URL, com estado fixo `REQUIRES_LEGAL_REVIEW` e sem
 projecção pública. A operação controlada arquiva e atesta o índice, mas não promove recursos nem
 autoriza qualquer tratamento de declarações.
+
+Se o índice canónico falhar por erro de rede ou timeout durante a operação controlada, o colector
+pode preservar somente os bytes do portal oficial alternativo. Essa recolha fica obrigatoriamente
+marcada `PARTIAL`, com aviso explícito, URL efectiva, data, SHA-256 e evento de auditoria; mantém
+`publishable=False` e não cria recursos públicos. Não existe equivalência inferida entre o portal e
+o índice, nem entre a disponibilidade do portal e a existência, ausência ou conteúdo de qualquer
+declaração. Erros HTTP não transitórios, uma resposta não oficial ou a falha do próprio portal
+continuam a produzir `SyncRun=FAILED`.
 
 Não são recolhidos conteúdos de declarações, identificadores pessoais, respostas a formulários ou
 áreas autenticadas. A existência ou ausência de uma ligação nunca é convertida em alegação sobre

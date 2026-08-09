@@ -180,11 +180,25 @@ class OfficialIndexStagingRepository(PostgresRepository):
         raw_document: PrivateRawDocument,
         resources: list[OfficialIndexItem],
         code_version: str,
+        status_value: str = "SUCCEEDED",
+        warnings: list[str] | None = None,
     ) -> dict[str, object]:
         if self.pool is None:
             raise RuntimeError("Base de dados não configurada")
         if not source_name.strip() or len(source_name) > 100:
             raise ValueError("Nome da fonte inválido")
+        if status_value not in {"SUCCEEDED", "PARTIAL"}:
+            raise ValueError("Estado final do índice inválido")
+
+        sync_warnings = list(warnings or [])
+        if status_value == "PARTIAL" and not sync_warnings:
+            raise ValueError("Um índice parcial exige pelo menos um aviso explícito")
+
+        audit_reason = (
+            "Índice oficial preservado sem autorização de publicação"
+            if status_value == "SUCCEEDED"
+            else "Fonte oficial de contingência preservada como parcial e sem publicação"
+        )
 
         sync_id = await self._start_sync_run(
             source_name=source_name,
@@ -317,8 +331,7 @@ class OfficialIndexStagingRepository(PostgresRepository):
                         (id, entity_type, entity_id, action, actor_alias,
                          before_json, after_json, reason, created_at)
                     VALUES ($1, 'OFFICIAL_INDEX_SNAPSHOT', $2, 'INGESTED', $3,
-                            NULL, $4::jsonb,
-                            'Índice oficial preservado sem autorização de publicação', NOW())
+                            NULL, $4::jsonb, $5, NOW())
                     """,
                     _new_id("audit"),
                     snapshot_id,
@@ -328,18 +341,21 @@ class OfficialIndexStagingRepository(PostgresRepository):
                             "source_name": source_name,
                             "content_sha256": raw_document.content_sha256,
                             "resource_count": len(ordered_resources),
+                            "sync_status": status_value,
+                            "warnings": sync_warnings,
                             "publishable": False,
                         },
                         ensure_ascii=False,
                     ),
+                    audit_reason,
                 )
 
             await self._finish_sync_run(
                 sync_id,
-                status_value="SUCCEEDED",
+                status_value=status_value,
                 records_read=len(ordered_resources),
                 records_written=len(ordered_resources) if snapshot_created else 0,
-                warnings=[],
+                warnings=sync_warnings,
             )
         except Exception as exc:
             await self._finish_sync_run(
@@ -347,13 +363,15 @@ class OfficialIndexStagingRepository(PostgresRepository):
                 status_value="FAILED",
                 records_read=len(ordered_resources),
                 records_written=0,
-                warnings=[],
+                warnings=sync_warnings,
                 error_message=str(exc),
             )
             raise
 
         return {
             "source_name": source_name,
+            "status": status_value,
+            "sync_run_id": sync_id,
             "source_document_id": source_document_id,
             "snapshot_id": snapshot_id,
             "content_sha256": raw_document.content_sha256,
