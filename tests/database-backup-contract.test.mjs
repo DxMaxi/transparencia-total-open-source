@@ -83,7 +83,7 @@ test("restore drill is manual, isolated and checks proof before decrypting", asy
   assert.doesNotMatch(workflow, /schedule:\s*\n/);
 });
 
-test("recovery documentation names the EU region, key separation and real gate", async () => {
+test("recovery documentation records the EU proof and tested restore", async () => {
   const documentation = await readFile(
     new URL("docs/BACKUP_BACKBLAZE_B2.md", root),
     "utf8",
@@ -105,7 +105,14 @@ test("recovery documentation names the EU region, key separation and real gate",
   assert.match(documentation, /bypassGovernance/);
   assert.match(documentation, /BACKUP_AGE_IDENTITY/);
   assert.match(documentation, /não.*repositório/i);
-  assert.match(documentation, /BLOCKED/);
+  assert.match(documentation, /Estado do gate: PASS/i);
+  assert.match(documentation, /31313078924/);
+  assert.match(documentation, /31318699132/);
+  assert.match(
+    documentation,
+    /ed19814bbc93b3fcd8fff918a2465b52a41b2904e5a23d0ee40bea54a7abd859/,
+  );
+  assert.doesNotMatch(documentation, /BLOCKED na operação/i);
   assert.match(gitignore, /\*\.agekey/);
   assert.match(gitignore, /\*-backup-age\.key/);
 });
