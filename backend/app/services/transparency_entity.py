@@ -20,6 +20,9 @@ EPT_PORTAL_FALLBACK_URL = "https://entidadetransparencia.pt/"
 EPT_PORTAL_FALLBACK_WARNING = (
     "Índice canónico da EPT indisponível; foi preservado apenas o portal oficial alternativo."
 )
+EPT_PORTAL_RATE_LIMIT_WARNING = (
+    "Índice canónico da EPT respondeu HTTP 429; foi preservado apenas o portal oficial alternativo."
+)
 
 logger = logging.getLogger(__name__)
 
@@ -53,13 +56,26 @@ class TransparencyEntityCollector:
         warnings: tuple[str, ...] = ()
         try:
             response = await self.http.get(EPT_INDEX_URL)
-        except (httpx.NetworkError, httpx.TimeoutException):
-            if not allow_portal_fallback:
+        except (
+            httpx.NetworkError,
+            httpx.TimeoutException,
+            httpx.HTTPStatusError,
+        ) as exc:
+            is_rate_limited = (
+                isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code == 429
+            )
+            if not allow_portal_fallback or (
+                isinstance(exc, httpx.HTTPStatusError) and not is_rate_limited
+            ):
                 raise
             logger.warning("ept_canonical_index_unavailable_using_official_portal_fallback")
             response = await self.http.get(EPT_PORTAL_FALLBACK_URL)
             canonical_index_available = False
-            warnings = (EPT_PORTAL_FALLBACK_WARNING,)
+            warnings = (
+                (EPT_PORTAL_RATE_LIMIT_WARNING,)
+                if is_rate_limited
+                else (EPT_PORTAL_FALLBACK_WARNING,)
+            )
         retrieved_at = datetime.now(UTC)
         content_sha256 = hashlib.sha256(response.content).hexdigest()
         raw_document = PrivateRawDocument(

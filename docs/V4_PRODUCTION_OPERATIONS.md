@@ -50,9 +50,10 @@ mas o job termina com erro visível para obrigar a análise humana. A tentativa 
 como `SyncRun=FAILED`, mesmo quando a falha ocorre antes de existirem bytes para arquivar.
 
 Um estado `PARTIAL` só é aceite com bytes de uma origem oficial autorizada e pelo menos um aviso
-persistido. Na EPT, significa que o índice canónico não respondeu por falha de rede e foi arquivado
-apenas o portal oficial alternativo, sem o tratar como índice equivalente. O job pode terminar com
-sucesso operacional neste estado para preservar as restantes fontes, mas `/api/v1/public/data-status`
+persistido. Na EPT, significa que o índice canónico não respondeu por falha de rede, timeout ou
+limitação HTTP 429 e foi arquivado apenas o portal oficial alternativo, sem o tratar como índice
+equivalente. O job pode terminar com sucesso operacional neste estado para preservar as restantes
+fontes, mas `/api/v1/public/data-status`
 mantém `PARTIAL`, o URL efectivo e a contagem de avisos visíveis. Se nem essa origem oficial puder
 ser atestada, a fonte permanece `FAILED` e o job falha.
 
