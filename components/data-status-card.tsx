@@ -8,7 +8,10 @@ const sourceLabels: Record<string, string> = {
   BASE_CONTRACTS: "Catálogo BASE",
   DRE: "Índice DRE",
   TRANSPARENCY_ENTITY: "Índice EPT",
-  LOCAL_SNS: "Índice SNS",
+  COURT_OF_AUDIT: "Tribunal de Contas",
+  EUROPEAN_PARLIAMENT: "Parlamento Europeu",
+  LOCAL_SNS: "Portal da Transparência do SNS",
+  GOVERNMENT_PROGRAMME: "Programa do Governo",
 };
 
 const syncStateLabels: Record<string, string> = {
@@ -22,6 +25,7 @@ const syncStateLabels: Record<string, string> = {
 export function DataStatusCard({ status }: { status: PublicDataStatus }) {
   const live = status.mode === "LIVE";
   const total = Object.values(status.counts).reduce((sum, count) => sum + count, 0);
+  const visibleSources = status.sources.filter((source) => source.sourceName in sourceLabels);
   return (
     <div className="hero-dashboard" aria-label="Estado auditável dos dados">
       <div className="hero-dashboard__header">
@@ -42,7 +46,7 @@ export function DataStatusCard({ status }: { status: PublicDataStatus }) {
           <div><strong>{status.counts.parliamentSessions}</strong><span>reuniões</span></div>
         </div>
         <div className="sync-source-list" aria-label="Cobertura das sincronizações">
-          {status.sources.slice(0, 7).map((source) => (
+          {visibleSources.map((source) => (
             <div key={source.sourceName}>
               <span>{sourceLabels[source.sourceName] ?? source.sourceName}</span>
               <strong className={`sync-state sync-state--${source.status.toLowerCase()}`}>

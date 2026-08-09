@@ -24,7 +24,7 @@
 | Entidade para a Transparência | Colector de índice e schema privado com revisão jurídica obrigatória | Não |
 | Tribunal de Contas | Colector mínimo fail-closed do índice oficial | Não |
 | Parlamento Europeu | Colector mínimo fail-closed do índice oficial | Não |
-| Radar SNS | Colector mínimo fail-closed como origem inicial | Não |
+| Portal da Transparência do SNS | Colector privado fail-closed como origem inicial | Não |
 
 ## Verificação automatizada
 

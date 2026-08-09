@@ -17,11 +17,11 @@ from app.repositories.official_index_staging import (
 from app.services.http import OfficialHttpClient
 from app.services.official_index import (
     EUROPEAN_PARLIAMENT_INDEX_URL,
-    SNS_RADAR_INDEX_URL,
+    SNS_TRANSPARENCY_INDEX_URL,
     TRIBUNAL_CONTAS_INDEX_URL,
     OfficialIndexCollector,
 )
-from app.services.transparency_entity import TransparencyEntityCollector
+from app.services.transparency_entity import EPT_INDEX_URL, TransparencyEntityCollector
 
 logger = logging.getLogger(__name__)
 
@@ -65,13 +65,13 @@ SOURCE_CONFIGS: dict[RolloutSource, RolloutSourceConfig] = {
     ),
     "LOCAL_SNS": RolloutSourceConfig(
         publisher="SNS",
-        title="Serviço Nacional de Saúde — índice oficial",
-        url=SNS_RADAR_INDEX_URL,
+        title="Portal da Transparência do SNS — índice oficial",
+        url=SNS_TRANSPARENCY_INDEX_URL,
     ),
     "TRANSPARENCY_ENTITY": RolloutSourceConfig(
         publisher="TRANSPARENCY_ENTITY",
         title="Entidade para a Transparência — índice público",
-        url="https://www.tribunalconstitucional.pt/tc/ept/",
+        url=EPT_INDEX_URL,
     ),
 }
 
@@ -98,8 +98,39 @@ class V4RolloutService:
         self,
         source_name: RolloutSource,
         *,
-        code_version: str = "v4-public-rollout-v1",
+        code_version: str = "v4-public-rollout-v2",
     ) -> dict[str, object]:
+        config = SOURCE_CONFIGS[source_name]
+        try:
+            raw_document, items = await self._collect_source(source_name)
+        except Exception as exc:
+            try:
+                await self.repository.record_failed_index_refresh(
+                    source_name=source_name,
+                    dataset_url=config.url,
+                    code_version=code_version,
+                    error_message=str(exc),
+                )
+            except Exception:
+                logger.exception(
+                    "v4_official_index_failure_recording_failed source_name=%s",
+                    source_name,
+                )
+            raise
+
+        return await self.repository.store_index(
+            source_name=source_name,
+            publisher=config.publisher,
+            title=config.title,
+            raw_document=raw_document,
+            resources=items,
+            code_version=code_version,
+        )
+
+    async def _collect_source(
+        self,
+        source_name: RolloutSource,
+    ) -> tuple[PrivateRawDocument, list[OfficialIndexItem]]:
         config = SOURCE_CONFIGS[source_name]
         async with OfficialHttpClient(self.settings) as http:
             if source_name == "TRANSPARENCY_ENTITY":
@@ -142,14 +173,7 @@ class V4RolloutService:
                     for resource in collection.resources
                 ]
 
-        return await self.repository.store_index(
-            source_name=source_name,
-            publisher=config.publisher,
-            title=config.title,
-            raw_document=raw_document,
-            resources=items,
-            code_version=code_version,
-        )
+        return raw_document, items
 
     async def sync_sources(
         self,

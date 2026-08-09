@@ -24,6 +24,36 @@ def _new_id(prefix: str) -> str:
 class OfficialIndexStagingRepository(PostgresRepository):
     """Guarda bytes e metadados sem criar qualquer projecção pública."""
 
+    async def record_failed_index_refresh(
+        self,
+        *,
+        source_name: str,
+        dataset_url: str,
+        code_version: str,
+        error_message: str,
+    ) -> str:
+        """Regista uma recolha falhada, mesmo sem bytes disponíveis para arquivar."""
+
+        if self.pool is None:
+            raise RuntimeError("Base de dados não configurada")
+        if not source_name.strip() or len(source_name) > 100:
+            raise ValueError("Nome da fonte inválido")
+
+        sync_id = await self._start_sync_run(
+            source_name=source_name,
+            dataset_url=dataset_url,
+            code_version=code_version,
+        )
+        await self._finish_sync_run(
+            sync_id,
+            status_value="FAILED",
+            records_read=0,
+            records_written=0,
+            warnings=[],
+            error_message=error_message[:2_000],
+        )
+        return sync_id
+
     async def archive_raw_document(
         self,
         *,

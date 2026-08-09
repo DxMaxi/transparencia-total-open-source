@@ -12,6 +12,8 @@ from app.core.security import require_official_url
 
 logger = logging.getLogger(__name__)
 
+OFFICIAL_NETWORK_RETRY_ATTEMPTS = 5
+
 
 class OfficialHttpClient:
     def __init__(self, settings: Settings, *, extra_hosts: Iterable[str] = ()) -> None:
@@ -49,7 +51,7 @@ class OfficialHttpClient:
             self._last_request_at = monotonic()
 
     @retry(
-        stop=stop_after_attempt(3),
+        stop=stop_after_attempt(OFFICIAL_NETWORK_RETRY_ATTEMPTS),
         wait=wait_exponential_jitter(initial=0.8, max=8),
         retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError)),
         reraise=True,

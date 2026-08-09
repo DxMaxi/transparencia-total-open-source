@@ -18,7 +18,7 @@ O workflow usa:
 - ambiente GitHub `production`;
 - confirmação textual `PRODUCAO`;
 - concorrência exclusiva, sem cancelamento de uma operação em curso;
-- timeout máximo de 45 minutos;
+- timeout máximo de 90 minutos;
 - segredos próprios de produção;
 - código exatamente correspondente ao commit escolhido.
 
@@ -46,7 +46,8 @@ python -m scripts.refresh_v4_indexes
 
 Atualiza separadamente os índices oficiais da V4. O relatório final distingue `SUCCEEDED`,
 `PARTIAL` e as fontes que falharam. Se uma fonte falhar, as restantes continuam a ser tentadas,
-mas o job termina com erro visível para obrigar a análise humana.
+mas o job termina com erro visível para obrigar a análise humana. A tentativa falhada fica registada
+como `SyncRun=FAILED`, mesmo quando a falha ocorre antes de existirem bytes para arquivar.
 
 Recolha não significa publicação.
 

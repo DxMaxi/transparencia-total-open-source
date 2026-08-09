@@ -14,6 +14,36 @@ test("public frontend never replaces unavailable official data with demonstratio
   assert.doesNotMatch(banner, /fictícia|demonstrativos/i);
 });
 
+test("public status exposes every operational V4 source without truncation", async () => {
+  const repository = await readFile(
+    new URL("../backend/app/repositories/postgres.py", import.meta.url),
+    "utf8",
+  );
+  const client = await readFile(new URL("../lib/public-data.ts", import.meta.url), "utf8");
+  const card = await readFile(
+    new URL("../components/data-status-card.tsx", import.meta.url),
+    "utf8",
+  );
+
+  for (const source of [
+    "PARLIAMENT_DEPUTIES",
+    "PARLIAMENT_ACTIVITY",
+    "PARLIAMENT_VOTES",
+    "BASE_CONTRACTS",
+    "DRE",
+    "TRANSPARENCY_ENTITY",
+    "COURT_OF_AUDIT",
+    "EUROPEAN_PARLIAMENT",
+    "LOCAL_SNS",
+  ]) {
+    assert.ok(repository.includes(source));
+    assert.ok(client.includes(source));
+  }
+  assert.match(card, /COURT_OF_AUDIT/);
+  assert.match(card, /EUROPEAN_PARLIAMENT/);
+  assert.doesNotMatch(card, /sources\.slice\(0,\s*7/);
+});
+
 test("parliament V4 is snapshot-scoped, reviewed and explicit about partial availability", async () => {
   const repository = await readFile(
     new URL("../backend/app/repositories/public_parliament.py", import.meta.url),

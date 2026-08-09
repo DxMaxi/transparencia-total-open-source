@@ -461,7 +461,14 @@ fundamentação. Cada decisão acrescenta `DataPublicationReview` e `AuditEvent`
 
 ## Pipeline de IA
 
-A IA está desligada por omissão. Para a ativar apenas no backend:
+A IA está desligada por omissão e não existe ainda conteúdo de IA publicado no website. Os dois
+endpoints atuais são protótipos técnicos: devolvem propostas com metadados e revisão obrigatória,
+mas ainda não as guardam numa fila privada, não registam uma decisão editorial e não alimentam a
+projecção pública. O script DRE apenas apresenta o resultado no terminal.
+
+Por isso, definir as variáveis abaixo é apropriado apenas para desenvolvimento controlado. Não deve
+ser feito em produção antes de existir persistência `PENDING`, autenticação e limites de utilização,
+revisão humana explícita e publicação imutável de versões aprovadas:
 
 ```dotenv
 AI_PROVIDER=openai
@@ -477,7 +484,7 @@ cd backend
 python -m scripts.summarize_dre 'https://data.dre.pt/eli/lei/48/2018/08/14/p/dre/pt/html'
 ```
 
-O resumo DRE usa a Responses API com Structured Outputs/Pydantic. Guarda versão e hash do prompt,
+O resumo DRE usa a Responses API com Structured Outputs/Pydantic. Devolve a versão e o hash do prompt,
 segmenta textos longos e devolve campos separados para mudanças, pessoas afetadas, prazos,
 direitos, incertezas, glossário e âncoras. `requires_human_review` é sempre verdadeiro. Nunca
 publique automaticamente o resultado bruto do modelo.

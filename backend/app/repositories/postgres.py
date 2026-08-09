@@ -319,6 +319,8 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
             "BASE_CONTRACTS",
             "DRE",
             "TRANSPARENCY_ENTITY",
+            "COURT_OF_AUDIT",
+            "EUROPEAN_PARLIAMENT",
             "LOCAL_SNS",
         )
         if self.pool is None:
