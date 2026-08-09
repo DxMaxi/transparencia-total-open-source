@@ -4,15 +4,20 @@ Plataforma cívica, neutra e sem fins lucrativos para acompanhar atividade polí
 Portugal através de dados oficiais auditáveis. O código usa licença MIT; o repositório deve
 ser tornado público antes de o projeto se apresentar como open source.
 
-> **Estado do projeto:** a V4 está publicada e tecnicamente validada, mas a tag `v0.4.0` permanece
-> bloqueada até existir uma cópia externa com restauro testado. Inclui arquivo PostgreSQL
-> dos bytes oficiais, fotografias parlamentares versionadas e append-only, revisão humana por
-> âmbito, API pública fail-closed, catálogo inicial do Programa do XXV Governo e páginas legais.
-> O domínio oficial nunca substitui uma falha da API por dados fictícios. Consulte o
-> [gate V4 → V5](docs/V4_TO_V5_RELEASE_GATE.md) e o
-> [runbook de recuperação](docs/DATABASE_RECOVERY.md) para o estado operacional real. O destino
-> escolhido e ainda por ativar está no
-> [runbook Backblaze B2 EU](docs/BACKUP_BACKBLAZE_B2.md).
+> **Estado do projeto:** a V4 está publicada e tem os gates técnicos e operacionais
+> concluídos. Inclui arquivo PostgreSQL dos bytes oficiais, fotografias parlamentares versionadas e
+> append-only, revisão humana por âmbito, API pública fail-closed, catálogo inicial do Programa do
+> XXV Governo, páginas legais e cópia PostgreSQL externa cifrada no Backblaze B2 EU.
+>
+> O restauro dessa cópia foi comprovado num PostgreSQL 17 isolado: 13 migrações, 54 tabelas,
+> 104 737 linhas e 32 objetos de arquivo, com estado operacional `HEALTHY`, RPO observado de
+> 7 759 segundos e RTO de 37 segundos. A produção não foi usada como destino e a identidade privada
+> temporária foi removida depois do ensaio.
+>
+> Consulte o [gate V4 → V5](docs/V4_TO_V5_RELEASE_GATE.md), o
+> [runbook de recuperação](docs/DATABASE_RECOVERY.md) e o
+> [runbook Backblaze B2 EU](docs/BACKUP_BACKBLAZE_B2.md). A tag `v0.4.0` deve apontar para o
+> commit final deste fecho; novas funcionalidades começam apenas na V5.
 
 ## Princípios
 
