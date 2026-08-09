@@ -15,6 +15,11 @@
 
 ## Regra comum de prova bruta V4
 
+Os mesmos bytes oficiais podem ser interpretados novamente por uma versão posterior do parser.
+Nesse caso é acrescentado um novo `official_index_snapshot`, identificado pela versão do parser;
+o snapshot anterior e os seus recursos permanecem imutáveis. A repetição com os mesmos bytes e a
+mesma versão só é idempotente se todos os recursos coincidirem, não apenas a contagem.
+
 Os colectores do Parlamento, BASE, DRE, Entidade para a Transparência, Tribunal de Contas,
 Parlamento Europeu e Portal da Transparência do SNS calculam o SHA-256 sobre os bytes exactos da resposta HTTP e
 transportam-nos apenas num `PrivateRawDocument`, excluído de serialização.

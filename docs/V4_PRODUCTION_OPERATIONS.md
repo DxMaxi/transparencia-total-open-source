@@ -59,6 +59,10 @@ ser atestada, a fonte permanece `FAILED` e o job falha.
 
 Recolha não significa publicação.
 
+Uma nova versão do parser nunca substitui a interpretação privada anterior dos mesmos bytes. Cria
+outro snapshot append-only com `parser_version` próprio. Se a mesma versão produzir recursos
+diferentes — mesmo com contagem igual — a operação falha e exige análise humana.
+
 ### `sync-parliament-deputies` e `sync-parliament-activity`
 
 Executam, separadamente:
@@ -146,6 +150,9 @@ No fecho final da V4, depois de o commit estar efetivamente em produção, os tr
 por esta ordem: `refresh-official-indexes`, `verify-archive-integrity` e
 `check-operational-status`. Um `PARTIAL` recente e documentado pode ser operacional; um `FAILED`,
 uma prova sem atestado ou um objeto com hash/tamanho divergente bloqueia a release.
+
+Se o commit incluir uma nova migração, executar primeiro `migrate` e confirmar o CI sobre uma base
+PostgreSQL vazia. A migração não recolhe fontes nem publica dados.
 
 ## O que nunca deve acontecer
 

@@ -210,6 +210,15 @@ class OfficialIndexStagingRepository(PostgresRepository):
         ordered_resources = sorted(
             unique_resources.values(), key=lambda item: (item.title.casefold(), item.url)
         )
+        normalised_resources = [
+            (
+                ordinal,
+                item.title[:500],
+                item.category[:500] if item.category else None,
+                item.url,
+            )
+            for ordinal, item in enumerate(ordered_resources)
+        ]
 
         try:
             async with self.pool.acquire() as connection, connection.transaction():
@@ -280,9 +289,10 @@ class OfficialIndexStagingRepository(PostgresRepository):
                     """
                     SELECT id, resource_count
                     FROM official_index_snapshots
-                    WHERE source_document_id = $1
+                    WHERE source_document_id = $1 AND parser_version = $2
                     """,
                     source_document_id,
+                    code_version,
                 )
                 snapshot_created = existing_snapshot is None
                 if existing_snapshot is None:
@@ -291,14 +301,16 @@ class OfficialIndexStagingRepository(PostgresRepository):
                         """
                         INSERT INTO official_index_snapshots
                             (id, source_document_id, sync_run_id, source_name,
-                             publisher, collected_at, resource_count, publishable)
-                        VALUES ($1, $2, $3, $4, $5::"SourcePublisher", $6, $7, FALSE)
+                             publisher, parser_version, collected_at,
+                             resource_count, publishable)
+                        VALUES ($1, $2, $3, $4, $5::"SourcePublisher", $6, $7, $8, FALSE)
                         """,
                         snapshot_id,
                         source_document_id,
                         sync_id,
                         source_name,
                         publisher,
+                        code_version,
                         raw_document.retrieved_at.replace(tzinfo=None),
                         len(ordered_resources),
                     )
@@ -313,16 +325,37 @@ class OfficialIndexStagingRepository(PostgresRepository):
                                 _new_id("official_resource"),
                                 snapshot_id,
                                 ordinal,
-                                item.title[:500],
-                                item.category[:500] if item.category else None,
-                                item.url,
+                                title_value,
+                                category_value,
+                                url,
                             )
-                            for ordinal, item in enumerate(ordered_resources)
+                            for ordinal, title_value, category_value, url in normalised_resources
                         ],
                     )
                 else:
                     snapshot_id = str(existing_snapshot["id"])
-                    if int(existing_snapshot["resource_count"]) != len(ordered_resources):
+                    existing_resources = await connection.fetch(
+                        """
+                        SELECT ordinal, title, category, url
+                        FROM official_index_resources
+                        WHERE snapshot_id = $1
+                        ORDER BY ordinal
+                        """,
+                        snapshot_id,
+                    )
+                    stored_resources = [
+                        (
+                            int(row["ordinal"]),
+                            str(row["title"]),
+                            str(row["category"]) if row["category"] is not None else None,
+                            str(row["url"]),
+                        )
+                        for row in existing_resources
+                    ]
+                    if (
+                        int(existing_snapshot["resource_count"]) != len(ordered_resources)
+                        or stored_resources != normalised_resources
+                    ):
                         raise ValueError("O snapshot existente diverge da recolha com o mesmo hash")
 
                 await connection.execute(
@@ -340,6 +373,7 @@ class OfficialIndexStagingRepository(PostgresRepository):
                         {
                             "source_name": source_name,
                             "content_sha256": raw_document.content_sha256,
+                            "parser_version": code_version,
                             "resource_count": len(ordered_resources),
                             "sync_status": status_value,
                             "warnings": sync_warnings,
@@ -372,6 +406,7 @@ class OfficialIndexStagingRepository(PostgresRepository):
             "source_name": source_name,
             "status": status_value,
             "sync_run_id": sync_id,
+            "parser_version": code_version,
             "source_document_id": source_document_id,
             "snapshot_id": snapshot_id,
             "content_sha256": raw_document.content_sha256,

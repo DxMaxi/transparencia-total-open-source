@@ -15,7 +15,10 @@ from pydantic import HttpUrl
 
 from app.core.config import Settings
 from app.models.archive import PrivateRawDocument
-from app.repositories.official_index_staging import OfficialIndexStagingRepository
+from app.repositories.official_index_staging import (
+    OfficialIndexItem,
+    OfficialIndexStagingRepository,
+)
 from app.services.transparency_entity import EPT_PORTAL_FALLBACK_WARNING
 
 pytestmark = pytest.mark.skipif(
@@ -80,7 +83,7 @@ async def test_partial_contingency_keeps_bytes_warning_and_audit_event(
         )
         snapshot = await connection.fetchrow(
             """
-            SELECT publishable, resource_count
+            SELECT publishable, resource_count, parser_version
             FROM official_index_snapshots WHERE id = $1
             """,
             result["snapshot_id"],
@@ -111,6 +114,7 @@ async def test_partial_contingency_keeps_bytes_warning_and_audit_event(
     assert snapshot is not None
     assert snapshot["publishable"] is False
     assert snapshot["resource_count"] == 0
+    assert snapshot["parser_version"] == code_version
     assert attestation is not None
     assert attestation["retrieval_url"] == "https://entidadetransparencia.pt/"
     assert attestation["content_sha256"] == content_sha256
@@ -118,6 +122,7 @@ async def test_partial_contingency_keeps_bytes_warning_and_audit_event(
     audit_payload = _decode_json(audit["after_json"])
     assert isinstance(audit_payload, dict)
     assert audit_payload["sync_status"] == "PARTIAL"
+    assert audit_payload["parser_version"] == code_version
     assert audit_payload["warnings"] == [EPT_PORTAL_FALLBACK_WARNING]
     assert audit_payload["publishable"] is False
     assert audit["reason"] == (
@@ -148,4 +153,116 @@ async def test_partial_index_without_an_explicit_warning_is_rejected(
             code_version="official-index-integration-v1",
             status_value="PARTIAL",
             warnings=[],
+        )
+
+
+@pytest.mark.asyncio
+async def test_reparsing_the_same_bytes_appends_a_versioned_private_snapshot(
+    repository: OfficialIndexStagingRepository,
+) -> None:
+    suffix = uuid.uuid4().hex[:12]
+    content = f"versioned-official-index-{suffix}".encode()
+    raw_document = PrivateRawDocument(
+        source_url=HttpUrl("https://entidadetransparencia.pt/"),
+        retrieved_at=datetime.now(UTC),
+        content_sha256=hashlib.sha256(content).hexdigest(),
+        mime_type="text/html",
+        content=content,
+    )
+    source_name = f"EPT_VERSIONED_TEST_{suffix}"
+    warning = [EPT_PORTAL_FALLBACK_WARNING]
+    first_resources = [
+        OfficialIndexItem(
+            title="Informação institucional",
+            url="https://entidadetransparencia.pt/informacao",
+        )
+    ]
+    second_resources = [
+        *first_resources,
+        OfficialIndexItem(
+            title="Contactos",
+            url="https://entidadetransparencia.pt/contactos",
+        ),
+    ]
+
+    first = await repository.store_index(
+        source_name=source_name,
+        publisher="TRANSPARENCY_ENTITY",
+        title="EPT — interpretação privada v1",
+        raw_document=raw_document,
+        resources=first_resources,
+        code_version="official-index-parser-v1",
+        status_value="PARTIAL",
+        warnings=warning,
+    )
+    second = await repository.store_index(
+        source_name=source_name,
+        publisher="TRANSPARENCY_ENTITY",
+        title="EPT — interpretação privada v2",
+        raw_document=raw_document,
+        resources=second_resources,
+        code_version="official-index-parser-v2",
+        status_value="PARTIAL",
+        warnings=warning,
+    )
+    repeated_second = await repository.store_index(
+        source_name=source_name,
+        publisher="TRANSPARENCY_ENTITY",
+        title="EPT — interpretação privada v2",
+        raw_document=raw_document,
+        resources=second_resources,
+        code_version="official-index-parser-v2",
+        status_value="PARTIAL",
+        warnings=warning,
+    )
+
+    assert first["source_document_id"] == second["source_document_id"]
+    assert first["snapshot_id"] != second["snapshot_id"]
+    assert first["snapshot_created"] is True
+    assert second["snapshot_created"] is True
+    assert repeated_second["snapshot_created"] is False
+    assert repeated_second["snapshot_id"] == second["snapshot_id"]
+
+    assert repository.pool is not None
+    async with repository.pool.acquire() as connection:
+        snapshots = await connection.fetch(
+            """
+            SELECT id, parser_version, resource_count, publishable
+            FROM official_index_snapshots
+            WHERE source_document_id = $1
+            ORDER BY parser_version
+            """,
+            first["source_document_id"],
+        )
+
+    assert [
+        (
+            row["id"],
+            row["parser_version"],
+            row["resource_count"],
+            row["publishable"],
+        )
+        for row in snapshots
+    ] == [
+        (first["snapshot_id"], "official-index-parser-v1", 1, False),
+        (second["snapshot_id"], "official-index-parser-v2", 2, False),
+    ]
+
+    divergent_same_version = [
+        first_resources[0],
+        OfficialIndexItem(
+            title="Outra ligação",
+            url="https://entidadetransparencia.pt/outra-ligacao",
+        ),
+    ]
+    with pytest.raises(ValueError, match="snapshot existente diverge"):
+        await repository.store_index(
+            source_name=source_name,
+            publisher="TRANSPARENCY_ENTITY",
+            title="EPT — divergência privada v2",
+            raw_document=raw_document,
+            resources=divergent_same_version,
+            code_version="official-index-parser-v2",
+            status_value="PARTIAL",
+            warnings=warning,
         )
