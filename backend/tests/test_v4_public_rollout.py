@@ -43,6 +43,59 @@ def test_court_of_audit_uses_current_official_publications_index() -> None:
     )
 
 
+def test_transparency_entity_keeps_the_canonical_court_endpoint() -> None:
+    assert SOURCE_CONFIGS["TRANSPARENCY_ENTITY"].url == (
+        "https://www.tribunalconstitucional.pt/tc/ept/"
+    )
+
+
+def test_sns_uses_the_official_transparency_portal() -> None:
+    assert SOURCE_CONFIGS["LOCAL_SNS"].url == ("https://transparencia.sns.gov.pt/pages/home-page/")
+
+
+@pytest.mark.asyncio
+async def test_collection_failure_is_recorded_without_publication(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeRepository:
+        def __init__(self) -> None:
+            self.failure: dict[str, object] | None = None
+            self.store_called = False
+
+        async def record_failed_index_refresh(self, **kwargs: object) -> str:
+            self.failure = kwargs
+            return "sync_failed"
+
+        async def store_index(self, **kwargs: object) -> dict[str, object]:
+            self.store_called = True
+            return kwargs
+
+    repository = FakeRepository()
+    service = V4RolloutService(
+        object(),  # type: ignore[arg-type]
+        repository,  # type: ignore[arg-type]
+    )
+
+    async def fail_collection(
+        source_name: str,
+    ) -> tuple[PrivateRawDocument, list[object]]:
+        assert source_name == "LOCAL_SNS"
+        raise RuntimeError("fonte temporariamente indisponível")
+
+    monkeypatch.setattr(service, "_collect_source", fail_collection)
+
+    with pytest.raises(RuntimeError, match="temporariamente indisponível"):
+        await service.sync_source("LOCAL_SNS")
+
+    assert repository.failure == {
+        "source_name": "LOCAL_SNS",
+        "dataset_url": "https://transparencia.sns.gov.pt/pages/home-page/",
+        "code_version": "v4-public-rollout-v2",
+        "error_message": "fonte temporariamente indisponível",
+    }
+    assert repository.store_called is False
+
+
 @pytest.mark.asyncio
 async def test_rollout_refresh_continues_after_one_source_fails(
     monkeypatch: pytest.MonkeyPatch,

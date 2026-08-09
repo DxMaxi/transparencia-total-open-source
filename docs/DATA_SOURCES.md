@@ -6,24 +6,24 @@
 |---|---|---|---|
 | Assembleia da República | Release candidate | Catálogos, bytes PostgreSQL, deputados, reuniões observadas, iniciativas, votações, snapshots e revisão/publicação fail-closed | Reuniões são as referidas nos eventos de votação, não a agenda completa; nem toda votação é nominal |
 | Diário da República | Funcional em staging | Extração por URL ELI, bytes exactos, arquivo atestado e snapshot privado append-only | Sem promoção pública; feed RSS só após confirmação documental |
-| Entidade para a Transparência | Colector funcional; staging preparado | Índice público com bytes exactos e schema privado de metadados com revisão jurídica obrigatória | A escrita operacional no staging ainda exige ensaio controlado; não recolhe declarações |
+| Entidade para a Transparência | Funcional em staging privado | Índice público com bytes exactos, atestado e recursos não publicáveis | Não recolhe declarações nem áreas autenticadas; qualquer tratamento exige revisão jurídica própria |
 | Portal BASE / dados.gov.pt | Funcional em staging | Descoberta anual, JSON/XML/ZIP, arquivo, lote append-only e candidatos exactos apenas em ficheiro privado | Sem promoção pública; API directa de grande volume pode exigir registo e autorização |
-| Tribunal de Contas | Colector mínimo funcional | Hash dos bytes exactos e ligações oficiais deduplicadas em memória privada | Sem persistência automática nem interpretação de decisões ou culpa |
-| Parlamento Europeu | Colector mínimo funcional | Índice oficial da API aberta e ligações oficiais deduplicadas em memória privada | Sem persistência automática nem atribuição individual sem voto nominal explícito |
-| Radar local/SNS | Colector mínimo funcional | Índice SNS oficial como origem inicial de descoberta | Sem persistência automática; não representa cobertura territorial nacional |
+| Tribunal de Contas | Colector privado funcional | Índice oficial preservado com URL, data, SHA-256 e recursos deduplicados | Sem publicação nem interpretação de decisões ou culpa |
+| Parlamento Europeu | Colector privado funcional | Portal de dados abertos preservado com URL, data, SHA-256 e recursos deduplicados | Sem publicação nem atribuição individual sem voto nominal explícito |
+| Portal da Transparência do SNS | Colector privado funcional | Índice oficial preservado com URL, data, SHA-256 e `SyncRun` | Não publica indicadores nem representa cobertura territorial nacional |
 | Imprensa | Modelo preparado | RSS, notícia, menção, prova e revisão previstos no esquema | Fora do fecho V4; allowlist editorial necessária antes de produção |
 
 ## Regra comum de prova bruta V4
 
 Os colectores do Parlamento, BASE, DRE, Entidade para a Transparência, Tribunal de Contas,
-Parlamento Europeu e Radar SNS calculam o SHA-256 sobre os bytes exactos da resposta HTTP e
+Parlamento Europeu e Portal da Transparência do SNS calculam o SHA-256 sobre os bytes exactos da resposta HTTP e
 transportam-nos apenas num `PrivateRawDocument`, excluído de serialização.
 
-Nos fluxos persistentes já activados — Parlamento, BASE e DRE — o documento só pode ser referenciado
-depois de o objecto content-addressed ser escrito, verificado e atestado com o mesmo URL efectivo e
-hash. EPT tem schema privado preparado mas requer ensaio operacional. Tribunal de Contas,
-Parlamento Europeu e Radar SNS ficam nesta versão no limite deliberado de colector privado, sem
-escrita automática.
+Nos fluxos persistentes já activados, o documento só pode ser referenciado depois de o objecto
+content-addressed ser escrito, verificado e atestado com o mesmo URL efectivo e hash. A operação
+controlada `refresh-official-indexes` preserva os seis índices oficiais apenas em staging privado;
+não cria qualquer projecção pública. Uma tentativa que falhe antes de obter bytes cria igualmente
+um `SyncRun=FAILED`, para que um sucesso antigo nunca esconda a indisponibilidade mais recente.
 
 Ausência de objecto, atestado, acesso ao arquivo ou estrutura suficiente significa “dados
 indisponíveis”; nunca é interpretada como ausência de factos na fonte. Nenhuma recolha constitui
@@ -61,14 +61,14 @@ Portal: <https://www.tribunalconstitucional.pt/tc/ept/>
 
 O colector indexa apenas ligações publicamente acessíveis e conserva os bytes exactos. O schema de
 staging guarda somente título, categoria e URL, com estado fixo `REQUIRES_LEGAL_REVIEW` e sem
-projecção pública. A ligação operacional entre colector, arquivo e staging fica dependente de ensaio
-controlado antes de qualquer activação.
+projecção pública. A operação controlada arquiva e atesta o índice, mas não promove recursos nem
+autoriza qualquer tratamento de declarações.
 
 Não são recolhidos conteúdos de declarações, identificadores pessoais, respostas a formulários ou
 áreas autenticadas. A existência ou ausência de uma ligação nunca é convertida em alegação sobre
 cumprimento, incumprimento ou conteúdo de uma declaração.
 
-## Tribunal de Contas, Parlamento Europeu e Radar SNS
+## Tribunal de Contas, Parlamento Europeu e Portal da Transparência do SNS
 
 `OfficialIndexCollector` fornece o contrato mínimo comum:
 
@@ -80,10 +80,14 @@ cumprimento, incumprimento ou conteúdo de uma declaração.
 6. deduplica por URL;
 7. devolve sempre `publishable=False`.
 
-Este colector não persiste automaticamente os índices. No Tribunal de Contas não interpreta
+O colector isolado não publica nem persiste índices. A operação V4 que o invoca arquiva os bytes e
+os recursos apenas em staging privado, com `publishable=False`. No Tribunal de Contas não interpreta
 linguagem judicial, culpa, sujeitos ou estado processual. No Parlamento Europeu não atribui posições
-de grupo a pessoas. No Radar SNS, o índice nacional é apenas uma origem inicial e não equivale a
-cobertura territorial.
+de grupo a pessoas. No Portal da Transparência do SNS, o índice nacional é apenas uma origem inicial
+e não equivale a cobertura territorial nem a indicadores de saúde publicados pela plataforma.
+
+Portal SNS usado pelo colector:
+<https://transparencia.sns.gov.pt/pages/home-page/>.
 
 ## Portal BASE e dados.gov.pt
 

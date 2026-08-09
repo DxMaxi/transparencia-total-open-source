@@ -24,9 +24,13 @@ O backend recolhe, em segundo plano, apenas índices ou catálogos públicos:
 - índice da Entidade para a Transparência;
 - índice do Tribunal de Contas;
 - portal de dados abertos do Parlamento Europeu;
-- índice público do SNS.
+- índice do Portal da Transparência do SNS.
 
 Os bytes exactos são guardados em armazenamento privado content-addressed no PostgreSQL, ligados a `SourceDocument`, `SourceArchiveAttestation`, `SyncRun` e `AuditEvent`. As tabelas de prova são append-only.
+
+Uma falha de recolha anterior à obtenção dos bytes também acrescenta um `SyncRun=FAILED`. Assim, o
+estado operacional mostra a tentativa mais recente e não apresenta um sucesso antigo como se fosse
+uma actualização atual.
 
 ## Limites públicos
 

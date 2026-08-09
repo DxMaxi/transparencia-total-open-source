@@ -70,4 +70,4 @@ TRIBUNAL_CONTAS_INDEX_URL = (
     "Publicacoes-do-Tribunal-de-Contas.aspx"
 )
 EUROPEAN_PARLIAMENT_INDEX_URL = "https://data.europarl.europa.eu/en/developer-corner/opendata-api"
-SNS_RADAR_INDEX_URL = "https://www.sns.gov.pt/"
+SNS_TRANSPARENCY_INDEX_URL = "https://transparencia.sns.gov.pt/pages/home-page/"

@@ -46,6 +46,7 @@ OFFICIAL_HOSTS = frozenset(
         "europarl.europa.eu",
         "sns.gov.pt",
         "www.sns.gov.pt",
+        "transparencia.sns.gov.pt",
     }
 )
 

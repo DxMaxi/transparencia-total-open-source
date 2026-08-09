@@ -17,6 +17,7 @@ const allowedHosts = new Set([
   "base.gov.pt",
   "www.sns.gov.pt",
   "sns.gov.pt",
+  "transparencia.sns.gov.pt",
   "www.tcontas.pt",
   "tcontas.pt",
   "data.europarl.europa.eu",
