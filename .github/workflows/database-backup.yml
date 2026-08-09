@@ -50,6 +50,18 @@ jobs:
           test "$B2_S3_ENDPOINT" = "https://s3.${B2_S3_REGION}.backblazeb2.com"
           [[ "$BACKUP_AGE_RECIPIENT" =~ ^age1[0-9a-z]+$ ]]
 
+      - name: Confirmar privilégio mínimo da chave B2
+        working-directory: backend
+        env:
+          B2_KEY_ID: ${{ secrets.B2_BACKUP_KEY_ID }}
+          B2_APPLICATION_KEY: ${{ secrets.B2_BACKUP_APPLICATION_KEY }}
+        run: >-
+          python -m scripts.verify_b2_application_key_scope
+          --role backup
+          --bucket "$B2_BUCKET_NAME"
+          --prefix "database/"
+          --s3-endpoint "$B2_S3_ENDPOINT"
+
       - name: Preparar ferramentas compatíveis
         shell: bash
         run: |

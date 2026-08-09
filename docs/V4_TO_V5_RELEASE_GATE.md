@@ -32,7 +32,7 @@ existir uma cópia externa cifrada, com retenção definida, e um ensaio de rest
 | Desempenho PostgreSQL | PASS | advisor Supabase com zero `WARN` e zero `ERROR`; avisos informativos de índices permanecem observáveis para reavaliação com carga real |
 | API pública | PASS | readiness HTTP 200 com `database_ready=true`; estado público `LIVE`; 5 106 registos aprovados |
 | Website público | PASS | homepage, políticos, atividade parlamentar, promessas, metodologia, direito de resposta, privacidade, termos e acessibilidade renderizados sem erro |
-| Backup externo e restauro | **BLOCKED — configuração externa** | destino Backblaze B2 EU e workflows de backup/restauro preparados; ainda não existe objeto real, SHA-256 confirmado no B2 nem ensaio de restauro demonstrado |
+| Backup externo e restauro | **BLOCKED — execução real** | conta EU Central, bucket privado, cifragem, Object Lock `COMPLIANCE` de 30 dias e ciclo de vida `database/` 45 + 1 confirmados; a chave demasiado ampla foi revogada antes de uso e os fluxos exigem agora capacidades exatas; ainda faltam as duas novas chaves, um objeto real, SHA-256 confirmado no B2 e o ensaio de restauro |
 
 `PASS com limitação visível` não transforma ausência de dados em sucesso silencioso. Significa que
 a operação terminou sem fonte falhada, preservou prova e publicou o estado incompleto como tal.

@@ -8,11 +8,14 @@ Não inclui credenciais e não promete uma capacidade que ainda não tenha sido 
 - Provedor: Supabase/PostgreSQL, projeto de produção `ACTIVE_HEALTHY`.
 - Plano confirmado em 9 de agosto de 2026: Free.
 - Backup gerido ou point-in-time recovery: não demonstrado e, por isso, não garantido.
-- Destino aprovado para configuração: Backblaze B2. A região EU Central da conta ainda tem de ser
-  confirmada na consola e o bucket privado ainda tem de ser criado; nenhum dos dois é aqui dado como
-  demonstrado.
-- Automatização: preparada em `.github/workflows/database-backup.yml`, mas ainda não demonstrada
-  com credenciais e objeto reais.
+- Destino externo configurado em 9 de agosto de 2026: conta Backblaze B2 confirmada em **EU
+  Central**, bucket privado no endpoint `eu-central-003`, cifragem predefinida SSE-B2, Object Lock e
+  retenção `COMPLIANCE` de 30 dias ativos. A regra de ciclo de vida está limitada a `database/`, com
+  ocultação aos 45 dias e eliminação de versões ocultas 1 dia depois.
+- A primeira chave de escrita, demasiado ampla, foi revogada antes de ser usada. As duas chaves de
+  privilégio mínimo ainda têm de ser aprovisionadas e validadas; nenhum segredo revogado é válido.
+- Automatização: preparada em `.github/workflows/database-backup.yml`, incluindo validação
+  fail-closed do âmbito da credencial, mas ainda não demonstrada com credenciais e objeto reais.
 - Cópia lógica externa: ainda não demonstrada.
 - Ensaio de restauro: não executado.
 - RPO e RTO: indisponíveis até existir um ensaio medido.

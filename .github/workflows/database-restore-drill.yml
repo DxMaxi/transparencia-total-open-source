@@ -98,6 +98,18 @@ jobs:
             echo "attestation=$output_dir/restore-attestation.json"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Confirmar privilégio mínimo da chave B2
+        working-directory: backend
+        env:
+          B2_KEY_ID: ${{ secrets.B2_RESTORE_KEY_ID }}
+          B2_APPLICATION_KEY: ${{ secrets.B2_RESTORE_APPLICATION_KEY }}
+        run: >-
+          python -m scripts.verify_b2_application_key_scope
+          --role restore
+          --bucket "$B2_BUCKET_NAME"
+          --prefix "database/"
+          --s3-endpoint "$B2_S3_ENDPOINT"
+
       - name: Preparar ferramentas compatíveis
         shell: bash
         run: |

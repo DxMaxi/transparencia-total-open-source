@@ -71,29 +71,56 @@ Copie da página do bucket o **S3 Endpoint** exato, por exemplo
 
 ## 2. Criar duas Application Keys limitadas
 
-Nunca use a Master Application Key.
+Não use na automação a Master Application Key nem o perfil genérico **Read and Write** da consola.
+Esse perfil concede operações que estes fluxos não precisam. Em 9 de agosto de 2026, a primeira
+chave criada com esse perfil foi revogada antes de ser usada e nenhum objeto foi enviado. O segredo
+revogado não pode ser reutilizado e qualquer cópia temporária deve ser eliminada.
 
-Crie uma chave `transparencia-total-backup`:
+Crie as duas chaves com a versão 4 da ferramenta oficial B2 CLI, para fixar o conjunto exato de
+capacidades. A credencial administrativa usada só para este aprovisionamento deve permanecer no
+computador controlado, nunca no GitHub, no repositório, numa workflow ou nos argumentos da linha de
+comandos. `b2 account authorize` pede o identificador e o segredo sem os incluir no comando.
 
-- limitada ao bucket criado;
-- limitada ao prefixo `database/`;
-- leitura e escrita de ficheiros, leitura de metadados e leitura/escrita de retenção;
-- sem administração de contas, chaves, buckets ou replicação;
-- com validade limitada, se existir um processo para a renovar antes de expirar.
+```powershell
+$bucket = Read-Host "Nome exato do bucket B2"
+$cacheB2 = Join-Path ([IO.Path]::GetTempPath()) ("tt-b2-provision-" + [guid]::NewGuid().ToString("N") + ".sqlite")
+$env:B2_ACCOUNT_INFO = $cacheB2
 
-A leitura é necessária para a workflow confirmar o objeto que acabou de enviar. A escrita de
-retenção é necessária para aplicar Object Lock. Não conceda `bypassGovernance`; é usado o modo
-`COMPLIANCE`.
+b2 account authorize
+b2 key create --bucket $bucket --name-prefix "database/" transparencia-total-backup readFiles,writeFiles,readFileRetentions,writeFileRetentions
+b2 key create --bucket $bucket --name-prefix "database/" transparencia-total-restore readFiles
+b2 key list --long
 
-Crie separadamente `transparencia-total-restore`:
+b2 account clear
+Remove-Item -LiteralPath $cacheB2 -Force -ErrorAction SilentlyContinue
+Remove-Item Env:B2_ACCOUNT_INFO -ErrorAction SilentlyContinue
+```
 
-- limitada ao mesmo bucket e prefixo `database/`;
-- apenas leitura de ficheiros e metadados;
-- sem escrita e sem eliminação.
+Guarde cada `applicationKeyId` e `applicationKey` diretamente no respetivo secret do GitHub assim
+que a ferramenta os apresentar; o segredo só é mostrado uma vez. Não os copie para notas, ficheiros
+do projeto, mensagens ou capturas de ecrã. Se foi usada a Master Application Key para aprovisionar,
+regenere-a depois e guarde a nova versão apenas no cofre administrativo offline.
 
-Guarde cada `Application Key` no momento da criação: o valor secreto só é apresentado uma vez. A
-Backblaze documenta as [Application Keys e respetivas limitações](https://www.backblaze.com/docs/en/cloud-storage-application-keys)
-e as [capacidades individuais](https://www.backblaze.com/docs/cloud-storage-application-key-capabilities).
+Os perfis permitidos são deliberadamente exatos:
+
+| Chave | Capacidades permitidas | Âmbito obrigatório |
+| --- | --- | --- |
+| `transparencia-total-backup` | `readFiles`, `writeFiles`, `readFileRetentions`, `writeFileRetentions` | bucket exato e prefixo `database/` |
+| `transparencia-total-restore` | `readFiles` | mesmo bucket e prefixo `database/` |
+
+A leitura no perfil de backup permite confirmar o objeto enviado; as capacidades de retenção
+permitem aplicar e verificar Object Lock em modo `COMPLIANCE`. Nenhuma chave pode ter `deleteFiles`,
+`bypassGovernance`, `writeBuckets`, administração de chaves, ciclo de vida, replicação ou permissões
+de conta. A workflow autoriza a chave na API B2 v4 antes de ler produção ou descarregar objetos e
+falha se encontrar uma capacidade em falta ou a mais, outro bucket, outro prefixo ou um endpoint
+fora do destino EU configurado.
+
+A criação destas chaves exige uma credencial de aprovisionamento com `writeKeys`, que por definição
+tem alcance administrativo. Use-a apenas nesta operação, limpe o cache indicado e revogue-a ou
+regenere-a depois. A Backblaze documenta as
+[Application Keys e respetivas limitações](https://www.backblaze.com/docs/en/cloud-storage-application-keys),
+o [mapeamento de capacidades para operações S3](https://www.backblaze.com/docs/cloud-storage-s3-compatible-app-keys)
+e a [criação granular pela B2 CLI](https://b2-command-line-tool.readthedocs.io/en/v4.4.1/subcommands/key_create.html).
 
 ## 3. Criar a identidade `age` fora do repositório
 

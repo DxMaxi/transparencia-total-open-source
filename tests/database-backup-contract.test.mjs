@@ -9,6 +9,9 @@ test("daily backup encrypts before B2 and never persists a plaintext dump", asyn
     new URL(".github/workflows/database-backup.yml", root),
     "utf8",
   );
+  const scopeCheckIndex = workflow.indexOf("verify_b2_application_key_scope");
+  const inventoryIndex = workflow.indexOf("capture_database_inventory");
+  const dumpIndex = workflow.indexOf("pg_dump --format=custom");
 
   assert.match(workflow, /cron: "17 5 \* \* \*"/);
   assert.match(workflow, /environment: production/);
@@ -19,6 +22,9 @@ test("daily backup encrypts before B2 and never persists a plaintext dump", asyn
   assert.match(workflow, /eu-central-/);
   assert.match(workflow, /capture_database_inventory/g);
   assert.match(workflow, /build_database_backup_manifest/);
+  assert.match(workflow, /--role backup/);
+  assert.ok(scopeCheckIndex >= 0 && scopeCheckIndex < inventoryIndex);
+  assert.ok(scopeCheckIndex < dumpIndex);
   assert.doesNotMatch(workflow, /upload-artifact/);
   assert.doesNotMatch(workflow, /\.dump([^.]|$)(?!\.age)/);
   assert.doesNotMatch(workflow, /--dbname[= ]+.*PRODUCTION_DATABASE_URL/);
@@ -31,6 +37,8 @@ test("restore drill is manual, isolated and checks proof before decrypting", asy
   );
   const verifyIndex = workflow.indexOf("verify_database_backup_ciphertext");
   const decryptIndex = workflow.indexOf("age --decrypt");
+  const scopeCheckIndex = workflow.indexOf("verify_b2_application_key_scope");
+  const downloadIndex = workflow.indexOf("aws s3api get-object");
 
   assert.match(workflow, /workflow_dispatch:/);
   assert.doesNotMatch(workflow, /schedule:/);
@@ -44,6 +52,8 @@ test("restore drill is manual, isolated and checks proof before decrypting", asy
   assert.match(workflow, /verify_v4_archive/);
   assert.match(workflow, /check_v4_operational_status/);
   assert.match(workflow, /build_database_restore_attestation/);
+  assert.match(workflow, /--role restore/);
+  assert.ok(scopeCheckIndex >= 0 && scopeCheckIndex < downloadIndex);
   assert.ok(verifyIndex >= 0 && verifyIndex < decryptIndex);
   assert.doesNotMatch(workflow, /PRODUCTION_DATABASE_URL/);
   assert.doesNotMatch(workflow, /schedule:\s*\n/);
@@ -60,6 +70,15 @@ test("recovery documentation names the EU region, key separation and real gate",
   assert.match(documentation, /Amesterdão/i);
   assert.match(documentation, /B2_BACKUP_APPLICATION_KEY/);
   assert.match(documentation, /B2_RESTORE_APPLICATION_KEY/);
+  assert.match(documentation, /b2 key create/);
+  assert.match(
+    documentation,
+    /readFiles,writeFiles,readFileRetentions,writeFileRetentions/,
+  );
+  assert.match(documentation, /transparencia-total-restore readFiles/);
+  assert.match(documentation, /Read and Write/);
+  assert.match(documentation, /deleteFiles/);
+  assert.match(documentation, /bypassGovernance/);
   assert.match(documentation, /BACKUP_AGE_IDENTITY/);
   assert.match(documentation, /não.*repositório/i);
   assert.match(documentation, /BLOCKED/);
