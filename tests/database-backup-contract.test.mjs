@@ -23,10 +23,13 @@ test("daily backup encrypts before B2 and never persists a plaintext dump", asyn
   assert.match(workflow, /capture_database_inventory/g);
   assert.match(workflow, /build_database_backup_manifest/);
   assert.match(workflow, /--role backup/);
+  assert.match(workflow, /emit_postgres_backup_environment/);
+  assert.match(workflow, /docker run --rm --env-file \/dev\/stdin postgres:17/);
   assert.ok(scopeCheckIndex >= 0 && scopeCheckIndex < inventoryIndex);
   assert.ok(scopeCheckIndex < dumpIndex);
   assert.doesNotMatch(workflow, /upload-artifact/);
   assert.doesNotMatch(workflow, /\.dump([^.]|$)(?!\.age)/);
+  assert.doesNotMatch(workflow, /docker run[^\n]+-e PGDATABASE/);
   assert.doesNotMatch(workflow, /--dbname[= ]+.*PRODUCTION_DATABASE_URL/);
 });
 

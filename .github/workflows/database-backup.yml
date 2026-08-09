@@ -86,8 +86,9 @@ jobs:
       - name: Criar cópia lógica cifrada sem plaintext em disco
         id: backup
         shell: bash
+        working-directory: backend
         env:
-          PGDATABASE: ${{ secrets.PRODUCTION_DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
         run: |
           set -euo pipefail
           umask 077
@@ -109,7 +110,8 @@ jobs:
           [[ "$age_version" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$ ]]
           mkdir -p "$output_dir"
 
-          docker run --rm -e PGDATABASE postgres:17 \
+          python -m scripts.emit_postgres_backup_environment \
+            | docker run --rm --env-file /dev/stdin postgres:17 \
             pg_dump --format=custom --compress=9 --no-owner --no-privileges \
               --schema=public \
             | age --recipient "$BACKUP_AGE_RECIPIENT" --output "$ciphertext"
