@@ -8,7 +8,9 @@ Não inclui credenciais e não promete uma capacidade que ainda não tenha sido 
 - Provedor: Supabase/PostgreSQL, projeto de produção `ACTIVE_HEALTHY`.
 - Plano confirmado em 9 de agosto de 2026: Free.
 - Backup gerido ou point-in-time recovery: não demonstrado e, por isso, não garantido.
-- Destino aprovado: Backblaze B2, conta na região EU Central e bucket privado.
+- Destino aprovado para configuração: Backblaze B2. A região EU Central da conta ainda tem de ser
+  confirmada na consola e o bucket privado ainda tem de ser criado; nenhum dos dois é aqui dado como
+  demonstrado.
 - Automatização: preparada em `.github/workflows/database-backup.yml`, mas ainda não demonstrada
   com credenciais e objeto reais.
 - Cópia lógica externa: ainda não demonstrada.
