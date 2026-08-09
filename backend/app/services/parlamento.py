@@ -3,6 +3,7 @@ import json
 import re
 import unicodedata
 from collections.abc import Iterator
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, cast
 from urllib.parse import parse_qs, unquote, urljoin, urlparse
@@ -47,6 +48,16 @@ MANDATE_HOLDER_SITUATIONS = frozenset(
 )
 
 
+@dataclass(frozen=True)
+class _InitiativeContext:
+    """Identidade e designação oficiais da iniciativa ascendente."""
+
+    source_id: str | None = None
+    number: str | None = None
+    initiative_type: str | None = None
+    title: str | None = None
+
+
 def _normalise_key(value: str) -> str:
     decomposed = unicodedata.normalize("NFKD", value)
     ascii_value = "".join(
@@ -71,21 +82,40 @@ def _walk(value: Any) -> Iterator[dict[str, Any]]:
 
 def _walk_with_initiative(
     value: Any,
-    initiative_number: str | None = None,
-) -> Iterator[tuple[dict[str, Any], str | None]]:
-    """Percorre o JSON mantendo apenas a chave oficial da iniciativa ascendente."""
+    initiative: _InitiativeContext | None = None,
+) -> Iterator[tuple[dict[str, Any], _InitiativeContext | None]]:
+    """Percorre o JSON mantendo a iniciativa oficial ascendente exata."""
 
     if isinstance(value, dict):
-        current_number = (
-            _as_text(_field(value, "IniNr", "IniciativaNumero", "initiativeNumber"))
-            or initiative_number
+        source_id = _as_text(_field(value, "IniId", "IniciativaId", "initiativeId"))
+        number = _as_text(_field(value, "IniNr", "IniciativaNumero", "initiativeNumber"))
+        initiative_type = _as_text(_field(value, "IniDescTipo", "IniciativaTipo", "initiativeType"))
+        title = _as_text(_field(value, "IniTitulo", "IniciativaTitulo", "initiativeTitle"))
+
+        has_context_fields = any((source_id, number, initiative_type, title))
+        same_initiative = initiative is not None and (
+            (source_id is None or source_id == initiative.source_id)
+            and (number is None or number == initiative.number)
         )
-        yield value, current_number
+        inherited = initiative if same_initiative else None
+        current: _InitiativeContext | None
+        if has_context_fields:
+            current = _InitiativeContext(
+                source_id=source_id or (inherited.source_id if inherited else None),
+                number=number or (inherited.number if inherited else None),
+                initiative_type=initiative_type
+                or (inherited.initiative_type if inherited else None),
+                title=title or (inherited.title if inherited else None),
+            )
+        else:
+            current = initiative
+
+        yield value, current
         for child in value.values():
-            yield from _walk_with_initiative(child, current_number)
+            yield from _walk_with_initiative(child, current)
     elif isinstance(value, list):
         for child in value:
-            yield from _walk_with_initiative(child, initiative_number)
+            yield from _walk_with_initiative(child, initiative)
 
 
 def _field(record: dict[str, Any], *aliases: str) -> Any | None:
@@ -104,6 +134,25 @@ def _as_text(value: Any | None) -> str | None:
         text = _normalise_space(str(value))
         return text or None
     return None
+
+
+def _is_bare_vote_identifier(value: str | None) -> bool:
+    """Deteta descrições que a fonte publicou apenas como um número interno."""
+
+    return value is None or re.fullmatch(r"\d+", value) is not None
+
+
+def _initiative_display_title(initiative: _InitiativeContext | None) -> str | None:
+    if initiative is None or not initiative.title:
+        return None
+    if initiative.number:
+        prefix = (
+            f"{initiative.initiative_type} n.º {initiative.number}"
+            if initiative.initiative_type
+            else f"Iniciativa n.º {initiative.number}"
+        )
+        return f"{prefix} — {initiative.title}"
+    return initiative.title
 
 
 def _parse_date(value: Any | None) -> datetime | None:
@@ -364,43 +413,10 @@ class ParlamentoCollector:
             content_sha256=document_sha256,
         )
         events: dict[str, VoteEvent] = {}
-        initiative_numbers: dict[str, set[str]] = {}
-        initiative_titles: dict[str, str] = {}
+        initiative_contexts: dict[str, set[_InitiativeContext]] = {}
+        descriptive_titles: dict[str, set[str]] = {}
 
-        for initiative_record in _walk(payload):
-            initiative_number = _as_text(
-                _field(
-                    initiative_record,
-                    "IniNr",
-                    "IniciativaNumero",
-                    "initiativeNumber",
-                )
-            )
-            initiative_title = _as_text(
-                _field(
-                    initiative_record,
-                    "IniTitulo",
-                    "IniciativaTitulo",
-                    "initiativeTitle",
-                )
-            )
-            initiative_type = _as_text(
-                _field(
-                    initiative_record,
-                    "IniDescTipo",
-                    "IniciativaTipo",
-                    "initiativeType",
-                )
-            )
-            if initiative_number and initiative_title:
-                prefix = (
-                    f"{initiative_type} n.º {initiative_number}"
-                    if initiative_type
-                    else f"Iniciativa n.º {initiative_number}"
-                )
-                initiative_titles[initiative_number] = f"{prefix} — {initiative_title}"
-
-        for record, inherited_initiative_number in _walk_with_initiative(payload):
+        for record, initiative_context in _walk_with_initiative(payload):
             result = _as_text(_field(record, "VotacaoResultado", "Resultado", "result"))
             vote_id = _as_text(_field(record, "VotacaoId", "idVotacao", "voteId", "VotId", "evtId"))
             if not vote_id and result and _field(record, "reuniao") is not None:
@@ -410,7 +426,7 @@ class ParlamentoCollector:
                 vote_id = _as_text(_field(record, "id"))
             details = _field(record, "VotacaoDetalhe", "Detalhe", "details", "Votacoes")
             date_value = _field(record, "VotacaoData", "Data", "date", "evtData")
-            title = _as_text(
+            source_title = _as_text(
                 _field(record, "VotacaoDescricao", "Descricao", "Objeto", "title", "IniTitulo")
             )
 
@@ -421,20 +437,28 @@ class ParlamentoCollector:
             is_nominal = bool(records) and all(
                 item.actor_type is VoteActorType.PERSON for item in records
             )
-            initiative = inherited_initiative_number
-            if initiative:
-                initiative_numbers.setdefault(vote_id, set()).add(initiative)
+            if initiative_context:
+                initiative_contexts.setdefault(vote_id, set()).add(initiative_context)
+            descriptive_title = source_title if not _is_bare_vote_identifier(source_title) else None
+            if descriptive_title:
+                descriptive_titles.setdefault(vote_id, set()).add(descriptive_title)
+            initiative_title = _initiative_display_title(initiative_context)
+            initiative_number = initiative_context.number if initiative_context else None
             candidate = VoteEvent(
                 source_id=vote_id,
                 title=(
-                    title
-                    or (initiative_titles.get(initiative) if initiative else None)
-                    or (f"Votação da iniciativa n.º {initiative}" if initiative else None)
+                    descriptive_title
+                    or initiative_title
+                    or (
+                        f"Votação da iniciativa n.º {initiative_number}"
+                        if initiative_number
+                        else None
+                    )
                     or f"Votação {vote_id}"
                 ),
                 voted_at=_parse_date(date_value),
                 result=result,
-                initiative_number=initiative,
+                initiative_number=initiative_number,
                 is_nominal=is_nominal,
                 records=records,
                 source=source,
@@ -455,12 +479,29 @@ class ParlamentoCollector:
                 events[vote_id] = candidate
 
         for vote_id, event in list(events.items()):
-            observed_numbers = initiative_numbers.get(vote_id, set())
+            observed_contexts = initiative_contexts.get(vote_id, set())
+            unique_context = next(iter(observed_contexts)) if len(observed_contexts) == 1 else None
+            if descriptive_titles.get(vote_id):
+                final_title = event.title
+            elif unique_context is not None:
+                final_title = (
+                    _initiative_display_title(unique_context)
+                    or (
+                        f"Votação da iniciativa n.º {unique_context.number}"
+                        if unique_context.number
+                        else None
+                    )
+                    or f"Votação {vote_id}"
+                )
+            elif observed_contexts:
+                final_title = f"Votação conjunta de {len(observed_contexts)} iniciativas"
+            else:
+                final_title = f"Votação {vote_id}"
+
             events[vote_id] = event.model_copy(
                 update={
-                    "initiative_number": (
-                        next(iter(observed_numbers)) if len(observed_numbers) == 1 else None
-                    )
+                    "title": final_title,
+                    "initiative_number": unique_context.number if unique_context else None,
                 }
             )
 

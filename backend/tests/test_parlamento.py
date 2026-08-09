@@ -410,6 +410,63 @@ def test_vote_without_description_inherits_the_official_initiative_title() -> No
     assert events[0].initiative_number == "815"
 
 
+def test_numeric_vote_description_inherits_the_exact_parent_initiative() -> None:
+    payload = [
+        {
+            "IniId": "356116",
+            "IniNr": "416",
+            "IniDescTipo": "Projeto de Lei",
+            "IniTitulo": "Altera limites territoriais no Município de Penafiel",
+            "IniEventos": [
+                {
+                    "Votacao": [
+                        {
+                            "id": "172685",
+                            "data": "2026-07-17",
+                            "descricao": "416",
+                            "reuniao": "52",
+                            "resultado": "Aprovado",
+                        }
+                    ]
+                }
+            ],
+        },
+        {
+            "IniId": "399999",
+            "IniNr": "416",
+            "IniDescTipo": "Projeto de Resolução",
+            "IniTitulo": "Título diferente com o mesmo número",
+            "IniEventos": [
+                {
+                    "Votacao": [
+                        {
+                            "id": "199999",
+                            "data": "2026-07-18",
+                            "descricao": "416",
+                            "reuniao": "53",
+                            "resultado": "Rejeitado",
+                        }
+                    ]
+                }
+            ],
+        },
+    ]
+
+    events = collector().normalise_votes(
+        payload,
+        source_url="https://app.parlamento.pt/IniciativasXVII_json.txt",
+        document_sha256="3" * 64,
+    )
+
+    by_id = {event.source_id: event for event in events}
+    assert by_id["172685"].title == (
+        "Projeto de Lei n.º 416 — Altera limites territoriais no Município de Penafiel"
+    )
+    assert by_id["199999"].title == (
+        "Projeto de Resolução n.º 416 — Título diferente com o mesmo número"
+    )
+
+
 def test_shared_vote_is_not_arbitrarily_linked_to_one_of_multiple_initiatives() -> None:
     vote = {
         "id": "139080",
@@ -430,6 +487,7 @@ def test_shared_vote_is_not_arbitrarily_linked_to_one_of_multiple_initiatives() 
 
     assert len(events) == 1
     assert events[0].initiative_number is None
+    assert events[0].title == "Votação conjunta de 2 iniciativas"
 
 
 def test_marks_exactly_repeated_actor_with_conflicting_positions_as_unknown() -> None:
