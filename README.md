@@ -4,11 +4,13 @@ Plataforma cívica, neutra e sem fins lucrativos para acompanhar atividade polí
 Portugal através de dados oficiais auditáveis. O código usa licença MIT; o repositório deve
 ser tornado público antes de o projeto se apresentar como open source.
 
-> **Estado do projeto:** esta release fecha o produto público da V4. Inclui arquivo PostgreSQL
+> **Estado do projeto:** a V4 está publicada e tecnicamente validada, mas a tag `v0.4.0` permanece
+> bloqueada até existir uma cópia externa com restauro testado. Inclui arquivo PostgreSQL
 > dos bytes oficiais, fotografias parlamentares versionadas e append-only, revisão humana por
 > âmbito, API pública fail-closed, catálogo inicial do Programa do XXV Governo e páginas legais.
 > O domínio oficial nunca substitui uma falha da API por dados fictícios. Consulte o
-> [gate V4 → V5](docs/V4_TO_V5_RELEASE_GATE.md) para a validação operacional da release.
+> [gate V4 → V5](docs/V4_TO_V5_RELEASE_GATE.md) e o
+> [runbook de recuperação](docs/DATABASE_RECOVERY.md) para o estado operacional real.
 
 ## Princípios
 
@@ -107,7 +109,8 @@ coletores, revisão e envio push ficam no backend. Consulte [Arquitetura](docs/A
 [staging BASE append-only V4.2](docs/V4_BASE_STAGING.md), bem como do
 [pipeline parlamentar V4](docs/V4_PARLIAMENT_PIPELINE.md), das
 [operações de produção](docs/V4_PRODUCTION_OPERATIONS.md) e do
-[gate V4 → V5](docs/V4_TO_V5_RELEASE_GATE.md), além do
+[gate V4 → V5](docs/V4_TO_V5_RELEASE_GATE.md), do
+[runbook de recuperação](docs/DATABASE_RECOVERY.md), além do
 [modelo de AIPD/RGPD](docs/DPIA_TEMPLATE.md).
 
 ## Estrutura do projeto
