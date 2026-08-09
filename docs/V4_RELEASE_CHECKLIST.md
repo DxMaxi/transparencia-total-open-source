@@ -14,6 +14,8 @@
 - [x] Dados de demonstração estão desativados no build de produção.
 - [x] Nenhum novo conector promove dados automaticamente.
 
+- [x] Reprocessar os mesmos bytes com outro parser acrescenta um snapshot versionado; nunca altera o anterior.
+
 ## Fontes V4
 
 | Fonte | Gate técnico V4 | Publicação automática |

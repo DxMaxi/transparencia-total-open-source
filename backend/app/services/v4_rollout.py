@@ -25,7 +25,7 @@ from app.services.transparency_entity import EPT_INDEX_URL, TransparencyEntityCo
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_V4_ROLLOUT_CODE_VERSION = "v4-public-rollout-v4"
+DEFAULT_V4_ROLLOUT_CODE_VERSION = "v4-public-rollout-v5"
 
 RolloutSource = Literal[
     "BASE_CONTRACTS",
