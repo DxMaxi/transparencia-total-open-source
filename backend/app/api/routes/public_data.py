@@ -14,6 +14,7 @@ from app.models.public_parliament import (
     PublishedParliamentaryInitiative,
     PublishedParliamentarySession,
     PublishedParliamentaryVote,
+    PublishedParliamentPublicationHistoryItem,
 )
 from app.repositories.postgres import PostgresRepository
 from app.repositories.public_parliament import PublicParliamentRepository
@@ -119,6 +120,29 @@ async def public_parliament_sessions(
     except RuntimeError as exc:
         raise _unavailable(exc) from exc
     return [PublishedParliamentarySession.model_validate(row) for row in rows]
+
+
+@router.get(
+    "/parliament/publication-history",
+    response_model=list[PublishedParliamentPublicationHistoryItem],
+)
+async def public_parliament_publication_history(
+    response: Response,
+    repository: Annotated[PostgresRepository, Depends(get_repository)],
+    legislature: str = Query(default="XVII", pattern=r"^[A-Z0-9.ª ]{1,20}$"),
+    limit: int = Query(default=20, ge=1, le=100),
+) -> list[PublishedParliamentPublicationHistoryItem]:
+    """Publica apenas o resumo redigido das decisões, nunca a nota editorial privada."""
+
+    _cache(response)
+    try:
+        rows = await PublicParliamentRepository(repository.pool).list_publication_history(
+            legislature=legislature,
+            limit=limit,
+        )
+    except RuntimeError as exc:
+        raise _unavailable(exc) from exc
+    return [PublishedParliamentPublicationHistoryItem.model_validate(row) for row in rows]
 
 
 @router.get(

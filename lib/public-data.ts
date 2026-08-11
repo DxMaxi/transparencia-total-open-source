@@ -247,6 +247,37 @@ type RawParliamentaryVote = {
   source: RawSource;
 };
 
+type RawParliamentPublicationHistoryItem = {
+  event_reference_sha256: string;
+  action: "PUBLISHED" | "WITHDRAWN";
+  scope: "activity" | "votes";
+  scope_label: string;
+  legislature: string;
+  target_reference_sha256: string;
+  decided_at: string;
+  actor_alias: string;
+  public_rationale: string;
+  reason_category?: string | null;
+  source: RawSource;
+  snapshot_sha256: string;
+  manifest_counts: {
+    sessions: number;
+    initiatives: number;
+    votes: number;
+    vote_records: number;
+  };
+  public_effect?: null | {
+    kind: "DATA_UNAVAILABLE" | "FALLBACK_TO_PREVIOUS_SNAPSHOT";
+    scope: "activity" | "votes";
+    legislature: string;
+    message: string;
+    snapshot_reference_sha256?: string | null;
+    snapshot_sha256?: string | null;
+    source_sha256?: string | null;
+  };
+  public_effect_sha256?: string | null;
+};
+
 function mapStatus(raw: RawDataStatus): PublicDataStatus {
   return {
     mode: raw.mode,
@@ -366,7 +397,7 @@ export async function loadPublicParliamentActivity(
   const sessionsPage = pagination.sessions ?? { limit: 24, offset: 0 };
   const initiativesPage = pagination.initiatives ?? { limit: 25, offset: 0 };
   const votesPage = pagination.votes ?? { limit: 20, offset: 0 };
-  const [status, sessions, initiatives, votes] = await Promise.all([
+  const [status, sessions, initiatives, votes, publicationHistory] = await Promise.all([
     loadPublicDataStatus(),
     apiFetch<RawParliamentarySession[]>(
       `/api/v1/public/parliament/sessions?${legislatureQuery}&limit=${sessionsPage.limit}&offset=${sessionsPage.offset}`,
@@ -377,6 +408,9 @@ export async function loadPublicParliamentActivity(
     apiFetch<RawParliamentaryVote[]>(
       `/api/v1/public/parliament/votes?${legislatureQuery}&limit=${votesPage.limit}&offset=${votesPage.offset}`,
     ),
+    apiFetch<RawParliamentPublicationHistoryItem[]>(
+      `/api/v1/public/parliament/publication-history?${legislatureQuery}&limit=20`,
+    ),
   ]);
   return {
     status,
@@ -386,6 +420,7 @@ export async function loadPublicParliamentActivity(
         sessions: sessions.ok,
         initiatives: initiatives.ok,
         votes: votes.ok,
+        publicationHistory: publicationHistory.ok,
       },
       sessions: sessions.ok
         ? sessions.data.map((item) => ({
@@ -433,6 +468,41 @@ export async function loadPublicParliamentActivity(
             })),
             verifiedAt: formatDate(item.verified_at),
             source: toOfficialSource(item.source),
+          }))
+        : [],
+      publicationHistory: publicationHistory.ok
+        ? publicationHistory.data.map((item) => ({
+            eventReferenceSha256: item.event_reference_sha256,
+            action: item.action,
+            scope: item.scope,
+            scopeLabel: item.scope_label,
+            legislature: item.legislature,
+            targetReferenceSha256: item.target_reference_sha256,
+            decidedAt: formatDate(item.decided_at),
+            actorAlias: item.actor_alias,
+            publicRationale: item.public_rationale,
+            reasonCategory: item.reason_category ?? undefined,
+            source: toOfficialSource(item.source),
+            snapshotSha256: item.snapshot_sha256,
+            manifestCounts: {
+              sessions: item.manifest_counts.sessions,
+              initiatives: item.manifest_counts.initiatives,
+              votes: item.manifest_counts.votes,
+              voteRecords: item.manifest_counts.vote_records,
+            },
+            publicEffect: item.public_effect
+              ? {
+                  kind: item.public_effect.kind,
+                  scope: item.public_effect.scope,
+                  legislature: item.public_effect.legislature,
+                  message: item.public_effect.message,
+                  snapshotReferenceSha256:
+                    item.public_effect.snapshot_reference_sha256 ?? undefined,
+                  snapshotSha256: item.public_effect.snapshot_sha256 ?? undefined,
+                  sourceSha256: item.public_effect.source_sha256 ?? undefined,
+                }
+              : undefined,
+            publicEffectSha256: item.public_effect_sha256 ?? undefined,
           }))
         : [],
     },

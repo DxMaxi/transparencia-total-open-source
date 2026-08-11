@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -52,6 +53,45 @@ class PublishedParliamentaryVote(BaseModel):
     records: list[PublishedVoteRecord] = Field(default_factory=list)
     verified_at: datetime
     source: OfficialSource
+
+
+class PublishedParliamentPublicationCounts(BaseModel):
+    sessions: int = Field(ge=0)
+    initiatives: int = Field(ge=0)
+    votes: int = Field(ge=0)
+    vote_records: int = Field(ge=0)
+
+
+class PublishedParliamentPublicEffect(BaseModel):
+    kind: Literal["DATA_UNAVAILABLE", "FALLBACK_TO_PREVIOUS_SNAPSHOT"]
+    scope: Literal["activity", "votes"]
+    legislature: str
+    message: str
+    snapshot_reference_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    snapshot_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    collected_at: datetime | None = None
+    source_url: str | None = None
+    source_retrieved_at: datetime | None = None
+    source_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    verified_at: datetime | None = None
+
+
+class PublishedParliamentPublicationHistoryItem(BaseModel):
+    event_reference_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    action: Literal["PUBLISHED", "WITHDRAWN"]
+    scope: Literal["activity", "votes"]
+    scope_label: str
+    legislature: str
+    target_reference_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    decided_at: datetime
+    actor_alias: str
+    public_rationale: str
+    reason_category: str | None = None
+    source: OfficialSource
+    snapshot_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    manifest_counts: PublishedParliamentPublicationCounts
+    public_effect: PublishedParliamentPublicEffect | None = None
+    public_effect_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
 
 
 class PublishedParliamentActivity(BaseModel):

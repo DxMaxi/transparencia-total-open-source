@@ -40,14 +40,15 @@ flowchart LR
   B -->|"corrigir: nova versão"| A
   C -->|"corrigir: nova versão"| A
   D -->|"corrigir: nova versão"| A
-  C -. "adaptador futuro por domínio" .-> E["PUBLISHED"]
-  E -. "retirada futura" .-> F["WITHDRAWN"]
+  C -->|"adaptador parlamentar V5.3"| E["PUBLISHED"]
+  E -->|"retirada parlamentar V5.4"| F["WITHDRAWN"]
+  F -->|"corrigir: nova versão"| A
 ```
 
-`PUBLISHED` e `WITHDRAWN` estão reservados no modelo para adaptadores futuros. Apenas um
-administrador poderá executar essas transições, e cada publicação terá de acrescentar um
-`EditorialPublicationEvent` ligado ao destino concreto. O primeiro adaptador previsto é o circuito
-parlamentar; não faz parte desta fundação.
+`PUBLISHED` e `WITHDRAWN` continuam reservados a adaptadores específicos por domínio. O circuito
+parlamentar implementa essas transições nas V5.3 e V5.4: apenas um administrador com MFA pode
+executá-las, e cada ação acrescenta um `EditorialPublicationEvent` ligado à versão e ao destino
+concretos. Não existe endpoint genérico para promover ou retirar outros tipos editoriais.
 
 ## Configuração por ambiente
 
@@ -125,3 +126,5 @@ propostas por âmbito a partir de snapshots atestados e apresenta diferenças po
 oficial exato, sem converter posições coletivas em votos individuais. A ligação deliberadamente
 separada de um âmbito aprovado à porta pública V4 está especificada em
 [V5.3 — publicação parlamentar específica por âmbito](V5_PARLIAMENT_SCOPE_PUBLICATION.md).
+A retirada imutável, o registo público redigido e o regresso obrigatório a uma nova revisão estão
+descritos em [V5.4 — retirada parlamentar imutável](V5_PARLIAMENT_WITHDRAWAL.md).

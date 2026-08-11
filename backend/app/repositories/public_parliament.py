@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 from typing import Any, Literal
 
@@ -28,6 +30,26 @@ def _vote_title(row: Any) -> str:
     initiative_type = row["initiative_type"] or "Iniciativa"
     initiative_number = row["initiative_number"] or title.strip()
     return f"{initiative_type} n.º {initiative_number} — {initiative_title}"
+
+
+def _json_object(value: object) -> dict[str, Any] | None:
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except json.JSONDecodeError:
+            return None
+    return value if isinstance(value, dict) else None
+
+
+def _sha256_json(value: object) -> str:
+    canonical = json.dumps(
+        value,
+        ensure_ascii=False,
+        allow_nan=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 class PublicParliamentRepository:
@@ -257,3 +279,110 @@ class PublicParliamentRepository:
             }
             for row in rows
         ]
+
+    async def list_publication_history(
+        self,
+        *,
+        legislature: str,
+        limit: int,
+    ) -> list[dict[str, Any]]:
+        """Histórico público redigido; nunca expõe IDs ou fundamentação editorial privada."""
+
+        pool = self._require_pool()
+        async with pool.acquire() as connection:
+            rows = await connection.fetch(
+                """
+                SELECT audit.id, audit.entity_id, audit.action, audit.actor_alias,
+                       audit.after_json, audit.reason, audit.created_at,
+                       source.url AS source_url,
+                       source.retrieved_at AS source_retrieved_at,
+                       source.content_sha256 AS source_sha256
+                FROM audit_events AS audit
+                JOIN parliament_activity_snapshots AS snapshot
+                  ON snapshot.id = audit.entity_id
+                JOIN source_documents AS source
+                  ON source.id = snapshot.source_document_id
+                WHERE audit.entity_type IN (
+                          'PARLIAMENT_ACTIVITY_SNAPSHOT',
+                          'PARLIAMENT_VOTES_SNAPSHOT'
+                      )
+                  AND audit.action IN ('PUBLISHED', 'WITHDRAWN')
+                  AND audit.after_json ->> 'legislature' = $1
+                  AND audit.after_json -> 'editorial_link' IS NOT NULL
+                  AND source.publisher = 'PARLIAMENT'
+                  AND source.url LIKE 'https://%'
+                ORDER BY audit.created_at DESC, audit.id DESC
+                LIMIT $2
+                """,
+                legislature,
+                limit,
+            )
+
+        history: list[dict[str, Any]] = []
+        for row in rows:
+            after = _json_object(row["after_json"])
+            if after is None:
+                continue
+            link = _json_object(after.get("editorial_link"))
+            counts = after.get("counts")
+            scope = after.get("scope")
+            source_sha256 = after.get("source_sha256")
+            snapshot_sha256 = after.get("normalised_sha256")
+            if (
+                link is None
+                or scope not in {"activity", "votes"}
+                or source_sha256 != str(row["source_sha256"])
+                or not isinstance(snapshot_sha256, str)
+                or not re.fullmatch(r"[0-9a-f]{64}", snapshot_sha256)
+                or not isinstance(counts, dict)
+                or set(counts) != {"sessions", "initiatives", "votes", "vote_records"}
+                or any(
+                    not isinstance(value, int) or isinstance(value, bool) or value < 0
+                    for value in counts.values()
+                )
+            ):
+                continue
+            public_effect = _json_object(link.get("public_effect"))
+            public_effect_sha256 = link.get("public_effect_sha256")
+            action = str(row["action"])
+            if action == "WITHDRAWN" and (
+                public_effect is None
+                or not isinstance(public_effect_sha256, str)
+                or not re.fullmatch(r"[0-9a-f]{64}", public_effect_sha256)
+                or _sha256_json(public_effect) != public_effect_sha256
+            ):
+                continue
+            history.append(
+                {
+                    "event_reference_sha256": hashlib.sha256(
+                        str(row["id"]).encode("utf-8")
+                    ).hexdigest(),
+                    "action": action,
+                    "scope": scope,
+                    "scope_label": (
+                        "atividade parlamentar" if scope == "activity" else "votações"
+                    ),
+                    "legislature": legislature,
+                    "target_reference_sha256": hashlib.sha256(
+                        str(row["entity_id"]).encode("utf-8")
+                    ).hexdigest(),
+                    "decided_at": row["created_at"],
+                    "actor_alias": str(row["actor_alias"]),
+                    "public_rationale": str(row["reason"]),
+                    "reason_category": (
+                        str(link["withdrawal_reason_category"])
+                        if link.get("withdrawal_reason_category") is not None
+                        else None
+                    ),
+                    "source": _source(row),
+                    "snapshot_sha256": snapshot_sha256,
+                    "manifest_counts": counts,
+                    "public_effect": public_effect,
+                    "public_effect_sha256": (
+                        str(public_effect_sha256)
+                        if public_effect_sha256 is not None
+                        else None
+                    ),
+                }
+            )
+        return history

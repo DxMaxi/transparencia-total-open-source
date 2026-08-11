@@ -98,6 +98,6 @@ async def require_editorial_admin(
     if session.role is not StaffRole.ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Esta publicação exige um administrador editorial",
+            detail="Esta ação pública exige um administrador editorial",
         )
     return session

@@ -774,6 +774,7 @@ class EditorialRepository:
                     EditorialState.IN_REVIEW,
                     EditorialState.APPROVED,
                     EditorialState.REJECTED,
+                    EditorialState.WITHDRAWN,
                 }:
                     raise EditorialConflictError(
                         f"O estado {previous_state.value} não admite correção"

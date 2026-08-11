@@ -62,6 +62,22 @@ class ParliamentEditorialScope(StrEnum):
     VOTES = "votes"
 
 
+class ParliamentWithdrawalReason(StrEnum):
+    """Categorias públicas fechadas previstas na governação anti-interferência."""
+
+    EXTRACTION_OR_NORMALISATION_ERROR = "EXTRACTION_OR_NORMALISATION_ERROR"
+    SOURCE_DIVERGENCE = "SOURCE_DIVERGENCE"
+    OFFICIAL_SOURCE_CORRECTION = "OFFICIAL_SOURCE_CORRECTION"
+    DUPLICATE_OR_CORRUPT_DATA = "DUPLICATE_OR_CORRUPT_DATA"
+    PROVEN_IDENTITY_ERROR = "PROVEN_IDENTITY_ERROR"
+    DOCUMENTED_METHODOLOGY_CHANGE = "DOCUMENTED_METHODOLOGY_CHANGE"
+    LEGAL_OR_AUTHORITY_ORDER = "LEGAL_OR_AUTHORITY_ORDER"
+    DATA_PROTECTION_OR_PERSONALITY_RIGHTS = "DATA_PROTECTION_OR_PERSONALITY_RIGHTS"
+    SECURITY_RISK = "SECURITY_RISK"
+    THIRD_PARTY_RIGHTS = "THIRD_PARTY_RIGHTS"
+    DECLARED_SCOPE_ERROR = "DECLARED_SCOPE_ERROR"
+
+
 class StaffSession(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -205,3 +221,33 @@ class ParliamentEditorialPublicationRequest(EditorialDecisionRequest):
     confirm_source_reviewed: Literal[True]
     confirm_no_individual_inference: Literal[True]
     confirm_publication: Literal[True]
+
+
+class ParliamentEditorialWithdrawalRequest(EditorialDecisionRequest):
+    """Retirada explícita, não seletiva e ligada à prova publicada exata."""
+
+    rationale: str = Field(min_length=20, max_length=1850)
+    public_rationale: str = Field(min_length=20, max_length=500)
+    reason_category: ParliamentWithdrawalReason
+    confirmed_scope: ParliamentEditorialScope
+    expected_snapshot_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    expected_source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_snapshot_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_editorial_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_publication_proof_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_public_review_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    expected_publication_audit_event_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    expected_publication_event_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    expected_publication_event_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_public_effect_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    confirm_no_selective_removal: Literal[True]
+    confirm_public_effect_reviewed: Literal[True]
+    confirm_withdrawal: Literal[True]
+
+    @field_validator("public_rationale")
+    @classmethod
+    def strip_public_rationale(cls, value: str) -> str:
+        stripped = value.strip()
+        if len(stripped) < 20:
+            raise ValueError("O resumo público deve ter pelo menos 20 caracteres úteis")
+        return stripped
