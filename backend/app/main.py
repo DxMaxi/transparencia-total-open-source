@@ -8,6 +8,7 @@ from app.api.routes import (
     ai,
     base_gov,
     dre,
+    editorial,
     health,
     open_data,
     parliament,
@@ -19,6 +20,7 @@ from app.api.routes import (
 )
 from app.core.config import get_settings
 from app.core.logging import configure_logging
+from app.core.staff_auth import SupabaseJwtVerifier
 from app.repositories.official_index_staging import OfficialIndexStagingRepository
 
 settings = get_settings()
@@ -34,17 +36,20 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """
 
     repository = OfficialIndexStagingRepository(settings)
+    staff_auth = SupabaseJwtVerifier(settings)
     await repository.connect()
     app.state.repository = repository
+    app.state.staff_auth = staff_auth
     try:
         yield
     finally:
+        await staff_auth.close()
         await repository.close()
 
 
 app = FastAPI(
     title=settings.app_name,
-    version="0.4.0",
+    version="0.5.0-alpha.0",
     description=(
         "API de recolha e normalização de fontes públicas portuguesas. "
         "Cada resposta preserva a origem oficial."
@@ -59,12 +64,13 @@ app.add_middleware(
     allow_origins=settings.cors_origins,
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "X-Admin-Key"],
+    allow_headers=["Authorization", "Content-Type", "X-Admin-Key"],
 )
 
 app.include_router(health.router, prefix=settings.api_prefix)
 app.include_router(parliament.router, prefix=settings.api_prefix)
 app.include_router(dre.router, prefix=settings.api_prefix)
+app.include_router(editorial.router, prefix=settings.api_prefix)
 app.include_router(ai.router, prefix=settings.api_prefix)
 app.include_router(push.router, prefix=settings.api_prefix)
 app.include_router(transparency.router, prefix=settings.api_prefix)

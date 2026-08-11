@@ -218,7 +218,7 @@ class PushBroadcastResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str = "ok"
-    version: str = "0.4.0"
+    version: str = "0.5.0-alpha.0"
     environment: str
     database_configured: bool
     ai_provider: str

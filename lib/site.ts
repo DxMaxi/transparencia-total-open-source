@@ -1,4 +1,28 @@
-export const SITE_URL = "https://www.transparenciatotal.pt";
+function publicSiteUrl(): string {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (configured) {
+    try {
+      const parsed = new URL(configured);
+      const localHttp =
+        parsed.protocol === "http:" && ["localhost", "127.0.0.1"].includes(parsed.hostname);
+      if (
+        (parsed.protocol === "https:" || localHttp) &&
+        !parsed.username &&
+        !parsed.password &&
+        ["", "/"].includes(parsed.pathname) &&
+        !parsed.search &&
+        !parsed.hash
+      ) {
+        return parsed.toString().replace(/\/$/, "");
+      }
+    } catch {
+      // O valor de produção permanece o fallback seguro para metadados.
+    }
+  }
+  return "https://www.transparenciatotal.pt";
+}
+
+export const SITE_URL = publicSiteUrl();
 export const CONTACT_EMAIL = "maximiano.jp.moreira@gmail.com";
 export const PROJECT_NAME = "Transparência Total / Fator Cívico";
 export const LEGAL_RESPONSIBLE_NAME =

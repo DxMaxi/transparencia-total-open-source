@@ -1,9 +1,66 @@
-from typing import cast
+from typing import Annotated, cast
 
-from fastapi import Request
+from fastapi import Depends, Header, HTTPException, Request, status
 
+from app.core.staff_auth import (
+    InvalidStaffToken,
+    StaffAuthUnavailable,
+    SupabaseJwtVerifier,
+)
+from app.models.editorial import StaffSession
+from app.repositories.editorial import EditorialNotFoundError, EditorialRepository
 from app.repositories.postgres import PostgresRepository
 
 
 def get_repository(request: Request) -> PostgresRepository:
     return cast(PostgresRepository, request.app.state.repository)
+
+
+def get_editorial_repository(
+    repository: Annotated[PostgresRepository, Depends(get_repository)],
+) -> EditorialRepository:
+    if repository.pool is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Base de dados editorial não configurada",
+        )
+    return EditorialRepository(repository.pool)
+
+
+async def get_staff_session(
+    request: Request,
+    repository: Annotated[EditorialRepository, Depends(get_editorial_repository)],
+    authorization: Annotated[str | None, Header(alias="Authorization")] = None,
+) -> StaffSession:
+    verifier = cast(SupabaseJwtVerifier, request.app.state.staff_auth)
+    try:
+        verified = await verifier.verify_bearer(authorization)
+        return await repository.staff_session(
+            auth_user_id=verified.auth_user_id,
+            assurance_level=verified.assurance_level,
+        )
+    except InvalidStaffToken as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(exc),
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from exc
+    except StaffAuthUnavailable as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except EditorialNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+
+
+async def require_editorial_staff(
+    session: Annotated[StaffSession, Depends(get_staff_session)],
+) -> StaffSession:
+    if session.assurance_level != "aal2":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Autenticação multifator obrigatória",
+            headers={"X-MFA-Required": "true"},
+        )
+    return session

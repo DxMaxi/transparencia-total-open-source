@@ -141,6 +141,53 @@ enum PublicationStatus {
   WITHDRAWN
 }
 
+enum StaffRole {
+  ADMIN
+  REVIEWER
+}
+
+enum EditorialCaseKind {
+  PARLIAMENT_ACTIVITY
+  PARLIAMENT_VOTE
+  POLITICIAN_PROFILE
+  GOVERNMENT_PROMISE
+  PUBLIC_CONTRACT
+  INTEREST_RELATIONSHIP
+  RIGHT_OF_REPLY
+  AI_EXPLANATION
+  OTHER
+}
+
+enum EditorialState {
+  PENDING
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  PUBLISHED
+  WITHDRAWN
+}
+
+enum EditorialDecisionAction {
+  SUBMIT
+  START_REVIEW
+  APPROVE
+  REJECT
+  CORRECT
+  PUBLISH
+  WITHDRAW
+}
+
+enum EditorialPublicationAction {
+  PUBLISH
+  WITHDRAW
+}
+
+enum EditorialOrigin {
+  HUMAN
+  INGESTION
+  AI
+}
+
 enum InterestEntityKind {
   PERSON
   PARTY
@@ -338,18 +385,18 @@ model Mandate {
 /// como data de início de mandato: `observedAt` significa apenas "visível na fonte
 /// nesta data". O modelo Mandate continua reservado a períodos com datas oficiais.
 model ParliamentaryMembershipSnapshot {
-  id               String         @id @default(cuid())
-  personId         String         @map("person_id")
-  parliamentaryName String?       @map("parliamentary_name")
-  fullName         String?        @map("full_name")
-  partyId          String?        @map("party_id")
-  legislature      String
-  constituency     String?
-  observedAt       DateTime       @map("observed_at")
-  sourceDocumentId String         @map("source_document_id")
-  person           Person         @relation(fields: [personId], references: [id], onDelete: Cascade)
-  party            Party?         @relation(fields: [partyId], references: [id], onDelete: SetNull)
-  sourceDocument   SourceDocument @relation(fields: [sourceDocumentId], references: [id], onDelete: Cascade)
+  id                String         @id @default(cuid())
+  personId          String         @map("person_id")
+  parliamentaryName String?        @map("parliamentary_name")
+  fullName          String?        @map("full_name")
+  partyId           String?        @map("party_id")
+  legislature       String
+  constituency      String?
+  observedAt        DateTime       @map("observed_at")
+  sourceDocumentId  String         @map("source_document_id")
+  person            Person         @relation(fields: [personId], references: [id], onDelete: Cascade)
+  party             Party?         @relation(fields: [partyId], references: [id], onDelete: SetNull)
+  sourceDocument    SourceDocument @relation(fields: [sourceDocumentId], references: [id], onDelete: Cascade)
 
   @@unique([personId, legislature, sourceDocumentId])
   @@index([personId, legislature, observedAt])
@@ -364,7 +411,7 @@ model ParliamentActivitySnapshot {
   sourceDocumentId String                    @map("source_document_id")
   legislature      String
   parserVersion    String                    @map("parser_version")
-  normalisedSha256 String                    @db.Char(64) @map("normalised_sha256")
+  normalisedSha256 String                    @map("normalised_sha256") @db.Char(64)
   collectedAt      DateTime                  @map("collected_at")
   sessionCount     Int                       @map("session_count")
   initiativeCount  Int                       @map("initiative_count")
@@ -382,17 +429,17 @@ model ParliamentActivitySnapshot {
 }
 
 model ParliamentarySession {
-  id                String             @id @default(cuid())
-  sourceId          String             @map("source_id")
+  id                String                      @id @default(cuid())
+  sourceId          String                      @map("source_id")
   legislature       String
-  sessionNumber     String?            @map("session_number")
+  sessionNumber     String?                     @map("session_number")
   title             String
-  startsAt          DateTime           @map("starts_at")
-  endsAt            DateTime?          @map("ends_at")
-  snapshotId        String?            @map("snapshot_id")
-  sourceDocumentId  String             @map("source_document_id")
+  startsAt          DateTime                    @map("starts_at")
+  endsAt            DateTime?                   @map("ends_at")
+  snapshotId        String?                     @map("snapshot_id")
+  sourceDocumentId  String                      @map("source_document_id")
   snapshot          ParliamentActivitySnapshot? @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
-  sourceDocument    SourceDocument     @relation(fields: [sourceDocumentId], references: [id])
+  sourceDocument    SourceDocument              @relation(fields: [sourceDocumentId], references: [id])
   attendanceRecords AttendanceRecord[]
   voteEvents        VoteEvent[]
 
@@ -421,22 +468,22 @@ model AttendanceRecord {
 }
 
 model ParliamentaryInitiative {
-  id               String         @id @default(cuid())
-  sourceId         String         @map("source_id")
+  id               String                      @id @default(cuid())
+  sourceId         String                      @map("source_id")
   legislature      String
   number           String
   type             String
   title            String
   description      String?
-  introducedAt     DateTime?      @map("introduced_at")
+  introducedAt     DateTime?                   @map("introduced_at")
   status           String?
-  officialUrl      String         @map("official_url")
-  snapshotId       String?        @map("snapshot_id")
-  sourceDocumentId String         @map("source_document_id")
-  createdAt        DateTime       @default(now()) @map("created_at")
-  updatedAt        DateTime       @updatedAt @map("updated_at")
+  officialUrl      String                      @map("official_url")
+  snapshotId       String?                     @map("snapshot_id")
+  sourceDocumentId String                      @map("source_document_id")
+  createdAt        DateTime                    @default(now()) @map("created_at")
+  updatedAt        DateTime                    @updatedAt @map("updated_at")
   snapshot         ParliamentActivitySnapshot? @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
-  sourceDocument   SourceDocument @relation(fields: [sourceDocumentId], references: [id])
+  sourceDocument   SourceDocument              @relation(fields: [sourceDocumentId], references: [id])
   voteEvents       VoteEvent[]
   laws             Law[]
 
@@ -448,24 +495,24 @@ model ParliamentaryInitiative {
 }
 
 model VoteEvent {
-  id               String                    @id @default(cuid())
-  sourceId         String                    @map("source_id")
-  legislature      String                    @default("UNKNOWN")
-  initiativeId     String?                   @map("initiative_id")
-  sessionId        String?                   @map("session_id")
+  id               String                      @id @default(cuid())
+  sourceId         String                      @map("source_id")
+  legislature      String                      @default("UNKNOWN")
+  initiativeId     String?                     @map("initiative_id")
+  sessionId        String?                     @map("session_id")
   title            String
-  initiativeNumber String?                   @map("initiative_number")
-  votedAt          DateTime?                 @map("voted_at")
+  initiativeNumber String?                     @map("initiative_number")
+  votedAt          DateTime?                   @map("voted_at")
   result           String?
-  isNominal        Boolean                   @default(false) @map("is_nominal")
-  snapshotId       String?                   @map("snapshot_id")
-  sourceDocumentId String                    @map("source_document_id")
-  createdAt        DateTime                  @default(now()) @map("created_at")
-  updatedAt        DateTime                  @updatedAt @map("updated_at")
+  isNominal        Boolean                     @default(false) @map("is_nominal")
+  snapshotId       String?                     @map("snapshot_id")
+  sourceDocumentId String                      @map("source_document_id")
+  createdAt        DateTime                    @default(now()) @map("created_at")
+  updatedAt        DateTime                    @updatedAt @map("updated_at")
   snapshot         ParliamentActivitySnapshot? @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
-  initiative       ParliamentaryInitiative?  @relation(fields: [initiativeId], references: [id], onDelete: SetNull)
-  session          ParliamentarySession?     @relation(fields: [sessionId], references: [id], onDelete: SetNull)
-  sourceDocument   SourceDocument            @relation(fields: [sourceDocumentId], references: [id])
+  initiative       ParliamentaryInitiative?    @relation(fields: [initiativeId], references: [id], onDelete: SetNull)
+  session          ParliamentarySession?       @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  sourceDocument   SourceDocument              @relation(fields: [sourceDocumentId], references: [id])
   records          VoteRecord[]
   comparisons      StatementVoteComparison[]
 
@@ -1154,6 +1201,137 @@ model RightOfReply {
   @@map("rights_of_reply")
 }
 
+/// Identidade interna mínima de um administrador ou revisor. O email e os
+/// fatores de autenticação permanecem no Supabase Auth e não são duplicados.
+model StaffProfile {
+  id                String                      @id @default(cuid())
+  authUserId        String                      @unique @map("auth_user_id") @db.Uuid
+  publicAlias       String                      @unique @map("public_alias")
+  role              StaffRole
+  active            Boolean                     @default(true)
+  createdAt         DateTime                    @default(now()) @map("created_at")
+  updatedAt         DateTime                    @updatedAt @map("updated_at")
+  createdCases      EditorialCase[]             @relation("EditorialCaseCreator")
+  createdVersions   EditorialVersion[]          @relation("EditorialVersionCreator")
+  decisions         EditorialDecision[]         @relation("EditorialDecisionActor")
+  publicationEvents EditorialPublicationEvent[] @relation("EditorialPublicationActor")
+
+  @@index([active, role])
+  @@map("staff_profiles")
+}
+
+/// Processo editorial privado. Apenas o estado e o apontador da versão atual
+/// são projeções mutáveis; versões, decisões e eventos são sempre append-only.
+model EditorialCase {
+  id                String                      @id @default(cuid())
+  kind              EditorialCaseKind
+  subjectType       String                      @map("subject_type")
+  subjectId         String                      @map("subject_id")
+  sourceDocumentId  String                      @map("source_document_id")
+  origin            EditorialOrigin
+  createdById       String?                     @map("created_by_id")
+  createdByAlias    String                      @map("created_by_alias")
+  currentVersionId  String?                     @unique @map("current_version_id")
+  currentState      EditorialState              @default(PENDING) @map("current_state")
+  revision          Int                         @default(0)
+  createdAt         DateTime                    @default(now()) @map("created_at")
+  updatedAt         DateTime                    @updatedAt @map("updated_at")
+  sourceDocument    SourceDocument              @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
+  createdBy         StaffProfile?               @relation("EditorialCaseCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  currentVersion    EditorialVersion?           @relation("EditorialCurrentVersion", fields: [currentVersionId], references: [id], onDelete: Restrict)
+  versions          EditorialVersion[]          @relation("EditorialCaseVersions")
+  decisions         EditorialDecision[]
+  publicationEvents EditorialPublicationEvent[]
+
+  @@unique([kind, subjectType, subjectId, sourceDocumentId])
+  @@index([currentState, createdAt, id])
+  @@index([kind, currentState, createdAt, id])
+  @@index([sourceDocumentId])
+  @@index([createdById])
+  @@map("editorial_cases")
+}
+
+/// Conteúdo normalizado privado e imutável. Uma correção cria a versão seguinte
+/// e mantém a anterior ligada por `previousVersionId`.
+model EditorialVersion {
+  id                String                      @id @default(cuid())
+  caseId            String                      @map("case_id")
+  versionNumber     Int                         @map("version_number")
+  normalizedJson    Json                        @map("normalized_json")
+  normalizedSha256  String                      @map("normalized_sha256") @db.Char(64)
+  previousVersionId String?                     @unique @map("previous_version_id")
+  origin            EditorialOrigin
+  createdById       String?                     @map("created_by_id")
+  createdByAlias    String                      @map("created_by_alias")
+  createdAt         DateTime                    @default(now()) @map("created_at")
+  case              EditorialCase               @relation("EditorialCaseVersions", fields: [caseId], references: [id], onDelete: Restrict)
+  currentForCase    EditorialCase?              @relation("EditorialCurrentVersion")
+  previousVersion   EditorialVersion?           @relation("EditorialVersionChain", fields: [previousVersionId], references: [id], onDelete: Restrict)
+  nextVersions      EditorialVersion[]          @relation("EditorialVersionChain")
+  createdBy         StaffProfile?               @relation("EditorialVersionCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  decisions         EditorialDecision[]
+  publicationEvents EditorialPublicationEvent[]
+
+  @@unique([caseId, versionNumber])
+  @@unique([caseId, normalizedSha256])
+  @@index([previousVersionId])
+  @@index([createdById])
+  @@map("editorial_versions")
+}
+
+/// Decisão editorial imutável e atribuída a uma identidade autenticada.
+model EditorialDecision {
+  id              String                  @id @default(cuid())
+  caseId          String                  @map("case_id")
+  versionId       String                  @map("version_id")
+  action          EditorialDecisionAction
+  previousState   EditorialState?         @map("previous_state")
+  resultingState  EditorialState          @map("resulting_state")
+  caseRevision    Int                     @map("case_revision")
+  rationale       String
+  sourceConfirmed Boolean                 @default(false) @map("source_confirmed")
+  actorId         String                  @map("actor_id")
+  actorAlias      String                  @map("actor_alias")
+  decisionSha256  String                  @unique @map("decision_sha256") @db.Char(64)
+  createdAt       DateTime                @default(now()) @map("created_at")
+  case            EditorialCase           @relation(fields: [caseId], references: [id], onDelete: Restrict)
+  version         EditorialVersion        @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  actor           StaffProfile            @relation("EditorialDecisionActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@unique([caseId, caseRevision])
+  @@index([caseId, createdAt, id])
+  @@index([resultingState, createdAt])
+  @@index([versionId])
+  @@index([actorId])
+  @@map("editorial_decisions")
+}
+
+/// Evento de publicação separado da aprovação editorial. A primeira fundação
+/// não cria estes eventos; os adaptadores por domínio serão acrescentados depois.
+model EditorialPublicationEvent {
+  id          String                     @id @default(cuid())
+  caseId      String                     @map("case_id")
+  versionId   String                     @map("version_id")
+  action      EditorialPublicationAction
+  targetType  String                     @map("target_type")
+  targetId    String                     @map("target_id")
+  rationale   String
+  actorId     String                     @map("actor_id")
+  actorAlias  String                     @map("actor_alias")
+  eventSha256 String                     @unique @map("event_sha256") @db.Char(64)
+  createdAt   DateTime                   @default(now()) @map("created_at")
+  case        EditorialCase              @relation(fields: [caseId], references: [id], onDelete: Restrict)
+  version     EditorialVersion           @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  actor       StaffProfile               @relation("EditorialPublicationActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([caseId, createdAt, id])
+  @@unique([caseId, action, targetType, targetId])
+  @@index([targetType, targetId, createdAt])
+  @@index([versionId])
+  @@index([actorId])
+  @@map("editorial_publication_events")
+}
+
 model DataPublicationReview {
   id                  String          @id @default(cuid())
   entityType          String          @map("entity_type")
@@ -1220,6 +1398,7 @@ model SourceDocument {
   rightsOfReply         RightOfReply[]
   publicationReviews    DataPublicationReview[]
   archiveAttestations   SourceArchiveAttestation[]
+  editorialCases        EditorialCase[]
 
   @@unique([url, contentSha256])
   @@index([publisher, kind, publishedAt])
