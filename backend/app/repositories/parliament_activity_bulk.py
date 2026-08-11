@@ -268,29 +268,24 @@ async def _append_votes(
     )
     person_ids = {str(row["source_id"]): str(row["id"]) for row in person_rows}
 
-    party_labels = sorted(
+    party_source_ids = sorted(
         {
-            record.actor_label
+            record.actor_source_id
             for event in dataset.votes
             for record in event.records
-            if record.actor_type is VoteActorType.PARTY
+            if record.actor_type is VoteActorType.PARTY and record.actor_source_id
         }
     )
     party_rows = await connection.fetch(
         """
-        SELECT id, short_name, source_id
+        SELECT source_id, id
         FROM parties
-        WHERE short_name = ANY($1::text[]) OR source_id = ANY($1::text[])
+        WHERE source_id = ANY($1::text[])
         ORDER BY id
         """,
-        party_labels,
+        party_source_ids,
     )
-    party_ids: dict[str, str] = {}
-    for row in party_rows:
-        persisted_party_id = str(row["id"])
-        for key in (row["short_name"], row["source_id"]):
-            if key is not None:
-                party_ids.setdefault(str(key), persisted_party_id)
+    party_ids = {str(row["source_id"]): str(row["id"]) for row in party_rows}
 
     record_rows: list[tuple[Any, ...]] = []
     for event in dataset.votes:
@@ -304,7 +299,7 @@ async def _append_votes(
                 else None
             )
             party_id = (
-                party_ids.get(record.actor_label)
+                party_ids.get(record.actor_source_id or "")
                 if record.actor_type is VoteActorType.PARTY
                 else None
             )

@@ -13,6 +13,11 @@ import type {
   PublicDataStatus,
   PublicInvestigatorDataset,
   PublicParliamentActivity,
+  PublicParliamentExplorer,
+  PublicParliamentPublicationHistoryItem,
+  PublicParliamentaryInitiative,
+  PublicParliamentarySession,
+  PublicParliamentaryVote,
   PublicPersonSummary,
   SourceSyncState,
 } from "@/types/public-data";
@@ -202,6 +207,103 @@ function toOfficialSource(source: RawSource): OfficialSource {
   };
 }
 
+function mapParliamentSession(item: RawParliamentarySession): PublicParliamentarySession {
+  return {
+    id: item.id,
+    sourceId: item.source_id,
+    legislature: item.legislature,
+    sessionNumber: item.session_number ?? undefined,
+    title: item.title,
+    startsAt: formatDate(item.starts_at),
+    endsAt: item.ends_at ? formatDate(item.ends_at) : undefined,
+    verifiedAt: formatDate(item.verified_at),
+    source: toOfficialSource(item.source),
+  };
+}
+
+function mapParliamentInitiative(
+  item: RawParliamentaryInitiative,
+): PublicParliamentaryInitiative {
+  return {
+    id: item.id,
+    sourceId: item.source_id,
+    legislature: item.legislature,
+    number: item.number,
+    initiativeType: item.initiative_type,
+    title: item.title,
+    description: item.description ?? undefined,
+    introducedAt: item.introduced_at ? formatDate(item.introduced_at) : undefined,
+    status: item.status ?? undefined,
+    officialUrl: item.official_url,
+    verifiedAt: formatDate(item.verified_at),
+    source: toOfficialSource(item.source),
+  };
+}
+
+function mapParliamentVote(item: RawParliamentaryVote): PublicParliamentaryVote {
+  return {
+    id: item.id,
+    sourceId: item.source_id,
+    legislature: item.legislature,
+    title: item.title,
+    initiativeNumber: item.initiative_number ?? undefined,
+    votedAt: item.voted_at ? formatDate(item.voted_at) : undefined,
+    result: item.result ?? undefined,
+    isNominal: item.is_nominal,
+    initiativeType: item.initiative_type ?? undefined,
+    initiativeTitle: item.initiative_title ?? undefined,
+    initiativeStatus: item.initiative_status ?? undefined,
+    initiativeOfficialUrl: item.initiative_official_url ?? undefined,
+    records: item.records.map((record) => ({
+      actorLabel: record.actor_label,
+      actorType: record.actor_type,
+      choice: record.choice,
+      personSourceId: record.person_source_id ?? undefined,
+      partySourceId: record.party_source_id ?? undefined,
+    })),
+    verifiedAt: formatDate(item.verified_at),
+    source: toOfficialSource(item.source),
+  };
+}
+
+function mapParliamentPublicationHistory(
+  item: RawParliamentPublicationHistoryItem,
+): PublicParliamentPublicationHistoryItem {
+  return {
+    eventReferenceSha256: item.event_reference_sha256,
+    action: item.action,
+    scope: item.scope,
+    scopeLabel: item.scope_label,
+    legislature: item.legislature,
+    targetReferenceSha256: item.target_reference_sha256,
+    decidedAt: formatDate(item.decided_at),
+    actorAlias: item.actor_alias,
+    publicRationale: item.public_rationale,
+    reasonCategory: item.reason_category ?? undefined,
+    source: toOfficialSource(item.source),
+    snapshotSha256: item.snapshot_sha256,
+    manifestCounts: {
+      sessions: item.manifest_counts.sessions,
+      initiatives: item.manifest_counts.initiatives,
+      votes: item.manifest_counts.votes,
+      voteRecords: item.manifest_counts.vote_records,
+    },
+    publicEffect: item.public_effect
+      ? {
+          kind: item.public_effect.kind,
+          scope: item.public_effect.scope,
+          legislature: item.public_effect.legislature,
+          message: item.public_effect.message,
+          snapshotReferenceSha256:
+            item.public_effect.snapshot_reference_sha256 ?? undefined,
+          snapshotSha256: item.public_effect.snapshot_sha256 ?? undefined,
+          sourceSha256: item.public_effect.source_sha256 ?? undefined,
+        }
+      : undefined,
+    publicEffectSha256: item.public_effect_sha256 ?? undefined,
+  };
+}
+
 type RawParliamentarySession = {
   id: string;
   source_id: string;
@@ -238,10 +340,16 @@ type RawParliamentaryVote = {
   voted_at?: string | null;
   result?: string | null;
   is_nominal: boolean;
+  initiative_type?: string | null;
+  initiative_title?: string | null;
+  initiative_status?: string | null;
+  initiative_official_url?: string | null;
   records: Array<{
     actor_label: string;
     actor_type: "PERSON" | "PARTY" | "UNKNOWN";
     choice: "FAVOR" | "AGAINST" | "ABSTENTION" | "ABSENT" | "UNKNOWN";
+    person_source_id?: string | null;
+    party_source_id?: string | null;
   }>;
   verified_at: string;
   source: RawSource;
@@ -276,6 +384,36 @@ type RawParliamentPublicationHistoryItem = {
     source_sha256?: string | null;
   };
   public_effect_sha256?: string | null;
+};
+
+type RawParliamentFacetOption = {
+  value: string;
+  label: string;
+  count: number;
+};
+
+type RawParliamentExplorer = {
+  kind: "sessions" | "initiatives" | "votes";
+  legislature: string;
+  query?: string | null;
+  date_from?: string | null;
+  date_to?: string | null;
+  sessions: RawParliamentarySession[];
+  initiatives: RawParliamentaryInitiative[];
+  votes: RawParliamentaryVote[];
+  total: number;
+  limit: number;
+  offset: number;
+  facets: {
+    legislatures: string[];
+    initiative_types: RawParliamentFacetOption[];
+    initiative_statuses: RawParliamentFacetOption[];
+    vote_results: RawParliamentFacetOption[];
+    parties: RawParliamentFacetOption[];
+    topics_available: false;
+    topics_note: string;
+  };
+  explanation_rule: string;
 };
 
 function mapStatus(raw: RawDataStatus): PublicDataStatus {
@@ -422,89 +560,107 @@ export async function loadPublicParliamentActivity(
         votes: votes.ok,
         publicationHistory: publicationHistory.ok,
       },
-      sessions: sessions.ok
-        ? sessions.data.map((item) => ({
-            id: item.id,
-            sourceId: item.source_id,
-            legislature: item.legislature,
-            sessionNumber: item.session_number ?? undefined,
-            title: item.title,
-            startsAt: formatDate(item.starts_at),
-            endsAt: item.ends_at ? formatDate(item.ends_at) : undefined,
-            verifiedAt: formatDate(item.verified_at),
-            source: toOfficialSource(item.source),
-          }))
-        : [],
-      initiatives: initiatives.ok
-        ? initiatives.data.map((item) => ({
-            id: item.id,
-            sourceId: item.source_id,
-            legislature: item.legislature,
-            number: item.number,
-            initiativeType: item.initiative_type,
-            title: item.title,
-            description: item.description ?? undefined,
-            introducedAt: item.introduced_at ? formatDate(item.introduced_at) : undefined,
-            status: item.status ?? undefined,
-            officialUrl: item.official_url,
-            verifiedAt: formatDate(item.verified_at),
-            source: toOfficialSource(item.source),
-          }))
-        : [],
-      votes: votes.ok
-        ? votes.data.map((item) => ({
-            id: item.id,
-            sourceId: item.source_id,
-            legislature: item.legislature,
-            title: item.title,
-            initiativeNumber: item.initiative_number ?? undefined,
-            votedAt: item.voted_at ? formatDate(item.voted_at) : undefined,
-            result: item.result ?? undefined,
-            isNominal: item.is_nominal,
-            records: item.records.map((record) => ({
-              actorLabel: record.actor_label,
-              actorType: record.actor_type,
-              choice: record.choice,
-            })),
-            verifiedAt: formatDate(item.verified_at),
-            source: toOfficialSource(item.source),
-          }))
-        : [],
+      sessions: sessions.ok ? sessions.data.map(mapParliamentSession) : [],
+      initiatives: initiatives.ok ? initiatives.data.map(mapParliamentInitiative) : [],
+      votes: votes.ok ? votes.data.map(mapParliamentVote) : [],
       publicationHistory: publicationHistory.ok
-        ? publicationHistory.data.map((item) => ({
-            eventReferenceSha256: item.event_reference_sha256,
-            action: item.action,
-            scope: item.scope,
-            scopeLabel: item.scope_label,
-            legislature: item.legislature,
-            targetReferenceSha256: item.target_reference_sha256,
-            decidedAt: formatDate(item.decided_at),
-            actorAlias: item.actor_alias,
-            publicRationale: item.public_rationale,
-            reasonCategory: item.reason_category ?? undefined,
-            source: toOfficialSource(item.source),
-            snapshotSha256: item.snapshot_sha256,
-            manifestCounts: {
-              sessions: item.manifest_counts.sessions,
-              initiatives: item.manifest_counts.initiatives,
-              votes: item.manifest_counts.votes,
-              voteRecords: item.manifest_counts.vote_records,
-            },
-            publicEffect: item.public_effect
-              ? {
-                  kind: item.public_effect.kind,
-                  scope: item.public_effect.scope,
-                  legislature: item.public_effect.legislature,
-                  message: item.public_effect.message,
-                  snapshotReferenceSha256:
-                    item.public_effect.snapshot_reference_sha256 ?? undefined,
-                  snapshotSha256: item.public_effect.snapshot_sha256 ?? undefined,
-                  sourceSha256: item.public_effect.source_sha256 ?? undefined,
-                }
-              : undefined,
-            publicEffectSha256: item.public_effect_sha256 ?? undefined,
-          }))
+        ? publicationHistory.data.map(mapParliamentPublicationHistory)
         : [],
+    },
+  };
+}
+
+export type PublicParliamentExplorerFilters = {
+  kind: "sessions" | "initiatives" | "votes";
+  legislature: string;
+  query?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  initiativeType?: string;
+  initiativeStatus?: string;
+  voteResult?: string;
+  isNominal?: boolean;
+  partySourceId?: string;
+  choice?: "FAVOR" | "AGAINST" | "ABSTENTION" | "ABSENT" | "UNKNOWN";
+  page: number;
+  pageSize?: number;
+};
+
+export async function loadPublicParliamentExplorer(
+  filters: PublicParliamentExplorerFilters,
+): Promise<LoadedData<PublicParliamentExplorer>> {
+  const pageSize = Math.min(100, Math.max(1, filters.pageSize ?? 20));
+  const offset = (Math.max(1, filters.page) - 1) * pageSize;
+  const query = new URLSearchParams({
+    kind: filters.kind,
+    legislature: filters.legislature,
+    limit: String(pageSize),
+    offset: String(offset),
+  });
+  if (filters.query) query.set("q", filters.query);
+  if (filters.dateFrom) query.set("date_from", filters.dateFrom);
+  if (filters.dateTo) query.set("date_to", filters.dateTo);
+  if (filters.initiativeType) query.set("initiative_type", filters.initiativeType);
+  if (filters.initiativeStatus) query.set("initiative_status", filters.initiativeStatus);
+  if (filters.voteResult) query.set("vote_result", filters.voteResult);
+  if (filters.isNominal !== undefined) query.set("is_nominal", String(filters.isNominal));
+  if (filters.partySourceId) query.set("party_source_id", filters.partySourceId);
+  if (filters.choice) query.set("choice", filters.choice);
+
+  const historyQuery = new URLSearchParams({
+    legislature: filters.legislature,
+    limit: "20",
+  });
+  const [status, explorer, publicationHistory] = await Promise.all([
+    loadPublicDataStatus(),
+    apiFetch<RawParliamentExplorer>(`/api/v1/public/parliament/explore?${query}`),
+    apiFetch<RawParliamentPublicationHistoryItem[]>(
+      `/api/v1/public/parliament/publication-history?${historyQuery}`,
+    ),
+  ]);
+
+  const raw = explorer.ok ? explorer.data : null;
+  const facet = (item: RawParliamentFacetOption) => ({
+    value: item.value,
+    label: item.label,
+    count: item.count,
+  });
+  return {
+    status,
+    showingFallback: false,
+    data: {
+      kind: raw?.kind ?? filters.kind,
+      legislature: raw?.legislature ?? filters.legislature,
+      query: raw?.query ?? filters.query,
+      dateFrom: raw?.date_from ?? filters.dateFrom,
+      dateTo: raw?.date_to ?? filters.dateTo,
+      sessions: raw ? raw.sessions.map(mapParliamentSession) : [],
+      initiatives: raw ? raw.initiatives.map(mapParliamentInitiative) : [],
+      votes: raw ? raw.votes.map(mapParliamentVote) : [],
+      total: raw?.total ?? 0,
+      limit: raw?.limit ?? pageSize,
+      offset: raw?.offset ?? offset,
+      facets: {
+        legislatures: raw?.facets.legislatures ?? [],
+        initiativeTypes: raw?.facets.initiative_types.map(facet) ?? [],
+        initiativeStatuses: raw?.facets.initiative_statuses.map(facet) ?? [],
+        voteResults: raw?.facets.vote_results.map(facet) ?? [],
+        parties: raw?.facets.parties.map(facet) ?? [],
+        topicsAvailable: false,
+        topicsNote:
+          raw?.facets.topics_note
+          ?? "Tema não disponibilizado pela fonte oficial publicada.",
+      },
+      explanationRule:
+        raw?.explanation_rule
+        ?? "Sem prova oficial adicional, o impacto permanece como dados indisponíveis.",
+      publicationHistory: publicationHistory.ok
+        ? publicationHistory.data.map(mapParliamentPublicationHistory)
+        : [],
+      availability: {
+        explorer: explorer.ok,
+        publicationHistory: publicationHistory.ok,
+      },
     },
   };
 }
@@ -512,37 +668,12 @@ export async function loadPublicParliamentActivity(
 export async function loadPublicPolitician(
   slug: string,
 ): Promise<LoadedData<PoliticianProfileData | null>> {
-  const [status, result, parliamentaryVotes] = await Promise.all([
+  const [status, result] = await Promise.all([
     loadPublicDataStatus(),
     apiFetch<RawProfile>(`/api/v1/public/politicians/${encodeURIComponent(slug)}`),
-    apiFetch<RawParliamentaryVote[]>(
-      "/api/v1/public/parliament/votes?legislature=XVII&limit=200",
-    ),
   ]);
   if (result.ok) {
     const allowedChoices = new Set(["FAVOR", "AGAINST", "ABSTENTION", "ABSENT"]);
-    const partyKey = result.data.party_short.replace(/[^a-z0-9]/gi, "").toLowerCase();
-    const groupPositions = parliamentaryVotes.ok
-      ? parliamentaryVotes.data.flatMap((vote) => {
-          const record = vote.records.find(
-            (item) =>
-              item.actor_type !== "PERSON" &&
-              item.actor_label.replace(/[^a-z0-9]/gi, "").toLowerCase() === partyKey &&
-              allowedChoices.has(item.choice),
-          );
-          if (!record) return [];
-          return [{
-            id: `group-${vote.id}`,
-            title: vote.title,
-            date: formatDate(vote.voted_at),
-            choice: record.choice as VoteChoice,
-            result: vote.result ?? "Resultado não indicado na fonte",
-            initiativeNumber: vote.initiative_number ?? "Sem número indicado",
-            source: toOfficialSource(vote.source),
-            isNominal: false,
-          }];
-        }).slice(0, 30)
-      : [];
     return {
       status,
       showingFallback: false,
@@ -566,7 +697,8 @@ export async function loadPublicPolitician(
             source: toOfficialSource(vote.source),
             isNominal: vote.is_nominal,
           })),
-        groupPositions,
+        // A V5 só acrescentará contexto coletivo quando existir um ID oficial exato.
+        groupPositions: [],
       },
     };
   }

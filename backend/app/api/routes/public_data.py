@@ -1,4 +1,5 @@
-from typing import Annotated
+from datetime import date
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
@@ -14,6 +15,7 @@ from app.models.public_parliament import (
     PublishedParliamentaryInitiative,
     PublishedParliamentarySession,
     PublishedParliamentaryVote,
+    PublishedParliamentExplorer,
     PublishedParliamentPublicationHistoryItem,
 )
 from app.repositories.postgres import PostgresRepository
@@ -120,6 +122,56 @@ async def public_parliament_sessions(
     except RuntimeError as exc:
         raise _unavailable(exc) from exc
     return [PublishedParliamentarySession.model_validate(row) for row in rows]
+
+
+@router.get("/parliament/explore", response_model=PublishedParliamentExplorer)
+async def public_parliament_explorer(
+    response: Response,
+    repository: Annotated[PostgresRepository, Depends(get_repository)],
+    kind: Literal["sessions", "initiatives", "votes"] = Query(default="votes"),
+    legislature: str = Query(default="XVII", pattern=r"^[A-Z0-9.ª ]{1,20}$"),
+    q: str | None = Query(default=None, max_length=120),
+    date_from: Annotated[date | None, Query()] = None,
+    date_to: Annotated[date | None, Query()] = None,
+    initiative_type: str | None = Query(default=None, max_length=120),
+    initiative_status: str | None = Query(default=None, max_length=200),
+    vote_result: str | None = Query(default=None, max_length=200),
+    is_nominal: bool | None = Query(default=None),
+    party_source_id: str | None = Query(default=None, min_length=1, max_length=200),
+    choice: Literal["FAVOR", "AGAINST", "ABSTENTION", "ABSENT", "UNKNOWN"] | None = Query(
+        default=None
+    ),
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, le=10_000),
+) -> PublishedParliamentExplorer:
+    """Pesquisa apenas a fotografia revista; filtros de partido usam ID oficial exato."""
+
+    if date_from is not None and date_to is not None and date_from > date_to:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="A data inicial não pode ser posterior à data final",
+        )
+    query = q.strip() if q and q.strip() else None
+    _cache(response)
+    try:
+        result = await PublicParliamentRepository(repository.pool).explore(
+            kind=kind,
+            legislature=legislature,
+            query=query,
+            date_from=date_from,
+            date_to=date_to,
+            initiative_type=initiative_type,
+            initiative_status=initiative_status,
+            vote_result=vote_result,
+            is_nominal=is_nominal,
+            party_source_id=party_source_id,
+            choice=choice,
+            limit=limit,
+            offset=offset,
+        )
+    except RuntimeError as exc:
+        raise _unavailable(exc) from exc
+    return PublishedParliamentExplorer.model_validate(result)
 
 
 @router.get(

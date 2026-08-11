@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 import pytest
@@ -9,11 +9,13 @@ from app.models.public_parliament import (
     PublishedParliamentaryInitiative,
     PublishedParliamentarySession,
     PublishedParliamentaryVote,
+    PublishedParliamentExplorer,
     PublishedParliamentPublicationHistoryItem,
     PublishedVoteRecord,
 )
 from app.repositories.public_parliament import (
     PublicParliamentRepository,
+    _like_pattern,
     _sha256_json,
     _vote_title,
 )
@@ -29,6 +31,54 @@ class QueryConnection:
         self.queries.append(query)
         self.arguments.append(arguments)
         return self.rows
+
+
+class ExplorerConnection:
+    def __init__(self) -> None:
+        self.queries: list[str] = []
+        self.arguments: list[tuple[object, ...]] = []
+
+    async def fetchval(self, query: str, *arguments: object) -> int:
+        self.queries.append(query)
+        self.arguments.append(arguments)
+        return 1
+
+    async def fetch(self, query: str, *arguments: object) -> list[dict[str, Any]]:
+        self.queries.append(query)
+        self.arguments.append(arguments)
+        if "SELECT event.id" in query:
+            return [
+                {
+                    "id": "vote-1",
+                    "source_id": "vote-source-1",
+                    "legislature": "XVII",
+                    "title": "815",
+                    "initiative_number": "815",
+                    "voted_at": datetime(2026, 8, 10, 15, 0, tzinfo=UTC),
+                    "result": "Aprovado",
+                    "is_nominal": False,
+                    "verified_at": datetime(2026, 8, 11, 10, 0, tzinfo=UTC),
+                    "source_url": "https://www.parlamento.pt/dados.json",
+                    "source_retrieved_at": datetime(2026, 8, 11, 9, 0, tzinfo=UTC),
+                    "source_sha256": "a" * 64,
+                    "initiative_type": "Projeto de Lei",
+                    "initiative_title": "Título oficial da iniciativa",
+                    "initiative_status": "Aprovada",
+                    "initiative_official_url": "https://www.parlamento.pt/iniciativa/815",
+                }
+            ]
+        if "SELECT record.vote_event_id" in query:
+            return [
+                {
+                    "vote_event_id": "vote-1",
+                    "actor_label": "Grupo Parlamentar de teste",
+                    "actor_type": "PARTY",
+                    "choice": "FAVOR",
+                    "person_source_id": None,
+                    "party_source_id": "party-official-1",
+                }
+            ]
+        raise AssertionError("Consulta inesperada no teste do explorador")
 
 
 class Acquire:
@@ -103,9 +153,13 @@ def test_public_models_preserve_source_and_actor_scope(
                 actor_label="PS",
                 actor_type=VoteActorType.PARTY,
                 choice=VoteChoice.FAVOR,
-                party_id="party-ps",
+                party_source_id="party-official-ps",
             )
         ],
+        initiative_type="Projeto de Lei",
+        initiative_title="Título oficial",
+        initiative_status="Aprovada",
+        initiative_official_url="https://www.parlamento.pt/iniciativa/1",
         verified_at=datetime(2026, 8, 6, 11, 0, tzinfo=UTC),
         source=official_source,
     )
@@ -113,7 +167,77 @@ def test_public_models_preserve_source_and_actor_scope(
     assert session.source.content_sha256 == "a" * 64
     assert initiative.status is None
     assert vote.records[0].actor_type is VoteActorType.PARTY
-    assert vote.records[0].person_id is None
+    assert vote.records[0].person_source_id is None
+    assert vote.records[0].party_source_id == "party-official-ps"
+    assert vote.initiative_title == "Título oficial"
+
+
+def test_public_search_escapes_like_metacharacters_as_text() -> None:
+    assert _like_pattern("100%_!") == "%100!%!_!!%"
+
+
+@pytest.mark.asyncio
+async def test_vote_explorer_filters_parties_only_by_exact_official_id_and_batches_records() -> (
+    None
+):
+    connection = ExplorerConnection()
+    repository = PublicParliamentRepository(None)
+
+    votes, total = await repository._explore_votes(
+        connection,
+        legislature="XVII",
+        query="100%_!",
+        date_from=date(2026, 8, 1),
+        date_to=date(2026, 8, 11),
+        initiative_type="Projeto de Lei",
+        vote_result="Aprovado",
+        is_nominal=False,
+        party_source_id="party-official-1",
+        choice="FAVOR",
+        limit=20,
+        offset=0,
+    )
+
+    assert total == 1
+    assert len(votes) == 1
+    parsed = PublishedParliamentaryVote.model_validate(votes[0])
+    assert parsed.title == "Projeto de Lei n.º 815 — Título oficial da iniciativa"
+    assert parsed.records[0].party_source_id == "party-official-1"
+    count_query, page_query, record_query = connection.queries
+    assert "party.source_id =" in count_query
+    assert "published.parser_version = 'parliament-activity-v5'" in count_query
+    assert "record.actor_label =" not in count_query
+    assert "HAVING COUNT(*) = 1" in page_query
+    assert "record.vote_event_id = ANY($1::text[])" in record_query
+    assert "snapshot.parser_version = 'parliament-activity-v5'" in record_query
+    assert connection.arguments[0][1] == "%100!%!_!!%"
+    assert connection.arguments[-1] == (["vote-1"],)
+
+
+def test_explorer_model_keeps_topics_unavailable_without_inference() -> None:
+    explorer = PublishedParliamentExplorer.model_validate(
+        {
+            "kind": "votes",
+            "legislature": "XVII",
+            "sessions": [],
+            "initiatives": [],
+            "votes": [],
+            "total": 0,
+            "limit": 20,
+            "offset": 0,
+            "facets": {
+                "legislatures": ["XVII"],
+                "initiative_types": [],
+                "initiative_statuses": [],
+                "vote_results": [],
+                "parties": [],
+            },
+        }
+    )
+
+    assert explorer.facets.topics_available is False
+    assert "não o deduz" in explorer.facets.topics_note
+    assert "dados indisponíveis" in explorer.explanation_rule
 
 
 def test_numeric_vote_title_uses_a_unique_linked_initiative() -> None:

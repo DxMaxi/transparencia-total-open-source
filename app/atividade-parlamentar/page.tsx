@@ -2,15 +2,22 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { DataModeBanner } from "@/components/data-mode-banner";
 import { SourceLink } from "@/components/source-link";
-import { loadPublicParliamentActivity } from "@/lib/public-data";
+import {
+  loadPublicParliamentExplorer,
+  type PublicParliamentExplorerFilters,
+} from "@/lib/public-data";
+import type { PublicParliamentaryVote } from "@/types/public-data";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "Atividade parlamentar",
   description:
-    "Reuniões observadas, iniciativas e votações da Assembleia da República com fonte, revisão e limitações visíveis.",
+    "Pesquise reuniões, iniciativas e votações da Assembleia da República com filtros, fonte, revisão e limitações visíveis.",
 };
 
 export const revalidate = 60;
+
+const PAGE_SIZE = 20;
 
 const choiceLabels = {
   FAVOR: "A favor",
@@ -19,10 +26,6 @@ const choiceLabels = {
   ABSENT: "Ausência",
   UNKNOWN: "Não determinado",
 };
-
-const SESSION_PAGE_SIZE = 24;
-const INITIATIVE_PAGE_SIZE = 25;
-const VOTE_PAGE_SIZE = 20;
 
 const withdrawalReasonLabels: Record<string, string> = {
   EXTRACTION_OR_NORMALISATION_ERROR: "Erro de recolha ou normalização",
@@ -38,25 +41,66 @@ const withdrawalReasonLabels: Record<string, string> = {
   DECLARED_SCOPE_ERROR: "Erro no âmbito declarado",
 };
 
+const kindLabels = {
+  sessions: "Reuniões",
+  initiatives: "Iniciativas",
+  votes: "Votações",
+};
+
 type PageSearchParams = Record<string, string | string[] | undefined>;
+type ExplorerKind = keyof typeof kindLabels;
+type UrlState = {
+  tipo: "sessoes" | "iniciativas" | "votacoes";
+  legislatura: string;
+  q?: string;
+  de?: string;
+  ate?: string;
+  tipo_iniciativa?: string;
+  estado_iniciativa?: string;
+  resultado?: string;
+  nominal?: "sim" | "nao";
+  grupo?: string;
+  posicao?: "FAVOR" | "AGAINST" | "ABSTENTION" | "ABSENT" | "UNKNOWN";
+};
+
+function readString(
+  value: string | string[] | undefined,
+  maxLength = 200,
+): string | undefined {
+  const candidate = (Array.isArray(value) ? value[0] : value)?.trim();
+  return candidate ? candidate.slice(0, maxLength) : undefined;
+}
 
 function readPage(value: string | string[] | undefined): number {
-  const candidate = Array.isArray(value) ? value[0] : value;
-  const parsed = Number.parseInt(candidate ?? "1", 10);
-  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 1;
+  const parsed = Number.parseInt(readString(value, 8) ?? "1", 10);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? Math.min(parsed, 501) : 1;
 }
 
-function readableSessionTitle(title: string, sessionNumber?: string): string {
-  const abbreviation = /^([A-Z]{2,6})\s+—\s+reunião\s+(.+)$/i.exec(title.trim());
-  if (!abbreviation) return title;
-  return `Reunião parlamentar ${sessionNumber ?? abbreviation[2]} (${abbreviation[1].toUpperCase()})`;
+function readDate(value: string | string[] | undefined): string | undefined {
+  const candidate = readString(value, 10);
+  return candidate && /^\d{4}-\d{2}-\d{2}$/.test(candidate) ? candidate : undefined;
 }
 
-function resultTone(result?: string): "positive" | "negative" | "neutral" {
-  if (!result) return "neutral";
-  if (/rejeitad|chumbad|não aprovad/i.test(result)) return "negative";
-  if (/aprova|adotad/i.test(result)) return "positive";
-  return "neutral";
+function readKind(value: string | string[] | undefined): ExplorerKind {
+  const candidate = readString(value, 20);
+  if (candidate === "sessoes") return "sessions";
+  if (candidate === "iniciativas") return "initiatives";
+  return "votes";
+}
+
+function toUrlKind(kind: ExplorerKind): UrlState["tipo"] {
+  if (kind === "sessions") return "sessoes";
+  if (kind === "initiatives") return "iniciativas";
+  return "votacoes";
+}
+
+function buildHref(state: UrlState, page = 1): string {
+  const query = new URLSearchParams();
+  Object.entries(state).forEach(([key, value]) => {
+    if (value) query.set(key, value);
+  });
+  if (page > 1) query.set("pagina", String(page));
+  return `/atividade-parlamentar?${query.toString()}#explorar`;
 }
 
 export default async function ParliamentActivityPage({
@@ -65,74 +109,277 @@ export default async function ParliamentActivityPage({
   searchParams: Promise<PageSearchParams>;
 }) {
   const params = await searchParams;
-  const pages = {
-    sessoes: readPage(params.sessoes),
-    iniciativas: readPage(params.iniciativas),
-    votacoes: readPage(params.votacoes),
+  const kind = readKind(params.tipo);
+  const page = readPage(params.pagina);
+  const legislature = readString(params.legislatura, 20) ?? "XVII";
+  const query = readString(params.q, 120);
+  const dateFrom = readDate(params.de);
+  const dateTo = readDate(params.ate);
+  const initiativeType = readString(params.tipo_iniciativa, 120);
+  const initiativeStatus = readString(params.estado_iniciativa, 200);
+  const voteResult = readString(params.resultado, 200);
+  const requestedNominal = readString(params.nominal, 4);
+  const nominalValue =
+    requestedNominal === "sim" || requestedNominal === "nao" ? requestedNominal : undefined;
+  const isNominal = nominalValue === "sim" ? true : nominalValue === "nao" ? false : undefined;
+  const partySourceId = readString(params.grupo, 200);
+  const choiceValue = readString(params.posicao, 20);
+  const choice = ["FAVOR", "AGAINST", "ABSTENTION", "ABSENT", "UNKNOWN"].includes(
+    choiceValue ?? "",
+  )
+    ? (choiceValue as PublicParliamentExplorerFilters["choice"])
+    : undefined;
+  const filters: PublicParliamentExplorerFilters = {
+    kind,
+    legislature,
+    query,
+    dateFrom,
+    dateTo,
+    initiativeType,
+    initiativeStatus,
+    voteResult,
+    isNominal,
+    partySourceId,
+    choice,
+    page,
+    pageSize: PAGE_SIZE,
   };
-  const loaded = await loadPublicParliamentActivity("XVII", {
-    sessions: {
-      limit: SESSION_PAGE_SIZE,
-      offset: (pages.sessoes - 1) * SESSION_PAGE_SIZE,
-    },
-    initiatives: {
-      limit: INITIATIVE_PAGE_SIZE,
-      offset: (pages.iniciativas - 1) * INITIATIVE_PAGE_SIZE,
-    },
-    votes: {
-      limit: VOTE_PAGE_SIZE,
-      offset: (pages.votacoes - 1) * VOTE_PAGE_SIZE,
-    },
-  });
-  const { sessions, initiatives, votes, publicationHistory, availability } = loaded.data;
-  const initiativesByNumber = new Map(
-    initiatives.map((initiative) => [initiative.number.trim(), initiative]),
-  );
+  const loaded = await loadPublicParliamentExplorer(filters);
+  const explorer = loaded.data;
+  const urlState: UrlState = {
+    tipo: toUrlKind(kind),
+    legislatura: legislature,
+    q: query,
+    de: dateFrom,
+    ate: dateTo,
+    tipo_iniciativa: kind === "sessions" ? undefined : initiativeType,
+    estado_iniciativa: kind === "initiatives" ? initiativeStatus : undefined,
+    resultado: kind === "votes" ? voteResult : undefined,
+    nominal: kind === "votes" ? (nominalValue as UrlState["nominal"]) : undefined,
+    grupo: kind === "votes" ? partySourceId : undefined,
+    posicao: kind === "votes" ? choice : undefined,
+  };
+  const pageCount = Math.max(1, Math.ceil(explorer.total / explorer.limit));
+  if (explorer.availability.explorer && page > pageCount) {
+    redirect(buildHref(urlState, pageCount));
+  }
+  const firstResult = explorer.total ? explorer.offset + 1 : 0;
+  const lastResult = Math.min(explorer.offset + explorer.limit, explorer.total);
+  const records = [...explorer.sessions, ...explorer.initiatives, ...explorer.votes];
   const publishedSources = Array.from(
     new Map(
-      [...sessions, ...initiatives, ...votes].map((item) => [
-        `${item.source.url}|${item.source.sha256 ?? ""}`,
-        item.source,
-      ]),
+      [...records.map((item) => item.source), ...explorer.publicationHistory.map((item) => item.source)]
+        .map((source) => [`${source.url}|${source.sha256 ?? ""}`, source]),
     ).values(),
   );
-  const unavailableScopes = [
-    !availability.sessions && "reuniões",
-    !availability.initiatives && "iniciativas",
-    !availability.votes && "votações",
-  ].filter((scope): scope is string => Boolean(scope));
+  const advancedFiltersActive = Boolean(
+    dateFrom
+      || dateTo
+      || initiativeType
+      || initiativeStatus
+      || voteResult
+      || nominalValue
+      || partySourceId
+      || choice,
+  );
+  const invalidDateRange = Boolean(dateFrom && dateTo && dateFrom > dateTo);
 
   return (
     <main className="page-shell shell parliament-page">
       <header className="page-heading page-heading--wide">
-        <span className="eyebrow">Assembleia da República · XVII Legislatura</span>
-        <h1>Atividade parlamentar</h1>
+        <span className="eyebrow">Assembleia da República · dados oficiais publicados</span>
+        <h1>Atividade parlamentar, sem labirintos</h1>
         <p>
-          Consulte reuniões associadas a votações, iniciativas e decisões tal como constam
-          das fotografias oficiais revistas. Campos ausentes ficam vazios e posições coletivas
-          nunca são atribuídas automaticamente a deputados.
+          Pesquise uma decisão, filtre a fotografia oficial e confirme a fonte. Posições
+          coletivas nunca são atribuídas automaticamente a deputados e uma votação não prova,
+          por si só, entrada em vigor ou impacto no cidadão.
         </p>
       </header>
 
       <DataModeBanner status={loaded.status} showingFallback={false} />
 
-      {unavailableScopes.length ? (
+      {invalidDateRange ? (
         <aside className="parliament-endpoint-warning" role="alert">
-          <strong>Consulta parcial.</strong>
-          <span>
-            A API não respondeu para {unavailableScopes.join(", ")}. As outras secções mantêm
-            apenas os registos que conseguiram ser validados.
-          </span>
+          <strong>Intervalo de datas inválido.</strong>
+          <span>A data inicial não pode ser posterior à data final.</span>
+        </aside>
+      ) : !explorer.availability.explorer ? (
+        <aside className="parliament-endpoint-warning" role="alert">
+          <strong>Consulta temporariamente indisponível.</strong>
+          <span>Não apresentamos listas antigas nem informação não oficial como substituição.</span>
         </aside>
       ) : null}
 
+      <nav className="parliament-jump-nav" aria-label="Tipos de atividade parlamentar">
+        <Link
+          aria-current={kind === "sessions" ? "page" : undefined}
+          href={buildHref({ tipo: "sessoes", legislatura: legislature })}
+        >
+          <strong>{loaded.status.counts.parliamentSessions}</strong><span>reuniões</span>
+        </Link>
+        <Link
+          aria-current={kind === "initiatives" ? "page" : undefined}
+          href={buildHref({ tipo: "iniciativas", legislatura: legislature })}
+        >
+          <strong>{loaded.status.counts.parliamentInitiatives}</strong><span>iniciativas</span>
+        </Link>
+        <Link
+          aria-current={kind === "votes" ? "page" : undefined}
+          href={buildHref({ tipo: "votacoes", legislatura: legislature })}
+        >
+          <strong>{loaded.status.counts.parliamentVotes}</strong><span>votações</span>
+        </Link>
+      </nav>
+
+      <section className="parliament-explorer card" id="explorar" aria-labelledby="explorer-title">
+        <div className="section-heading-row">
+          <div>
+            <span className="eyebrow">Pesquisa na fotografia revista</span>
+            <h2 id="explorer-title">Encontrar e compreender</h2>
+          </div>
+          <p>Os filtros não alteram dados: limitam apenas a consulta pública aprovada.</p>
+        </div>
+
+        <form action="/atividade-parlamentar#explorar" method="get" className="parliament-search-form">
+          <label className="parliament-search-form__query">
+            <span>Pesquisar por título, número ou identificador oficial</span>
+            <input
+              defaultValue={query}
+              maxLength={120}
+              name="q"
+              placeholder="Ex.: habitação, 815/XVII ou identificador"
+              type="search"
+            />
+          </label>
+          <label>
+            <span>Consultar</span>
+            <select defaultValue={toUrlKind(kind)} name="tipo">
+              <option value="votacoes">Votações</option>
+              <option value="iniciativas">Iniciativas</option>
+              <option value="sessoes">Reuniões observadas</option>
+            </select>
+          </label>
+          <label>
+            <span>Legislatura</span>
+            <select defaultValue={legislature} name="legislatura">
+              {!explorer.facets.legislatures.includes(legislature) ? (
+                <option value={legislature}>{legislature} · sem fotografia disponível</option>
+              ) : null}
+              {explorer.facets.legislatures.map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
+            </select>
+          </label>
+          <button className="button button--primary" type="submit">Pesquisar</button>
+
+          <details className="parliament-advanced-filters" open={advancedFiltersActive}>
+            <summary>Filtros adicionais</summary>
+            <div>
+              <label><span>Desde</span><input defaultValue={dateFrom} name="de" type="date" /></label>
+              <label><span>Até</span><input defaultValue={dateTo} name="ate" type="date" /></label>
+              <label>
+                <span>Tipo de iniciativa</span>
+                <select defaultValue={initiativeType ?? ""} disabled={kind === "sessions"} name="tipo_iniciativa">
+                  <option value="">Todos os tipos</option>
+                  {initiativeType && !explorer.facets.initiativeTypes.some((item) => item.value === initiativeType) ? (
+                    <option value={initiativeType}>{initiativeType} · não disponível</option>
+                  ) : null}
+                  {explorer.facets.initiativeTypes.map((item) => (
+                    <option key={item.value} value={item.value}>{item.label} ({item.count})</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Fase da iniciativa</span>
+                <select defaultValue={initiativeStatus ?? ""} disabled={kind !== "initiatives"} name="estado_iniciativa">
+                  <option value="">Todas as fases indicadas</option>
+                  {initiativeStatus && !explorer.facets.initiativeStatuses.some((item) => item.value === initiativeStatus) ? (
+                    <option value={initiativeStatus}>{initiativeStatus} · não disponível</option>
+                  ) : null}
+                  {explorer.facets.initiativeStatuses.map((item) => (
+                    <option key={item.value} value={item.value}>{item.label} ({item.count})</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Resultado registado</span>
+                <select defaultValue={voteResult ?? ""} disabled={kind !== "votes"} name="resultado">
+                  <option value="">Todos os resultados</option>
+                  {voteResult && !explorer.facets.voteResults.some((item) => item.value === voteResult) ? (
+                    <option value={voteResult}>{voteResult} · não disponível</option>
+                  ) : null}
+                  {explorer.facets.voteResults.map((item) => (
+                    <option key={item.value} value={item.value}>{item.label} ({item.count})</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Grupo com ID oficial</span>
+                <select
+                  defaultValue={partySourceId ?? ""}
+                  disabled={kind !== "votes" || !explorer.facets.parties.length}
+                  name="grupo"
+                >
+                  <option value="">
+                    {explorer.facets.parties.length
+                      ? "Todos os grupos com ID oficial"
+                      : "Dados indisponíveis — sem IDs oficiais"}
+                  </option>
+                  {partySourceId && !explorer.facets.parties.some((item) => item.value === partySourceId) ? (
+                    <option value={partySourceId}>ID indicado · sem correspondência exata</option>
+                  ) : null}
+                  {explorer.facets.parties.map((item) => (
+                    <option key={item.value} value={item.value}>{item.label} ({item.count})</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Natureza da posição</span>
+                <select defaultValue={nominalValue ?? ""} disabled={kind !== "votes"} name="nominal">
+                  <option value="">Nominal, coletiva ou indeterminada</option>
+                  <option value="sim">Apenas votações nominais</option>
+                  <option value="nao">Apenas não nominais</option>
+                </select>
+              </label>
+              <label>
+                <span>Posição registada</span>
+                <select defaultValue={choice ?? ""} disabled={kind !== "votes"} name="posicao">
+                  <option value="">Todas as posições</option>
+                  {Object.entries(choiceLabels).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </details>
+        </form>
+
+        <div className="parliament-filter-evidence">
+          <div>
+            <strong>Temas: dados indisponíveis</strong>
+            <span>{explorer.facets.topicsNote}</span>
+            <span>
+              O filtro por grupo só é ativado quando a fonte fornece um identificador oficial
+              inequívoco; uma sigla isolada não cria essa associação.
+            </span>
+            <span>
+              Consulta parcial: a lista de reuniões contém apenas observações desta fonte e não é
+              uma agenda completa da Assembleia da República.
+            </span>
+          </div>
+          <Link href={buildHref({ tipo: toUrlKind(kind), legislatura: legislature })}>
+            Limpar filtros
+          </Link>
+        </div>
+      </section>
+
       <section className="parliament-proof card" aria-label="Proveniência das fotografias">
         <div>
-          <span className="eyebrow">Fotografias publicadas</span>
-          <strong>Arquivo e revisão humana obrigatórios</strong>
+          <span className="eyebrow">Proveniência</span>
+          <strong>Arquivo, SHA-256 e revisão humana obrigatórios</strong>
           <p>
-            Uma nova recolha não substitui esta versão até ser revista. Correções criam uma
-            fotografia adicional e preservam o histórico.
+            Uma nova recolha não substitui esta versão até ser revista. Correções acrescentam
+            uma fotografia e preservam o histórico anterior.
           </p>
         </div>
         {publishedSources.length ? (
@@ -145,16 +392,101 @@ export default async function ParliamentActivityPage({
             ))}
           </div>
         ) : (
-          <span className="coverage-chip">Sem fotografia aprovada</span>
+          <span className="coverage-chip">Dados indisponíveis</span>
         )}
       </section>
 
-      {!availability.publicationHistory ? (
+      <section className="parliament-section parliament-results" aria-labelledby="results-title">
+        <div className="section-heading-row">
+          <div>
+            <span className="eyebrow">{kindLabels[kind]} · {legislature}</span>
+            <h2 id="results-title">{explorer.total} resultados na fotografia publicada</h2>
+          </div>
+          <p>
+            {explorer.total
+              ? `A mostrar ${firstResult}–${lastResult}.`
+              : "Nenhum registo corresponde aos filtros escolhidos."}
+          </p>
+        </div>
+
+        <p className="parliament-explanation-rule">{explorer.explanationRule}</p>
+
+        {kind === "sessions" && explorer.sessions.length ? (
+          <div className="parliament-session-grid">
+            {explorer.sessions.map((session) => (
+              <article className="parliament-session-card card" key={session.id}>
+                <span>{session.startsAt}</span>
+                <h3>{session.title}</h3>
+                <p>
+                  {session.sessionNumber ? `Reunião ${session.sessionNumber}` : "Número não indicado"}
+                  {session.endsAt ? ` · termina ${session.endsAt}` : ""}
+                </p>
+                <small>Observada porque é referida na fonte; não representa uma agenda completa.</small>
+                <SourceLink source={session.source} compact />
+              </article>
+            ))}
+          </div>
+        ) : null}
+
+        {kind === "initiatives" && explorer.initiatives.length ? (
+          <div className="parliament-list">
+            {explorer.initiatives.map((initiative) => (
+              <article className="parliament-list-card card" key={initiative.id}>
+                <div className="parliament-list-card__meta">
+                  <span>{initiative.initiativeType}</span>
+                  <span>{initiative.number}</span>
+                  <span>{initiative.introducedAt ?? "Entrada sem data explícita"}</span>
+                </div>
+                <h3>{initiative.title}</h3>
+                {initiative.description ? <p>{initiative.description}</p> : null}
+                <details className="parliament-explainer">
+                  <summary>O que esta iniciativa permite concluir</summary>
+                  <p>
+                    A fonte identifica o tipo e a fase indicada abaixo. A fase não permite, por
+                    si só, concluir aprovação, entrada em vigor, execução ou impacto no cidadão.
+                  </p>
+                  <dl>
+                    <div><dt>Tipo oficial</dt><dd>{initiative.initiativeType}</dd></div>
+                    <div><dt>Fase indicada</dt><dd>{initiative.status ?? "Dados indisponíveis"}</dd></div>
+                  </dl>
+                </details>
+                <div className="parliament-list-card__footer">
+                  <span>{initiative.status ? `Última fase registada: ${initiative.status}` : "Fase atual não indicada"}</span>
+                  <a href={initiative.officialUrl} target="_blank" rel="noreferrer noopener">
+                    Abrir iniciativa oficial
+                  </a>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : null}
+
+        {kind === "votes" && explorer.votes.length ? (
+          <div className="parliament-list">
+            {explorer.votes.map((vote) => <VoteCard key={vote.id} vote={vote} />)}
+          </div>
+        ) : null}
+
+        {!records.length ? (
+          <div className="empty-state card">
+            <strong>{explorer.availability.explorer ? "Sem resultados para estes filtros" : "Dados indisponíveis"}</strong>
+            <span>
+              {explorer.availability.explorer
+                ? "Altere ou limpe os filtros. A ausência de resultados não significa incumprimento."
+                : "A recolha e a publicação são etapas independentes."}
+            </span>
+          </div>
+        ) : null}
+
+        <Paginator currentPage={page} pageCount={pageCount} state={urlState} />
+      </section>
+
+      {!explorer.availability.publicationHistory ? (
         <aside className="parliament-endpoint-warning" role="status">
           <strong>Histórico temporariamente indisponível.</strong>
           <span>Os dados parlamentares mantêm a sua própria porta de publicação fail-closed.</span>
         </aside>
-      ) : publicationHistory.length ? (
+      ) : explorer.publicationHistory.length ? (
         <section className="parliament-publication-history card" aria-labelledby="publication-history-title">
           <div className="section-heading-row">
             <div>
@@ -164,7 +496,7 @@ export default async function ParliamentActivityPage({
             <p>Uma retirada nunca apaga a fotografia, os hashes ou o fundamento anterior.</p>
           </div>
           <ol>
-            {publicationHistory.slice(0, 6).map((event) => (
+            {explorer.publicationHistory.slice(0, 6).map((event) => (
               <li key={event.eventReferenceSha256}>
                 <div>
                   <strong>{event.action === "PUBLISHED" ? "Publicado" : "Retirado"}</strong>
@@ -188,212 +520,81 @@ export default async function ParliamentActivityPage({
           </ol>
         </section>
       ) : null}
-
-      <nav className="parliament-jump-nav" aria-label="Secções da atividade parlamentar">
-        <a href="#sessoes"><strong>{loaded.status.counts.parliamentSessions}</strong><span>reuniões publicadas</span></a>
-        <a href="#iniciativas"><strong>{loaded.status.counts.parliamentInitiatives}</strong><span>iniciativas publicadas</span></a>
-        <a href="#votacoes"><strong>{loaded.status.counts.parliamentVotes}</strong><span>votações publicadas</span></a>
-      </nav>
-
-      <section className="parliament-section" id="sessoes">
-        <div className="section-heading-row">
-          <div><span className="eyebrow">Reuniões com votação</span><h2>Reuniões observadas</h2></div>
-          <p>Não é uma agenda completa: mostra apenas reuniões referidas na fonte de iniciativas.</p>
-        </div>
-        {sessions.length ? (
-          <>
-            <div className="parliament-session-grid">
-              {sessions.map((session) => (
-                <article className="parliament-session-card card" key={session.id}>
-                  <span>{session.startsAt}</span>
-                  <h3>{readableSessionTitle(session.title, session.sessionNumber)}</h3>
-                  <p>
-                    {session.sessionNumber ? `Reunião ${session.sessionNumber}` : "Número não indicado"}
-                    {session.endsAt ? ` · termina ${session.endsAt}` : ""}
-                  </p>
-                  <SourceLink source={session.source} compact />
-                </article>
-              ))}
-            </div>
-            <Paginator
-              anchor="sessoes"
-              currentPage={pages.sessoes}
-              pageSize={SESSION_PAGE_SIZE}
-              pages={pages}
-              param="sessoes"
-              total={loaded.status.counts.parliamentSessions}
-            />
-          </>
-        ) : (
-          <EmptyState
-            label={
-              availability.sessions
-                ? "Ainda não existem reuniões aprovadas para publicação."
-                : "Não foi possível consultar as reuniões neste momento."
-            }
-          />
-        )}
-      </section>
-
-      <section className="parliament-section" id="iniciativas">
-        <div className="section-heading-row">
-          <div><span className="eyebrow">Processo legislativo</span><h2>Iniciativas</h2></div>
-          <p>O estado só aparece quando está explícito na fonte.</p>
-        </div>
-        {initiatives.length ? (
-          <>
-            <div className="parliament-list">
-              {initiatives.map((initiative) => (
-                <article className="parliament-list-card card" key={initiative.id}>
-                  <div className="parliament-list-card__meta">
-                    <span>{initiative.initiativeType}</span>
-                    <span>{initiative.number}</span>
-                    <span>{initiative.introducedAt ?? "Entrada sem data explícita"}</span>
-                  </div>
-                  <h3>{initiative.title}</h3>
-                  {initiative.description ? <p>{initiative.description}</p> : null}
-                  <div className="parliament-list-card__footer">
-                    <span>{initiative.status ? `Última fase registada: ${initiative.status}` : "Fase atual não indicada"}</span>
-                    <a href={initiative.officialUrl} target="_blank" rel="noreferrer noopener">
-                      Abrir iniciativa oficial
-                    </a>
-                  </div>
-                </article>
-              ))}
-            </div>
-            <Paginator
-              anchor="iniciativas"
-              currentPage={pages.iniciativas}
-              pageSize={INITIATIVE_PAGE_SIZE}
-              pages={pages}
-              param="iniciativas"
-              total={loaded.status.counts.parliamentInitiatives}
-            />
-          </>
-        ) : (
-          <EmptyState
-            label={
-              availability.initiatives
-                ? "Ainda não existem iniciativas aprovadas para publicação."
-                : "Não foi possível consultar as iniciativas neste momento."
-            }
-          />
-        )}
-      </section>
-
-      <section className="parliament-section" id="votacoes">
-        <div className="section-heading-row">
-          <div><span className="eyebrow">Decisões registadas</span><h2>Votações</h2></div>
-          <p>“Não determinado” significa que a fonte não identifica inequivocamente o ator.</p>
-        </div>
-        {votes.length ? (
-          <>
-            <div className="parliament-list">
-              {votes.map((vote) => {
-                const initiative = vote.initiativeNumber
-                  ? initiativesByNumber.get(vote.initiativeNumber.trim())
-                  : undefined;
-                const numericTitle = /^\s*\d+(?:\/[A-Z0-9.ª-]+)*\s*$/i.test(vote.title);
-                const title = numericTitle && initiative
-                  ? `${initiative.initiativeType} n.º ${initiative.number} — ${initiative.title}`
-                  : numericTitle
-                    ? `Votação da iniciativa n.º ${vote.title.trim()}`
-                    : vote.title;
-                return (
-                  <article className="parliament-list-card parliament-vote-card card" key={vote.id}>
-                    <div className="parliament-list-card__meta">
-                      <span>{vote.votedAt ?? "Data não indicada"}</span>
-                      <span>{vote.initiativeNumber ?? "Sem iniciativa indicada"}</span>
-                      <span>{vote.isNominal ? "Voto nominal" : "Posição coletiva ou indeterminada"}</span>
-                    </div>
-                    <h3>{title}</h3>
-                    <strong className={`parliament-vote-result parliament-vote-result--${resultTone(vote.result)}`}>
-                      {vote.result ?? "Resultado não indicado na fonte"}
-                    </strong>
-                    {vote.records.length ? (
-                      <div className="parliament-position-list" aria-label="Posições registadas">
-                        {vote.records.slice(0, 12).map((record) => (
-                          <span key={`${record.actorType}-${record.actorLabel}`}>
-                            <b>{record.actorLabel}</b>
-                            {choiceLabels[record.choice]}
-                          </span>
-                        ))}
-                        {vote.records.length > 12 ? (
-                          <small>+ {vote.records.length - 12} posições nesta fotografia</small>
-                        ) : null}
-                      </div>
-                    ) : (
-                      <p>Esta votação não inclui posições normalizáveis na fotografia publicada.</p>
-                    )}
-                    <SourceLink source={vote.source} compact />
-                  </article>
-                );
-              })}
-            </div>
-            <Paginator
-              anchor="votacoes"
-              currentPage={pages.votacoes}
-              pageSize={VOTE_PAGE_SIZE}
-              pages={pages}
-              param="votacoes"
-              total={loaded.status.counts.parliamentVotes}
-            />
-          </>
-        ) : (
-          <EmptyState
-            label={
-              availability.votes
-                ? "Ainda não existem votações aprovadas para publicação."
-                : "Não foi possível consultar as votações neste momento."
-            }
-          />
-        )}
-      </section>
     </main>
   );
 }
 
-function Paginator({
-  anchor,
-  currentPage,
-  pageSize,
-  pages,
-  param,
-  total,
-}: {
-  anchor: string;
-  currentPage: number;
-  pageSize: number;
-  pages: Record<"sessoes" | "iniciativas" | "votacoes", number>;
-  param: "sessoes" | "iniciativas" | "votacoes";
-  total: number;
-}) {
-  const pageCount = Math.max(1, Math.ceil(total / pageSize));
-  if (pageCount === 1) return null;
-
-  const hrefFor = (page: number) => {
-    const query = new URLSearchParams();
-    Object.entries({ ...pages, [param]: page }).forEach(([key, value]) => {
-      if (value > 1) query.set(key, String(value));
-    });
-    const suffix = query.toString();
-    return `${suffix ? `?${suffix}` : ""}#${anchor}`;
-  };
-
+function VoteCard({ vote }: { vote: PublicParliamentaryVote }) {
   return (
-    <nav className="parliament-pagination" aria-label={`Paginação de ${anchor}`}>
-      {currentPage > 1 ? <Link href={hrefFor(currentPage - 1)}>Anterior</Link> : <span />}
-      <strong>Página {Math.min(currentPage, pageCount)} de {pageCount}</strong>
-      {currentPage < pageCount ? <Link href={hrefFor(currentPage + 1)}>Seguinte</Link> : <span />}
-    </nav>
+    <article className="parliament-list-card parliament-vote-card card">
+      <div className="parliament-list-card__meta">
+        <span>{vote.votedAt ?? "Data não indicada"}</span>
+        <span>{vote.initiativeNumber ?? "Sem iniciativa indicada"}</span>
+        <span>{vote.isNominal ? "Voto nominal" : "Posição coletiva ou indeterminada"}</span>
+      </div>
+      <h3>{vote.title}</h3>
+      <strong className="parliament-vote-result">
+        {vote.result ?? "Resultado não indicado na fonte"}
+      </strong>
+      {vote.records.length ? (
+        <ul className="parliament-position-list" aria-label="Posições registadas">
+          {vote.records.slice(0, 20).map((record) => (
+            <li key={`${record.actorType}-${record.actorLabel}-${record.choice}`}>
+              <b>{record.actorLabel}</b>
+              {choiceLabels[record.choice]}
+              <small>
+                {record.partySourceId || record.personSourceId ? "ID oficial" : "Sem ID oficial"}
+              </small>
+            </li>
+          ))}
+          {vote.records.length > 20 ? (
+            <li className="parliament-position-list__remainder">
+              + {vote.records.length - 20} posições confirmáveis na fonte oficial
+            </li>
+          ) : null}
+        </ul>
+      ) : (
+        <p>Esta votação não inclui posições normalizáveis na fotografia publicada.</p>
+      )}
+      <details className="parliament-explainer">
+        <summary>O que esta votação permite concluir</summary>
+        <p>
+          A fotografia regista o resultado abaixo. Sem diploma, decisão ou prova oficial
+          adicional, não é possível determinar entrada em vigor, execução ou impacto material.
+        </p>
+        <dl>
+          <div><dt>Resultado registado</dt><dd>{vote.result ?? "Dados indisponíveis"}</dd></div>
+          <div><dt>Tipo da iniciativa</dt><dd>{vote.initiativeType ?? "Dados indisponíveis"}</dd></div>
+          <div><dt>Fase indicada</dt><dd>{vote.initiativeStatus ?? "Dados indisponíveis"}</dd></div>
+        </dl>
+        {vote.initiativeOfficialUrl ? (
+          <a href={vote.initiativeOfficialUrl} target="_blank" rel="noreferrer noopener">
+            Confirmar a iniciativa oficial associada
+          </a>
+        ) : (
+          <span>Ligação oficial inequívoca à iniciativa: dados indisponíveis.</span>
+        )}
+      </details>
+      <SourceLink source={vote.source} compact />
+    </article>
   );
 }
 
-function EmptyState({ label }: { label: string }) {
+function Paginator({
+  currentPage,
+  pageCount,
+  state,
+}: {
+  currentPage: number;
+  pageCount: number;
+  state: UrlState;
+}) {
+  if (pageCount === 1 && currentPage === 1) return null;
   return (
-    <div className="empty-state card">
-      <strong>{label}</strong>
-      <span>A recolha e a publicação são etapas independentes.</span>
-    </div>
+    <nav className="parliament-pagination" aria-label="Paginação dos resultados">
+      {currentPage > 1 ? <Link href={buildHref(state, currentPage - 1)}>Anterior</Link> : <span />}
+      <strong>Página {Math.min(currentPage, pageCount)} de {pageCount}</strong>
+      {currentPage < pageCount ? <Link href={buildHref(state, currentPage + 1)}>Seguinte</Link> : <span />}
+    </nav>
   );
 }

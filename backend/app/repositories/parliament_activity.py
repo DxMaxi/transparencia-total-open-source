@@ -97,7 +97,7 @@ class ParliamentActivityRepository:
         dataset: ParliamentActivityDataset,
         *,
         archive_receipt: RawArchiveReceipt | None = None,
-        archived_by: str = "parliament-activity-v2",
+        archived_by: str = "parliament-activity-v5",
     ) -> ParliamentActivityPersistResult:
         async with self.pool.acquire() as connection, connection.transaction():
             attestation_written = False
@@ -475,14 +475,10 @@ class ParliamentActivityRepository:
                             "SELECT id FROM people WHERE source_id = $1 LIMIT 1",
                             record.actor_source_id,
                         )
-                elif record.actor_type is VoteActorType.PARTY:
+                elif record.actor_type is VoteActorType.PARTY and record.actor_source_id:
                     party_id = await connection.fetchval(
-                        """
-                        SELECT id FROM parties
-                        WHERE short_name = $1 OR source_id = $1
-                        ORDER BY id LIMIT 1
-                        """,
-                        record.actor_label,
+                        "SELECT id FROM parties WHERE source_id = $1 LIMIT 1",
+                        record.actor_source_id,
                     )
 
                 inserted_record_id = await connection.fetchval(
