@@ -66,6 +66,11 @@ class PublicationConnection:
         self.commands.append((query, arguments))
         return "INSERT 0 1"
 
+    async def fetchval(self, query: str, *arguments: object) -> datetime:
+        assert "SELECT GREATEST" in query
+        assert arguments == (None,)
+        return datetime(2026, 8, 8, 12, 0, 0, 123000)
+
 
 class Acquire:
     def __init__(self, connection: PublicationConnection) -> None:

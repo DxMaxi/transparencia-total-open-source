@@ -88,7 +88,8 @@ Esta entrega não:
 - liga votos a pessoas ou partidos;
 - reorganiza ainda a página pública de atividade parlamentar.
 
-O passo seguinte deverá criar o adaptador de publicação específico por âmbito. Só poderá operar
-sobre um processo `APPROVED`, exigirá função `ADMIN`, nova confirmação da fonte e acrescentará no
-mesmo commit transacional a decisão `PUBLISH`, um `EditorialPublicationEvent` e a projeção pública
-correspondente. Essa operação continua separada desta V5.2.
+A operação seguinte continua separada desta V5.2 e está especificada em
+[`V5_PARLIAMENT_SCOPE_PUBLICATION.md`](V5_PARLIAMENT_SCOPE_PUBLICATION.md). O adaptador V5.3 só
+opera sobre um processo `APPROVED`, exige função `ADMIN`, nova confirmação da fonte e acrescenta
+no mesmo commit transacional a decisão `PUBLISH`, um `EditorialPublicationEvent` e a projeção
+pública correspondente.

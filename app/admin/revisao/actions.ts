@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { EditorialApiError, editorialFetch } from "@/lib/editorial-api";
 import type {
   EditorialCaseDetail,
+  ParliamentEditorialPublicationResult,
   ParliamentEditorialProposalResult,
   ParliamentEditorialScope,
 } from "@/lib/editorial-types";
@@ -46,10 +47,19 @@ function failureDestination(path: string, message: string): string {
   return `${path}?${params.toString()}`;
 }
 
-function parliamentScope(formData: FormData): ParliamentEditorialScope {
-  const scope = requiredText(formData, "scope");
+function parliamentScope(
+  formData: FormData,
+  name: "scope" | "confirmed_scope" = "scope",
+): ParliamentEditorialScope {
+  const scope = requiredText(formData, name);
   if (scope !== "activity" && scope !== "votes") throw new Error("Âmbito parlamentar inválido");
   return scope;
+}
+
+function sha256(formData: FormData, name: string): string {
+  const value = requiredText(formData, name);
+  if (!/^[0-9a-f]{64}$/.test(value)) throw new Error("Prova SHA-256 inválida");
+  return value;
 }
 
 export async function createEditorialCase(formData: FormData) {
@@ -179,4 +189,52 @@ export async function correctEditorialCase(formData: FormData) {
   revalidatePath("/admin/revisao");
   revalidatePath(`/admin/revisao/${id}`);
   redirect(`/admin/revisao/${id}?sucesso=correct`);
+}
+
+export async function publishParliamentCase(formData: FormData) {
+  const id = caseId(formData);
+  let failure: string | null = null;
+  try {
+    for (const [field, message] of [
+      ["confirm_source_reviewed", "Confirme a nova revisão da fonte oficial"],
+      ["confirm_no_individual_inference", "Confirme que não inferiu votos individuais"],
+      ["confirm_publication", "Confirme a publicação deste âmbito específico"],
+    ] as const) {
+      if (formData.get(field) !== "on") throw new Error(message);
+    }
+    const snapshotId = requiredText(formData, "expected_snapshot_id");
+    if (!/^[A-Za-z0-9_-]{1,200}$/.test(snapshotId)) {
+      throw new Error("Fotografia parlamentar inválida");
+    }
+    await editorialFetch<ParliamentEditorialPublicationResult>(
+      `/parliament/cases/${encodeURIComponent(id)}/publication`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          expected_revision: expectedRevision(formData),
+          rationale: requiredText(formData, "rationale"),
+          confirmed_scope: parliamentScope(formData, "confirmed_scope"),
+          expected_snapshot_id: snapshotId,
+          expected_source_sha256: sha256(formData, "expected_source_sha256"),
+          expected_snapshot_sha256: sha256(formData, "expected_snapshot_sha256"),
+          expected_editorial_sha256: sha256(formData, "expected_editorial_sha256"),
+          expected_publication_proof_sha256: sha256(
+            formData,
+            "expected_publication_proof_sha256",
+          ),
+          confirm_source_reviewed: true,
+          confirm_no_individual_inference: true,
+          confirm_publication: true,
+        }),
+      },
+    );
+  } catch (error) {
+    failure = actionError(error);
+  }
+  if (failure) redirect(failureDestination(`/admin/revisao/${id}`, failure));
+  revalidatePath("/admin/revisao");
+  revalidatePath(`/admin/revisao/${id}`);
+  revalidatePath("/atividade-parlamentar");
+  revalidatePath("/");
+  redirect(`/admin/revisao/${id}?sucesso=published`);
 }

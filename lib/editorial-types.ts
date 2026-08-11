@@ -235,6 +235,63 @@ export type ParliamentEditorialProposalResult = {
   case: EditorialCaseDetail;
 };
 
+export type ParliamentEditorialPublicationPreview = {
+  case_id: string;
+  case_state: EditorialState;
+  revision: number;
+  scope: ParliamentEditorialScope;
+  scope_label: string;
+  target_type: "PARLIAMENT_ACTIVITY_SNAPSHOT" | "PARLIAMENT_VOTES_SNAPSHOT";
+  target_id: string;
+  legislature: string;
+  snapshot_sha256: string;
+  parser_version: string;
+  collected_at: string;
+  source: ParliamentEditorialSnapshot["source"];
+  archive: ParliamentEditorialSnapshot["archive"];
+  manifest_counts: ParliamentEditorialSnapshot["manifest_counts"];
+  materialised_counts: ParliamentEditorialSnapshot["materialised_counts"];
+  coverage: ParliamentEditorialSnapshot["coverage"];
+  editorial_version: {
+    id: string;
+    normalized_sha256: string;
+    integrity_matches: boolean;
+    proof_matches_snapshot: boolean;
+  };
+  publication_proof_sha256: string;
+  public_projection: {
+    publishable: boolean | null;
+    reviewed_at: string | null;
+    reviewed_by: string | null;
+  };
+  existing_publication_event: null | {
+    id: string;
+    version_id: string;
+    target_type: string;
+    target_id: string;
+    created_at: string;
+  };
+  eligible: boolean;
+  blockers: Array<{ code: string; detail: string }>;
+  automatic_publication: false;
+  publication_rule: string;
+};
+
+export type ParliamentEditorialPublicationResult = {
+  created: true;
+  case_id: string;
+  state: "PUBLISHED";
+  revision: number;
+  scope: ParliamentEditorialScope;
+  target_type: string;
+  target_id: string;
+  decision_sha256: string;
+  event_sha256: string;
+  publication_review_id: string;
+  audit_event_id: string;
+  publication_rule: string;
+};
+
 export const STATE_LABELS: Record<EditorialState, string> = {
   PENDING: "Por rever",
   IN_REVIEW: "Em revisão",

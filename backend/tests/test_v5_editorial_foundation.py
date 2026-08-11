@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from app.api.dependencies import require_editorial_staff
+from app.api.dependencies import require_editorial_admin, require_editorial_staff
 from app.models.editorial import StaffRole, StaffSession
 
 ROOT = Path(__file__).parents[2]
@@ -82,3 +82,23 @@ async def test_aal1_session_cannot_enter_editorial_routes() -> None:
         assert getattr(exc, "headers", {}).get("X-MFA-Required") == "true"
     else:
         raise AssertionError("Uma sessão aal1 não pode entrar no circuito editorial")
+
+
+async def test_only_an_aal2_admin_can_enter_domain_publication() -> None:
+    reviewer = StaffSession(
+        staff_id="staff_reviewer",
+        auth_user_id="a430b34c-8615-4cb4-aebb-3054d796783e",
+        public_alias="revisor-teste",
+        role=StaffRole.REVIEWER,
+        assurance_level="aal2",
+        mfa_required=False,
+    )
+    try:
+        await require_editorial_admin(reviewer)
+    except Exception as exc:
+        assert getattr(exc, "status_code", None) == 403
+    else:
+        raise AssertionError("Um revisor não pode confirmar uma publicação")
+
+    admin = reviewer.model_copy(update={"role": StaffRole.ADMIN})
+    assert await require_editorial_admin(admin) == admin

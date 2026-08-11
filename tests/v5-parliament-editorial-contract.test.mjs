@@ -53,5 +53,6 @@ test("V5.2 documentation keeps approval and domain publication separate", async 
   assert.match(documentation, /O resultado de uma importação é sempre um `EditorialCase` em `PENDING`/);
   assert.match(documentation, /não existe \*fuzzy matching\*/);
   assert.match(documentation, /não[\s\S]*publica, retira ou altera fotografias públicas/);
-  assert.match(documentation, /passo seguinte deverá criar o adaptador de publicação específico/);
+  assert.match(documentation, /A operação seguinte continua separada desta V5\.2/);
+  assert.match(documentation, /O adaptador V5\.3 só[\s\S]*processo `APPROVED`/);
 });

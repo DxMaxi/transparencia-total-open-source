@@ -117,10 +117,11 @@ deliberada.
 7. Só depois de revisão de segurança e CI verde configurar produção. Deploy, migração e criação de
    staff exigem autorizações operacionais separadas.
 
-## Próxima entrega
+## Entregas parlamentares seguintes
 
-A adaptação privada das fotografias parlamentares é descrita em
+A adaptação privada das fotografias parlamentares está descrita em
 [V5.2 — adaptação parlamentar ao circuito editorial](V5_PARLIAMENT_EDITORIAL_ADAPTER.md). Ela cria
 propostas por âmbito a partir de snapshots atestados e apresenta diferenças por identificador
-oficial exato, sem converter posições coletivas em votos individuais. A publicação específica de
-um âmbito aprovado permanece uma entrega posterior e deliberadamente separada.
+oficial exato, sem converter posições coletivas em votos individuais. A ligação deliberadamente
+separada de um âmbito aprovado à porta pública V4 está especificada em
+[V5.3 — publicação parlamentar específica por âmbito](V5_PARLIAMENT_SCOPE_PUBLICATION.md).

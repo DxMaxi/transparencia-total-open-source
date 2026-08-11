@@ -191,3 +191,17 @@ class ParliamentEditorialProposalRequest(BaseModel):
     scope: ParliamentEditorialScope
     confirm_private_only: Literal[True]
     confirm_no_individual_inference: Literal[True]
+
+
+class ParliamentEditorialPublicationRequest(EditorialDecisionRequest):
+    """Confirmação explícita de uma publicação parlamentar já aprovada."""
+
+    confirmed_scope: ParliamentEditorialScope
+    expected_snapshot_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    expected_source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_snapshot_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_editorial_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_publication_proof_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    confirm_source_reviewed: Literal[True]
+    confirm_no_individual_inference: Literal[True]
+    confirm_publication: Literal[True]
