@@ -149,6 +149,92 @@ export type EditorialCaseDetail = {
   publication_notice: string;
 };
 
+export type ParliamentEditorialScope = "activity" | "votes";
+
+export type ParliamentSnapshotDifference = {
+  added: number;
+  removed: number;
+  changed: number;
+  unchanged: number;
+};
+
+export type ParliamentEditorialSnapshot = {
+  snapshot_id: string;
+  source_document_id: string;
+  legislature: string;
+  parser_version: string;
+  normalised_sha256: string;
+  collected_at: string;
+  source: {
+    title: string;
+    official_identifier: string | null;
+    url: string;
+    retrieved_at: string;
+    content_sha256: string;
+    mime_type: string | null;
+  };
+  archive: {
+    storage_backend: string;
+    byte_size: number;
+    archived_at: string;
+    attestation_sha256: string;
+  };
+  manifest_counts: {
+    sessions: number;
+    initiatives: number;
+    votes: number;
+    vote_records: number;
+  };
+  materialised_counts: {
+    sessions: number;
+    initiatives: number;
+    votes: number;
+    vote_records: number;
+  };
+  manifest_matches: boolean;
+  coverage: {
+    nominal_votes: number;
+    votes_without_records: number;
+    person_records: number;
+    linked_person_records: number;
+    unlinked_person_records: number;
+    party_records: number;
+    linked_party_records: number;
+    unlinked_party_records: number;
+    unknown_actor_records: number;
+    unknown_choice_records: number;
+    inconsistent_actor_links: number;
+  };
+  previous_snapshot: null | {
+    id: string;
+    normalised_sha256: string;
+    collected_at: string;
+  };
+  differences: {
+    status: "NO_PREVIOUS_SNAPSHOT" | "COMPARED_BY_EXACT_SOURCE_ID";
+    sessions: ParliamentSnapshotDifference | null;
+    initiatives: ParliamentSnapshotDifference | null;
+    votes: ParliamentSnapshotDifference | null;
+  };
+  limitations: string[];
+  editorial_cases: Record<
+    ParliamentEditorialScope,
+    null | {
+      id: string;
+      state: EditorialState;
+      revision: number;
+      origin: "HUMAN" | "INGESTION" | "AI";
+    }
+  >;
+  proposal_eligible: boolean;
+  publication_state: "PRIVATE_ONLY";
+};
+
+export type ParliamentEditorialProposalResult = {
+  created: boolean;
+  case: EditorialCaseDetail;
+};
+
 export const STATE_LABELS: Record<EditorialState, string> = {
   PENDING: "Por rever",
   IN_REVIEW: "Em revisão",

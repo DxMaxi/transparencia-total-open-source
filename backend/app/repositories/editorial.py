@@ -14,9 +14,11 @@ from app.models.editorial import (
     EditorialCaseCreateRequest,
     EditorialCaseKind,
     EditorialCorrectionRequest,
+    EditorialOrigin,
     EditorialState,
     StaffRole,
     StaffSession,
+    validate_normalized_data,
 )
 
 
@@ -263,15 +265,84 @@ class EditorialRepository:
         payload: EditorialCaseCreateRequest,
         actor: StaffSession,
     ) -> dict[str, object]:
+        case, _created = await self._create_initial_case(
+            kind=payload.kind,
+            subject_type=payload.subject_type,
+            subject_id=payload.subject_id,
+            source_document_id=payload.source_document_id,
+            normalized_data=payload.normalized_data,
+            origin=EditorialOrigin.HUMAN,
+            created_by_id=actor.staff_id,
+            created_by_alias=actor.public_alias,
+            submission_rationale=(
+                "Proposta criada no circuito privado; ingestão e revisão não constituem publicação."
+            ),
+            actor=actor,
+            idempotent=False,
+        )
+        return case
+
+    async def create_ingestion_case(
+        self,
+        *,
+        kind: EditorialCaseKind,
+        subject_type: str,
+        subject_id: str,
+        source_document_id: str,
+        normalized_data: dict[str, Any],
+        origin_alias: str,
+        submission_rationale: str,
+        actor: StaffSession,
+    ) -> tuple[dict[str, object], bool]:
+        """Cria uma proposta de ingestão idempotente, autorizada por staff.
+
+        A identidade humana pertence apenas à decisão ``SUBMIT``. O processo e a
+        versão mantêm ``created_by_id`` nulo e origem ``INGESTION`` para nunca
+        apresentarem a recolha automática como autoria humana.
+        """
+
+        return await self._create_initial_case(
+            kind=kind,
+            subject_type=subject_type,
+            subject_id=subject_id,
+            source_document_id=source_document_id,
+            normalized_data=normalized_data,
+            origin=EditorialOrigin.INGESTION,
+            created_by_id=None,
+            created_by_alias=origin_alias,
+            submission_rationale=submission_rationale,
+            actor=actor,
+            idempotent=True,
+        )
+
+    async def _create_initial_case(
+        self,
+        *,
+        kind: EditorialCaseKind,
+        subject_type: str,
+        subject_id: str,
+        source_document_id: str,
+        normalized_data: dict[str, Any],
+        origin: EditorialOrigin,
+        created_by_id: str | None,
+        created_by_alias: str,
+        submission_rationale: str,
+        actor: StaffSession,
+        idempotent: bool,
+    ) -> tuple[dict[str, object], bool]:
+        validate_normalized_data(normalized_data)
+        if not 3 <= len(created_by_alias.strip()) <= 80:
+            raise EditorialConflictError("Identidade de origem editorial inválida")
+        if len(submission_rationale.strip()) < 20:
+            raise EditorialConflictError("A fundamentação de submissão é demasiado curta")
+
         case_id = _new_id("editorial_case")
         version_id = _new_id("editorial_version")
         decision_id = _new_id("editorial_decision")
-        normalized_json = _canonical_json(payload.normalized_data)
+        normalized_json = _canonical_json(normalized_data)
         normalized_sha256 = hashlib.sha256(normalized_json.encode("utf-8")).hexdigest()
         created_at = datetime.now(UTC).replace(tzinfo=None)
-        rationale = (
-            "Proposta criada no circuito privado; ingestão e revisão não constituem publicação."
-        )
+        rationale = submission_rationale.strip()
         decision_sha256 = self._decision_sha256(
             decision_id=decision_id,
             case_id=case_id,
@@ -285,15 +356,15 @@ class EditorialRepository:
             actor=actor,
             created_at=created_at,
         )
+        case_created = False
+        resolved_case_id = case_id
+        advisory_key = f"editorial:{kind.value}:{subject_type}:{subject_id}:{source_document_id}"
 
         try:
             async with self.pool.acquire() as connection, connection.transaction():
                 await connection.execute(
                     "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
-                    (
-                        f"editorial:{payload.kind.value}:{payload.subject_type}:"
-                        f"{payload.subject_id}:{payload.source_document_id}"
-                    ),
+                    advisory_key,
                 )
                 source = await connection.fetchrow(
                     """
@@ -317,81 +388,118 @@ class EditorialRepository:
                       AND source.kind <> 'NEWS_ARTICLE'
                     FOR SHARE
                     """,
-                    payload.source_document_id,
+                    source_document_id,
                 )
                 if source is None:
                     raise EditorialSourceError(
                         "A fonte não existe ou ainda não tem arquivo SHA-256 atestado"
                     )
 
-                await connection.execute(
+                existing = await connection.fetchrow(
                     """
-                    INSERT INTO editorial_cases
-                        (id, kind, subject_type, subject_id, source_document_id,
-                         origin, created_by_id, created_by_alias, current_version_id,
-                         current_state, revision, created_at, updated_at)
-                    VALUES ($1, $2::"EditorialCaseKind", $3, $4, $5,
-                            'HUMAN', $6, $7, NULL, 'PENDING', 0, $8, $8)
+                    SELECT c.id, c.origin, v.normalized_sha256
+                    FROM editorial_cases AS c
+                    LEFT JOIN editorial_versions AS v ON v.id = c.current_version_id
+                    WHERE c.kind = $1::"EditorialCaseKind"
+                      AND c.subject_type = $2
+                      AND c.subject_id = $3
+                      AND c.source_document_id = $4
                     """,
-                    case_id,
-                    payload.kind.value,
-                    payload.subject_type,
-                    payload.subject_id,
-                    payload.source_document_id,
-                    actor.staff_id,
-                    actor.public_alias,
-                    created_at,
+                    kind.value,
+                    subject_type,
+                    subject_id,
+                    source_document_id,
                 )
-                await connection.execute(
-                    """
-                    INSERT INTO editorial_versions
-                        (id, case_id, version_number, normalized_json,
-                         normalized_sha256, previous_version_id, origin,
-                         created_by_id, created_by_alias, created_at)
-                    VALUES ($1, $2, 1, $3::jsonb, $4, NULL, 'HUMAN', $5, $6, $7)
-                    """,
-                    version_id,
-                    case_id,
-                    normalized_json,
-                    normalized_sha256,
-                    actor.staff_id,
-                    actor.public_alias,
-                    created_at,
-                )
-                await self._insert_decision(
-                    connection,
-                    decision_id=decision_id,
-                    case_id=case_id,
-                    version_id=version_id,
-                    action=EditorialAction.SUBMIT,
-                    previous_state=None,
-                    resulting_state=EditorialState.PENDING,
-                    case_revision=1,
-                    rationale=rationale,
-                    source_confirmed=False,
-                    actor=actor,
-                    decision_sha256=decision_sha256,
-                    created_at=created_at,
-                )
-                await connection.execute(
-                    """
-                    UPDATE editorial_cases
-                    SET current_version_id = $2,
-                        current_state = 'PENDING',
-                        revision = 1,
-                        updated_at = $3
-                    WHERE id = $1
-                    """,
-                    case_id,
-                    version_id,
-                    created_at,
-                )
+                if existing is not None:
+                    if (
+                        idempotent
+                        and str(existing["origin"]) == origin.value
+                        and str(existing["normalized_sha256"]) == normalized_sha256
+                    ):
+                        resolved_case_id = str(existing["id"])
+                    else:
+                        raise EditorialConflictError(
+                            "Já existe um processo para este assunto e esta fonte, ou o conteúdo "
+                            "é incompatível"
+                        )
+
+                if existing is not None:
+                    # A proposta de ingestão repetida é um no-op auditável: não
+                    # cria outra versão nem outra decisão.
+                    pass
+                else:
+                    await connection.execute(
+                        """
+                        INSERT INTO editorial_cases
+                            (id, kind, subject_type, subject_id, source_document_id,
+                             origin, created_by_id, created_by_alias, current_version_id,
+                             current_state, revision, created_at, updated_at)
+                        VALUES ($1, $2::"EditorialCaseKind", $3, $4, $5,
+                                $6::"EditorialOrigin", $7, $8, NULL, 'PENDING', 0, $9, $9)
+                        """,
+                        case_id,
+                        kind.value,
+                        subject_type,
+                        subject_id,
+                        source_document_id,
+                        origin.value,
+                        created_by_id,
+                        created_by_alias.strip(),
+                        created_at,
+                    )
+                    await connection.execute(
+                        """
+                        INSERT INTO editorial_versions
+                            (id, case_id, version_number, normalized_json,
+                             normalized_sha256, previous_version_id, origin,
+                             created_by_id, created_by_alias, created_at)
+                        VALUES ($1, $2, 1, $3::jsonb, $4, NULL,
+                                $5::"EditorialOrigin", $6, $7, $8)
+                        """,
+                        version_id,
+                        case_id,
+                        normalized_json,
+                        normalized_sha256,
+                        origin.value,
+                        created_by_id,
+                        created_by_alias.strip(),
+                        created_at,
+                    )
+                    await self._insert_decision(
+                        connection,
+                        decision_id=decision_id,
+                        case_id=case_id,
+                        version_id=version_id,
+                        action=EditorialAction.SUBMIT,
+                        previous_state=None,
+                        resulting_state=EditorialState.PENDING,
+                        case_revision=1,
+                        rationale=rationale,
+                        source_confirmed=False,
+                        actor=actor,
+                        decision_sha256=decision_sha256,
+                        created_at=created_at,
+                    )
+                    await connection.execute(
+                        """
+                        UPDATE editorial_cases
+                        SET current_version_id = $2,
+                            current_state = 'PENDING',
+                            revision = 1,
+                            updated_at = $3
+                        WHERE id = $1
+                        """,
+                        case_id,
+                        version_id,
+                        created_at,
+                    )
+                    case_created = True
         except asyncpg.UniqueViolationError as exc:
             raise EditorialConflictError(
                 "Já existe um processo para este assunto e esta fonte, ou o conteúdo é repetido"
             ) from exc
 
-        return await self.get_case(case_id)
+        return await self.get_case(resolved_case_id), case_created
 
     async def get_case(self, case_id: str) -> dict[str, object]:
         async with self.pool.acquire() as connection:

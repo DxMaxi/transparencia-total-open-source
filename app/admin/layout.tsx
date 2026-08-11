@@ -25,6 +25,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </div>
         <nav aria-label="Navegação do painel">
           <Link href="/admin/revisao">Revisão</Link>
+          <Link href="/admin/revisao/parlamento">Parlamento</Link>
           <Link href="/admin/revisao/novo">Novo processo</Link>
           <Link href="/auth/mfa?next=/admin/revisao">Segurança</Link>
         </nav>

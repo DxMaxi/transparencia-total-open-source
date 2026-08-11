@@ -51,6 +51,17 @@ class EditorialAction(StrEnum):
     WITHDRAW = "WITHDRAW"
 
 
+class EditorialOrigin(StrEnum):
+    HUMAN = "HUMAN"
+    INGESTION = "INGESTION"
+    AI = "AI"
+
+
+class ParliamentEditorialScope(StrEnum):
+    ACTIVITY = "activity"
+    VOTES = "votes"
+
+
 class StaffSession(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -169,3 +180,14 @@ class EditorialCorrectionRequest(EditorialDecisionRequest):
     @classmethod
     def validate_normalized_payload(cls, value: dict[str, Any]) -> dict[str, Any]:
         return validate_normalized_data(value)
+
+
+class ParliamentEditorialProposalRequest(BaseModel):
+    """Pedido mínimo: os dados da proposta são reconstruídos no servidor."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    snapshot_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    scope: ParliamentEditorialScope
+    confirm_private_only: Literal[True]
+    confirm_no_individual_inference: Literal[True]

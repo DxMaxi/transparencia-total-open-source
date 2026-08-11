@@ -23,11 +23,13 @@ definição da Open Source Initiative.
 > commit final desse fecho. A V5 começa pela governação de licença e pelo circuito editorial
 > privado; esta branch não altera os dados aprovados da V4.
 
-> **V5.1 em desenvolvimento:** a primeira fundação do painel privado usa login por convite,
+> **V5.1 integrada; V5.2 em desenvolvimento:** a primeira fundação do painel privado usa login por convite,
 > MFA obrigatório, funções de administrador/revisor, comparação entre fonte atestada e JSON
 > normalizado, versões e decisões append-only. Aprovação continua separada de publicação e não
-> existe ainda um adaptador público genérico. Consulte
-> [Painel privado e fundação editorial V5.1](docs/V5_EDITORIAL_FOUNDATION.md).
+> existe um adaptador público genérico. A V5.2 acrescenta a entrada privada, idempotente e separada
+> por âmbito das fotografias parlamentares, com diferenças por identificador oficial exato. Consulte
+> [Painel privado e fundação editorial V5.1](docs/V5_EDITORIAL_FOUNDATION.md) e
+> [Adaptador parlamentar V5.2](docs/V5_PARLIAMENT_EDITORIAL_ADAPTER.md).
 
 ## Princípios
 
@@ -129,6 +131,7 @@ coletores, revisão e envio push ficam no backend. Consulte [Arquitetura](docs/A
 [operações de produção](docs/V4_PRODUCTION_OPERATIONS.md) e do
 [gate V4 → V5](docs/V4_TO_V5_RELEASE_GATE.md), do
 [painel privado e fundação editorial V5.1](docs/V5_EDITORIAL_FOUNDATION.md), do
+[adaptador parlamentar V5.2](docs/V5_PARLIAMENT_EDITORIAL_ADAPTER.md), do
 [runbook de recuperação](docs/DATABASE_RECOVERY.md), do
 [backup cifrado Backblaze B2 EU](docs/BACKUP_BACKBLAZE_B2.md), além do
 [modelo de AIPD/RGPD](docs/DPIA_TEMPLATE.md).

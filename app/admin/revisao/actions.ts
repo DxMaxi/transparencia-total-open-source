@@ -3,7 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { EditorialApiError, editorialFetch } from "@/lib/editorial-api";
-import type { EditorialCaseDetail } from "@/lib/editorial-types";
+import type {
+  EditorialCaseDetail,
+  ParliamentEditorialProposalResult,
+  ParliamentEditorialScope,
+} from "@/lib/editorial-types";
 
 function requiredText(formData: FormData, name: string): string {
   const value = formData.get(name);
@@ -42,6 +46,12 @@ function failureDestination(path: string, message: string): string {
   return `${path}?${params.toString()}`;
 }
 
+function parliamentScope(formData: FormData): ParliamentEditorialScope {
+  const scope = requiredText(formData, "scope");
+  if (scope !== "activity" && scope !== "votes") throw new Error("Âmbito parlamentar inválido");
+  return scope;
+}
+
 export async function createEditorialCase(formData: FormData) {
   let created: EditorialCaseDetail | null = null;
   let failure: string | null = null;
@@ -66,6 +76,47 @@ export async function createEditorialCase(formData: FormData) {
   if (failure) redirect(failureDestination("/admin/revisao/novo", failure));
   revalidatePath("/admin/revisao");
   redirect(`/admin/revisao/${created!.id}?sucesso=criado`);
+}
+
+export async function createParliamentProposal(formData: FormData) {
+  const snapshotId = requiredText(formData, "snapshot_id");
+  if (!/^[A-Za-z0-9_-]{1,200}$/.test(snapshotId)) {
+    throw new Error("Fotografia parlamentar inválida");
+  }
+  const legislature = requiredText(formData, "legislature").slice(0, 20);
+  let created: ParliamentEditorialProposalResult | null = null;
+  let failure: string | null = null;
+  try {
+    if (formData.get("confirm_private_only") !== "on") {
+      throw new Error("Confirme que a proposta permanece privada");
+    }
+    if (formData.get("confirm_no_individual_inference") !== "on") {
+      throw new Error("Confirme que não serão inferidos votos individuais");
+    }
+    created = await editorialFetch<ParliamentEditorialProposalResult>(
+      "/parliament/proposals",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          snapshot_id: snapshotId,
+          scope: parliamentScope(formData),
+          confirm_private_only: true,
+          confirm_no_individual_inference: true,
+        }),
+      },
+    );
+  } catch (error) {
+    failure = actionError(error);
+  }
+  if (failure) {
+    const params = new URLSearchParams({ legislature, erro: failure });
+    redirect(`/admin/revisao/parlamento?${params.toString()}`);
+  }
+  revalidatePath("/admin/revisao");
+  revalidatePath("/admin/revisao/parlamento");
+  redirect(
+    `/admin/revisao/${created!.case.id}?sucesso=${created!.created ? "importado" : "existente"}`,
+  );
 }
 
 export async function startEditorialReview(formData: FormData) {
