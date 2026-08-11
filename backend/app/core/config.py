@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Annotated, Literal
 from urllib.parse import urlparse
 
-from pydantic import AnyHttpUrl, Field, SecretStr, field_validator
+from pydantic import AnyHttpUrl, Field, SecretStr, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     admin_api_key: SecretStr | None = None
     database_url: SecretStr | None = None
     raw_archive_root: Path | None = None
+    supabase_url: AnyHttpUrl | None = None
+    supabase_jwt_audience: str = Field(default="authenticated", pattern=r"^[A-Za-z0-9._-]{1,100}$")
+    supabase_jwks_cache_seconds: int = Field(default=600, ge=60, le=3600)
 
     official_user_agent: str = (
         "TransparenciaTotal/0.4 (+https://github.com/DxMaxi/transparencia-total-open-source; "
@@ -87,6 +90,7 @@ class Settings(BaseSettings):
         "parlamento_votes_url",
         "dre_rss_url",
         "raw_archive_root",
+        "supabase_url",
         "openai_api_key",
         "protected_identifier_pepper",
         "vapid_private_key",
@@ -129,6 +133,31 @@ class Settings(BaseSettings):
     def validate_identifier_pepper(cls, value: SecretStr | None) -> SecretStr | None:
         if value is not None and len(value.get_secret_value()) < 32:
             raise ValueError("PROTECTED_IDENTIFIER_PEPPER deve ter pelo menos 32 caracteres")
+        return value
+
+    @field_validator("supabase_url")
+    @classmethod
+    def validate_supabase_url(
+        cls, value: AnyHttpUrl | None, info: ValidationInfo
+    ) -> AnyHttpUrl | None:
+        if value is None:
+            return None
+        parsed = urlparse(str(value))
+        local_http = parsed.scheme == "http" and parsed.hostname in {
+            "localhost",
+            "127.0.0.1",
+        }
+        production_like = info.data.get("environment") in {"staging", "production"}
+        if parsed.scheme != "https" and (production_like or not local_http):
+            raise ValueError("SUPABASE_URL exige HTTPS, exceto em desenvolvimento local")
+        if (
+            parsed.username
+            or parsed.password
+            or parsed.path not in {"", "/"}
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError("SUPABASE_URL deve conter apenas esquema, anfitrião e porta")
         return value
 
 

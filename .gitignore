@@ -49,9 +49,9 @@ next-env.d.ts
 *.tsbuildinfo
 /dist/
 /.wrangler/
-/.sites-runtime/
+**/.sites-runtime/
 /outputs/
-/work/
+**/work/
 
 # artefactos privados de revisão (defesa contra inclusão acidental no Git)
 /data/private/

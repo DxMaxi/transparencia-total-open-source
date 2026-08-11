@@ -4,7 +4,23 @@ function apiOrigin(): string | null {
   const configured = process.env.NEXT_PUBLIC_API_URL?.trim();
   if (!configured) return null;
   try {
-    return new URL(configured).origin;
+    const url = new URL(configured);
+    const localHttp =
+      url.protocol === "http:" && ["localhost", "127.0.0.1"].includes(url.hostname);
+    return url.protocol === "https:" || localHttp ? url.origin : null;
+  } catch {
+    return null;
+  }
+}
+
+function supabaseOrigin(): string | null {
+  const configured = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  if (!configured) return null;
+  try {
+    const url = new URL(configured);
+    const localHttp =
+      url.protocol === "http:" && ["localhost", "127.0.0.1"].includes(url.hostname);
+    return url.protocol === "https:" || localHttp ? url.origin : null;
   } catch {
     return null;
   }
@@ -14,6 +30,7 @@ const isDevelopment = process.env.NODE_ENV !== "production";
 const connectSources = [
   "'self'",
   apiOrigin(),
+  supabaseOrigin(),
   ...(isDevelopment ? ["ws:", "wss:"] : []),
 ].filter(Boolean).join(" ");
 const scriptSources = [
@@ -39,6 +56,20 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   async headers() {
     return [
+      {
+        source: "/admin/:path*",
+        headers: [
+          { key: "Cache-Control", value: "private, no-store, max-age=0" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+        ],
+      },
+      {
+        source: "/auth/:path*",
+        headers: [
+          { key: "Cache-Control", value: "private, no-store, max-age=0" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+        ],
+      },
       {
         source: "/sw.js",
         headers: [
