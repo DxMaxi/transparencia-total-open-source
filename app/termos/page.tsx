@@ -61,10 +61,28 @@ export default function TermsPage() {
         </p>
         <h2>Licenças e reutilização</h2>
         <p>
-          O código do projeto usa a licença indicada no repositório. Os documentos e dados
-          oficiais mantêm as condições e direitos definidos pelas entidades de origem; a
-          licença do código não altera essas condições.
+          A partir da V5, o software original do projeto usa a{" "}
+          <a href="https://polyformproject.org/licenses/noncommercial/1.0.0">
+            PolyForm Noncommercial License 1.0.0
+          </a>
+          . É código-fonte auditável para utilização não comercial, não uma licença
+          open-source segundo a definição da Open Source Initiative.
         </p>
+        <ul>
+          <li>
+            A documentação e os conteúdos editoriais originais identificados pelo projeto
+            usam CC BY-NC 4.0, salvo indicação diferente.
+          </li>
+          <li>O código disponibilizado até à versão v0.4.0 conserva a licença MIT histórica.</li>
+          <li>
+            Os factos, documentos e dados oficiais mantêm as condições e direitos definidos
+            pelas entidades de origem; as licenças do projeto não os substituem.
+          </li>
+          <li>
+            As licenças não autorizam a utilização do nome ou identidade do projeto de forma
+            que sugira aprovação, parceria ou caráter oficial.
+          </li>
+        </ul>
         <h2>Disponibilidade</h2>
         <p>
           Procuramos manter o serviço correto e acessível, mas fontes externas, alojamento e
