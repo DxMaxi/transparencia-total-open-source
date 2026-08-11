@@ -1,4 +1,4 @@
-"""Endpoints privados para revisão humana; não expõem uma ação de publicação."""
+"""Endpoints privados para revisão humana e adaptadores de publicação por domínio."""
 
 from typing import Annotated
 
@@ -6,8 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
 from app.api.dependencies import (
     get_editorial_repository,
+    get_parliament_editorial_publication_repository,
     get_parliament_editorial_repository,
     get_staff_session,
+    require_editorial_admin,
     require_editorial_staff,
 )
 from app.models.editorial import (
@@ -19,6 +21,7 @@ from app.models.editorial import (
     EditorialDecisionRequest,
     EditorialState,
     ParliamentEditorialProposalRequest,
+    ParliamentEditorialPublicationRequest,
     StaffSession,
 )
 from app.repositories.editorial import (
@@ -28,6 +31,9 @@ from app.repositories.editorial import (
     EditorialSourceError,
 )
 from app.repositories.parliament_editorial import ParliamentEditorialRepository
+from app.repositories.parliament_editorial_publication import (
+    ParliamentEditorialPublicationRepository,
+)
 
 router = APIRouter(prefix="/editorial", tags=["Painel editorial V5"])
 
@@ -86,6 +92,41 @@ async def create_parliament_proposal(
     try:
         return await repository.create_proposal(payload=payload, actor=actor)
     except (EditorialConflictError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.get("/parliament/cases/{case_id}/publication")
+async def parliament_publication_preview(
+    case_id: Annotated[str, Path(min_length=1, max_length=200)],
+    repository: Annotated[
+        ParliamentEditorialPublicationRepository,
+        Depends(get_parliament_editorial_publication_repository),
+    ],
+    _actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> dict[str, object]:
+    """Reconstrói a prova e a elegibilidade sem escrever nem publicar."""
+
+    try:
+        return await repository.inspect(case_id=case_id)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.post("/parliament/cases/{case_id}/publication")
+async def publish_parliament_case(
+    case_id: Annotated[str, Path(min_length=1, max_length=200)],
+    payload: ParliamentEditorialPublicationRequest,
+    repository: Annotated[
+        ParliamentEditorialPublicationRepository,
+        Depends(get_parliament_editorial_publication_repository),
+    ],
+    actor: Annotated[StaffSession, Depends(require_editorial_admin)],
+) -> dict[str, object]:
+    """Publica só o âmbito derivado de um processo parlamentar aprovado."""
+
+    try:
+        return await repository.publish(case_id=case_id, payload=payload, actor=actor)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
         raise _translate_error(exc) from exc
 
 

@@ -7,9 +7,12 @@ from app.core.staff_auth import (
     StaffAuthUnavailable,
     SupabaseJwtVerifier,
 )
-from app.models.editorial import StaffSession
+from app.models.editorial import StaffRole, StaffSession
 from app.repositories.editorial import EditorialNotFoundError, EditorialRepository
 from app.repositories.parliament_editorial import ParliamentEditorialRepository
+from app.repositories.parliament_editorial_publication import (
+    ParliamentEditorialPublicationRepository,
+)
 from app.repositories.postgres import PostgresRepository
 
 
@@ -37,6 +40,17 @@ def get_parliament_editorial_repository(
             detail="Base de dados editorial não configurada",
         )
     return ParliamentEditorialRepository(repository.pool)
+
+
+def get_parliament_editorial_publication_repository(
+    repository: Annotated[PostgresRepository, Depends(get_repository)],
+) -> ParliamentEditorialPublicationRepository:
+    if repository.pool is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Base de dados editorial não configurada",
+        )
+    return ParliamentEditorialPublicationRepository(repository.pool)
 
 
 async def get_staff_session(
@@ -74,5 +88,16 @@ async def require_editorial_staff(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Autenticação multifator obrigatória",
             headers={"X-MFA-Required": "true"},
+        )
+    return session
+
+
+async def require_editorial_admin(
+    session: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> StaffSession:
+    if session.role is not StaffRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Esta publicação exige um administrador editorial",
         )
     return session

@@ -6,6 +6,7 @@ from app.models.editorial import (
     EditorialCorrectionRequest,
     EditorialDecisionRequest,
     ParliamentEditorialProposalRequest,
+    ParliamentEditorialPublicationRequest,
 )
 
 
@@ -105,3 +106,37 @@ def test_parliament_proposal_accepts_only_scope_and_explicit_safety_confirmation
                 "normalized_data": {"ator": "valor fornecido pelo browser"},
             }
         )
+
+
+def test_parliament_publication_requires_exact_proofs_and_three_confirmations() -> None:
+    request = ParliamentEditorialPublicationRequest.model_validate(
+        {
+            "expected_revision": 3,
+            "rationale": "Fonte e âmbito confirmados novamente antes da publicação.",
+            "confirmed_scope": "activity",
+            "expected_snapshot_id": "parliament_snapshot_123abc",
+            "expected_source_sha256": "a" * 64,
+            "expected_snapshot_sha256": "b" * 64,
+            "expected_editorial_sha256": "c" * 64,
+            "expected_publication_proof_sha256": "d" * 64,
+            "confirm_source_reviewed": True,
+            "confirm_no_individual_inference": True,
+            "confirm_publication": True,
+        }
+    )
+    assert request.confirmed_scope.value == "activity"
+
+    for field in (
+        "confirm_source_reviewed",
+        "confirm_no_individual_inference",
+        "confirm_publication",
+    ):
+        invalid = request.model_dump()
+        invalid[field] = False
+        with pytest.raises(ValidationError):
+            ParliamentEditorialPublicationRequest.model_validate(invalid)
+
+    invalid_hash = request.model_dump()
+    invalid_hash["expected_source_sha256"] = "não-é-um-hash"
+    with pytest.raises(ValidationError):
+        ParliamentEditorialPublicationRequest.model_validate(invalid_hash)

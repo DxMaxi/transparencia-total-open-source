@@ -1,4 +1,4 @@
-"""Integração real: snapshot parlamentar -> proposta privada V5.2."""
+"""Integração real: snapshot -> proposta V5.2 -> publicação V5.3 por âmbito."""
 
 import hashlib
 import json
@@ -21,7 +21,9 @@ from app.models.api import (
 )
 from app.models.archive import PrivateRawDocument
 from app.models.editorial import (
+    EditorialAction,
     ParliamentEditorialProposalRequest,
+    ParliamentEditorialPublicationRequest,
     StaffRole,
     StaffSession,
 )
@@ -30,9 +32,13 @@ from app.models.parliamentary import (
     ParliamentaryInitiativeRecord,
     ParliamentarySessionRecord,
 )
+from app.repositories.editorial import EditorialConflictError, EditorialRepository
 from app.repositories.official_index_staging import OfficialIndexStagingRepository
 from app.repositories.parliament_activity import ParliamentActivityRepository
 from app.repositories.parliament_editorial import ParliamentEditorialRepository
+from app.repositories.parliament_editorial_publication import (
+    ParliamentEditorialPublicationRepository,
+)
 from app.repositories.public_parliament import PublicParliamentRepository
 
 pytestmark = pytest.mark.skipif(
@@ -163,7 +169,7 @@ def _dataset(
 
 
 @pytest.mark.asyncio
-async def test_snapshot_adapter_builds_idempotent_private_scoped_proposals(
+async def test_parliament_editorial_cycle_preserves_scope_from_proposal_to_publication(
     repository: OfficialIndexStagingRepository,
 ) -> None:
     assert repository.pool is not None
@@ -342,3 +348,204 @@ async def test_snapshot_adapter_builds_idempotent_private_scoped_proposals(
     public = PublicParliamentRepository(repository.pool)
     assert await public.list_sessions(legislature=legislature, limit=10, offset=0) == []
     assert await public.list_votes(legislature=legislature, limit=10, offset=0) == []
+
+    editorial = EditorialRepository(repository.pool)
+    activity_case_id = str(created_activity["case"]["id"])
+    await editorial.transition(
+        case_id=activity_case_id,
+        action=EditorialAction.START_REVIEW,
+        expected_revision=1,
+        rationale="A prova oficial de atividade será comparada antes da aprovação.",
+        source_confirmed=False,
+        actor=actor,
+    )
+    await editorial.transition(
+        case_id=activity_case_id,
+        action=EditorialAction.APPROVE,
+        expected_revision=2,
+        rationale="Fonte, manifesto e âmbito de atividade confirmados pelo revisor.",
+        source_confirmed=True,
+        actor=actor,
+    )
+
+    admin_id = f"staff_admin_{suffix}"
+    admin_alias = f"admin-{suffix}"
+    admin_auth_user_id = uuid.uuid4()
+    async with repository.pool.acquire() as connection:
+        await connection.execute(
+            """
+            INSERT INTO staff_profiles
+                (id, auth_user_id, public_alias, role, active, created_at, updated_at)
+            VALUES ($1, $2, $3, 'ADMIN', TRUE, NOW(), NOW())
+            """,
+            admin_id,
+            admin_auth_user_id,
+            admin_alias,
+        )
+    admin = StaffSession(
+        staff_id=admin_id,
+        auth_user_id=admin_auth_user_id,
+        public_alias=admin_alias,
+        role=StaffRole.ADMIN,
+        assurance_level="aal2",
+        mfa_required=False,
+    )
+    publisher = ParliamentEditorialPublicationRepository(repository.pool)
+    activity_preview = await publisher.inspect(case_id=activity_case_id)
+    assert activity_preview["scope"] == "activity"
+    assert activity_preview["eligible"] is True
+    activity_source = activity_preview["source"]
+    activity_version = activity_preview["editorial_version"]
+    assert isinstance(activity_source, dict)
+    assert isinstance(activity_version, dict)
+    activity_publication = ParliamentEditorialPublicationRequest(
+        expected_revision=int(activity_preview["revision"]),
+        rationale="Administrador confirmou novamente a fonte e apenas o âmbito de atividade.",
+        confirmed_scope="activity",
+        expected_snapshot_id=str(activity_preview["target_id"]),
+        expected_source_sha256=str(activity_source["content_sha256"]),
+        expected_snapshot_sha256=str(activity_preview["snapshot_sha256"]),
+        expected_editorial_sha256=str(activity_version["normalized_sha256"]),
+        expected_publication_proof_sha256=str(activity_preview["publication_proof_sha256"]),
+        confirm_source_reviewed=True,
+        confirm_no_individual_inference=True,
+        confirm_publication=True,
+    )
+    forged_admin = admin.model_copy(update={"public_alias": f"forjado-{suffix}"})
+    with pytest.raises(Exception, match="identidade staff ativa e coerente"):
+        await publisher.publish(
+            case_id=activity_case_id,
+            payload=activity_publication,
+            actor=forged_admin,
+        )
+    async with repository.pool.acquire() as connection:
+        rolled_back = await connection.fetchrow(
+            """
+            SELECT
+                (SELECT count(*) FROM data_publication_reviews
+                 WHERE entity_type = 'PARLIAMENT_ACTIVITY_SNAPSHOT'
+                   AND entity_id = $1) AS reviews,
+                (SELECT count(*) FROM audit_events
+                 WHERE entity_type = 'PARLIAMENT_ACTIVITY_SNAPSHOT'
+                   AND entity_id = $1
+                   AND action = 'PUBLISHED') AS audits,
+                (SELECT current_state::text FROM editorial_cases
+                 WHERE id = $2) AS case_state
+            """,
+            second.snapshot_id,
+            activity_case_id,
+        )
+    assert rolled_back is not None
+    assert int(rolled_back["reviews"]) == 0
+    assert int(rolled_back["audits"]) == 0
+    assert rolled_back["case_state"] == "APPROVED"
+
+    published_activity = await publisher.publish(
+        case_id=activity_case_id,
+        payload=activity_publication,
+        actor=admin,
+    )
+    assert published_activity["state"] == "PUBLISHED"
+    assert len(await public.list_sessions(legislature=legislature, limit=10, offset=0)) == 2
+    assert len(await public.list_initiatives(legislature=legislature, limit=10, offset=0)) == 1
+    assert await public.list_votes(legislature=legislature, limit=10, offset=0) == []
+
+    votes_case_id = str(created_votes["case"]["id"])
+    await editorial.transition(
+        case_id=votes_case_id,
+        action=EditorialAction.START_REVIEW,
+        expected_revision=1,
+        rationale="A prova oficial das votações será comparada antes da aprovação.",
+        source_confirmed=False,
+        actor=actor,
+    )
+    await editorial.transition(
+        case_id=votes_case_id,
+        action=EditorialAction.APPROVE,
+        expected_revision=2,
+        rationale="Fonte, manifesto e ausência de inferência individual confirmados.",
+        source_confirmed=True,
+        actor=actor,
+    )
+    votes_preview = await publisher.inspect(case_id=votes_case_id)
+    assert votes_preview["scope"] == "votes"
+    assert votes_preview["eligible"] is True
+    votes_source = votes_preview["source"]
+    votes_version = votes_preview["editorial_version"]
+    assert isinstance(votes_source, dict)
+    assert isinstance(votes_version, dict)
+    votes_publication = ParliamentEditorialPublicationRequest(
+        expected_revision=int(votes_preview["revision"]),
+        rationale="Administrador confirmou novamente a fonte e apenas o âmbito de votações.",
+        confirmed_scope="votes",
+        expected_snapshot_id=str(votes_preview["target_id"]),
+        expected_source_sha256=str(votes_source["content_sha256"]),
+        expected_snapshot_sha256=str(votes_preview["snapshot_sha256"]),
+        expected_editorial_sha256=str(votes_version["normalized_sha256"]),
+        expected_publication_proof_sha256=str(votes_preview["publication_proof_sha256"]),
+        confirm_source_reviewed=True,
+        confirm_no_individual_inference=True,
+        confirm_publication=True,
+    )
+    published_votes = await publisher.publish(
+        case_id=votes_case_id,
+        payload=votes_publication,
+        actor=admin,
+    )
+    assert published_votes["state"] == "PUBLISHED"
+    assert len(await public.list_votes(legislature=legislature, limit=10, offset=0)) == 2
+
+    with pytest.raises(EditorialConflictError, match="alterado por outra decisão"):
+        await publisher.publish(
+            case_id=votes_case_id,
+            payload=votes_publication,
+            actor=admin,
+        )
+
+    async with repository.pool.acquire() as connection:
+        publication_rows = await connection.fetch(
+            """
+            SELECT c.current_state::text, c.revision, d.action::text,
+                   event.target_type, event.target_id,
+                   review.publishable, audit.after_json
+            FROM editorial_cases AS c
+            JOIN editorial_decisions AS d
+              ON d.case_id = c.id AND d.action = 'PUBLISH'::"EditorialDecisionAction"
+            JOIN editorial_publication_events AS event
+              ON event.case_id = c.id AND event.action = 'PUBLISH'::"EditorialPublicationAction"
+            JOIN data_publication_reviews AS review
+              ON review.id = ANY($1::text[])
+             AND review.entity_type = event.target_type
+             AND review.entity_id = event.target_id
+            JOIN audit_events AS audit
+              ON audit.id = ANY($2::text[])
+             AND audit.entity_type = event.target_type
+             AND audit.entity_id = event.target_id
+            WHERE c.id = ANY($3::text[])
+            ORDER BY event.target_type
+            """,
+            [
+                str(published_activity["publication_review_id"]),
+                str(published_votes["publication_review_id"]),
+            ],
+            [
+                str(published_activity["audit_event_id"]),
+                str(published_votes["audit_event_id"]),
+            ],
+            [activity_case_id, votes_case_id],
+        )
+    assert len(publication_rows) == 2
+    assert all(row["current_state"] == "PUBLISHED" for row in publication_rows)
+    assert all(int(row["revision"]) == 4 for row in publication_rows)
+    assert all(row["action"] == "PUBLISH" for row in publication_rows)
+    assert all(row["publishable"] is True for row in publication_rows)
+    for row in publication_rows:
+        after_json = (
+            json.loads(row["after_json"])
+            if isinstance(row["after_json"], str)
+            else row["after_json"]
+        )
+        assert after_json["editorial_link"]["case_id"] in {
+            activity_case_id,
+            votes_case_id,
+        }

@@ -660,7 +660,8 @@ class EditorialRepository:
             ],
             "publishable": False,
             "publication_notice": (
-                "A aprovação permanece privada; não existe publicação genérica neste circuito."
+                "A aprovação permanece privada. Não existe publicação genérica: cada domínio "
+                "exige um adaptador próprio, nova confirmação humana e um evento imutável."
             ),
         }
 

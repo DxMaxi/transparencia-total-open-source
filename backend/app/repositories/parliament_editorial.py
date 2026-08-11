@@ -135,7 +135,19 @@ class ParliamentEditorialRepository:
         legislature: str | None,
         snapshot_id: str | None,
         limit: int,
+        connection: asyncpg.Connection | None = None,
+        lock_snapshots: bool = False,
     ) -> list[dict[str, object]]:
+        if connection is None:
+            async with self.pool.acquire() as acquired:
+                return await self._load_candidates(
+                    legislature=legislature,
+                    snapshot_id=snapshot_id,
+                    limit=limit,
+                    connection=acquired,
+                    lock_snapshots=lock_snapshots,
+                )
+
         conditions = [
             "source.publisher = 'PARLIAMENT'",
             "source.url LIKE 'https://%'",
@@ -150,6 +162,7 @@ class ParliamentEditorialRepository:
             conditions.append(f"snapshot.id = ${len(arguments)}")
         arguments.append(limit)
 
+        lock_clause = "FOR UPDATE OF snapshot" if lock_snapshots else ""
         query = f"""
             SELECT
                 snapshot.id,
@@ -233,25 +246,53 @@ class ParliamentEditorialRepository:
             WHERE {" AND ".join(conditions)}
             ORDER BY snapshot.collected_at DESC, snapshot.created_at DESC, snapshot.id DESC
             LIMIT ${len(arguments)}
+            {lock_clause}
         """
 
-        async with self.pool.acquire() as connection:
-            rows = await connection.fetch(query, *arguments)
-            if not rows:
-                return []
-            snapshot_ids = [str(row["id"]) for row in rows]
-            previous_ids = [
-                str(row["previous_snapshot_id"])
-                if row["previous_snapshot_id"] is not None
-                else None
-                for row in rows
-            ]
-            metrics = await self._snapshot_metrics(connection, snapshot_ids)
-            diffs = await self._snapshot_diffs(connection, snapshot_ids, previous_ids)
+        rows = await connection.fetch(query, *arguments)
+        if not rows:
+            return []
+        snapshot_ids = [str(row["id"]) for row in rows]
+        previous_ids = [
+            str(row["previous_snapshot_id"]) if row["previous_snapshot_id"] is not None else None
+            for row in rows
+        ]
+        metrics = await self._snapshot_metrics(connection, snapshot_ids)
+        diffs = await self._snapshot_diffs(connection, snapshot_ids, previous_ids)
 
         return [
             self._candidate(row, metrics[str(row["id"])], diffs[str(row["id"])]) for row in rows
         ]
+
+    async def load_snapshot_candidate_for_publication(
+        self,
+        connection: asyncpg.Connection,
+        *,
+        snapshot_id: str,
+        lock_snapshot: bool,
+    ) -> dict[str, object]:
+        """Reconstrói a prova V5.2 na mesma ligação usada pela publicação."""
+
+        candidates = await self._load_candidates(
+            legislature=None,
+            snapshot_id=snapshot_id,
+            limit=1,
+            connection=connection,
+            lock_snapshots=lock_snapshot,
+        )
+        if not candidates:
+            raise EditorialSourceError(
+                "A fotografia parlamentar não existe ou perdeu a prova oficial atestada"
+            )
+        return candidates[0]
+
+    @classmethod
+    def normalized_proposal_for_publication(
+        cls,
+        candidate: dict[str, object],
+        scope: ParliamentEditorialScope,
+    ) -> dict[str, Any]:
+        return cls._normalized_proposal(candidate, scope)
 
     @staticmethod
     async def _snapshot_metrics(

@@ -2,14 +2,17 @@ import Link from "next/link";
 import {
   approveEditorialCase,
   correctEditorialCase,
+  publishParliamentCase,
   rejectEditorialCase,
   startEditorialReview,
 } from "../actions";
-import { editorialFetch } from "@/lib/editorial-api";
+import { editorialFetch, getEditorialContext } from "@/lib/editorial-api";
 import {
   KIND_LABELS,
   STATE_LABELS,
   type EditorialCaseDetail,
+  type ParliamentEditorialPublicationPreview,
+  type StaffSession,
 } from "@/lib/editorial-types";
 
 const dateFormatter = new Intl.DateTimeFormat("pt-PT", {
@@ -47,6 +50,16 @@ export default async function EditorialCasePage({
   const { case_id: caseId } = await params;
   const { erro, sucesso } = await searchParams;
   const item = await editorialFetch<EditorialCaseDetail>(`/cases/${encodeURIComponent(caseId)}`);
+  const { staff } = await getEditorialContext();
+  const isParliamentPublicationCase =
+    (item.kind === "PARLIAMENT_ACTIVITY" &&
+      item.subject_type === "PARLIAMENT_ACTIVITY_SNAPSHOT") ||
+    (item.kind === "PARLIAMENT_VOTE" && item.subject_type === "PARLIAMENT_VOTES_SNAPSHOT");
+  const parliamentPublication = isParliamentPublicationCase && item.current_state === "APPROVED"
+    ? await editorialFetch<ParliamentEditorialPublicationPreview>(
+        `/parliament/cases/${encodeURIComponent(caseId)}/publication`,
+      )
+    : null;
   const currentVersion = item.versions.find((version) => version.is_current);
   if (!currentVersion) throw new Error("O processo não tem versão atual");
   const officialSourceUrl = safeOfficialSourceUrl(item.source.url);
@@ -75,7 +88,9 @@ export default async function EditorialCasePage({
       ) : null}
       {sucesso ? (
         <p className="private-message private-message--success" role="status">
-          A decisão foi acrescentada ao histórico imutável.
+          {sucesso === "published"
+            ? "O âmbito parlamentar foi publicado e todas as provas foram acrescentadas ao histórico."
+            : "A decisão foi acrescentada ao histórico imutável."}
         </p>
       ) : null}
 
@@ -142,7 +157,12 @@ export default async function EditorialCasePage({
         </article>
       </section>
 
-      <EditorialActions item={item} normalizedData={currentVersion.normalized_data} />
+      <EditorialActions
+        item={item}
+        normalizedData={currentVersion.normalized_data}
+        parliamentPublication={parliamentPublication}
+        staff={staff}
+      />
 
       <section className="admin-history-section">
         <div className="admin-section-heading">
@@ -187,6 +207,33 @@ export default async function EditorialCasePage({
         </ol>
       </section>
 
+      {item.publication_events.length ? (
+        <section className="admin-publication-history">
+          <div className="admin-section-heading">
+            <div>
+              <p className="eyebrow">Porta pública</p>
+              <h2>Eventos de publicação imutáveis</h2>
+            </div>
+            <span>{item.publication_events.length} evento(s)</span>
+          </div>
+          <ol className="admin-publication-event-list">
+            {item.publication_events.map((event) => (
+              <li key={event.id}>
+                <strong>{event.action === "PUBLISH" ? "Publicado" : "Retirado"}</strong>
+                <span>
+                  {event.target_type} · {event.target_id}
+                </span>
+                <span>
+                  {event.actor_alias} · {dateFormatter.format(new Date(event.created_at))}
+                </span>
+                <p>{event.rationale}</p>
+                <code>{event.event_sha256}</code>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
+
       <section className="admin-versions-section">
         <p className="eyebrow">Histórico de conteúdo</p>
         <h2>Todas as versões</h2>
@@ -207,9 +254,13 @@ export default async function EditorialCasePage({
 function EditorialActions({
   item,
   normalizedData,
+  parliamentPublication,
+  staff,
 }: {
   item: EditorialCaseDetail;
   normalizedData: Record<string, unknown>;
+  parliamentPublication: ParliamentEditorialPublicationPreview | null;
+  staff: StaffSession;
 }) {
   const sharedFields = (
     <>
@@ -276,6 +327,10 @@ function EditorialActions({
         </div>
       ) : null}
 
+      {item.current_state === "APPROVED" && parliamentPublication ? (
+        <ParliamentPublicationAction preview={parliamentPublication} staff={staff} />
+      ) : null}
+
       {canCorrect ? (
         <details className="admin-correction-panel">
           <summary>Acrescentar versão corrigida</summary>
@@ -301,6 +356,134 @@ function EditorialActions({
           </form>
         </details>
       ) : null}
+    </section>
+  );
+}
+
+function ParliamentPublicationAction({
+  preview,
+  staff,
+}: {
+  preview: ParliamentEditorialPublicationPreview;
+  staff: StaffSession;
+}) {
+  const countLabel =
+    preview.scope === "activity"
+      ? `${preview.manifest_counts.sessions} reuniões e ${preview.manifest_counts.initiatives} iniciativas`
+      : `${preview.manifest_counts.votes} votações e ${preview.manifest_counts.vote_records} posições`;
+
+  return (
+    <section className="admin-publication-panel">
+      <div className="admin-publication-summary">
+        <div>
+          <p className="eyebrow">Publicação específica por âmbito</p>
+          <h2>Publicar apenas {preview.scope_label}</h2>
+          <p>
+            Esta ação torna público somente o âmbito <strong>{preview.scope}</strong> da fotografia
+            confirmada. O outro âmbito mantém o seu próprio processo e estado.
+          </p>
+        </div>
+        <dl>
+          <div>
+            <dt>Legislatura</dt>
+            <dd>{preview.legislature}</dd>
+          </div>
+          <div>
+            <dt>Cobertura</dt>
+            <dd>{countLabel}</dd>
+          </div>
+          <div>
+            <dt>Estado público atual</dt>
+            <dd>
+              {preview.public_projection.publishable === true
+                ? "Já publicável pela V4"
+                : "Ainda privado neste âmbito"}
+            </dd>
+          </div>
+        </dl>
+        <p className="admin-publication-rule">{preview.publication_rule}</p>
+      </div>
+
+      {preview.blockers.length ? (
+        <div className="admin-publication-blockers" role="alert">
+          <strong>Publicação bloqueada</strong>
+          <ul>
+            {preview.blockers.map((blocker) => (
+              <li key={blocker.code}>{blocker.detail}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {staff.role === "ADMIN" ? (
+        <form action={publishParliamentCase}>
+          <input type="hidden" name="case_id" value={preview.case_id} />
+          <input type="hidden" name="expected_revision" value={preview.revision} />
+          <input type="hidden" name="confirmed_scope" value={preview.scope} />
+          <input type="hidden" name="expected_snapshot_id" value={preview.target_id} />
+          <input
+            type="hidden"
+            name="expected_source_sha256"
+            value={preview.source.content_sha256}
+          />
+          <input
+            type="hidden"
+            name="expected_snapshot_sha256"
+            value={preview.snapshot_sha256}
+          />
+          <input
+            type="hidden"
+            name="expected_editorial_sha256"
+            value={preview.editorial_version.normalized_sha256}
+          />
+          <input
+            type="hidden"
+            name="expected_publication_proof_sha256"
+            value={preview.publication_proof_sha256}
+          />
+          <div className="admin-publication-digests">
+            <span>SHA-256 da fonte</span>
+            <code>{preview.source.content_sha256}</code>
+            <span>SHA-256 da fotografia normalizada</span>
+            <code>{preview.snapshot_sha256}</code>
+            <span>SHA-256 da versão editorial</span>
+            <code>{preview.editorial_version.normalized_sha256}</code>
+            <span>SHA-256 da prova de publicação</span>
+            <code>{preview.publication_proof_sha256}</code>
+          </div>
+          <label>
+            Fundamentação pública e auditável
+            <textarea name="rationale" minLength={20} maxLength={2000} required />
+          </label>
+          <label className="admin-confirmation">
+            <input name="confirm_source_reviewed" type="checkbox" required />
+            <span>Voltei a comparar a fonte oficial, a data e os SHA-256 apresentados.</span>
+          </label>
+          <label className="admin-confirmation">
+            <input name="confirm_no_individual_inference" type="checkbox" required />
+            <span>Não atribuí posições coletivas ou sem identificador a políticos.</span>
+          </label>
+          <label className="admin-confirmation">
+            <input name="confirm_publication" type="checkbox" required />
+            <span>
+              Confirmo a publicação exclusiva de <strong>{preview.scope_label}</strong> nesta
+              fotografia.
+            </span>
+          </label>
+          <button
+            className="button button--primary"
+            type="submit"
+            disabled={!preview.eligible}
+          >
+            Publicar {preview.scope_label}
+          </button>
+        </form>
+      ) : (
+        <p className="private-message">
+          A prova está visível para revisão, mas apenas um administrador com MFA pode confirmar a
+          publicação.
+        </p>
+      )}
     </section>
   );
 }
