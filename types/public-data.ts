@@ -170,13 +170,46 @@ export type PublicParliamentaryVote = {
   source: OfficialSource;
 };
 
+export type PublicParliamentPublicationHistoryItem = {
+  eventReferenceSha256: string;
+  action: "PUBLISHED" | "WITHDRAWN";
+  scope: "activity" | "votes";
+  scopeLabel: string;
+  legislature: string;
+  targetReferenceSha256: string;
+  decidedAt: string;
+  actorAlias: string;
+  publicRationale: string;
+  reasonCategory?: string;
+  source: OfficialSource;
+  snapshotSha256: string;
+  manifestCounts: {
+    sessions: number;
+    initiatives: number;
+    votes: number;
+    voteRecords: number;
+  };
+  publicEffect?: {
+    kind: "DATA_UNAVAILABLE" | "FALLBACK_TO_PREVIOUS_SNAPSHOT";
+    scope: "activity" | "votes";
+    legislature: string;
+    message: string;
+    snapshotReferenceSha256?: string;
+    snapshotSha256?: string;
+    sourceSha256?: string;
+  };
+  publicEffectSha256?: string;
+};
+
 export type PublicParliamentActivity = {
   sessions: PublicParliamentarySession[];
   initiatives: PublicParliamentaryInitiative[];
   votes: PublicParliamentaryVote[];
+  publicationHistory: PublicParliamentPublicationHistoryItem[];
   availability: {
     sessions: boolean;
     initiatives: boolean;
     votes: boolean;
+    publicationHistory: boolean;
   };
 };

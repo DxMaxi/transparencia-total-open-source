@@ -3,11 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { EditorialApiError, editorialFetch } from "@/lib/editorial-api";
-import type {
-  EditorialCaseDetail,
-  ParliamentEditorialPublicationResult,
-  ParliamentEditorialProposalResult,
-  ParliamentEditorialScope,
+import {
+  PARLIAMENT_WITHDRAWAL_REASON_LABELS,
+  type EditorialCaseDetail,
+  type ParliamentEditorialPublicationResult,
+  type ParliamentEditorialProposalResult,
+  type ParliamentEditorialScope,
+  type ParliamentEditorialWithdrawalResult,
+  type ParliamentWithdrawalReason,
 } from "@/lib/editorial-types";
 
 function requiredText(formData: FormData, name: string): string {
@@ -59,6 +62,12 @@ function parliamentScope(
 function sha256(formData: FormData, name: string): string {
   const value = requiredText(formData, name);
   if (!/^[0-9a-f]{64}$/.test(value)) throw new Error("Prova SHA-256 inválida");
+  return value;
+}
+
+function evidenceId(formData: FormData, name: string): string {
+  const value = requiredText(formData, name);
+  if (!/^[A-Za-z0-9_-]{1,200}$/.test(value)) throw new Error("Prova relacional inválida");
   return value;
 }
 
@@ -237,4 +246,75 @@ export async function publishParliamentCase(formData: FormData) {
   revalidatePath("/atividade-parlamentar");
   revalidatePath("/");
   redirect(`/admin/revisao/${id}?sucesso=published`);
+}
+
+export async function withdrawParliamentCase(formData: FormData) {
+  const id = caseId(formData);
+  let failure: string | null = null;
+  try {
+    for (const [field, message] of [
+      ["confirm_no_selective_removal", "Confirme que a retirada não é seletiva"],
+      ["confirm_public_effect_reviewed", "Confirme que reviu o efeito público calculado"],
+      ["confirm_withdrawal", "Confirme a retirada integral deste âmbito"],
+    ] as const) {
+      if (formData.get(field) !== "on") throw new Error(message);
+    }
+    const snapshotId = requiredText(formData, "expected_snapshot_id");
+    if (!/^[A-Za-z0-9_-]{1,200}$/.test(snapshotId)) {
+      throw new Error("Fotografia parlamentar inválida");
+    }
+    const reasonCategory = requiredText(formData, "reason_category");
+    if (!(reasonCategory in PARLIAMENT_WITHDRAWAL_REASON_LABELS)) {
+      throw new Error("Categoria de retirada inválida");
+    }
+    await editorialFetch<ParliamentEditorialWithdrawalResult>(
+      `/parliament/cases/${encodeURIComponent(id)}/withdrawal`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          expected_revision: expectedRevision(formData),
+          rationale: requiredText(formData, "rationale"),
+          public_rationale: requiredText(formData, "public_rationale"),
+          reason_category: reasonCategory as ParliamentWithdrawalReason,
+          confirmed_scope: parliamentScope(formData, "confirmed_scope"),
+          expected_snapshot_id: snapshotId,
+          expected_source_sha256: sha256(formData, "expected_source_sha256"),
+          expected_snapshot_sha256: sha256(formData, "expected_snapshot_sha256"),
+          expected_editorial_sha256: sha256(formData, "expected_editorial_sha256"),
+          expected_publication_proof_sha256: sha256(
+            formData,
+            "expected_publication_proof_sha256",
+          ),
+          expected_public_review_id: evidenceId(formData, "expected_public_review_id"),
+          expected_publication_audit_event_id: evidenceId(
+            formData,
+            "expected_publication_audit_event_id",
+          ),
+          expected_publication_event_id: evidenceId(
+            formData,
+            "expected_publication_event_id",
+          ),
+          expected_publication_event_sha256: sha256(
+            formData,
+            "expected_publication_event_sha256",
+          ),
+          expected_public_effect_sha256: sha256(
+            formData,
+            "expected_public_effect_sha256",
+          ),
+          confirm_no_selective_removal: true,
+          confirm_public_effect_reviewed: true,
+          confirm_withdrawal: true,
+        }),
+      },
+    );
+  } catch (error) {
+    failure = actionError(error);
+  }
+  if (failure) redirect(failureDestination(`/admin/revisao/${id}`, failure));
+  revalidatePath("/admin/revisao");
+  revalidatePath(`/admin/revisao/${id}`);
+  revalidatePath("/atividade-parlamentar");
+  revalidatePath("/");
+  redirect(`/admin/revisao/${id}?sucesso=withdrawn`);
 }

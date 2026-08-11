@@ -24,6 +24,20 @@ const SESSION_PAGE_SIZE = 24;
 const INITIATIVE_PAGE_SIZE = 25;
 const VOTE_PAGE_SIZE = 20;
 
+const withdrawalReasonLabels: Record<string, string> = {
+  EXTRACTION_OR_NORMALISATION_ERROR: "Erro de recolha ou normalização",
+  SOURCE_DIVERGENCE: "Divergência com a fonte",
+  OFFICIAL_SOURCE_CORRECTION: "Correção da fonte oficial",
+  DUPLICATE_OR_CORRUPT_DATA: "Duplicação ou corrupção de dados",
+  PROVEN_IDENTITY_ERROR: "Erro de identidade demonstrado",
+  DOCUMENTED_METHODOLOGY_CHANGE: "Alteração metodológica documentada",
+  LEGAL_OR_AUTHORITY_ORDER: "Obrigação legal ou decisão de autoridade",
+  DATA_PROTECTION_OR_PERSONALITY_RIGHTS: "Proteção de dados ou direitos de personalidade",
+  SECURITY_RISK: "Risco de segurança",
+  THIRD_PARTY_RIGHTS: "Direitos de terceiros",
+  DECLARED_SCOPE_ERROR: "Erro no âmbito declarado",
+};
+
 type PageSearchParams = Record<string, string | string[] | undefined>;
 
 function readPage(value: string | string[] | undefined): number {
@@ -70,7 +84,7 @@ export default async function ParliamentActivityPage({
       offset: (pages.votacoes - 1) * VOTE_PAGE_SIZE,
     },
   });
-  const { sessions, initiatives, votes, availability } = loaded.data;
+  const { sessions, initiatives, votes, publicationHistory, availability } = loaded.data;
   const initiativesByNumber = new Map(
     initiatives.map((initiative) => [initiative.number.trim(), initiative]),
   );
@@ -134,6 +148,46 @@ export default async function ParliamentActivityPage({
           <span className="coverage-chip">Sem fotografia aprovada</span>
         )}
       </section>
+
+      {!availability.publicationHistory ? (
+        <aside className="parliament-endpoint-warning" role="status">
+          <strong>Histórico temporariamente indisponível.</strong>
+          <span>Os dados parlamentares mantêm a sua própria porta de publicação fail-closed.</span>
+        </aside>
+      ) : publicationHistory.length ? (
+        <section className="parliament-publication-history card" aria-labelledby="publication-history-title">
+          <div className="section-heading-row">
+            <div>
+              <span className="eyebrow">Decisões públicas imutáveis</span>
+              <h2 id="publication-history-title">Histórico de publicação e retirada</h2>
+            </div>
+            <p>Uma retirada nunca apaga a fotografia, os hashes ou o fundamento anterior.</p>
+          </div>
+          <ol>
+            {publicationHistory.slice(0, 6).map((event) => (
+              <li key={event.eventReferenceSha256}>
+                <div>
+                  <strong>{event.action === "PUBLISHED" ? "Publicado" : "Retirado"}</strong>
+                  <span>{event.scopeLabel} · {event.decidedAt} · {event.actorAlias}</span>
+                </div>
+                {event.reasonCategory ? (
+                  <span className="coverage-chip">
+                    {withdrawalReasonLabels[event.reasonCategory] ?? event.reasonCategory}
+                  </span>
+                ) : null}
+                <p>{event.publicRationale}</p>
+                {event.publicEffect ? <p className="parliament-public-effect">{event.publicEffect.message}</p> : null}
+                <div className="parliament-publication-history__proof">
+                  <SourceLink source={event.source} compact />
+                  <code>Evento {event.eventReferenceSha256}</code>
+                  <code>Fotografia {event.snapshotSha256}</code>
+                  {event.publicEffectSha256 ? <code>Efeito {event.publicEffectSha256}</code> : null}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
 
       <nav className="parliament-jump-nav" aria-label="Secções da atividade parlamentar">
         <a href="#sessoes"><strong>{loaded.status.counts.parliamentSessions}</strong><span>reuniões publicadas</span></a>

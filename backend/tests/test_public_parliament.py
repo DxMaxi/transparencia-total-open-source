@@ -9,20 +9,26 @@ from app.models.public_parliament import (
     PublishedParliamentaryInitiative,
     PublishedParliamentarySession,
     PublishedParliamentaryVote,
+    PublishedParliamentPublicationHistoryItem,
     PublishedVoteRecord,
 )
-from app.repositories.public_parliament import PublicParliamentRepository, _vote_title
+from app.repositories.public_parliament import (
+    PublicParliamentRepository,
+    _sha256_json,
+    _vote_title,
+)
 
 
 class QueryConnection:
-    def __init__(self) -> None:
+    def __init__(self, rows: list[dict[str, Any]] | None = None) -> None:
         self.queries: list[str] = []
         self.arguments: list[tuple[object, ...]] = []
+        self.rows = rows or []
 
     async def fetch(self, query: str, *arguments: object) -> list[dict[str, Any]]:
         self.queries.append(query)
         self.arguments.append(arguments)
-        return []
+        return self.rows
 
 
 class Acquire:
@@ -167,3 +173,61 @@ async def test_all_public_lists_are_bound_to_one_reviewed_snapshot() -> None:
         assert "attestation.content_sha256 = source.content_sha256" in query
         assert "published.id =" in query
     assert "HAVING COUNT(*) = 1" in connection.queries[-1]
+
+
+@pytest.mark.asyncio
+async def test_public_withdrawal_history_redacts_private_editorial_link() -> None:
+    public_effect = {
+        "kind": "DATA_UNAVAILABLE",
+        "scope": "activity",
+        "legislature": "XVII",
+        "message": "Depois da retirada, os dados ficam indisponíveis neste âmbito.",
+    }
+    connection = QueryConnection(
+        [
+            {
+                "id": "audit-private-id",
+                "entity_id": "snapshot-private-id",
+                "action": "WITHDRAWN",
+                "actor_alias": "admin-teste",
+                "after_json": {
+                    "publishable": False,
+                    "scope": "activity",
+                    "legislature": "XVII",
+                    "source_sha256": "a" * 64,
+                    "normalised_sha256": "b" * 64,
+                    "counts": {
+                        "sessions": 2,
+                        "initiatives": 3,
+                        "votes": 4,
+                        "vote_records": 5,
+                    },
+                    "editorial_link": {
+                        "case_id": "case-private-id",
+                        "version_id": "version-private-id",
+                        "withdrawal_reason_category": "SOURCE_DIVERGENCE",
+                        "public_effect": public_effect,
+                        "public_effect_sha256": _sha256_json(public_effect),
+                    },
+                },
+                "reason": "Fotografia retirada por divergência reproduzível com a fonte.",
+                "created_at": datetime(2026, 8, 11, 13, 0, tzinfo=UTC),
+                "source_url": "https://www.parlamento.pt/dados.json",
+                "source_retrieved_at": datetime(2026, 8, 11, 10, 0, tzinfo=UTC),
+                "source_sha256": "a" * 64,
+            }
+        ]
+    )
+    repository = PublicParliamentRepository(Pool(connection))  # type: ignore[arg-type]
+
+    history = await repository.list_publication_history(legislature="XVII", limit=10)
+
+    assert len(history) == 1
+    item = PublishedParliamentPublicationHistoryItem.model_validate(history[0])
+    assert item.action == "WITHDRAWN"
+    assert item.reason_category == "SOURCE_DIVERGENCE"
+    assert item.public_effect is not None
+    assert item.public_effect.kind == "DATA_UNAVAILABLE"
+    assert "case_id" not in history[0]
+    assert "version_id" not in history[0]
+    assert connection.arguments == [("XVII", 10)]

@@ -22,8 +22,10 @@ from app.models.api import (
 from app.models.archive import PrivateRawDocument
 from app.models.editorial import (
     EditorialAction,
+    EditorialCorrectionRequest,
     ParliamentEditorialProposalRequest,
     ParliamentEditorialPublicationRequest,
+    ParliamentEditorialWithdrawalRequest,
     StaffRole,
     StaffSession,
 )
@@ -549,3 +551,123 @@ async def test_parliament_editorial_cycle_preserves_scope_from_proposal_to_publi
             activity_case_id,
             votes_case_id,
         }
+
+    withdrawal_preview = await publisher.inspect_withdrawal(case_id=activity_case_id)
+    assert withdrawal_preview["eligible"] is True
+    assert withdrawal_preview["public_effect"]["kind"] == "DATA_UNAVAILABLE"
+    withdrawn_activity = await publisher.withdraw(
+        case_id=activity_case_id,
+        payload=ParliamentEditorialWithdrawalRequest(
+            expected_revision=int(withdrawal_preview["revision"]),
+            rationale=(
+                "Ensaio isolado confirma uma divergência reproduzível e exercita a retirada "
+                "append-only sem apagar a fotografia original."
+            ),
+            public_rationale=(
+                "Fotografia de atividade retirada no ensaio por divergência reproduzível."
+            ),
+            reason_category="SOURCE_DIVERGENCE",
+            confirmed_scope="activity",
+            expected_snapshot_id=str(withdrawal_preview["target_id"]),
+            expected_source_sha256=str(withdrawal_preview["source_sha256"]),
+            expected_snapshot_sha256=str(withdrawal_preview["snapshot_sha256"]),
+            expected_editorial_sha256=str(withdrawal_preview["editorial_sha256"]),
+            expected_publication_proof_sha256=str(withdrawal_preview["publication_proof_sha256"]),
+            expected_public_review_id=str(withdrawal_preview["public_review_id"]),
+            expected_publication_audit_event_id=str(
+                withdrawal_preview["publication_audit_event_id"]
+            ),
+            expected_publication_event_id=str(withdrawal_preview["publication_event_id"]),
+            expected_publication_event_sha256=str(withdrawal_preview["publication_event_sha256"]),
+            expected_public_effect_sha256=str(withdrawal_preview["public_effect_sha256"]),
+            confirm_no_selective_removal=True,
+            confirm_public_effect_reviewed=True,
+            confirm_withdrawal=True,
+        ),
+        actor=admin,
+    )
+    assert withdrawn_activity["state"] == "WITHDRAWN"
+    assert await public.list_sessions(legislature=legislature, limit=10, offset=0) == []
+    assert await public.list_initiatives(legislature=legislature, limit=10, offset=0) == []
+    assert len(await public.list_votes(legislature=legislature, limit=10, offset=0)) == 2
+
+    public_history = await public.list_publication_history(legislature=legislature, limit=10)
+    assert [row["action"] for row in public_history[:3]] == [
+        "WITHDRAWN",
+        "PUBLISHED",
+        "PUBLISHED",
+    ]
+    assert public_history[0]["reason_category"] == "SOURCE_DIVERGENCE"
+    assert public_history[0]["public_effect"]["kind"] == "DATA_UNAVAILABLE"
+    assert "case_id" not in public_history[0]
+
+    withdrawn_case = await editorial.get_case(activity_case_id)
+    corrected_data = json.loads(json.dumps(withdrawn_case["versions"][0]["normalized_data"]))
+    corrected_data["editorial_notes"] = [
+        "Nova versão privada criada depois da retirada e novamente sujeita a revisão."
+    ]
+    corrected = await editorial.correct_case(
+        case_id=activity_case_id,
+        payload=EditorialCorrectionRequest(
+            expected_revision=5,
+            rationale=(
+                "A retirada antecede esta nova versão; nenhum conteúdo publicado foi reescrito."
+            ),
+            normalized_data=corrected_data,
+        ),
+        actor=actor,
+    )
+    assert corrected["current_state"] == "PENDING"
+    assert len(corrected["versions"]) == 2
+    assert corrected["versions"][1]["is_current"] is False
+    await editorial.transition(
+        case_id=activity_case_id,
+        action=EditorialAction.START_REVIEW,
+        expected_revision=6,
+        rationale="A versão corrigida será comparada novamente com a fonte arquivada.",
+        source_confirmed=False,
+        actor=actor,
+    )
+    await editorial.transition(
+        case_id=activity_case_id,
+        action=EditorialAction.APPROVE,
+        expected_revision=7,
+        rationale="Fonte, prova, limitações e nota editorial novamente confirmadas.",
+        source_confirmed=True,
+        actor=actor,
+    )
+    republication_preview = await publisher.inspect(case_id=activity_case_id)
+    assert republication_preview["eligible"] is True
+    republication_source = republication_preview["source"]
+    republication_version = republication_preview["editorial_version"]
+    assert isinstance(republication_source, dict)
+    assert isinstance(republication_version, dict)
+    republished = await publisher.publish(
+        case_id=activity_case_id,
+        payload=ParliamentEditorialPublicationRequest(
+            expected_revision=int(republication_preview["revision"]),
+            rationale=("Administrador confirmou a nova versão e republicou apenas a atividade."),
+            confirmed_scope="activity",
+            expected_snapshot_id=str(republication_preview["target_id"]),
+            expected_source_sha256=str(republication_source["content_sha256"]),
+            expected_snapshot_sha256=str(republication_preview["snapshot_sha256"]),
+            expected_editorial_sha256=str(republication_version["normalized_sha256"]),
+            expected_publication_proof_sha256=str(
+                republication_preview["publication_proof_sha256"]
+            ),
+            confirm_source_reviewed=True,
+            confirm_no_individual_inference=True,
+            confirm_publication=True,
+        ),
+        actor=admin,
+    )
+    assert republished["state"] == "PUBLISHED"
+    assert len(await public.list_sessions(legislature=legislature, limit=10, offset=0)) == 2
+
+    final_case = await editorial.get_case(activity_case_id)
+    assert final_case["revision"] == 9
+    assert [event["action"] for event in final_case["publication_events"]] == [
+        "PUBLISH",
+        "WITHDRAW",
+        "PUBLISH",
+    ]

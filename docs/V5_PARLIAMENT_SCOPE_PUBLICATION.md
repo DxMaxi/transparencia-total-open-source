@@ -93,8 +93,11 @@ pública permanece como estava.
 Esta etapa ainda não:
 
 - publica automaticamente processos aprovados;
-- retira uma publicação — a retirada continuará a ser uma operação explícita e append-only;
 - publica correções que não estejam refletidas na fotografia parlamentar materializada;
 - associa nomes a pessoas ou partidos sem identificadores oficiais inequívocos;
 - cria explicações por IA ou usa IA como fonte;
 - executa deploy, migração remota, configuração do Supabase ou publicação real de dados.
+
+A operação explícita e append-only de retirada, o efeito de recuo para fotografias anteriores e o
+ciclo obrigatório de correção estão especificados em
+[V5.4 — retirada parlamentar imutável e ciclo de correção](V5_PARLIAMENT_WITHDRAWAL.md).

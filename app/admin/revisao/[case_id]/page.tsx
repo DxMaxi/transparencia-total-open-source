@@ -5,13 +5,16 @@ import {
   publishParliamentCase,
   rejectEditorialCase,
   startEditorialReview,
+  withdrawParliamentCase,
 } from "../actions";
 import { editorialFetch, getEditorialContext } from "@/lib/editorial-api";
 import {
   KIND_LABELS,
+  PARLIAMENT_WITHDRAWAL_REASON_LABELS,
   STATE_LABELS,
   type EditorialCaseDetail,
   type ParliamentEditorialPublicationPreview,
+  type ParliamentEditorialWithdrawalPreview,
   type StaffSession,
 } from "@/lib/editorial-types";
 
@@ -47,10 +50,11 @@ export default async function EditorialCasePage({
   params: Promise<{ case_id: string }>;
   searchParams: Promise<{ erro?: string; sucesso?: string }>;
 }) {
-  const { case_id: caseId } = await params;
-  const { erro, sucesso } = await searchParams;
-  const item = await editorialFetch<EditorialCaseDetail>(`/cases/${encodeURIComponent(caseId)}`);
-  const { staff } = await getEditorialContext();
+  const [{ case_id: caseId }, { erro, sucesso }] = await Promise.all([params, searchParams]);
+  const [item, { staff }] = await Promise.all([
+    editorialFetch<EditorialCaseDetail>(`/cases/${encodeURIComponent(caseId)}`),
+    getEditorialContext(),
+  ]);
   const isParliamentPublicationCase =
     (item.kind === "PARLIAMENT_ACTIVITY" &&
       item.subject_type === "PARLIAMENT_ACTIVITY_SNAPSHOT") ||
@@ -58,6 +62,11 @@ export default async function EditorialCasePage({
   const parliamentPublication = isParliamentPublicationCase && item.current_state === "APPROVED"
     ? await editorialFetch<ParliamentEditorialPublicationPreview>(
         `/parliament/cases/${encodeURIComponent(caseId)}/publication`,
+      )
+    : null;
+  const parliamentWithdrawal = isParliamentPublicationCase && item.current_state === "PUBLISHED"
+    ? await editorialFetch<ParliamentEditorialWithdrawalPreview>(
+        `/parliament/cases/${encodeURIComponent(caseId)}/withdrawal`,
       )
     : null;
   const currentVersion = item.versions.find((version) => version.is_current);
@@ -90,6 +99,8 @@ export default async function EditorialCasePage({
         <p className="private-message private-message--success" role="status">
           {sucesso === "published"
             ? "O âmbito parlamentar foi publicado e todas as provas foram acrescentadas ao histórico."
+            : sucesso === "withdrawn"
+              ? "O âmbito foi retirado sem apagar a publicação, a versão ou os hashes anteriores."
             : "A decisão foi acrescentada ao histórico imutável."}
         </p>
       ) : null}
@@ -161,6 +172,7 @@ export default async function EditorialCasePage({
         item={item}
         normalizedData={currentVersion.normalized_data}
         parliamentPublication={parliamentPublication}
+        parliamentWithdrawal={parliamentWithdrawal}
         staff={staff}
       />
 
@@ -255,11 +267,13 @@ function EditorialActions({
   item,
   normalizedData,
   parliamentPublication,
+  parliamentWithdrawal,
   staff,
 }: {
   item: EditorialCaseDetail;
   normalizedData: Record<string, unknown>;
   parliamentPublication: ParliamentEditorialPublicationPreview | null;
+  parliamentWithdrawal: ParliamentEditorialWithdrawalPreview | null;
   staff: StaffSession;
 }) {
   const sharedFields = (
@@ -291,7 +305,9 @@ function EditorialActions({
     );
   }
 
-  const canCorrect = ["IN_REVIEW", "APPROVED", "REJECTED"].includes(item.current_state);
+  const canCorrect = ["IN_REVIEW", "APPROVED", "REJECTED", "WITHDRAWN"].includes(
+    item.current_state,
+  );
   return (
     <section className="admin-actions-stack">
       {item.current_state === "IN_REVIEW" ? (
@@ -329,6 +345,10 @@ function EditorialActions({
 
       {item.current_state === "APPROVED" && parliamentPublication ? (
         <ParliamentPublicationAction preview={parliamentPublication} staff={staff} />
+      ) : null}
+
+      {item.current_state === "PUBLISHED" && parliamentWithdrawal ? (
+        <ParliamentWithdrawalAction preview={parliamentWithdrawal} staff={staff} />
       ) : null}
 
       {canCorrect ? (
@@ -482,6 +502,160 @@ function ParliamentPublicationAction({
         <p className="private-message">
           A prova está visível para revisão, mas apenas um administrador com MFA pode confirmar a
           publicação.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function ParliamentWithdrawalAction({
+  preview,
+  staff,
+}: {
+  preview: ParliamentEditorialWithdrawalPreview;
+  staff: StaffSession;
+}) {
+  const publicEffectLabel = preview.public_effect.kind === "DATA_UNAVAILABLE"
+    ? "Dados indisponíveis neste âmbito"
+    : "Recuo para uma fotografia anterior ainda aprovada";
+
+  return (
+    <section className="admin-publication-panel admin-withdrawal-panel">
+      <div className="admin-publication-summary">
+        <div>
+          <p className="eyebrow">Retirada específica e append-only</p>
+          <h2>Retirar apenas {preview.scope_label}</h2>
+          <p>
+            Esta ação acrescenta uma revisão pública negativa, uma decisão <strong>WITHDRAW</strong>
+            e um evento imutável. A publicação e a versão originais não são apagadas.
+          </p>
+        </div>
+        <dl>
+          <div>
+            <dt>Legislatura</dt>
+            <dd>{preview.legislature}</dd>
+          </div>
+          <div>
+            <dt>Âmbito integral</dt>
+            <dd>{preview.scope_label}</dd>
+          </div>
+          <div>
+            <dt>Efeito calculado</dt>
+            <dd>{publicEffectLabel}</dd>
+          </div>
+        </dl>
+        <p className="admin-withdrawal-effect">
+          <strong>{publicEffectLabel}.</strong> {preview.public_effect.message}
+        </p>
+        <p className="admin-publication-rule">{preview.withdrawal_rule}</p>
+      </div>
+
+      {preview.blockers.length ? (
+        <div className="admin-publication-blockers" role="alert">
+          <strong>Retirada bloqueada</strong>
+          <ul>
+            {preview.blockers.map((blocker) => (
+              <li key={blocker.code}>{blocker.detail}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {staff.role === "ADMIN" ? (
+        <form action={withdrawParliamentCase}>
+          <input type="hidden" name="case_id" value={preview.case_id} />
+          <input type="hidden" name="expected_revision" value={preview.revision} />
+          <input type="hidden" name="confirmed_scope" value={preview.scope} />
+          <input type="hidden" name="expected_snapshot_id" value={preview.target_id} />
+          <input type="hidden" name="expected_source_sha256" value={preview.source_sha256} />
+          <input type="hidden" name="expected_snapshot_sha256" value={preview.snapshot_sha256} />
+          <input type="hidden" name="expected_editorial_sha256" value={preview.editorial_sha256} />
+          <input
+            type="hidden"
+            name="expected_publication_proof_sha256"
+            value={preview.publication_proof_sha256}
+          />
+          <input type="hidden" name="expected_public_review_id" value={preview.public_review_id} />
+          <input
+            type="hidden"
+            name="expected_publication_audit_event_id"
+            value={preview.publication_audit_event_id}
+          />
+          <input
+            type="hidden"
+            name="expected_publication_event_id"
+            value={preview.publication_event_id}
+          />
+          <input
+            type="hidden"
+            name="expected_publication_event_sha256"
+            value={preview.publication_event_sha256}
+          />
+          <input
+            type="hidden"
+            name="expected_public_effect_sha256"
+            value={preview.public_effect_sha256}
+          />
+          <div className="admin-publication-digests">
+            <span>SHA-256 da fonte publicada</span>
+            <code>{preview.source_sha256}</code>
+            <span>SHA-256 da fotografia publicada</span>
+            <code>{preview.snapshot_sha256}</code>
+            <span>SHA-256 da versão editorial</span>
+            <code>{preview.editorial_sha256}</code>
+            <span>SHA-256 da prova de publicação</span>
+            <code>{preview.publication_proof_sha256}</code>
+            <span>SHA-256 do efeito público calculado</span>
+            <code>{preview.public_effect_sha256}</code>
+          </div>
+          <label>
+            Categoria permitida pela governação
+            <select name="reason_category" required defaultValue="">
+              <option value="" disabled>Selecione um fundamento</option>
+              {Object.entries(PARLIAMENT_WITHDRAWAL_REASON_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Fundamentação interna completa
+            <textarea name="rationale" minLength={20} maxLength={1850} required />
+            <small>Não será exposta pela API pública, mas ficará no histórico editorial.</small>
+          </label>
+          <label>
+            Resumo público redigido
+            <textarea name="public_rationale" minLength={20} maxLength={500} required />
+            <small>
+              Não inclua dados pessoais, credenciais, vulnerabilidades ou informação legalmente
+              limitada. Este texto será mostrado no histórico público.
+            </small>
+          </label>
+          <label className="admin-confirmation">
+            <input name="confirm_no_selective_removal" type="checkbox" required />
+            <span>
+              Confirmo que o fundamento pertence à lista pública e que não retiro dados por
+              conveniência política, pressão externa ou seleção editorial.
+            </span>
+          </label>
+          <label className="admin-confirmation">
+            <input name="confirm_public_effect_reviewed" type="checkbox" required />
+            <span>Revi o efeito público calculado e o respetivo SHA-256.</span>
+          </label>
+          <label className="admin-confirmation">
+            <input name="confirm_withdrawal" type="checkbox" required />
+            <span>
+              Confirmo a retirada integral de <strong>{preview.scope_label}</strong>, preservando o
+              histórico e sem alterar o outro âmbito.
+            </span>
+          </label>
+          <button className="button button--danger" type="submit" disabled={!preview.eligible}>
+            Retirar {preview.scope_label}
+          </button>
+        </form>
+      ) : (
+        <p className="private-message">
+          A prova e o efeito estão visíveis para revisão, mas apenas um administrador com MFA pode
+          confirmar a retirada.
         </p>
       )}
     </section>

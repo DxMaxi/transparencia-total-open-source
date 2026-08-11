@@ -47,6 +47,7 @@ class PublicationConnection:
             self.case["source_document_id"],
         )
         return {
+            "id": self.case["public_review_id"],
             "publishable": self.case["public_publishable"],
             "reviewed_at": self.case["public_reviewed_at"],
         }
@@ -173,6 +174,10 @@ def _case(candidate: dict[str, object]) -> dict[str, Any]:
         "revision": 3,
         "normalized_json": normalized,
         "editorial_sha256": _sha256_json(normalized),
+        "source_sha256": "a" * 64,
+        "snapshot_legislature": "XVII",
+        "snapshot_normalised_sha256": "b" * 64,
+        "public_review_id": None,
         "public_publishable": None,
         "public_reviewed_at": None,
         "public_reviewed_by": None,
@@ -180,7 +185,15 @@ def _case(candidate: dict[str, object]) -> dict[str, Any]:
         "publication_event_version_id": None,
         "publication_event_target_type": None,
         "publication_event_target_id": None,
+        "publication_event_rationale": None,
+        "publication_event_actor_id": None,
+        "publication_event_actor_alias": None,
+        "publication_event_sha256": None,
         "publication_event_created_at": None,
+        "withdrawal_event_id": None,
+        "publication_audit_event_id": None,
+        "publication_audit_after_json": None,
+        "publication_audit_created_at": None,
     }
 
 
@@ -258,12 +271,13 @@ async def test_publication_commits_v4_gate_decision_projection_and_event_in_orde
     assert result["scope"] == "activity"
     commands = [query for query, _arguments in connection.commands]
     assert "pg_advisory_xact_lock" in commands[0]
-    assert "INSERT INTO data_publication_reviews" in commands[1]
-    assert "INSERT INTO audit_events" in commands[2]
-    assert "INSERT INTO editorial_decisions" in commands[3]
-    assert "UPDATE editorial_cases" in commands[4]
-    assert "INSERT INTO editorial_publication_events" in commands[5]
-    review_arguments = connection.commands[1][1]
+    assert "pg_advisory_xact_lock" in commands[1]
+    assert "INSERT INTO data_publication_reviews" in commands[2]
+    assert "INSERT INTO audit_events" in commands[3]
+    assert "INSERT INTO editorial_decisions" in commands[4]
+    assert "UPDATE editorial_cases" in commands[5]
+    assert "INSERT INTO editorial_publication_events" in commands[6]
+    review_arguments = connection.commands[2][1]
     assert review_arguments[1] == "PARLIAMENT_ACTIVITY_SNAPSHOT"
     assert review_arguments[2] == "snapshot-1"
     assert review_arguments[4] == "source-1"

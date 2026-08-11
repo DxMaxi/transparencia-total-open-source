@@ -1325,7 +1325,7 @@ model EditorialPublicationEvent {
   actor       StaffProfile               @relation("EditorialPublicationActor", fields: [actorId], references: [id], onDelete: Restrict)
 
   @@index([caseId, createdAt, id])
-  @@unique([caseId, action, targetType, targetId])
+  @@unique([caseId, versionId, action, targetType, targetId])
   @@index([targetType, targetId, createdAt])
   @@index([versionId])
   @@index([actorId])

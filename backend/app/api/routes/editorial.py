@@ -22,6 +22,7 @@ from app.models.editorial import (
     EditorialState,
     ParliamentEditorialProposalRequest,
     ParliamentEditorialPublicationRequest,
+    ParliamentEditorialWithdrawalRequest,
     StaffSession,
 )
 from app.repositories.editorial import (
@@ -126,6 +127,41 @@ async def publish_parliament_case(
 
     try:
         return await repository.publish(case_id=case_id, payload=payload, actor=actor)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.get("/parliament/cases/{case_id}/withdrawal")
+async def parliament_withdrawal_preview(
+    case_id: Annotated[str, Path(min_length=1, max_length=200)],
+    repository: Annotated[
+        ParliamentEditorialPublicationRepository,
+        Depends(get_parliament_editorial_publication_repository),
+    ],
+    _actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> dict[str, object]:
+    """Simula a retirada e o eventual recuo público sem escrever."""
+
+    try:
+        return await repository.inspect_withdrawal(case_id=case_id)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.post("/parliament/cases/{case_id}/withdrawal")
+async def withdraw_parliament_case(
+    case_id: Annotated[str, Path(min_length=1, max_length=200)],
+    payload: ParliamentEditorialWithdrawalRequest,
+    repository: Annotated[
+        ParliamentEditorialPublicationRepository,
+        Depends(get_parliament_editorial_publication_repository),
+    ],
+    actor: Annotated[StaffSession, Depends(require_editorial_admin)],
+) -> dict[str, object]:
+    """Retira só o âmbito derivado e preserva publicação, versão e prova."""
+
+    try:
+        return await repository.withdraw(case_id=case_id, payload=payload, actor=actor)
     except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
         raise _translate_error(exc) from exc
 

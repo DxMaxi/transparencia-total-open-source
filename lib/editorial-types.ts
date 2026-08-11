@@ -151,6 +151,22 @@ export type EditorialCaseDetail = {
 
 export type ParliamentEditorialScope = "activity" | "votes";
 
+export const PARLIAMENT_WITHDRAWAL_REASON_LABELS = {
+  EXTRACTION_OR_NORMALISATION_ERROR: "Erro de recolha, extração ou normalização",
+  SOURCE_DIVERGENCE: "Divergência reproduzível com a fonte",
+  OFFICIAL_SOURCE_CORRECTION: "Correção ou substituição pela fonte oficial",
+  DUPLICATE_OR_CORRUPT_DATA: "Duplicação ou corrupção de dados",
+  PROVEN_IDENTITY_ERROR: "Erro de identidade demonstrado",
+  DOCUMENTED_METHODOLOGY_CHANGE: "Alteração metodológica documentada",
+  LEGAL_OR_AUTHORITY_ORDER: "Obrigação legal ou decisão de autoridade",
+  DATA_PROTECTION_OR_PERSONALITY_RIGHTS: "Proteção de dados ou direitos de personalidade",
+  SECURITY_RISK: "Risco de segurança",
+  THIRD_PARTY_RIGHTS: "Direitos de terceiros",
+  DECLARED_SCOPE_ERROR: "Publicação fora do âmbito declarado",
+} as const;
+
+export type ParliamentWithdrawalReason = keyof typeof PARLIAMENT_WITHDRAWAL_REASON_LABELS;
+
 export type ParliamentSnapshotDifference = {
   added: number;
   removed: number;
@@ -269,6 +285,7 @@ export type ParliamentEditorialPublicationPreview = {
     version_id: string;
     target_type: string;
     target_id: string;
+    event_sha256?: string;
     created_at: string;
   };
   eligible: boolean;
@@ -290,6 +307,73 @@ export type ParliamentEditorialPublicationResult = {
   publication_review_id: string;
   audit_event_id: string;
   publication_rule: string;
+};
+
+export type ParliamentEditorialPublicEffect =
+  | {
+      kind: "DATA_UNAVAILABLE";
+      scope: ParliamentEditorialScope;
+      legislature: string;
+      message: string;
+    }
+  | {
+      kind: "FALLBACK_TO_PREVIOUS_SNAPSHOT";
+      scope: ParliamentEditorialScope;
+      legislature: string;
+      snapshot_reference_sha256: string;
+      snapshot_sha256: string;
+      collected_at: string;
+      source_url: string;
+      source_retrieved_at: string;
+      source_sha256: string;
+      verified_at: string;
+      message: string;
+    };
+
+export type ParliamentEditorialWithdrawalPreview = {
+  case_id: string;
+  case_state: EditorialState;
+  revision: number;
+  scope: ParliamentEditorialScope;
+  scope_label: string;
+  target_type: "PARLIAMENT_ACTIVITY_SNAPSHOT" | "PARLIAMENT_VOTES_SNAPSHOT";
+  target_id: string;
+  legislature: string;
+  source_sha256: string;
+  snapshot_sha256: string;
+  editorial_sha256: string;
+  publication_proof_sha256: string;
+  manifest_counts: ParliamentEditorialSnapshot["manifest_counts"];
+  public_review_id: string;
+  public_reviewed_at: string;
+  publication_audit_event_id: string;
+  publication_event_id: string;
+  publication_event_sha256: string;
+  publication_event_created_at: string;
+  public_effect: ParliamentEditorialPublicEffect;
+  public_effect_sha256: string;
+  eligible: boolean;
+  blockers: Array<{ code: string; detail: string }>;
+  automatic_withdrawal: false;
+  withdrawal_rule: string;
+};
+
+export type ParliamentEditorialWithdrawalResult = {
+  created: true;
+  case_id: string;
+  state: "WITHDRAWN";
+  revision: number;
+  scope: ParliamentEditorialScope;
+  target_type: string;
+  target_id: string;
+  reason_category: ParliamentWithdrawalReason;
+  decision_sha256: string;
+  event_sha256: string;
+  publication_review_id: string;
+  audit_event_id: string;
+  public_effect: ParliamentEditorialPublicEffect;
+  public_effect_sha256: string;
+  withdrawal_rule: string;
 };
 
 export const STATE_LABELS: Record<EditorialState, string> = {
