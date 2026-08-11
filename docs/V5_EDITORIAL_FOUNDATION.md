@@ -119,7 +119,8 @@ deliberada.
 
 ## Próxima entrega
 
-A próxima fatia deve adaptar as fotografias parlamentares existentes a este circuito, sem converter
-posições coletivas em votos individuais. Esse adaptador deverá criar propostas privadas a partir de
-snapshots atestados, apresentar diferenças entre versões e publicar apenas o âmbito aprovado numa
-decisão humana específica.
+A adaptação privada das fotografias parlamentares é descrita em
+[V5.2 — adaptação parlamentar ao circuito editorial](V5_PARLIAMENT_EDITORIAL_ADAPTER.md). Ela cria
+propostas por âmbito a partir de snapshots atestados e apresenta diferenças por identificador
+oficial exato, sem converter posições coletivas em votos individuais. A publicação específica de
+um âmbito aprovado permanece uma entrega posterior e deliberadamente separada.

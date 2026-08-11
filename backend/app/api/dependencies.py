@@ -9,6 +9,7 @@ from app.core.staff_auth import (
 )
 from app.models.editorial import StaffSession
 from app.repositories.editorial import EditorialNotFoundError, EditorialRepository
+from app.repositories.parliament_editorial import ParliamentEditorialRepository
 from app.repositories.postgres import PostgresRepository
 
 
@@ -25,6 +26,17 @@ def get_editorial_repository(
             detail="Base de dados editorial não configurada",
         )
     return EditorialRepository(repository.pool)
+
+
+def get_parliament_editorial_repository(
+    repository: Annotated[PostgresRepository, Depends(get_repository)],
+) -> ParliamentEditorialRepository:
+    if repository.pool is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Base de dados editorial não configurada",
+        )
+    return ParliamentEditorialRepository(repository.pool)
 
 
 async def get_staff_session(

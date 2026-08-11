@@ -5,6 +5,7 @@ from app.models.editorial import (
     EditorialCaseCreateRequest,
     EditorialCorrectionRequest,
     EditorialDecisionRequest,
+    ParliamentEditorialProposalRequest,
 )
 
 
@@ -78,3 +79,29 @@ def test_identifiers_and_rationales_reject_whitespace_only_values() -> None:
 
     with pytest.raises(ValidationError, match="fundamentação"):
         EditorialDecisionRequest.model_validate({"expected_revision": 1, "rationale": " " * 20})
+
+
+def test_parliament_proposal_accepts_only_scope_and_explicit_safety_confirmations() -> None:
+    payload = ParliamentEditorialProposalRequest.model_validate(
+        {
+            "snapshot_id": "parliament_snapshot_123abc",
+            "scope": "votes",
+            "confirm_private_only": True,
+            "confirm_no_individual_inference": True,
+        }
+    )
+    assert payload.scope.value == "votes"
+
+    for field in ("confirm_private_only", "confirm_no_individual_inference"):
+        invalid = payload.model_dump()
+        invalid[field] = False
+        with pytest.raises(ValidationError):
+            ParliamentEditorialProposalRequest.model_validate(invalid)
+
+    with pytest.raises(ValidationError):
+        ParliamentEditorialProposalRequest.model_validate(
+            {
+                **payload.model_dump(),
+                "normalized_data": {"ator": "valor fornecido pelo browser"},
+            }
+        )

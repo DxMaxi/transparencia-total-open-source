@@ -42,9 +42,14 @@ export default async function EditorialQueuePage({
           <h1>Fila de revisão</h1>
           <p>Consulte a prova oficial, compare a versão normalizada e registe cada decisão.</p>
         </div>
-        <Link className="button button--primary" href="/admin/revisao/novo">
-          Criar processo privado
-        </Link>
+        <div className="admin-heading-actions">
+          <Link className="button button--primary" href="/admin/revisao/parlamento">
+            Importar fotografia parlamentar
+          </Link>
+          <Link className="button" href="/admin/revisao/novo">
+            Criar processo manual
+          </Link>
+        </div>
       </header>
 
       <section className="admin-count-grid" aria-label="Resumo por estado">

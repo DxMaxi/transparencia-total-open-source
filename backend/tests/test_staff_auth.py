@@ -59,12 +59,13 @@ async def test_verifies_supabase_signature_issuer_audience_and_aal(
     settings = Settings(_env_file=None, supabase_url="https://example.supabase.co")
     verifier = SupabaseJwtVerifier(settings)
     user_id = uuid.uuid4()
+    bearer = f"Bearer {_token(private_key, user_id=user_id)}"
     with respx.mock(assert_all_called=True) as router:
         route = router.get("https://example.supabase.co/auth/v1/.well-known/jwks.json").mock(
             return_value=Response(200, json={"keys": [public_jwk]})
         )
-        first = await verifier.verify_bearer(f"Bearer {_token(private_key, user_id=user_id)}")
-        second = await verifier.verify_bearer(f"Bearer {_token(private_key, user_id=user_id)}")
+        first = await verifier.verify_bearer(bearer)
+        second = await verifier.verify_bearer(bearer)
     await verifier.close()
 
     assert first.auth_user_id == user_id

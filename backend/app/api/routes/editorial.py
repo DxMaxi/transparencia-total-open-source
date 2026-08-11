@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
 from app.api.dependencies import (
     get_editorial_repository,
+    get_parliament_editorial_repository,
     get_staff_session,
     require_editorial_staff,
 )
@@ -17,6 +18,7 @@ from app.models.editorial import (
     EditorialCorrectionRequest,
     EditorialDecisionRequest,
     EditorialState,
+    ParliamentEditorialProposalRequest,
     StaffSession,
 )
 from app.repositories.editorial import (
@@ -25,6 +27,7 @@ from app.repositories.editorial import (
     EditorialRepository,
     EditorialSourceError,
 )
+from app.repositories.parliament_editorial import ParliamentEditorialRepository
 
 router = APIRouter(prefix="/editorial", tags=["Painel editorial V5"])
 
@@ -49,6 +52,41 @@ async def session(
     """Permite completar MFA depois de confirmar que a conta pertence à equipa."""
 
     return actor
+
+
+@router.get("/parliament/snapshots")
+async def parliament_snapshots(
+    repository: Annotated[
+        ParliamentEditorialRepository,
+        Depends(get_parliament_editorial_repository),
+    ],
+    _actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+    legislature: Annotated[str | None, Query(min_length=1, max_length=20)] = None,
+    limit: Annotated[int, Query(ge=1, le=20)] = 10,
+) -> list[dict[str, object]]:
+    """Mostra snapshots atestados, cobertura e diferenças sem criar processos."""
+
+    return await repository.list_snapshot_candidates(
+        legislature=legislature,
+        limit=limit,
+    )
+
+
+@router.post("/parliament/proposals")
+async def create_parliament_proposal(
+    payload: ParliamentEditorialProposalRequest,
+    repository: Annotated[
+        ParliamentEditorialRepository,
+        Depends(get_parliament_editorial_repository),
+    ],
+    actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> dict[str, object]:
+    """Cria uma proposta PENDING por âmbito; nunca publica o snapshot."""
+
+    try:
+        return await repository.create_proposal(payload=payload, actor=actor)
+    except (EditorialConflictError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
 
 
 @router.get("/cases")

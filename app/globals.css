@@ -746,6 +746,42 @@ body:has(.private-route-frame) #conteudo { min-height: 100vh; }
 .admin-history-list article > code { color: var(--muted); }
 .admin-versions-section details { margin-top: 9px; padding: 13px; border: 1px solid var(--line); border-radius: 10px; }
 .admin-versions-section pre { min-height: 0; max-height: 420px; }
+.admin-heading-actions { display: flex; align-items: center; justify-content: flex-end; gap: 9px; flex-wrap: wrap; }
+.parliament-filter { grid-template-columns: minmax(180px, 360px) auto; justify-content: start; }
+.parliament-filter input { height: 44px; padding: 0 12px; font-size: 12px; letter-spacing: normal; text-transform: none; }
+.parliament-snapshot-list { display: grid; gap: 18px; }
+.parliament-snapshot-card { display: grid; gap: 20px; padding: 25px; border: 1px solid var(--line); border-radius: 17px; background: white; box-shadow: 0 12px 30px rgba(7,24,42,.04); }
+.parliament-snapshot-card > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+.parliament-snapshot-card h2 { margin: 6px 0 8px; color: var(--navy); font-size: 22px; line-height: 1.25; }
+.parliament-snapshot-card h3 { margin: 6px 0 12px; color: var(--navy); font-size: 16px; }
+.parliament-snapshot-card > header p:last-child, .parliament-proposal-card p, .parliament-limitations li { color: var(--muted); font-size: 10px; line-height: 1.6; }
+.parliament-proof-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(220px, .6fr); gap: 14px; }
+.parliament-proof-grid > dl, .parliament-proof-actions { min-width: 0; margin: 0; padding: 16px; border-radius: 12px; background: var(--canvas); }
+.parliament-proof-grid > dl { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.parliament-proof-grid dt, .parliament-count-grid dt, .parliament-diff-list dt, .parliament-coverage-list dt { color: var(--muted); font-size: 8px; font-weight: 760; letter-spacing: .05em; text-transform: uppercase; }
+.parliament-proof-grid dd, .parliament-count-grid dd, .parliament-diff-list dd, .parliament-coverage-list dd { margin: 5px 0 0; color: var(--ink-soft); font-size: 10px; line-height: 1.5; }
+.parliament-proof-grid code { overflow-wrap: anywhere; font: 8px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.parliament-proof-actions { display: grid; align-content: start; justify-items: start; gap: 7px; background: var(--green-pale); color: #245b35; }
+.parliament-proof-actions strong { font-size: 11px; }
+.parliament-proof-actions span { font-size: 9px; }
+.parliament-proof-actions .button { margin-top: 7px; border-color: #b8d9c0; background: white; }
+.parliament-count-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px; margin: 0; }
+.parliament-count-grid > div { padding: 14px; border: 1px solid var(--line); border-radius: 11px; background: #fbfcfc; }
+.parliament-count-grid dd { color: var(--navy); font-size: 22px; font-weight: 780; }
+.parliament-count-grid small { display: block; margin-top: 4px; color: var(--muted); font-size: 9px; }
+.parliament-review-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.parliament-review-grid > div { padding: 18px; border: 1px solid var(--line); border-radius: 13px; }
+.parliament-diff-list, .parliament-coverage-list { display: grid; gap: 9px; margin: 0; }
+.parliament-diff-list > div, .parliament-coverage-list > div { display: grid; grid-template-columns: minmax(120px, .55fr) 1fr; gap: 12px; padding-top: 9px; border-top: 1px solid var(--line); }
+.parliament-diff-list dd, .parliament-coverage-list dd { margin-top: 0; }
+.parliament-limitations { padding: 14px 16px; border: 1px solid var(--line); border-radius: 11px; background: var(--canvas); }
+.parliament-limitations summary { color: var(--teal); font-size: 11px; font-weight: 750; cursor: pointer; }
+.parliament-limitations ul { margin: 12px 0 0; padding-left: 20px; }
+.parliament-proposal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.parliament-proposal-card { display: grid; align-content: start; gap: 11px; margin: 0; padding: 19px; border: 1px solid var(--line); border-radius: 13px; background: #fbfcfc; }
+.parliament-proposal-card--existing { border-color: #b9ded8; background: #f0faf8; }
+.parliament-proposal-card .admin-confirmation { color: var(--ink-soft); font-size: 10px; font-weight: 600; letter-spacing: normal; text-transform: none; }
+.parliament-proposal-card .button { justify-self: start; }
 
 @media (max-width: 1050px) {
   .admin-header { grid-template-columns: auto 1fr; gap: 15px; }
@@ -755,6 +791,7 @@ body:has(.private-route-frame) #conteudo { min-height: 100vh; }
   .admin-proof-inline { grid-column: 2; }
   .admin-case-card__open { grid-column: 3; grid-row: 1 / span 2; }
   .admin-compare-grid { grid-template-columns: 1fr; }
+  .parliament-proof-grid, .parliament-review-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 760px) {
@@ -772,6 +809,8 @@ body:has(.private-route-frame) #conteudo { min-height: 100vh; }
   .admin-form-grid, .admin-decision-grid, .admin-action-section { grid-template-columns: 1fr; }
   .admin-field-wide { grid-column: auto; }
   .admin-history-list dl { grid-template-columns: 1fr 1fr; }
+  .admin-heading-actions { justify-content: flex-start; }
+  .parliament-filter, .parliament-count-grid, .parliament-proposal-grid { grid-template-columns: 1fr 1fr; }
   .private-mfa-enrolment { grid-template-columns: 1fr; }
 }
 
@@ -782,6 +821,10 @@ body:has(.private-route-frame) #conteudo { min-height: 100vh; }
   .admin-count-grid, .admin-proof-inline, .admin-history-list dl { grid-template-columns: 1fr; }
   .admin-private-warning { align-items: flex-start; flex-direction: column; }
   .admin-source-search form > div { grid-template-columns: 1fr; }
+  .parliament-snapshot-card { padding: 18px; }
+  .parliament-snapshot-card > header { flex-direction: column; }
+  .parliament-filter, .parliament-proof-grid > dl, .parliament-count-grid, .parliament-proposal-grid { grid-template-columns: 1fr; }
+  .parliament-diff-list > div, .parliament-coverage-list > div { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 980px) {
