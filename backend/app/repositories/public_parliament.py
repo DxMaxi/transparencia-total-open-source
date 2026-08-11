@@ -359,9 +359,7 @@ class PublicParliamentRepository:
                     ).hexdigest(),
                     "action": action,
                     "scope": scope,
-                    "scope_label": (
-                        "atividade parlamentar" if scope == "activity" else "votações"
-                    ),
+                    "scope_label": ("atividade parlamentar" if scope == "activity" else "votações"),
                     "legislature": legislature,
                     "target_reference_sha256": hashlib.sha256(
                         str(row["entity_id"]).encode("utf-8")
@@ -379,9 +377,7 @@ class PublicParliamentRepository:
                     "manifest_counts": counts,
                     "public_effect": public_effect,
                     "public_effect_sha256": (
-                        str(public_effect_sha256)
-                        if public_effect_sha256 is not None
-                        else None
+                        str(public_effect_sha256) if public_effect_sha256 is not None else None
                     ),
                 }
             )

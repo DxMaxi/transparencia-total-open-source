@@ -572,17 +572,13 @@ async def test_parliament_editorial_cycle_preserves_scope_from_proposal_to_publi
             expected_source_sha256=str(withdrawal_preview["source_sha256"]),
             expected_snapshot_sha256=str(withdrawal_preview["snapshot_sha256"]),
             expected_editorial_sha256=str(withdrawal_preview["editorial_sha256"]),
-            expected_publication_proof_sha256=str(
-                withdrawal_preview["publication_proof_sha256"]
-            ),
+            expected_publication_proof_sha256=str(withdrawal_preview["publication_proof_sha256"]),
             expected_public_review_id=str(withdrawal_preview["public_review_id"]),
             expected_publication_audit_event_id=str(
                 withdrawal_preview["publication_audit_event_id"]
             ),
             expected_publication_event_id=str(withdrawal_preview["publication_event_id"]),
-            expected_publication_event_sha256=str(
-                withdrawal_preview["publication_event_sha256"]
-            ),
+            expected_publication_event_sha256=str(withdrawal_preview["publication_event_sha256"]),
             expected_public_effect_sha256=str(withdrawal_preview["public_effect_sha256"]),
             confirm_no_selective_removal=True,
             confirm_public_effect_reviewed=True,
@@ -650,9 +646,7 @@ async def test_parliament_editorial_cycle_preserves_scope_from_proposal_to_publi
         case_id=activity_case_id,
         payload=ParliamentEditorialPublicationRequest(
             expected_revision=int(republication_preview["revision"]),
-            rationale=(
-                "Administrador confirmou a nova versão e republicou apenas a atividade."
-            ),
+            rationale=("Administrador confirmou a nova versão e republicou apenas a atividade."),
             confirmed_scope="activity",
             expected_snapshot_id=str(republication_preview["target_id"]),
             expected_source_sha256=str(republication_source["content_sha256"]),

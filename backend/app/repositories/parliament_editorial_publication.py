@@ -471,13 +471,9 @@ class ParliamentEditorialPublicationRepository:
                             "case_revision": next_revision,
                             "version_id": version_id,
                             "editorial_sha256": str(preview["editorial_sha256"]),
-                            "publication_proof_sha256": str(
-                                preview["publication_proof_sha256"]
-                            ),
+                            "publication_proof_sha256": str(preview["publication_proof_sha256"]),
                             "publication_event_id": str(preview["publication_event_id"]),
-                            "publication_event_sha256": str(
-                                preview["publication_event_sha256"]
-                            ),
+                            "publication_event_sha256": str(preview["publication_event_sha256"]),
                             "publication_audit_event_id": str(
                                 preview["publication_audit_event_id"]
                             ),
@@ -639,9 +635,7 @@ class ParliamentEditorialPublicationRepository:
             "kind": "FALLBACK_TO_PREVIOUS_SNAPSHOT",
             "scope": scope.value,
             "legislature": str(case["snapshot_legislature"]),
-            "snapshot_reference_sha256": hashlib.sha256(
-                str(row["id"]).encode("utf-8")
-            ).hexdigest(),
+            "snapshot_reference_sha256": hashlib.sha256(str(row["id"]).encode("utf-8")).hexdigest(),
             "snapshot_sha256": str(row["normalised_sha256"]),
             "collected_at": _iso_timestamp(collected_at),
             "source_url": str(row["source_url"]),
@@ -720,10 +714,9 @@ class ParliamentEditorialPublicationRepository:
                     "PUBLICATION_EVENT_VERSION_MISMATCH",
                     "O evento de publicação não pertence à versão editorial atual",
                 )
-            if (
-                str(case["publication_event_target_type"]) != str(case["subject_type"])
-                or str(case["publication_event_target_id"]) != str(case["subject_id"])
-            ):
+            if str(case["publication_event_target_type"]) != str(case["subject_type"]) or str(
+                case["publication_event_target_id"]
+            ) != str(case["subject_id"]):
                 block(
                     "PUBLICATION_EVENT_TARGET_MISMATCH",
                     "O evento de publicação não corresponde ao alvo exato do processo",
@@ -731,9 +724,7 @@ class ParliamentEditorialPublicationRepository:
 
         audit_after = _as_json_object(case["publication_audit_after_json"])
         editorial_link = (
-            _as_json_object(audit_after.get("editorial_link"))
-            if audit_after is not None
-            else None
+            _as_json_object(audit_after.get("editorial_link")) if audit_after is not None else None
         )
         if case["publication_audit_event_id"] is None or audit_after is None:
             block(
@@ -753,9 +744,7 @@ class ParliamentEditorialPublicationRepository:
             audit_after.get("normalised_sha256") if audit_after is not None else None
         )
         publication_proof_sha256 = _digest_or_none(
-            editorial_link.get("publication_proof_sha256")
-            if editorial_link is not None
-            else None
+            editorial_link.get("publication_proof_sha256") if editorial_link is not None else None
         )
         if source_sha256 != _digest_or_none(case["source_sha256"]):
             block(
