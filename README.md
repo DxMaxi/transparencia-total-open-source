@@ -1,10 +1,13 @@
-# Transparência Total / Fator Cívico — V4
+# Transparência Total / Fator Cívico — V5 em desenvolvimento
 
 Plataforma cívica, neutra e sem fins lucrativos para acompanhar atividade política em
-Portugal através de dados oficiais auditáveis. O código usa licença MIT; o repositório deve
-ser tornado público antes de o projeto se apresentar como open source.
+Portugal através de dados oficiais auditáveis. A partir da V5, o código-fonte é disponibilizado
+para consulta, auditoria, execução, modificação e contribuição não comercial sob a licença
+PolyForm Noncommercial 1.0.0. Esta modalidade é *source-available*, não *open-source* segundo a
+definição da Open Source Initiative.
 
-> **Estado do projeto:** a V4 está publicada e tem os gates técnicos e operacionais
+> **Estado do projeto:** a `v0.4.0` é a última versão pública estável e tem os gates técnicos e
+> operacionais
 > concluídos. Inclui arquivo PostgreSQL dos bytes oficiais, fotografias parlamentares versionadas e
 > append-only, revisão humana por âmbito, API pública fail-closed, catálogo inicial do Programa do
 > XXV Governo, páginas legais e cópia PostgreSQL externa cifrada no Backblaze B2 EU.
@@ -17,7 +20,8 @@ ser tornado público antes de o projeto se apresentar como open source.
 > Consulte o [gate V4 → V5](docs/V4_TO_V5_RELEASE_GATE.md), o
 > [runbook de recuperação](docs/DATABASE_RECOVERY.md) e o
 > [runbook Backblaze B2 EU](docs/BACKUP_BACKBLAZE_B2.md). A tag `v0.4.0` deve apontar para o
-> commit final deste fecho; novas funcionalidades começam apenas na V5.
+> commit final desse fecho. A V5 começa pela governação de licença e pelo circuito editorial
+> privado; esta branch não altera os dados aprovados da V4.
 
 ## Princípios
 
@@ -71,7 +75,8 @@ uma fonte pública; a plataforma torna também visíveis falhas, atrasos e limit
 - Guia do Cidadão com perfil genérico, cálculo determinístico separado da explicação por IA e
   alertas com fontes, vigência, ressalvas e incertezas.
 - Formulário de direito de resposta com recibo temporal e hashes SHA-256 sem apagar o original.
-- Exportação Open Data em JSON/CSV de contratos, grafo, notícias, alertas e direitos de resposta.
+- Exportação em JSON/CSV de contratos, grafo, notícias, alertas e direitos de resposta, sempre com
+  proveniência e condições de reutilização da fonte.
 - Perfil de político com cobertura explícita, votos individuais apenas quando nominais,
   posições coletivas separadas e ligação à declaração de interesses.
 - Promessómetro filtrável com cinco estados, incluindo “Por verificar”, catálogo inicial do
@@ -101,7 +106,7 @@ flowchart TD
   D --> E
   E --> F["Revisão humana"]
   F --> G["Registos publicáveis"]
-  G --> H["API pública + Open Data"]
+  G --> H["API pública + exportações"]
   H --> I["Website: LIVE / EMPTY / UNAVAILABLE"]
   E --> J["IA: proposta"]
   J --> F
@@ -632,10 +637,21 @@ fly deploy
 Associe um PostgreSQL durável e execute `npm run db:deploy` contra esse URL antes de aceitar
 subscrições. Confirme sempre a oferta e os custos atuais do fornecedor.
 
-## Licença e governação
+## Licença, governação e princípios fundamentais
 
-Código sob [licença MIT](LICENSE). Consulte [CONTRIBUTING.md](CONTRIBUTING.md),
+- **Software da V5:** [PolyForm Noncommercial License 1.0.0](LICENSE).
+- **Documentação e conteúdo editorial original:** [CC BY-NC 4.0](LICENSES/CC-BY-NC-4.0.txt),
+  salvo indicação diferente.
+- **Versões até `v0.4.0`:** conservam a [licença MIT histórica](LICENSES/MIT-v0.4.0.txt).
+- **Dados e documentos oficiais:** mantêm os direitos e condições definidos pelas entidades de
+  origem; as licenças do projeto não os substituem.
+
+Consulte a delimitação completa em [LICENSING.md](LICENSING.md), a
+[política de governação](docs/GOVERNANCE.md), [CONTRIBUTING.md](CONTRIBUTING.md),
 [SECURITY.md](SECURITY.md) e [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+
+O repositório disponibiliza código-fonte para auditoria e reutilização não comercial. Não deve ser
+apresentado como software *open-source* enquanto vigorar uma restrição de uso comercial.
 
 Um lançamento de produção deve identificar o responsável real, manter política editorial pública,
 procedimento de correção e arquivo verificável dos documentos recolhidos. Uma revisão plural é

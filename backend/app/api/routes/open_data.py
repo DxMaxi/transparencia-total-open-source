@@ -20,7 +20,7 @@ OpenDataset = Literal[
     "rights-of-reply",
 ]
 
-router = APIRouter(prefix="/open-data", tags=["Open Data"])
+router = APIRouter(prefix="/open-data", tags=["Exportação de dados publicados"])
 
 
 async def _rows(
@@ -32,7 +32,9 @@ async def _rows(
     if not repository.configured:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Open Data indisponível enquanto a base de dados não estiver configurada",
+            detail=(
+                "Exportação de dados indisponível enquanto a base de dados não estiver configurada"
+            ),
         )
     try:
         return await repository.list_open_data(dataset, limit=limit, offset=offset)
@@ -43,7 +45,7 @@ async def _rows(
 def _metadata(dataset: str, limit: int, offset: int) -> dict[str, object]:
     return {
         "dataset": dataset,
-        "schema_version": "2.0",
+        "schema_version": "2.1",
         "generated_at": datetime.now(UTC).isoformat(),
         "limit": limit,
         "offset": offset,
@@ -52,6 +54,15 @@ def _metadata(dataset: str, limit: int, offset: int) -> dict[str, object]:
             "dados de contacto e candidatos de correspondência são excluídos."
         ),
         "provenance": "Cada linha conserva source_url e source_sha256 quando aplicável.",
+        "software_license": "PolyForm-Noncommercial-1.0.0",
+        "project_content_license": (
+            "CC BY-NC 4.0 apenas para elementos editoriais originais sobre os quais o projeto "
+            "detenha direitos."
+        ),
+        "reuse_notice": (
+            "Factos, documentos e dados oficiais conservam as condições da entidade de origem; "
+            "as licenças do projeto não os substituem."
+        ),
     }
 
 
@@ -103,6 +114,8 @@ async def export_csv(
         headers={
             "Content-Disposition": f'attachment; filename="transparencia-total-{dataset}.csv"',
             "Cache-Control": "public, max-age=300",
-            "X-Open-Data-Schema": "2.0",
+            "X-Open-Data-Schema": "2.1",
+            "X-Software-License": "PolyForm-Noncommercial-1.0.0",
+            "X-Data-Reuse": "source-terms-apply",
         },
     )
