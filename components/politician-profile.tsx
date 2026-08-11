@@ -122,8 +122,8 @@ export function PoliticianProfile({ profile }: { profile: PoliticianProfileData 
           <span className="collective-position-label">Não são votos individuais</span>
         </div>
         <p className="profile-section-intro">
-          As linhas abaixo são aquelas em que a fonte usa exatamente a sigla do grupo
-          parlamentar. São apresentadas como contexto coletivo e nunca como ação pessoal
+          Esta secção só pode receber posições ligadas ao grupo por um identificador oficial
+          inequívoco. Mesmo quando existirem, serão contexto coletivo e nunca uma ação pessoal
           de {profile.name}.
         </p>
         {profile.groupPositions.length ? (
@@ -137,8 +137,8 @@ export function PoliticianProfile({ profile }: { profile: PoliticianProfileData 
           </div>
         ) : (
           <div className="empty-state">
-            <strong>Sem posições coletivas normalizadas para este grupo</strong>
-            <span>A fonte pode não indicar posições por grupo em todas as votações.</span>
+            <strong>Sem posições coletivas ligadas por identificador oficial</strong>
+            <span>Uma sigla ou um nome semelhante não é suficiente para criar a associação.</span>
           </div>
         )}
       </section>

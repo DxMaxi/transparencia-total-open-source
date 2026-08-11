@@ -154,6 +154,8 @@ export type PublicParliamentaryVoteRecord = {
   actorLabel: string;
   actorType: "PERSON" | "PARTY" | "UNKNOWN";
   choice: "FAVOR" | "AGAINST" | "ABSTENTION" | "ABSENT" | "UNKNOWN";
+  personSourceId?: string;
+  partySourceId?: string;
 };
 
 export type PublicParliamentaryVote = {
@@ -165,6 +167,10 @@ export type PublicParliamentaryVote = {
   votedAt?: string;
   result?: string;
   isNominal: boolean;
+  initiativeType?: string;
+  initiativeTitle?: string;
+  initiativeStatus?: string;
+  initiativeOfficialUrl?: string;
   records: PublicParliamentaryVoteRecord[];
   verifiedAt: string;
   source: OfficialSource;
@@ -210,6 +216,41 @@ export type PublicParliamentActivity = {
     sessions: boolean;
     initiatives: boolean;
     votes: boolean;
+    publicationHistory: boolean;
+  };
+};
+
+export type PublicParliamentFacetOption = {
+  value: string;
+  label: string;
+  count: number;
+};
+
+export type PublicParliamentExplorer = {
+  kind: "sessions" | "initiatives" | "votes";
+  legislature: string;
+  query?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  sessions: PublicParliamentarySession[];
+  initiatives: PublicParliamentaryInitiative[];
+  votes: PublicParliamentaryVote[];
+  total: number;
+  limit: number;
+  offset: number;
+  facets: {
+    legislatures: string[];
+    initiativeTypes: PublicParliamentFacetOption[];
+    initiativeStatuses: PublicParliamentFacetOption[];
+    voteResults: PublicParliamentFacetOption[];
+    parties: PublicParliamentFacetOption[];
+    topicsAvailable: false;
+    topicsNote: string;
+  };
+  explanationRule: string;
+  publicationHistory: PublicParliamentPublicationHistoryItem[];
+  availability: {
+    explorer: boolean;
     publicationHistory: boolean;
   };
 };

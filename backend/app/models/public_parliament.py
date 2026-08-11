@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -37,8 +37,8 @@ class PublishedVoteRecord(BaseModel):
     actor_label: str
     actor_type: VoteActorType
     choice: VoteChoice
-    person_id: str | None = None
-    party_id: str | None = None
+    person_source_id: str | None = None
+    party_source_id: str | None = None
 
 
 class PublishedParliamentaryVote(BaseModel):
@@ -50,9 +50,57 @@ class PublishedParliamentaryVote(BaseModel):
     voted_at: datetime | None = None
     result: str | None = None
     is_nominal: bool
+    initiative_type: str | None = None
+    initiative_title: str | None = None
+    initiative_status: str | None = None
+    initiative_official_url: str | None = None
     records: list[PublishedVoteRecord] = Field(default_factory=list)
     verified_at: datetime
     source: OfficialSource
+
+
+class PublishedParliamentFacetOption(BaseModel):
+    value: str
+    label: str
+    count: int = Field(ge=0)
+
+
+class PublishedParliamentPartyFacet(PublishedParliamentFacetOption):
+    """Grupo com identificador oficial exato; nunca nasce de comparação textual."""
+
+    value: str = Field(min_length=1, max_length=200)
+
+
+class PublishedParliamentFacets(BaseModel):
+    legislatures: list[str] = Field(default_factory=list)
+    initiative_types: list[PublishedParliamentFacetOption] = Field(default_factory=list)
+    initiative_statuses: list[PublishedParliamentFacetOption] = Field(default_factory=list)
+    vote_results: list[PublishedParliamentFacetOption] = Field(default_factory=list)
+    parties: list[PublishedParliamentPartyFacet] = Field(default_factory=list)
+    topics_available: Literal[False] = False
+    topics_note: str = (
+        "A fotografia oficial publicada não fornece um tema estruturado. "
+        "A plataforma não o deduz por palavras-chave nem por inteligência artificial."
+    )
+
+
+class PublishedParliamentExplorer(BaseModel):
+    kind: Literal["sessions", "initiatives", "votes"]
+    legislature: str
+    query: str | None = None
+    date_from: date | None = None
+    date_to: date | None = None
+    sessions: list[PublishedParliamentarySession] = Field(default_factory=list)
+    initiatives: list[PublishedParliamentaryInitiative] = Field(default_factory=list)
+    votes: list[PublishedParliamentaryVote] = Field(default_factory=list)
+    total: int = Field(ge=0)
+    limit: int = Field(ge=1, le=100)
+    offset: int = Field(ge=0)
+    facets: PublishedParliamentFacets
+    explanation_rule: str = (
+        "Os explicadores distinguem o resultado registado do impacto jurídico ou material. "
+        "Sem prova oficial adicional, o impacto permanece como dados indisponíveis."
+    )
 
 
 class PublishedParliamentPublicationCounts(BaseModel):

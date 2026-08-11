@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
@@ -22,6 +23,36 @@ from app.repositories.parliament_activity import (
     ParliamentActivityRepository,
     _dataset_digest,
 )
+from app.repositories.parliament_activity_bulk import _append_votes as _append_votes_bulk
+
+
+class BulkVoteConnection:
+    def __init__(self) -> None:
+        self.scalar_results = iter([0, 0, 1, 2])
+        self.fetch_calls: list[tuple[str, tuple[object, ...]]] = []
+        self.batches: list[tuple[str, list[tuple[Any, ...]]]] = []
+
+    async def fetchval(self, _query: str, *_arguments: object) -> int:
+        return next(self.scalar_results)
+
+    async def fetch(self, query: str, *arguments: object) -> list[dict[str, str]]:
+        self.fetch_calls.append((query, arguments))
+        if "FROM parliamentary_initiatives" in query:
+            return []
+        if "FROM vote_events" in query:
+            return [{"source_id": "vote-1", "id": "vote-event-1"}]
+        if "FROM people" in query:
+            return []
+        if "FROM parties" in query:
+            return [{"source_id": "party-source-1", "id": "party-1"}]
+        raise AssertionError("Consulta inesperada no teste da persistência em lote")
+
+    async def executemany(
+        self,
+        statement: str,
+        rows: list[tuple[Any, ...]],
+    ) -> None:
+        self.batches.append((statement, list(rows)))
 
 
 def _dataset(*, nominal: bool = True) -> ParliamentActivityDataset:
@@ -136,12 +167,11 @@ async def test_persists_nominal_vote_only_as_person() -> None:
 
 
 @pytest.mark.asyncio
-async def test_persists_collective_vote_only_as_party() -> None:
+async def test_collective_label_remains_unlinked_without_official_id() -> None:
     connection = AsyncMock()
     connection.fetchval.side_effect = [
         "initiative-1",
         "vote-event-1",
-        "party-1",
         "vote-record-1",
     ]
 
@@ -154,7 +184,72 @@ async def test_persists_collective_vote_only_as_party() -> None:
     insert_call = connection.fetchval.await_args_list[-1]
     assert insert_call.args[3] == VoteActorType.PARTY.value
     assert insert_call.args[5] is None
+    assert insert_call.args[6] is None
+    all_sql = "\n".join(call.args[0] for call in connection.fetchval.await_args_list)
+    assert "short_name" not in all_sql
+
+
+@pytest.mark.asyncio
+async def test_collective_vote_links_party_only_by_official_source_id() -> None:
+    dataset = _dataset(nominal=False)
+    record = dataset.votes[0].records[0].model_copy(update={"actor_source_id": "party-source-1"})
+    event = dataset.votes[0].model_copy(update={"records": [record]})
+    dataset = dataset.model_copy(update={"votes": [event]})
+    connection = AsyncMock()
+    connection.fetchval.side_effect = [
+        "initiative-1",
+        "vote-event-1",
+        "party-1",
+        "vote-record-1",
+    ]
+
+    events, records = await ParliamentActivityRepository._append_votes(
+        connection, dataset, "source-1", "snapshot-1"
+    )
+
+    assert events == 1
+    assert records == 1
+    party_lookup = connection.fetchval.await_args_list[-2]
+    assert "WHERE source_id = $1" in party_lookup.args[0]
+    assert "short_name" not in party_lookup.args[0]
+    assert party_lookup.args[1] == "party-source-1"
+    insert_call = connection.fetchval.await_args_list[-1]
+    assert insert_call.args[5] is None
     assert insert_call.args[6] == "party-1"
+
+
+@pytest.mark.asyncio
+async def test_bulk_persistence_never_links_a_collective_label_as_party_identity() -> None:
+    dataset = _dataset(nominal=False)
+    unlinked = dataset.votes[0].records[0]
+    linked = unlinked.model_copy(
+        update={
+            "actor_label": "Outro rótulo coletivo",
+            "actor_source_id": "party-source-1",
+        }
+    )
+    event = dataset.votes[0].model_copy(update={"records": [unlinked, linked]})
+    dataset = dataset.model_copy(update={"votes": [event]})
+    connection = BulkVoteConnection()
+
+    events, records = await _append_votes_bulk(
+        connection,  # type: ignore[arg-type]
+        dataset,
+        "source-1",
+        "snapshot-1",
+    )
+
+    assert (events, records) == (1, 2)
+    party_query, party_arguments = next(
+        call for call in connection.fetch_calls if "FROM parties" in call[0]
+    )
+    assert "WHERE source_id = ANY($1::text[])" in party_query
+    assert "short_name" not in party_query
+    assert party_arguments == (["party-source-1"],)
+    record_statement, record_rows = connection.batches[-1]
+    assert "INSERT INTO vote_records" in record_statement
+    assert record_rows[0][5] is None
+    assert record_rows[1][5] == "party-1"
 
 
 @pytest.mark.asyncio

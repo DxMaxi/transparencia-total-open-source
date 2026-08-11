@@ -496,6 +496,27 @@ async def test_parliament_editorial_cycle_preserves_scope_from_proposal_to_publi
     )
     assert published_votes["state"] == "PUBLISHED"
     assert len(await public.list_votes(legislature=legislature, limit=10, offset=0)) == 2
+    explored_votes = await public.explore(
+        kind="votes",
+        legislature=legislature,
+        query="estável",
+        date_from=None,
+        date_to=None,
+        initiative_type="Projeto de teste",
+        initiative_status=None,
+        vote_result="Aprovado",
+        is_nominal=False,
+        party_source_id=None,
+        choice="AGAINST",
+        limit=1,
+        offset=0,
+    )
+    assert explored_votes["total"] == 1
+    assert len(explored_votes["votes"]) == 1
+    assert explored_votes["votes"][0]["source_id"] == "vote-stable"
+    assert explored_votes["votes"][0]["initiative_title"] == "Iniciativa estável"
+    assert explored_votes["facets"]["topics_available"] is False
+    assert legislature in explored_votes["facets"]["legislatures"]
 
     with pytest.raises(EditorialConflictError, match="alterado por outra decisão"):
         await publisher.publish(

@@ -65,7 +65,7 @@ test("parliament V4 is snapshot-scoped, reviewed and explicit about partial avai
   assert.doesNotMatch(ingestion, /UPDATE parliamentary_sessions/);
   assert.doesNotMatch(ingestion, /DELETE FROM parliamentary_sessions/);
   assert.match(page, /Consulta parcial/);
-  assert.match(page, /não é uma agenda completa/i);
+  assert.match(page, /não é\s+uma agenda completa/i);
 });
 
 test("parliamentary observations are not represented as inferred mandate starts", async () => {
@@ -133,11 +133,14 @@ test("profiles separate individual votes from collective party positions", async
   assert.match(types, /nominalVotesAvailable:\s*boolean/);
   assert.match(types, /nominalVoteCount:\s*number/);
   assert.match(types, /groupPositions:\s*VoteRecord\[\]/);
-  assert.match(client, /actor_type !== "PERSON"/);
-  assert.match(client, /actor_label\.replace/);
+  assert.match(client, /groupPositions:\s*\[\]/);
+  assert.doesNotMatch(client, /actor_label\.replace/);
+  assert.doesNotMatch(client, /partyKey/);
   assert.match(profile, /profile\.nominalVotesAvailable[\s\S]*profile\.nominalVoteCount/);
   assert.doesNotMatch(profile, /profile\.votes\.filter\([\s\S]*\.length/);
   assert.match(profile, /Sem votos individuais publicáveis nesta fonte/);
   assert.match(profile, /Não são votos individuais/);
   assert.match(profile, /Posições recentes do grupo/);
+  assert.match(profile, /identificador oficial\s+inequívoco/);
+  assert.match(profile, /Uma sigla ou um nome semelhante não é suficiente/);
 });
