@@ -427,7 +427,8 @@ async def test_parliament_editorial_cycle_preserves_scope_from_proposal_to_publi
                    AND entity_id = $1) AS reviews,
                 (SELECT count(*) FROM audit_events
                  WHERE entity_type = 'PARLIAMENT_ACTIVITY_SNAPSHOT'
-                   AND entity_id = $1) AS audits,
+                   AND entity_id = $1
+                   AND action = 'PUBLISHED') AS audits,
                 (SELECT current_state::text FROM editorial_cases
                  WHERE id = $2) AS case_state
             """,
