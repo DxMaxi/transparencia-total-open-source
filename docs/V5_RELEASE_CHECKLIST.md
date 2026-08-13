@@ -15,6 +15,8 @@ continuam a exigir autorizações separadas.
 - [x] V5.4 — retirada parlamentar append-only integrada.
 - [x] V5.5 e V5.5.1 — explorador público e compatibilidade integrada.
 - [x] V5.6 — contrato de perfis auditáveis integrado.
+- [x] V5.7 — estabilização e gate público integrados.
+- [x] V5.8 — prontidão editorial para staging integrada.
 - [x] CI da integração V5.6 aprovado com PostgreSQL 17.
 - [x] Frontend V5.6 publicado em modo de compatibilidade fail-closed.
 - [x] README e documentação deixam de indicar que a V5.6 está apenas local.
@@ -27,7 +29,7 @@ continuam a exigir autorizações separadas.
 - [x] Sitemap inclui todas as rotas de perfis publicadas e nenhuma ficha privada.
 - [x] Todas as páginas públicas principais têm URL canónica.
 - [x] Perfil inexistente devolve 404, título correto e `noindex`.
-- [ ] Diretório dos políticos medido e preparado para paginação progressiva.
+- [x] Diretório dos políticos medido e preparado para paginação progressiva.
 - [x] Versão principal do Node fixada e igual no CI e no deployment.
 - [x] Testes de contrato impedem regressões destes comportamentos.
 

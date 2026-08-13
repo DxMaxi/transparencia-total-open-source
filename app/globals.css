@@ -268,17 +268,25 @@ a.feature-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
 .profile-source > span { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .1em; }
 .profile-source > strong { font-size: 12px; }
 .politician-directory { display: grid; gap: 14px; margin-top: 20px; }
-.directory-controls { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(180px, .45fr) auto; align-items: end; gap: 12px; margin-top: 18px; padding: 16px; }
+.directory-controls { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(220px, .65fr) auto; align-items: end; gap: 12px; margin-top: 18px; padding: 16px; }
 .directory-controls label { display: grid; gap: 6px; }
 .directory-controls label > span { color: var(--muted); font-size: 9px; font-weight: 760; letter-spacing: .06em; text-transform: uppercase; }
 .directory-controls input, .directory-controls select { min-width: 0; min-height: 43px; padding: 0 12px; border: 1px solid #cfd9dc; border-radius: 9px; background: white; color: var(--ink); font: inherit; font-size: 11px; }
 .directory-controls input:focus, .directory-controls select:focus { border-color: var(--teal); outline: 3px solid rgba(20,184,166,.15); }
-.directory-controls strong { min-width: 116px; padding-bottom: 13px; color: var(--muted); font-size: 10px; text-align: right; }
+.directory-controls__actions { display: flex; align-items: center; gap: 12px; min-height: 43px; }
+.directory-controls__actions .button { min-height: 43px; }
+.directory-controls strong { grid-column: 1 / -1; color: var(--muted); font-size: 10px; text-align: left; }
+.directory-search-rule { margin: 10px 2px 0; color: var(--muted); font-size: 10px; }
 .politician-directory__card { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 18px; padding: 20px; }
 .politician-directory__card .profile-avatar { width: 58px; height: 58px; font-size: 12px; font-weight: 850; }
 .politician-directory__card h2 { margin: 4px 0; font-size: 20px; }
 .politician-directory__card h2 a:hover { color: var(--teal); }
 .politician-directory__card p { margin: 0 0 10px; color: var(--muted); font-size: 11px; }
+.politician-pagination { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; margin-top: 18px; }
+.politician-pagination a { justify-self: start; padding: 9px 13px; border: 1px solid var(--line); border-radius: 9px; background: white; color: var(--teal); font-size: 10px; font-weight: 760; }
+.politician-pagination a:last-child { justify-self: end; }
+.politician-pagination a:hover { border-color: #9abbb6; }
+.politician-pagination strong { color: var(--muted); font-size: 10px; font-weight: 720; text-align: center; }
 .profile-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-block: 16px; }
 .profile-coverage-note { margin: 16px 0; padding: 20px 24px; border-left: 4px solid #94a3b8; }
 .profile-coverage-note p, .profile-section-intro { color: var(--muted); font-size: 11px; line-height: 1.65; }
@@ -989,6 +997,7 @@ body:has(.private-route-frame) #conteudo { min-height: 100vh; }
   .profile-two-column { grid-template-columns: 1fr; }
   .profile-stat-grid { grid-template-columns: 1fr 1fr; }
   .directory-controls { grid-template-columns: 1fr 1fr; }
+  .directory-controls__actions { align-self: end; }
   .directory-controls strong { grid-column: 1 / -1; padding-bottom: 0; text-align: left; }
   .promise-summary-grid { grid-template-columns: repeat(2,1fr); }
   .method-grid { grid-template-columns: repeat(2,1fr); }
@@ -1109,7 +1118,11 @@ body:has(.private-route-frame) #conteudo { min-height: 100vh; }
   .mini-score { grid-column: 2; text-align: left; }
   .promise-summary-grid { grid-template-columns: 1fr; }
   .directory-controls { grid-template-columns: 1fr; }
+  .directory-controls__actions { flex-wrap: wrap; }
   .directory-controls strong { grid-column: auto; }
+  .politician-pagination { grid-template-columns: 1fr 1fr; }
+  .politician-pagination strong { grid-column: 1 / -1; grid-row: 1; }
+  .politician-pagination a { grid-row: 2; }
   .investigator-filters { grid-template-columns: 1fr; }
   .investigator-filter-title, .investigator-filters .button { grid-column: auto; }
   .graph-relation-list { grid-template-columns: 1fr; }

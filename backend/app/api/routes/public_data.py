@@ -18,8 +18,13 @@ from app.models.public_parliament import (
     PublishedParliamentExplorer,
     PublishedParliamentPublicationHistoryItem,
 )
+from app.models.public_politicians import PublishedPoliticianDirectory
 from app.repositories.postgres import PostgresRepository
 from app.repositories.public_parliament import PublicParliamentRepository
+from app.repositories.public_politicians import (
+    PublicPoliticianCursorError,
+    PublicPoliticianRepository,
+)
 
 router = APIRouter(prefix="/public", tags=["Leitura pública"])
 
@@ -57,6 +62,37 @@ async def public_politicians(
     except RuntimeError as exc:
         raise _unavailable(exc) from exc
     return [PublishedPersonSummary.model_validate(row) for row in rows]
+
+
+@router.get("/politicians/explore", response_model=PublishedPoliticianDirectory)
+async def public_politician_directory(
+    response: Response,
+    repository: Annotated[PostgresRepository, Depends(get_repository)],
+    q: str | None = Query(default=None, max_length=120),
+    party_short: str | None = Query(default=None, max_length=50),
+    limit: int = Query(default=24, ge=1, le=100),
+    cursor: str | None = Query(default=None, max_length=512),
+) -> PublishedPoliticianDirectory:
+    """Pesquisa apenas identidades publicadas; nunca associa pessoas por semelhança."""
+
+    query = q.strip() if q and q.strip() else None
+    party = party_short.strip() if party_short and party_short.strip() else None
+    _cache(response)
+    try:
+        result = await PublicPoliticianRepository(repository.pool).explore(
+            query=query,
+            party_short=party,
+            limit=limit,
+            cursor=cursor,
+        )
+    except PublicPoliticianCursorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(exc),
+        ) from exc
+    except RuntimeError as exc:
+        raise _unavailable(exc) from exc
+    return PublishedPoliticianDirectory.model_validate(result)
 
 
 @router.get("/politicians/{slug}", response_model=PublishedPoliticianProfile)

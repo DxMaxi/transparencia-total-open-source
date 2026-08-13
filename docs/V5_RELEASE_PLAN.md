@@ -10,8 +10,8 @@ geração por IA, publicação, retirada ou tratamento de dados reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.6 integradas |
-| Frontend público | V5.6 com compatibilidade fail-closed |
+| Código V5 | V5.1 a V5.8 integradas; V5.9 em desenvolvimento local |
+| Frontend público | V5.6 publicada; diretório V5.9 preparado com compatibilidade fail-closed |
 | API pública | `0.4.0`, sem endpoints V5 ativos |
 | Painel editorial | implementado no código, não ativado em produção |
 | IA | fornecedor desativado; protótipos sem fila editorial persistente |
@@ -66,6 +66,10 @@ Critérios de saída:
 - Node.js está fixado na versão principal usada pelo CI e pela produção;
 - README, plano e checklist refletem o estado realmente integrado;
 - testes de deployment cobrem estes contratos.
+
+O diretório deixa de enviar todos os cartões para cada cidadão. A paginação progressiva, o total
+exato condicionado e a compatibilidade temporária estão definidos em
+[V5.9 — diretório político paginado e auditável](V5_POLITICIAN_DIRECTORY.md).
 
 ### 2. Ativação editorial em staging
 
