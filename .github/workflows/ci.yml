@@ -59,6 +59,11 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: npm ci
+      - name: Preparar contrato Supabase apenas na base descartável
+        run: npm run db:test:bootstrap-supabase
+        env:
+          ENVIRONMENT: test
+          CONFIRM_DISPOSABLE_DATABASE: "true"
       - run: npm run db:deploy
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e './backend[dev]'

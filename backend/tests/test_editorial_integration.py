@@ -25,6 +25,24 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+async def _prepare_disposable_auth_user(
+    connection: asyncpg.Connection,
+    auth_user_id: uuid.UUID,
+) -> None:
+    auth_users_exists = await connection.fetchval("SELECT to_regclass('auth.users') IS NOT NULL")
+    if not auth_users_exists:
+        return
+    marker_exists = await connection.fetchval(
+        "SELECT to_regclass('auth.tt_disposable_test_marker') IS NOT NULL"
+    )
+    if not marker_exists:
+        pytest.skip("A FK auth.users só é exercitada numa base descartável identificada")
+    await connection.execute(
+        "INSERT INTO auth.users (id) VALUES ($1) ON CONFLICT (id) DO NOTHING",
+        auth_user_id,
+    )
+
+
 @pytest.fixture
 async def repository() -> OfficialIndexStagingRepository:
     repo = OfficialIndexStagingRepository(Settings(environment="test"))
@@ -50,20 +68,18 @@ async def test_full_private_editorial_cycle_is_versioned_and_never_publishes(
     source_url = f"https://www.parlamento.pt/testes/editorial-{suffix}.json"
 
     async with repository.pool.acquire() as connection, connection.transaction():
-        try:
-            await connection.execute(
-                """
-                INSERT INTO staff_profiles
-                    (id, auth_user_id, public_alias, role, active, created_at, updated_at)
-                VALUES ($1, $2, $3, 'REVIEWER', TRUE, $4, $4)
-                """,
-                staff_id,
-                auth_user_id,
-                f"revisor-{suffix[:10]}",
-                now,
-            )
-        except asyncpg.ForeignKeyViolationError:
-            pytest.skip("A base de integração liga staff_profiles a auth.users")
+        await _prepare_disposable_auth_user(connection, auth_user_id)
+        await connection.execute(
+            """
+            INSERT INTO staff_profiles
+                (id, auth_user_id, public_alias, role, active, created_at, updated_at)
+            VALUES ($1, $2, $3, 'REVIEWER', TRUE, $4, $4)
+            """,
+            staff_id,
+            auth_user_id,
+            f"revisor-{suffix[:10]}",
+            now,
+        )
         await connection.execute(
             """
             INSERT INTO source_documents
