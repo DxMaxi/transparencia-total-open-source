@@ -39,6 +39,8 @@ Depois do bootstrap, o CI aplica todas as migrações e comprova:
 - RLS ativa nas cinco tabelas editoriais;
 - ausência de políticas RLS para browser;
 - ausência de `USAGE`, privilégios de tabela e `EXECUTE` para `anon` e `authenticated`;
+- ausência de privilégios predefinidos globais ou específicos de `public` que possam voltar a
+  expor uma tabela, sequência ou função futura aos papéis browser;
 - `search_path` mínimo e fixo nas funções editoriais;
 - presença e ativação dos triggers de integridade, append-only, projeção e publicação;
 - ciclo `PENDING → IN_REVIEW → APPROVED` e correção para nova versão `PENDING`;
@@ -65,8 +67,9 @@ O processo exige simultaneamente:
 - a confirmação explícita `--confirm-read-only`.
 
 A transação é `READ ONLY` e `REPEATABLE READ`. O relatório contém apenas resultados booleanos,
-versão principal do PostgreSQL e contagens agregadas de `ADMIN`/`REVIEWER` ativos. Não apresenta
-emails, UUID Auth, aliases, tokens, URLs de ligação, conteúdo editorial ou segredos.
+versão principal do PostgreSQL, contagens do inventário estrutural e contagens agregadas de
+`ADMIN`/`REVIEWER` ativos. Não apresenta emails, UUID Auth, aliases, tokens, URLs de ligação,
+conteúdo editorial ou segredos.
 
 Um resultado `database_ready=true` prova apenas a estrutura PostgreSQL enumerada no relatório. Não
 autoriza o passo seguinte nem prova os controlos do dashboard Supabase.
@@ -144,6 +147,8 @@ Parar sem promover dados se ocorrer qualquer uma destas situações:
 - `aal1` aceite numa rota editorial;
 - conta inativa ainda aceite;
 - privilégio efetivo de `anon` ou `authenticated` numa tabela ou função editorial;
+- default global ou específico de `public` que conceda a um papel browser acesso a um objeto
+  futuro;
 - tabela editorial sem RLS;
 - trigger, FK ou migração obrigatória ausente;
 - alteração da projeção pública durante aprovação privada;
@@ -169,3 +174,6 @@ Quando o ensaio remoto for autorizado, conservar sem segredos:
 
 Esta evidência permite marcar itens da checklist, mas não substitui autorização para migração,
 configuração, criação de staff, publicação ou deploy.
+
+O reforço preventivo dos defaults e a sequência de autorização seguinte estão documentados em
+[V5.10 — gate de ativação editorial em staging](V5_EDITORIAL_STAGING_ACTIVATION.md).

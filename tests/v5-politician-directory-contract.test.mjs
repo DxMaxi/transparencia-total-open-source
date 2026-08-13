@@ -53,6 +53,6 @@ test("the V5.9 documentation preserves publication and identity boundaries", asy
   assert.match(documentation, /não.*fuzzy matching/is);
   assert.match(documentation, /não publica nem altera dados reais/i);
   assert.match(checklist, /\[x\] Diretório dos políticos medido e preparado/);
-  assert.match(readme, /V5\.1 a V5\.8 integradas/);
+  assert.match(readme, /V5\.1 a V5\.9 integradas/);
   assert.match(readme, /V5_POLITICIAN_DIRECTORY\.md/);
 });

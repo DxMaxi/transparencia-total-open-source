@@ -37,6 +37,7 @@ EDITORIAL_TRIGGERS = (
 REQUIRED_V5_MIGRATIONS = (
     "20260811110000_v5_editorial_foundation",
     "20260811133000_v5_editorial_withdrawal_cycle",
+    "20260813150000_v5_harden_default_privileges",
 )
 
 MANUAL_AUTH_GATES = (
@@ -60,6 +61,7 @@ class EditorialDatabaseSnapshot:
     table_privileges: frozenset[str]
     function_search_paths: dict[str, frozenset[str]]
     function_privileges: frozenset[str]
+    unsafe_default_privileges: frozenset[str]
     enabled_triggers: frozenset[str]
     auth_fk_target: str | None
     auth_fk_delete: str | None
@@ -176,6 +178,12 @@ def evaluate_editorial_staging_snapshot(
             "Um papel browser pode executar uma função editorial.",
         ),
         _check(
+            "safe_default_privileges",
+            not snapshot.unsafe_default_privileges,
+            "Os defaults do proprietário não concedem acesso browser a objetos futuros.",
+            "Um default do proprietário pode expor uma tabela, sequência ou função futura.",
+        ),
+        _check(
             "editorial_triggers",
             expected_triggers == snapshot.enabled_triggers,
             "Todos os triggers editoriais obrigatórios estão ativos.",
@@ -206,6 +214,17 @@ def evaluate_editorial_staging_snapshot(
     return {
         "database_ready": all(bool(check["ok"]) for check in checks),
         "checks": checks,
+        "database_inventory": {
+            "postgres_major": snapshot.server_version_num // 10000,
+            "editorial_table_count": len(snapshot.table_rls),
+            "editorial_function_count": len(snapshot.function_search_paths),
+            "editorial_trigger_count": len(snapshot.enabled_triggers),
+            "policy_count": snapshot.policy_count,
+            "required_migration_count": len(
+                frozenset(REQUIRED_V5_MIGRATIONS).intersection(snapshot.migrations)
+            ),
+            "unsafe_default_privilege_count": len(snapshot.unsafe_default_privileges),
+        },
         "active_staff_counts": {
             "ADMIN": snapshot.active_staff_counts.get("ADMIN", 0),
             "REVIEWER": snapshot.active_staff_counts.get("REVIEWER", 0),
@@ -330,6 +349,96 @@ async def collect_editorial_database_snapshot(
             ):
                 function_privileges.add(f"{role}:{row['proname']}")
 
+    default_privilege_rows = await connection.fetch(
+        """
+        WITH editorial_owners AS (
+            SELECT DISTINCT c.relowner AS owner_oid
+            FROM pg_class AS c
+            JOIN pg_namespace AS n ON n.oid = c.relnamespace
+            WHERE n.nspname = 'public'
+              AND c.relkind = 'r'
+              AND c.relname = ANY($1::text[])
+
+            UNION
+
+            SELECT DISTINCT p.proowner AS owner_oid
+            FROM pg_proc AS p
+            JOIN pg_namespace AS n ON n.oid = p.pronamespace
+            WHERE n.nspname = 'public'
+              AND p.proname = ANY($2::text[])
+        ),
+        browser_roles AS (
+            SELECT oid, rolname
+            FROM pg_roles
+            WHERE rolname = ANY($3::text[])
+        ),
+        target_object_types AS (
+            SELECT *
+            FROM (
+                VALUES
+                    ('TABLE', 'r'::"char"),
+                    ('SEQUENCE', 'S'::"char"),
+                    ('FUNCTION', 'f'::"char")
+            ) AS target(object_kind, object_type)
+        ),
+        global_defaults AS (
+            SELECT owners.owner_oid,
+                   target.object_kind,
+                   privilege.grantee,
+                   privilege.privilege_type
+            FROM editorial_owners AS owners
+            CROSS JOIN target_object_types AS target
+            LEFT JOIN pg_default_acl AS defaults
+              ON defaults.defaclrole = owners.owner_oid
+             AND defaults.defaclnamespace = 0
+             AND defaults.defaclobjtype = target.object_type
+            CROSS JOIN LATERAL aclexplode(
+                COALESCE(
+                    defaults.defaclacl,
+                    acldefault(target.object_type, owners.owner_oid)
+                )
+            ) AS privilege
+        ),
+        schema_additions AS (
+            SELECT owners.owner_oid,
+                   target.object_kind,
+                   privilege.grantee,
+                   privilege.privilege_type
+            FROM editorial_owners AS owners
+            CROSS JOIN target_object_types AS target
+            JOIN pg_namespace AS target_namespace
+              ON target_namespace.nspname = 'public'
+            JOIN pg_default_acl AS defaults
+              ON defaults.defaclrole = owners.owner_oid
+             AND defaults.defaclnamespace = target_namespace.oid
+             AND defaults.defaclobjtype = target.object_type
+            CROSS JOIN LATERAL aclexplode(defaults.defaclacl) AS privilege
+        ),
+        combined_defaults AS (
+            SELECT * FROM global_defaults
+            UNION ALL
+            SELECT * FROM schema_additions
+        )
+        SELECT DISTINCT browser.rolname,
+               defaults.object_kind,
+               defaults.privilege_type
+        FROM combined_defaults AS defaults
+        CROSS JOIN browser_roles AS browser
+        WHERE CASE
+            WHEN defaults.grantee = 0 THEN TRUE
+            ELSE pg_has_role(browser.oid, defaults.grantee, 'USAGE')
+        END
+        ORDER BY browser.rolname, defaults.object_kind, defaults.privilege_type
+        """,
+        list(EDITORIAL_TABLES),
+        list(EDITORIAL_FUNCTION_SEARCH_PATHS),
+        ["anon", "authenticated"],
+    )
+    unsafe_default_privileges = frozenset(
+        f"{row['rolname']}:{row['object_kind']}:{row['privilege_type']}"
+        for row in default_privilege_rows
+    )
+
     trigger_rows = await connection.fetch(
         """
         SELECT t.tgname, t.tgenabled
@@ -402,6 +511,7 @@ async def collect_editorial_database_snapshot(
         table_privileges=frozenset(table_privileges),
         function_search_paths=function_search_paths,
         function_privileges=frozenset(function_privileges),
+        unsafe_default_privileges=unsafe_default_privileges,
         enabled_triggers=enabled_triggers,
         auth_fk_target=(
             f"{auth_fk['target_schema']}.{auth_fk['target_table']}" if auth_fk else None

@@ -61,10 +61,14 @@ test("CI creates the Supabase-shaped disposable database before Prisma migration
 });
 
 test("the staging inspector is read-only and keeps operational Auth gates explicit", async () => {
-  const [service, command, documentation] = await Promise.all([
+  const [service, command, documentation, activation, migration] = await Promise.all([
     source("backend/app/services/editorial_staging_readiness.py"),
     source("backend/scripts/inspect_editorial_staging_readiness.py"),
     source("docs/V5_EDITORIAL_STAGING_READINESS.md"),
+    source("docs/V5_EDITORIAL_STAGING_ACTIVATION.md"),
+    source(
+      "prisma/migrations/20260813150000_v5_harden_default_privileges/migration.sql",
+    ),
   ]);
 
   assert.doesNotMatch(service, /\.execute\(/);
@@ -74,4 +78,16 @@ test("the staging inspector is read-only and keeps operational Auth gates explic
   assert.match(documentation, /não configura o Supabase/i);
   assert.match(documentation, /não prova.*registo público.*desativado/is);
   assert.match(documentation, /PENDING.*IN_REVIEW.*APPROVED/s);
+  assert.match(service, /safe_default_privileges/);
+  assert.match(service, /database_inventory/);
+  assert.match(activation, /não autoriza.*migração.*staging/is);
+  assert.match(activation, /privilégios predefinidos globais/i);
+  assert.match(
+    migration,
+    /ALTER DEFAULT PRIVILEGES\s+REVOKE ALL PRIVILEGES ON FUNCTIONS FROM PUBLIC/,
+  );
+  assert.doesNotMatch(
+    migration,
+    /ALTER DEFAULT PRIVILEGES IN SCHEMA public\s+REVOKE ALL PRIVILEGES ON FUNCTIONS FROM PUBLIC/,
+  );
 });
