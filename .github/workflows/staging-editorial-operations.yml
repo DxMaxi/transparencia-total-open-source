@@ -1,0 +1,120 @@
+name: Editorial staging operations
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Operação limitada de staging
+        required: true
+        type: choice
+        options:
+          - inventory-read-only
+          - migrate-schema
+          - inspect-readiness-read-only
+      expected_project_ref:
+        description: Project ref Supabase de staging confirmado
+        required: true
+        type: string
+      confirmation:
+        description: Confirmação exata própria da operação
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: transparencia-total-editorial-staging
+  cancel-in-progress: false
+
+jobs:
+  authorize:
+    if: ${{ github.ref == 'refs/heads/main' && github.repository == 'DxMaxi/transparencia-total-open-source' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      ENVIRONMENT: staging
+      REQUESTED_OPERATION: ${{ inputs.operation }}
+      REQUESTED_PROJECT_REF: ${{ inputs.expected_project_ref }}
+      REQUESTED_CONFIRMATION: ${{ inputs.confirmation }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Validar dispatch antes de pedir acesso ao environment
+        run: node scripts/validate-staging-workflow-inputs.mjs --dispatch-only
+
+  operate:
+    if: ${{ github.ref == 'refs/heads/main' && github.repository == 'DxMaxi/transparencia-total-open-source' }}
+    needs: authorize
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 30
+    env:
+      PYTHONUNBUFFERED: "1"
+      ENVIRONMENT: staging
+      REQUESTED_OPERATION: ${{ inputs.operation }}
+      REQUESTED_PROJECT_REF: ${{ inputs.expected_project_ref }}
+      REQUESTED_CONFIRMATION: ${{ inputs.confirmation }}
+      DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+      SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_SUPABASE_PROJECT_REF: ${{ vars.STAGING_SUPABASE_PROJECT_REF }}
+      STAGING_FORBIDDEN_PROJECT_REFS: ${{ vars.STAGING_FORBIDDEN_PROJECT_REFS }}
+      STAGING_CORS_ORIGIN: ${{ vars.STAGING_CORS_ORIGIN }}
+      CORS_ORIGINS: ${{ vars.STAGING_CORS_ORIGIN }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Validar configuração segregada de staging
+        run: node scripts/validate-staging-workflow-inputs.mjs
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar inspetores sem executar operações
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e './backend'
+
+      - name: Inventariar o destino antes de qualquer escrita
+        working-directory: backend
+        run: python -m scripts.inspect_staging_target --confirm-read-only
+
+      - name: Instalar dependências da migração
+        if: ${{ inputs.operation == 'migrate-schema' }}
+        run: npm ci
+
+      - name: Aplicar apenas as migrações de esquema
+        if: ${{ inputs.operation == 'migrate-schema' }}
+        run: npm run db:deploy
+
+      - name: Confirmar as migrações em catálogo read-only
+        if: ${{ inputs.operation == 'migrate-schema' }}
+        working-directory: backend
+        run: >-
+          python -m scripts.inspect_staging_target
+          --confirm-read-only
+          --require-v5-migrations
+
+      - name: Confirmar pré-requisitos do inspetor editorial
+        if: ${{ inputs.operation == 'inspect-readiness-read-only' }}
+        working-directory: backend
+        run: >-
+          python -m scripts.inspect_staging_target
+          --confirm-read-only
+          --require-v5-migrations
+
+      - name: Inspecionar prontidão editorial em transação read-only
+        if: ${{ inputs.operation == 'inspect-readiness-read-only' }}
+        working-directory: backend
+        run: python -m scripts.inspect_editorial_staging_readiness --confirm-read-only

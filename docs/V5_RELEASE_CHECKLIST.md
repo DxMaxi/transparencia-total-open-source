@@ -22,7 +22,8 @@ continuam a exigir autorizações separadas.
 - [x] CI da integração V5.10 aprovado com PostgreSQL 17.
 - [x] Frontend V5.10 publicado em modo de compatibilidade fail-closed.
 - [x] README e documentação refletem a integração e publicação fail-closed da V5.10.
-- [ ] Plano operacional V5.11 revisto e integrado antes de qualquer operação remota em staging.
+- [x] V5.11 — plano operacional revisto e integrado antes de qualquer operação remota em staging.
+- [ ] V5.12 — workflow segregado de staging revisto e integrado, ainda sem qualquer execução.
 - [ ] Existe um milestone ou conjunto de issues para todos os itens ainda abertos.
 
 ## B. Estabilização pública
@@ -40,6 +41,8 @@ continuam a exigir autorizações separadas.
 
 - [x] Migrações V5 aplicadas numa base PostgreSQL 17 descartável com forma mínima do Supabase.
 - [x] CI confirma a FK `auth.users`, RLS, triggers, `search_path` e ausência de privilégios browser.
+- [ ] Workflow manual de staging integrado com confirmações por operação e recusa do destino de
+  produção.
 - [ ] Inventário de esquema, triggers, RLS e privilégios revisto no projeto de staging confirmado.
 - [x] CI confirma que defaults globais e específicos de `public` não reabrem objetos futuros aos
   papéis browser.

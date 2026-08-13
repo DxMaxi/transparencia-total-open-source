@@ -23,7 +23,7 @@ definição da Open Source Initiative.
 > commit final desse fecho. A V5 começa pela governação de licença e pelo circuito editorial
 > privado; esta branch não altera os dados aprovados da V4.
 
-> **V5.1 a V5.10 integradas; plano operacional V5.11 em preparação local:** o painel privado usa
+> **V5.1 a V5.11 integradas; fundação operacional V5.12 em preparação local:** o painel privado usa
 > login por convite,
 > MFA obrigatório, funções de administrador/revisor, comparação entre fonte atestada e JSON
 > normalizado, versões e decisões append-only. A V5.2 acrescentou propostas parlamentares privadas,
@@ -42,7 +42,9 @@ definição da Open Source Initiative.
 > V5.10 está
 > publicado em modo de compatibilidade, mas a API pública continua em `0.4.0`; painel, explorador
 > V5, histórico e IA permanecem inativos até existir uma ativação operacional separada. A V5.11
-> documenta localmente essa execução sem autorizar qualquer operação remota. O plano e
+> documenta essa execução sem autorizar qualquer operação remota. A V5.12 prepara localmente um
+> workflow manual e segregado para inventário read-only, migração de esquema e inspeção de
+> prontidão em staging; não o executa, não configura o Supabase e não toca em dados reais. O plano e
 > a checklist de fecho estão em [Plano de conclusão da V5](docs/V5_RELEASE_PLAN.md) e
 > [Checklist de conclusão da V5](docs/V5_RELEASE_CHECKLIST.md). Consulte também
 > [Painel privado e fundação editorial V5.1](docs/V5_EDITORIAL_FOUNDATION.md),
@@ -50,6 +52,7 @@ definição da Open Source Initiative.
 > [Diretório político paginado V5.9](docs/V5_POLITICIAN_DIRECTORY.md),
 > [Gate de ativação editorial V5.10](docs/V5_EDITORIAL_STAGING_ACTIVATION.md),
 > [Plano de execução editorial em staging V5.11](docs/V5_EDITORIAL_STAGING_EXECUTION_PLAN.md),
+> [Fundação do workflow de staging V5.12](docs/V5_STAGING_WORKFLOW_FOUNDATION.md),
 > [Adaptador parlamentar V5.2](docs/V5_PARLIAMENT_EDITORIAL_ADAPTER.md) e
 > [Publicação parlamentar por âmbito V5.3](docs/V5_PARLIAMENT_SCOPE_PUBLICATION.md),
 > [Retirada parlamentar imutável V5.4](docs/V5_PARLIAMENT_WITHDRAWAL.md) e
@@ -170,6 +173,7 @@ coletores, revisão e envio push ficam no backend. Consulte [Arquitetura](docs/A
 [diretório político paginado V5.9](docs/V5_POLITICIAN_DIRECTORY.md), do
 [gate de ativação editorial V5.10](docs/V5_EDITORIAL_STAGING_ACTIVATION.md), do
 [plano de execução editorial em staging V5.11](docs/V5_EDITORIAL_STAGING_EXECUTION_PLAN.md), do
+[workflow editorial segregado de staging V5.12](docs/V5_STAGING_WORKFLOW_FOUNDATION.md), do
 [runbook de recuperação](docs/DATABASE_RECOVERY.md), do
 [backup cifrado Backblaze B2 EU](docs/BACKUP_BACKBLAZE_B2.md), além do
 [modelo de AIPD/RGPD](docs/DPIA_TEMPLATE.md).
