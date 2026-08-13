@@ -586,6 +586,38 @@ export type PublicParliamentExplorerFilters = {
   pageSize?: number;
 };
 
+function hasAdvancedParliamentFilters(filters: PublicParliamentExplorerFilters): boolean {
+  return Boolean(
+    filters.query
+      || filters.dateFrom
+      || filters.dateTo
+      || filters.initiativeType
+      || filters.initiativeStatus
+      || filters.voteResult
+      || filters.isNominal !== undefined
+      || filters.partySourceId
+      || filters.choice,
+  );
+}
+
+function legacyParliamentPath(
+  filters: PublicParliamentExplorerFilters,
+  pageSize: number,
+  offset: number,
+): string {
+  const segment = {
+    sessions: "sessions",
+    initiatives: "initiatives",
+    votes: "votes",
+  }[filters.kind];
+  const query = new URLSearchParams({
+    legislature: filters.legislature,
+    limit: String(pageSize),
+    offset: String(offset),
+  });
+  return `/api/v1/public/parliament/${segment}?${query}`;
+}
+
 export async function loadPublicParliamentExplorer(
   filters: PublicParliamentExplorerFilters,
 ): Promise<LoadedData<PublicParliamentExplorer>> {
@@ -619,7 +651,37 @@ export async function loadPublicParliamentExplorer(
     ),
   ]);
 
+  const canUseReviewedCompatibilityRoute =
+    !explorer.ok
+    && explorer.status === 404
+    && !hasAdvancedParliamentFilters(filters);
+  const legacy = canUseReviewedCompatibilityRoute
+    ? await apiFetch<
+        RawParliamentarySession[] | RawParliamentaryInitiative[] | RawParliamentaryVote[]
+      >(legacyParliamentPath(filters, pageSize, offset))
+    : null;
+
   const raw = explorer.ok ? explorer.data : null;
+  const legacyRows = legacy?.ok ? legacy.data : [];
+  const legacySessions = filters.kind === "sessions"
+    ? (legacyRows as RawParliamentarySession[]).map(mapParliamentSession)
+    : [];
+  const legacyInitiatives = filters.kind === "initiatives"
+    ? (legacyRows as RawParliamentaryInitiative[]).map(mapParliamentInitiative)
+    : [];
+  const legacyVotes = filters.kind === "votes"
+    ? (legacyRows as RawParliamentaryVote[]).map(mapParliamentVote)
+    : [];
+  const usingCompatibilityRoute = Boolean(legacy?.ok);
+  const legacyTotalIsExact = legacyRows.length < pageSize;
+  const legacyTotal = offset + legacyRows.length + (legacyTotalIsExact ? 0 : 1);
+  const compatibilityMode = explorer.ok
+    ? "CURRENT"
+    : usingCompatibilityRoute
+      ? "LIMITED_READ_ONLY"
+      : explorer.status === 404
+        ? "API_UPGRADE_REQUIRED"
+        : "UNAVAILABLE";
   const facet = (item: RawParliamentFacetOption) => ({
     value: item.value,
     label: item.label,
@@ -634,14 +696,17 @@ export async function loadPublicParliamentExplorer(
       query: raw?.query ?? filters.query,
       dateFrom: raw?.date_from ?? filters.dateFrom,
       dateTo: raw?.date_to ?? filters.dateTo,
-      sessions: raw ? raw.sessions.map(mapParliamentSession) : [],
-      initiatives: raw ? raw.initiatives.map(mapParliamentInitiative) : [],
-      votes: raw ? raw.votes.map(mapParliamentVote) : [],
-      total: raw?.total ?? 0,
+      sessions: raw ? raw.sessions.map(mapParliamentSession) : legacySessions,
+      initiatives: raw ? raw.initiatives.map(mapParliamentInitiative) : legacyInitiatives,
+      votes: raw ? raw.votes.map(mapParliamentVote) : legacyVotes,
+      total: raw?.total ?? legacyTotal,
+      totalIsExact: raw ? true : legacyTotalIsExact,
       limit: raw?.limit ?? pageSize,
       offset: raw?.offset ?? offset,
       facets: {
-        legislatures: raw?.facets.legislatures ?? [],
+        legislatures:
+          raw?.facets.legislatures
+          ?? (usingCompatibilityRoute && legacyRows.length ? [filters.legislature] : []),
         initiativeTypes: raw?.facets.initiative_types.map(facet) ?? [],
         initiativeStatuses: raw?.facets.initiative_statuses.map(facet) ?? [],
         voteResults: raw?.facets.vote_results.map(facet) ?? [],
@@ -658,8 +723,9 @@ export async function loadPublicParliamentExplorer(
         ? publicationHistory.data.map(mapParliamentPublicationHistory)
         : [],
       availability: {
-        explorer: explorer.ok,
+        explorer: explorer.ok || usingCompatibilityRoute,
         publicationHistory: publicationHistory.ok,
+        compatibilityMode,
       },
     },
   };

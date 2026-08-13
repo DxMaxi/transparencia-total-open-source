@@ -29,6 +29,10 @@ async def health() -> HealthResponse:
         environment=settings.environment,
         database_configured=settings.database_url is not None,
         ai_provider=settings.ai_provider,
+        public_capabilities=[
+            "parliament_explorer_v1",
+            "parliament_publication_history_v1",
+        ],
     )
 
 

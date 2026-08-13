@@ -1,5 +1,6 @@
 import { LandmarkIcon } from "@/components/icons";
-import { CONTACT_EMAIL, LEGAL_RESPONSIBLE } from "@/lib/site";
+import { InstitutionalContactLink } from "@/components/institutional-contact-link";
+import { LEGAL_RESPONSIBLE } from "@/lib/site";
 
 export function SiteFooter() {
   return (
@@ -12,7 +13,7 @@ export function SiteFooter() {
             Não é um website oficial do Estado.
           </p>
           <span className="footer-responsible">Responsável: {LEGAL_RESPONSIBLE}</span>
-          <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
+          <InstitutionalContactLink fallbackLabel="Contacto institucional em preparação" />
         </div>
         <div>
           <strong>Projeto</strong>

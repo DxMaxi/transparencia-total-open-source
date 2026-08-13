@@ -61,3 +61,21 @@ test("the right-of-reply form never falls back to a query-string submission", as
   const form = await readFile(new URL("components/right-of-reply-form.tsx", root), "utf8");
   assert.match(form, /<form[^>]+method=["']post["']/);
 });
+
+test("the public contact channel never falls back to the maintainer personal email", async () => {
+  const files = [
+    "lib/site.ts",
+    "app/contacto/page.tsx",
+    "components/site-footer.tsx",
+    "components/right-of-reply-form.tsx",
+    "backend/app/core/config.py",
+    ".env.example",
+  ];
+  const contents = (await Promise.all(
+    files.map((file) => readFile(new URL(file, root), "utf8")),
+  )).join("\n");
+  assert.doesNotMatch(contents, /maximiano\.jp\.moreira@gmail\.com/i);
+  assert.match(contents, /NEXT_PUBLIC_CONTACT_EMAIL/);
+  assert.match(contents, /Email institucional em configuração/);
+  assert.match(contents, /Um endereço pessoal não é\s+apresentado como substituição/);
+});

@@ -1,0 +1,127 @@
+import assert from "node:assert/strict";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import test from "node:test";
+import {
+  REQUIRED_PUBLIC_CAPABILITIES,
+  verifyPublicApiCompatibility,
+} from "../scripts/check-public-api-compatibility.mjs";
+import { verifyNextArtifact } from "../scripts/verify-next-artifact.mjs";
+
+function compatibleFetch(requestedUrls) {
+  return async (url) => {
+    requestedUrls.push(url);
+    const path = new URL(url).pathname;
+    if (path === "/api/v1/health") {
+      return Response.json({
+        status: "ok",
+        version: "0.5.0-alpha.0",
+        public_capabilities: REQUIRED_PUBLIC_CAPABILITIES,
+      });
+    }
+    if (path === "/api/v1/public/parliament/explore") {
+      return Response.json({
+        kind: "votes",
+        legislature: "XVII",
+        sessions: [],
+        initiatives: [],
+        votes: [],
+        total: 0,
+        limit: 1,
+        offset: 0,
+        facets: {},
+      });
+    }
+    if (path === "/api/v1/public/parliament/publication-history") {
+      return Response.json([]);
+    }
+    return Response.json({ detail: "not found" }, { status: 404 });
+  };
+}
+
+test("deployment preflight proves the V5.5 API contract before promoting the frontend", async () => {
+  const requestedUrls = [];
+  const result = await verifyPublicApiCompatibility("https://api.example.test", {
+    fetchImpl: compatibleFetch(requestedUrls),
+  });
+  assert.equal(result.apiVersion, "0.5.0-alpha.0");
+  assert.equal(result.mode, "CURRENT");
+  assert.deepEqual(result.capabilities, REQUIRED_PUBLIC_CAPABILITIES);
+  assert.equal(requestedUrls.length, 3);
+});
+
+test("deployment preflight accepts V4 only through all reviewed compatibility routes", async () => {
+  const fetchImpl = async (url) => {
+    const path = new URL(url).pathname;
+    if (path === "/api/v1/health") {
+      return Response.json({ status: "ok", version: "0.4.0" });
+    }
+    if (path === "/api/v1/public/data-status") {
+      return Response.json({
+        counts: {
+          parliament_sessions: 237,
+          parliament_initiatives: 2100,
+          parliament_votes: 2473,
+        },
+      });
+    }
+    return Response.json([]);
+  };
+  const result = await verifyPublicApiCompatibility("https://api.example.test", { fetchImpl });
+  assert.equal(result.apiVersion, "0.4.0");
+  assert.equal(result.mode, "LIMITED_READ_ONLY");
+  assert.deepEqual(result.capabilities, []);
+});
+
+test("deployment preflight rejects V4 when a reviewed compatibility route is missing", async () => {
+  const fetchImpl = async (url) => {
+    const path = new URL(url).pathname;
+    if (path === "/api/v1/health") return Response.json({ status: "ok", version: "0.4.0" });
+    if (path === "/api/v1/public/data-status") {
+      return Response.json({
+        counts: {
+          parliament_sessions: 237,
+          parliament_initiatives: 2100,
+          parliament_votes: 2473,
+        },
+      });
+    }
+    if (path.endsWith("/votes")) {
+      return Response.json({ detail: "not found" }, { status: 404 });
+    }
+    return Response.json([]);
+  };
+  await assert.rejects(
+    verifyPublicApiCompatibility("https://api.example.test", { fetchImpl }),
+    /parliament\/votes.*HTTP 404/,
+  );
+});
+
+test("deployment artifact contains the V5.5.1 parliamentary and contact styles", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tt-v551-artifact-"));
+  try {
+    const chunks = join(root, ".next", "static", "chunks");
+    await mkdir(chunks, { recursive: true });
+    await writeFile(
+      join(chunks, "public.css"),
+      ".parliament-page--v551{}.parliament-search-form__primary{}" +
+        ".parliament-coverage__facts{}.contact-channel--pending{}",
+      "utf8",
+    );
+    const result = await verifyNextArtifact(root);
+    assert.equal(result.markers, 4);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("Vercel and CI both enforce the deployment artifact contract", async () => {
+  const [vercel, workflow] = await Promise.all([
+    readFile(new URL("../vercel.json", import.meta.url), "utf8"),
+    readFile(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8"),
+  ]);
+  assert.match(vercel, /npm run check:deployment-api/);
+  assert.match(vercel, /npm run verify:next-artifact/);
+  assert.match(workflow, /npm run verify:next-artifact/);
+});

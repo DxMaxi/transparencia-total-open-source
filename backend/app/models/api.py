@@ -222,6 +222,7 @@ class HealthResponse(BaseModel):
     environment: str
     database_configured: bool
     ai_provider: str
+    public_capabilities: list[str]
 
 
 class ContractPartyRole(StrEnum):

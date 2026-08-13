@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
+import { InstitutionalContactLink } from "@/components/institutional-contact-link";
 import {
-  CONTACT_EMAIL,
   LEGAL_ADDRESS,
   LEGAL_REGISTRATION,
   LEGAL_RESPONSIBLE,
@@ -25,8 +25,8 @@ export default function TermsPage() {
       <section className="card legal-card">
         <h2>Identificação</h2>
         <p>
-          {PROJECT_NAME} é um projeto cívico independente, gerido por <strong>{LEGAL_RESPONSIBLE}</strong>.
-          Contacto direto: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
+          {PROJECT_NAME} é um projeto cívico independente, gerido por <strong>{LEGAL_RESPONSIBLE}</strong>.{" "}
+          Contacto institucional: <InstitutionalContactLink />.
         </p>
         {LEGAL_ADDRESS || LEGAL_TAX_ID || LEGAL_REGISTRATION ? (
           <dl className="legal-identity-list">
@@ -93,8 +93,8 @@ export default function TermsPage() {
         <p>
           O serviço é gerido a partir de Portugal. A disponibilização permanente de
           identificação e contacto segue o enquadramento português aplicável aos serviços em
-          rede. Questões legais ou pedidos formais devem ser enviados para
-          <a href={`mailto:${CONTACT_EMAIL}`}> {CONTACT_EMAIL}</a>.
+          rede. O estado do canal para questões legais ou pedidos formais está disponível no{" "}
+          <InstitutionalContactLink fallbackLabel="contacto institucional" />.
         </p>
         <p className="legal-updated">Atualizados em {LEGAL_UPDATED_AT}.</p>
       </section>

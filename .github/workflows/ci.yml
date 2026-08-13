@@ -28,6 +28,7 @@ jobs:
       - run: npm run test:frontend
       - run: npm run db:generate
       - run: npm run build:next
+      - run: npm run verify:next-artifact
 
   backend:
     runs-on: ubuntu-latest

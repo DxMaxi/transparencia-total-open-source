@@ -23,7 +23,7 @@ export function RightOfReplyForm() {
     setReceipt(null);
     const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
     if (!apiUrl) {
-      setError("O canal de resposta está temporariamente indisponível. Contacte-nos por email.");
+      setError("O canal de resposta está temporariamente indisponível. Consulte a página de contacto.");
       return;
     }
     const formElement = event.currentTarget;
@@ -127,11 +127,18 @@ export function RightOfReplyForm() {
               <span>SHA-256 da declaração: {receipt.statement_sha256}</span>
               <span>SHA-256 do recibo: {receipt.audit_sha256}</span>
               <p>{receipt.notice}</p>
-              <p>
-                Para permitir contacto durante a verificação, envie a referência acima para
-                <a href={`mailto:${CONTACT_EMAIL}`}> {CONTACT_EMAIL}</a>. O formulário não recolhe
-                o seu email.
-              </p>
+              {CONTACT_EMAIL ? (
+                <p>
+                  Para permitir contacto durante a verificação, envie a referência acima para
+                  <a href={`mailto:${CONTACT_EMAIL}`}> {CONTACT_EMAIL}</a>. O formulário não recolhe
+                  o seu email.
+                </p>
+              ) : (
+                <p>
+                  Guarde esta referência. O formulário não recolhe o seu email e o canal
+                  institucional será indicado na página de contacto quando estiver operacional.
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -150,10 +157,17 @@ export function RightOfReplyForm() {
         <p>
           A receção não confirma o mérito da resposta. Rejeições e decisões editoriais ficam igualmente registadas para auditoria interna.
         </p>
-        <p>
-          Se não tiver o identificador ou o SHA-256 do registo, contacte
-          <a href={`mailto:${CONTACT_EMAIL}`}> {CONTACT_EMAIL}</a> e indique a página em causa.
-        </p>
+        {CONTACT_EMAIL ? (
+          <p>
+            Se não tiver o identificador ou o SHA-256 do registo, contacte
+            <a href={`mailto:${CONTACT_EMAIL}`}> {CONTACT_EMAIL}</a> e indique a página em causa.
+          </p>
+        ) : (
+          <p>
+            Se não tiver o identificador ou o SHA-256, consulte a página de{" "}
+            <a href="/contacto">contacto</a>. O email institucional ainda está em configuração.
+          </p>
+        )}
       </aside>
     </div>
   );
