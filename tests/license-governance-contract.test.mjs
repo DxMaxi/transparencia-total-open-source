@@ -74,7 +74,7 @@ test("public and contributor copy describes the license scopes without relicensi
   assert.match(contributing, /material de terceiros conservem as respetivas condições/);
   assert.match(terms, /não uma licença\s+open-source/);
   assert.match(terms, /dados oficiais mantêm as condições e direitos/);
-  assert.match(legalSite, /11 de agosto de 2026/);
+  assert.match(legalSite, /13 de agosto de 2026/);
 });
 
 test("governance blocks selective interference while retaining lawful correction paths", async () => {

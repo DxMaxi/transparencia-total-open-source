@@ -25,16 +25,30 @@
 
 1. Importe o repositório GitHub em <https://vercel.com/new>.
 2. Escolha Next.js e mantenha a raiz do repositório.
-3. O `vercel.json` fixa `npm run build:next`; não use o comando `npm run build`, reservado ao
+3. O `vercel.json` confirma primeiro a compatibilidade da API pública, compila com
+   `npm run build:next` e valida o CSS gerado; não use o comando `npm run build`, reservado ao
    adaptador do preview incluído no projeto.
 4. Configure:
    - `NEXT_PUBLIC_API_URL=https://api.example.org`
+   - `NEXT_PUBLIC_CONTACT_EMAIL=contacto@seudominio.pt` apenas depois de a caixa institucional
+     estar validada e operacional; sem esta variável, o site não publica um email pessoal.
    - `NEXT_PUBLIC_LEGAL_RESPONSIBLE_NAME=…`
    - `NEXT_PUBLIC_LEGAL_ADDRESS=…` (se aplicável)
    - `NEXT_PUBLIC_LEGAL_TAX_ID=…` (se aplicável)
    - `NEXT_PUBLIC_LEGAL_REGISTRATION=…` (se aplicável)
 5. Publique e confirme os cabeçalhos de segurança, `robots.txt`, `sitemap.xml` e páginas legais.
 6. Adicione os domínios de Production e Preview ao `CORS_ORIGINS` do backend.
+
+### Ordem segura entre API e frontend
+
+Prefira publicar primeiro a API e só depois o frontend. O comando `npm run check:deployment-api` faz
+apenas pedidos públicos de leitura. Aceita o contrato completo — capacidades
+`parliament_explorer_v1` e `parliament_publication_history_v1` — ou, durante a transição, confirma
+todos os caminhos anteriores que servem as mesmas fotografias revistas. Neste segundo modo a
+interface fica deliberadamente limitada à consulta sequencial, sem fingir que a pesquisa avançada
+está disponível. O Vercel bloqueia o frontend se nenhum dos dois contratos for seguro. Após a
+compilação, `npm run verify:next-artifact` confirma que os estilos críticos da atividade parlamentar
+e do contacto chegaram efetivamente ao artefacto.
 
 ## Render
 

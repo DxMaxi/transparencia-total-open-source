@@ -236,6 +236,7 @@ export type PublicParliamentExplorer = {
   initiatives: PublicParliamentaryInitiative[];
   votes: PublicParliamentaryVote[];
   total: number;
+  totalIsExact: boolean;
   limit: number;
   offset: number;
   facets: {
@@ -252,5 +253,10 @@ export type PublicParliamentExplorer = {
   availability: {
     explorer: boolean;
     publicationHistory: boolean;
+    compatibilityMode:
+      | "CURRENT"
+      | "LIMITED_READ_ONLY"
+      | "API_UPGRADE_REQUIRED"
+      | "UNAVAILABLE";
   };
 };

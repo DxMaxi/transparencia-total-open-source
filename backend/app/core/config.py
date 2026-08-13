@@ -30,8 +30,8 @@ class Settings(BaseSettings):
     supabase_jwks_cache_seconds: int = Field(default=600, ge=60, le=3600)
 
     official_user_agent: str = (
-        "TransparenciaTotal/0.4 (+https://github.com/DxMaxi/transparencia-total-open-source; "
-        "contacto: maximiano.jp.moreira@gmail.com)"
+        "TransparenciaTotal/0.5 (+https://github.com/DxMaxi/transparencia-total-open-source; "
+        "contacto: https://www.transparenciatotal.pt/contacto)"
     )
     http_timeout_seconds: float = Field(default=30.0, gt=0, le=120)
     http_trust_env: bool = False

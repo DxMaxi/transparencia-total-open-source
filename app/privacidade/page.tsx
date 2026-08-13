@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
+import { InstitutionalContactLink } from "@/components/institutional-contact-link";
 import {
-  CONTACT_EMAIL,
   LEGAL_ADDRESS,
   LEGAL_RESPONSIBLE,
   LEGAL_TAX_ID,
@@ -27,7 +27,8 @@ export default function PrivacyPage() {
         <p>
           O responsável pelo tratamento é <strong>{LEGAL_RESPONSIBLE}</strong>, no âmbito do
           projeto cívico independente {PROJECT_NAME}. O ponto de contacto único para
-          privacidade é <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
+          privacidade está identificado no{" "}
+          <InstitutionalContactLink fallbackLabel="canal institucional" />.
           {LEGAL_ADDRESS ? <> Endereço de contacto: {LEGAL_ADDRESS}.</> : null}
           {LEGAL_TAX_ID ? <> Identificação fiscal: {LEGAL_TAX_ID}.</> : null} Não foi designado
           encarregado de proteção de dados; os pedidos são tratados diretamente pelo responsável.
@@ -94,8 +95,9 @@ export default function PrivacyPage() {
 
         <h2>5. Destinatários, prestadores e transferências</h2>
         <p>
-          O website usa Vercel, a API usa Render, a base de dados usa Supabase, o código e as
-          operações usam GitHub e o contacto usa Google. Estes prestadores recebem apenas os
+          O website usa Vercel, a API usa Render, a base de dados usa Supabase e o código e as
+          operações usam GitHub. O prestador do email institucional será indicado antes de o
+          canal ser ativado. Estes prestadores recebem apenas os
           dados técnicos necessários às respetivas funções, sujeitos às suas condições e
           mecanismos de proteção. Alguns podem tratar dados fora do Espaço Económico Europeu;
           quando isso aconteça, o tratamento deve apoiar-se num mecanismo válido do capítulo V
@@ -108,8 +110,9 @@ export default function PrivacyPage() {
           Pode pedir acesso, retificação, apagamento, limitação, oposição ou portabilidade
           quando aplicável. A oposição baseada na sua situação particular é analisada através
           da ponderação entre os seus direitos e os fundamentos imperiosos de informação
-          pública. Escreva para <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>; podemos
-          pedir apenas a informação necessária para confirmar identidade e localizar o registo.
+          pública. Consulte o{" "}
+          <InstitutionalContactLink fallbackLabel="estado do canal institucional" />;
+          podemos pedir apenas a informação necessária para confirmar identidade e localizar o registo.
           Responderemos sem demora injustificada e, em regra, no prazo de um mês.
         </p>
         <p>

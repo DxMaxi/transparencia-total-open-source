@@ -10,6 +10,10 @@ def test_health_contract() -> None:
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
     assert response.json()["version"] == "0.5.0-alpha.0"
+    assert response.json()["public_capabilities"] == [
+        "parliament_explorer_v1",
+        "parliament_publication_history_v1",
+    ]
 
 
 def test_push_broadcast_requires_admin_configuration() -> None:

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { CONTACT_EMAIL, LEGAL_UPDATED_AT } from "@/lib/site";
+import { InstitutionalContactLink } from "@/components/institutional-contact-link";
+import { LEGAL_UPDATED_AT } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Política de cookies",
@@ -42,7 +43,8 @@ export default function CookiesPage() {
         <h2>Alterações futuras</h2>
         <p>
           Esta página será atualizada antes de ativar analítica, publicidade, notificações
-          ou outra tecnologia de armazenamento. Para questões, contacte <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
+          ou outra tecnologia de armazenamento. Para questões, consulte o{" "}
+          <InstitutionalContactLink fallbackLabel="canal institucional" />.
         </p>
         <p className="legal-updated">Atualizada em {LEGAL_UPDATED_AT}.</p>
       </section>

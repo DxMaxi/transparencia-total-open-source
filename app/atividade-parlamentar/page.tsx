@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { DataModeBanner } from "@/components/data-mode-banner";
 import { SourceLink } from "@/components/source-link";
 import {
   loadPublicParliamentExplorer,
@@ -46,6 +45,13 @@ const kindLabels = {
   initiatives: "Iniciativas",
   votes: "Votações",
 };
+
+const numberFormatter = new Intl.NumberFormat("pt-PT");
+const dateFormatter = new Intl.DateTimeFormat("pt-PT", {
+  dateStyle: "long",
+  timeZone: "Europe/Lisbon",
+});
+const parliamentSourceNames = new Set(["PARLIAMENT_ACTIVITY", "PARLIAMENT_VOTES"]);
 
 type PageSearchParams = Record<string, string | string[] | undefined>;
 type ExplorerKind = keyof typeof kindLabels;
@@ -101,6 +107,17 @@ function buildHref(state: UrlState, page = 1): string {
   });
   if (page > 1) query.set("pagina", String(page));
   return `/atividade-parlamentar?${query.toString()}#explorar`;
+}
+
+function formatNumber(value: number): string {
+  return numberFormatter.format(value);
+}
+
+function formatDateTime(value?: string): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.valueOf())) return null;
+  return dateFormatter.format(date);
 }
 
 export default async function ParliamentActivityPage({
@@ -183,9 +200,31 @@ export default async function ParliamentActivityPage({
       || choice,
   );
   const invalidDateRange = Boolean(dateFrom && dateTo && dateFrom > dateTo);
+  const compatibilityMode = explorer.availability.compatibilityMode;
+  const limitedCompatibility = compatibilityMode === "LIMITED_READ_ONLY";
+  const countsAvailable = loaded.status.mode !== "UNAVAILABLE";
+  const parliamentaryTotal =
+    loaded.status.counts.parliamentSessions
+    + loaded.status.counts.parliamentInitiatives
+    + loaded.status.counts.parliamentVotes;
+  const publicTotal = Object.values(loaded.status.counts).reduce(
+    (sum, count) => sum + count,
+    0,
+  );
+  const otherPublicRecords = Math.max(0, publicTotal - parliamentaryTotal);
+  const latestCollection = loaded.status.sources
+    .filter((source) => parliamentSourceNames.has(source.sourceName))
+    .map((source) => source.finishedAt)
+    .filter((value): value is string => Boolean(value))
+    .reduce<string | undefined>(
+      (latest, value) => (!latest || value > latest ? value : latest),
+      undefined,
+    );
+  const latestCollectionLabel = formatDateTime(latestCollection);
+  const coveredLegislatures = explorer.facets.legislatures;
 
   return (
-    <main className="page-shell shell parliament-page">
+    <main className="page-shell shell parliament-page parliament-page--v551">
       <header className="page-heading page-heading--wide">
         <span className="eyebrow">Assembleia da República · dados oficiais publicados</span>
         <h1>Atividade parlamentar, sem labirintos</h1>
@@ -196,17 +235,82 @@ export default async function ParliamentActivityPage({
         </p>
       </header>
 
-      <DataModeBanner status={loaded.status} showingFallback={false} />
+      <section className="parliament-coverage card" aria-labelledby="coverage-title">
+        <div className="parliament-coverage__summary">
+          <span className="eyebrow">O que estes números cobrem</span>
+          <h2 id="coverage-title">
+            {countsAvailable
+              ? `${formatNumber(parliamentaryTotal)} registos parlamentares aprovados`
+              : "Contagens públicas temporariamente indisponíveis"}
+          </h2>
+          {countsAvailable ? (
+            <p>
+              O total geral de {formatNumber(publicTotal)} junta módulos diferentes:
+              {" "}{formatNumber(parliamentaryTotal)} registos parlamentares e
+              {" "}{formatNumber(otherPublicRecords)} registos públicos noutros módulos. Não é uma
+              contagem de toda a história parlamentar portuguesa.
+            </p>
+          ) : (
+            <p>
+              A indisponibilidade da API não é apresentada como zero registos. As contagens
+              regressam apenas quando puderem ser confirmadas na publicação oficial revista.
+            </p>
+          )}
+        </div>
+        <dl className="parliament-coverage__facts">
+          <div>
+            <dt>Âmbito pedido</dt>
+            <dd>{legislature} Legislatura</dd>
+          </div>
+          <div>
+            <dt>Fotografias disponíveis</dt>
+            <dd>
+              {coveredLegislatures.length
+                ? coveredLegislatures.join(", ")
+                : "Dados indisponíveis"}
+            </dd>
+          </div>
+          <div>
+            <dt>Histórico anterior</dt>
+            <dd>Ainda incompleto neste portal</dd>
+          </div>
+          <div>
+            <dt>Última recolha técnica</dt>
+            <dd>{latestCollectionLabel ?? "Dados indisponíveis"}</dd>
+          </div>
+        </dl>
+        <p className="parliament-coverage__note">
+          A data de recolha não é uma data de publicação: uma nova recolha só fica pública após
+          revisão humana. Se uma legislatura ou período não aparecer, significa dados
+          indisponíveis nesta cobertura — não ausência de atividade nem incumprimento.
+        </p>
+      </section>
 
       {invalidDateRange ? (
         <aside className="parliament-endpoint-warning" role="alert">
           <strong>Intervalo de datas inválido.</strong>
           <span>A data inicial não pode ser posterior à data final.</span>
         </aside>
+      ) : compatibilityMode === "LIMITED_READ_ONLY" ? (
+        <aside className="parliament-endpoint-warning parliament-endpoint-warning--compatibility" role="status">
+          <strong>Consulta simplificada durante a atualização da API.</strong>
+          <span>
+            A lista abaixo vem da mesma fotografia oficial revista. Pesquisa e filtros avançados
+            ficam suspensos até a API pública ativar o contrato V5.5; nenhuma lista não revista é usada.
+          </span>
+        </aside>
+      ) : compatibilityMode === "API_UPGRADE_REQUIRED" ? (
+        <aside className="parliament-endpoint-warning" role="alert">
+          <strong>Pesquisa avançada à espera da atualização da API.</strong>
+          <span>
+            Os registos aprovados continuam preservados. Limpe os filtros para consultar a lista
+            simplificada enquanto as duas versões ficam alinhadas.
+          </span>
+        </aside>
       ) : !explorer.availability.explorer ? (
         <aside className="parliament-endpoint-warning" role="alert">
-          <strong>Consulta temporariamente indisponível.</strong>
-          <span>Não apresentamos listas antigas nem informação não oficial como substituição.</span>
+          <strong>Não foi possível contactar a consulta pública.</strong>
+          <span>Não apresentamos dados não revistos nem informação não oficial como substituição.</span>
         </aside>
       ) : null}
 
@@ -215,19 +319,19 @@ export default async function ParliamentActivityPage({
           aria-current={kind === "sessions" ? "page" : undefined}
           href={buildHref({ tipo: "sessoes", legislatura: legislature })}
         >
-          <strong>{loaded.status.counts.parliamentSessions}</strong><span>reuniões</span>
+          <strong>{countsAvailable ? formatNumber(loaded.status.counts.parliamentSessions) : "—"}</strong><span>reuniões aprovadas</span>
         </Link>
         <Link
           aria-current={kind === "initiatives" ? "page" : undefined}
           href={buildHref({ tipo: "iniciativas", legislatura: legislature })}
         >
-          <strong>{loaded.status.counts.parliamentInitiatives}</strong><span>iniciativas</span>
+          <strong>{countsAvailable ? formatNumber(loaded.status.counts.parliamentInitiatives) : "—"}</strong><span>iniciativas aprovadas</span>
         </Link>
         <Link
           aria-current={kind === "votes" ? "page" : undefined}
           href={buildHref({ tipo: "votacoes", legislatura: legislature })}
         >
-          <strong>{loaded.status.counts.parliamentVotes}</strong><span>votações</span>
+          <strong>{countsAvailable ? formatNumber(loaded.status.counts.parliamentVotes) : "—"}</strong><span>votações aprovadas</span>
         </Link>
       </nav>
 
@@ -241,38 +345,49 @@ export default async function ParliamentActivityPage({
         </div>
 
         <form action="/atividade-parlamentar#explorar" method="get" className="parliament-search-form">
-          <label className="parliament-search-form__query">
-            <span>Pesquisar por título, número ou identificador oficial</span>
-            <input
-              defaultValue={query}
-              maxLength={120}
-              name="q"
-              placeholder="Ex.: habitação, 815/XVII ou identificador"
-              type="search"
-            />
-          </label>
-          <label>
-            <span>Consultar</span>
-            <select defaultValue={toUrlKind(kind)} name="tipo">
-              <option value="votacoes">Votações</option>
-              <option value="iniciativas">Iniciativas</option>
-              <option value="sessoes">Reuniões observadas</option>
-            </select>
-          </label>
-          <label>
-            <span>Legislatura</span>
-            <select defaultValue={legislature} name="legislatura">
-              {!explorer.facets.legislatures.includes(legislature) ? (
-                <option value={legislature}>{legislature} · sem fotografia disponível</option>
-              ) : null}
-              {explorer.facets.legislatures.map((item) => (
-                <option key={item} value={item}>{item}</option>
-              ))}
-            </select>
-          </label>
-          <button className="button button--primary" type="submit">Pesquisar</button>
+          <div className="parliament-search-form__primary">
+            <label className="parliament-search-form__query">
+              <span>Pesquisar por título, número ou identificador oficial</span>
+              <input
+                defaultValue={query}
+                disabled={limitedCompatibility}
+                maxLength={120}
+                name="q"
+                placeholder={limitedCompatibility ? "Disponível após atualização da API" : "Ex.: habitação, 815/XVII ou identificador"}
+                type="search"
+              />
+            </label>
+            <label>
+              <span>Consultar</span>
+              <select defaultValue={toUrlKind(kind)} name="tipo">
+                <option value="votacoes">Votações</option>
+                <option value="iniciativas">Iniciativas</option>
+                <option value="sessoes">Reuniões observadas</option>
+              </select>
+            </label>
+            <label>
+              <span>Legislatura</span>
+              <select defaultValue={legislature} name="legislatura">
+                {!explorer.facets.legislatures.includes(legislature) ? (
+                  <option value={legislature}>{legislature} · sem fotografia disponível</option>
+                ) : null}
+                {explorer.facets.legislatures.map((item) => (
+                  <option key={item} value={item}>{item}</option>
+                ))}
+              </select>
+            </label>
+            <button className="button button--primary" type="submit">
+              {limitedCompatibility ? "Mudar lista" : "Pesquisar"}
+            </button>
+          </div>
 
-          <details className="parliament-advanced-filters" open={advancedFiltersActive}>
+          {limitedCompatibility ? (
+            <p className="parliament-search-form__compatibility-note">
+              Neste modo temporário pode alternar entre reuniões, iniciativas e votações. A
+              pesquisa, os filtros e as contagens por resultado só reabrem com o contrato V5.5.
+            </p>
+          ) : (
+            <details className="parliament-advanced-filters" open={advancedFiltersActive}>
             <summary>Filtros adicionais</summary>
             <div>
               <label><span>Desde</span><input defaultValue={dateFrom} name="de" type="date" /></label>
@@ -351,7 +466,8 @@ export default async function ParliamentActivityPage({
                 </select>
               </label>
             </div>
-          </details>
+            </details>
+          )}
         </form>
 
         <div className="parliament-filter-evidence">
@@ -367,9 +483,11 @@ export default async function ParliamentActivityPage({
               uma agenda completa da Assembleia da República.
             </span>
           </div>
-          <Link href={buildHref({ tipo: toUrlKind(kind), legislatura: legislature })}>
-            Limpar filtros
-          </Link>
+          {!limitedCompatibility ? (
+            <Link href={buildHref({ tipo: toUrlKind(kind), legislatura: legislature })}>
+              Limpar filtros
+            </Link>
+          ) : null}
         </div>
       </section>
 
@@ -400,11 +518,17 @@ export default async function ParliamentActivityPage({
         <div className="section-heading-row">
           <div>
             <span className="eyebrow">{kindLabels[kind]} · {legislature}</span>
-            <h2 id="results-title">{explorer.total} resultados na fotografia publicada</h2>
+            <h2 id="results-title">
+              {explorer.totalIsExact
+                ? `${formatNumber(explorer.total)} resultados na fotografia publicada`
+                : `${formatNumber(records.length)} registos nesta página da fotografia publicada`}
+            </h2>
           </div>
           <p>
-            {explorer.total
-              ? `A mostrar ${firstResult}–${lastResult}.`
+            {records.length
+              ? explorer.totalIsExact
+                ? `A mostrar ${formatNumber(firstResult)}–${formatNumber(lastResult)}.`
+                : `A mostrar ${formatNumber(firstResult)}–${formatNumber(lastResult)}; a contagem filtrada completa aguarda a API V5.5.`
               : "Nenhum registo corresponde aos filtros escolhidos."}
           </p>
         </div>
@@ -483,8 +607,11 @@ export default async function ParliamentActivityPage({
 
       {!explorer.availability.publicationHistory ? (
         <aside className="parliament-endpoint-warning" role="status">
-          <strong>Histórico temporariamente indisponível.</strong>
-          <span>Os dados parlamentares mantêm a sua própria porta de publicação fail-closed.</span>
+          <strong>Histórico editorial em atualização.</strong>
+          <span>
+            A lista pública pode continuar disponível, mas decisões de publicação e retirada só
+            aparecem quando o respetivo caminho auditável da API estiver ativo.
+          </span>
         </aside>
       ) : explorer.publicationHistory.length ? (
         <section className="parliament-publication-history card" aria-labelledby="publication-history-title">

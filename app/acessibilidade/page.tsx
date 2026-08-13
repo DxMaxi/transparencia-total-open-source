@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { CONTACT_EMAIL, LEGAL_UPDATED_AT } from "@/lib/site";
+import { InstitutionalContactLink } from "@/components/institutional-contact-link";
+import { LEGAL_UPDATED_AT } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Declaração de acessibilidade",
@@ -37,10 +38,10 @@ export default function AccessibilityPage() {
         </ul>
         <h2>Contacto e alternativa acessível</h2>
         <p>
-          Se encontrar uma barreira ou precisar da informação noutro formato, escreva para
-          <a href={`mailto:${CONTACT_EMAIL}`}> {CONTACT_EMAIL}</a>. Inclua a página e a
-          dificuldade encontrada; procuraremos responder e fornecer uma alternativa acessível
-          tão depressa quanto possível.
+          Se encontrar uma barreira ou precisar da informação noutro formato, consulte o{" "}
+          <InstitutionalContactLink fallbackLabel="canal institucional" />. Quando o email estiver
+          operacional, inclua a página e a dificuldade encontrada; procuraremos responder e
+          fornecer uma alternativa acessível tão depressa quanto possível.
         </p>
         <p>
           O projeto privado adota voluntariamente os princípios de percetibilidade,
