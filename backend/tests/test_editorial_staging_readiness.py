@@ -33,6 +33,7 @@ def _ready_snapshot() -> EditorialDatabaseSnapshot:
             for function_name, search_path in EDITORIAL_FUNCTION_SEARCH_PATHS.items()
         },
         function_privileges=frozenset(),
+        unsafe_default_privileges=frozenset(),
         enabled_triggers=frozenset(EDITORIAL_TRIGGERS),
         auth_fk_target="auth.users",
         auth_fk_delete="r",
@@ -47,6 +48,15 @@ def test_readiness_report_separates_database_proof_from_manual_auth_gates() -> N
 
     assert report["database_ready"] is True
     assert all(check["ok"] for check in report["checks"])
+    assert report["database_inventory"] == {
+        "postgres_major": 17,
+        "editorial_table_count": 5,
+        "editorial_function_count": 7,
+        "editorial_trigger_count": 9,
+        "policy_count": 0,
+        "required_migration_count": 3,
+        "unsafe_default_privilege_count": 0,
+    }
     assert len(report["manual_auth_gates"]) == 5
     assert "nunca configura" in str(report["scope"])
 
@@ -72,6 +82,20 @@ def test_readiness_fails_closed_when_browser_role_can_bypass_rls() -> None:
 
     assert report["database_ready"] is False
     assert failed == {"browser_roles_unprivileged"}
+
+
+def test_readiness_fails_closed_on_unsafe_future_object_defaults() -> None:
+    snapshot = _ready_snapshot()
+    snapshot.unsafe_default_privileges = frozenset(
+        {"authenticated:FUNCTION:EXECUTE", "anon:FUNCTION:EXECUTE"}
+    )
+
+    report = evaluate_editorial_staging_snapshot(snapshot)
+    failed = {str(check["code"]) for check in report["checks"] if not check["ok"]}
+
+    assert report["database_ready"] is False
+    assert report["database_inventory"]["unsafe_default_privilege_count"] == 2
+    assert failed == {"safe_default_privileges"}
 
 
 @pytest.mark.parametrize(
@@ -121,6 +145,7 @@ async def test_disposable_supabase_shape_exercises_rls_privileges_and_staff_fk()
         suffix = uuid.uuid4().hex
         auth_user_id = uuid.uuid4()
         staff_id = f"staff_readiness_{suffix}"
+        default_probe = f"tt_default_privilege_probe_{suffix}"
 
         async with repository.pool.acquire() as connection:
             marker_exists = await connection.fetchval(
@@ -144,9 +169,27 @@ async def test_disposable_supabase_shape_exercises_rls_privileges_and_staff_fk()
                 f"admin-readiness-{suffix[:12]}",
             )
             try:
+                await connection.execute(
+                    f"""
+                    CREATE FUNCTION public.{default_probe}()
+                    RETURNS INTEGER
+                    LANGUAGE SQL
+                    IMMUTABLE
+                    AS 'SELECT 1'
+                    """
+                )
+                for browser_role in ("public", "anon", "authenticated"):
+                    can_execute = await connection.fetchval(
+                        "SELECT has_function_privilege($1::name, $2::text, 'EXECUTE')",
+                        browser_role,
+                        f"public.{default_probe}()",
+                    )
+                    assert can_execute is False
+
                 async with connection.transaction(readonly=True, isolation="repeatable_read"):
                     report = await inspect_editorial_staging_readiness(connection)
             finally:
+                await connection.execute(f"DROP FUNCTION IF EXISTS public.{default_probe}()")
                 await connection.execute("DELETE FROM staff_profiles WHERE id = $1", staff_id)
                 await connection.execute("DELETE FROM auth.users WHERE id = $1", auth_user_id)
 

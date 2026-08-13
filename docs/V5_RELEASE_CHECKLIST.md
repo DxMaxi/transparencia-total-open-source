@@ -17,9 +17,10 @@ continuam a exigir autorizações separadas.
 - [x] V5.6 — contrato de perfis auditáveis integrado.
 - [x] V5.7 — estabilização e gate público integrados.
 - [x] V5.8 — prontidão editorial para staging integrada.
-- [x] CI da integração V5.6 aprovado com PostgreSQL 17.
-- [x] Frontend V5.6 publicado em modo de compatibilidade fail-closed.
-- [x] README e documentação deixam de indicar que a V5.6 está apenas local.
+- [x] V5.9 — diretório político paginado e auditável integrado.
+- [x] CI da integração V5.9 aprovado com PostgreSQL 17.
+- [x] Frontend V5.9 publicado em modo de compatibilidade fail-closed.
+- [x] README e documentação refletem a integração e publicação fail-closed da V5.9.
 - [ ] Existe um milestone ou conjunto de issues para todos os itens ainda abertos.
 
 ## B. Estabilização pública
@@ -38,6 +39,8 @@ continuam a exigir autorizações separadas.
 - [ ] Migrações V5 aplicadas numa base PostgreSQL 17 descartável com forma mínima do Supabase.
 - [ ] CI confirma a FK `auth.users`, RLS, triggers, `search_path` e ausência de privilégios browser.
 - [ ] Inventário de esquema, triggers, RLS e privilégios revisto.
+- [ ] CI confirma que defaults globais e específicos de `public` não reabrem objetos futuros aos
+  papéis browser.
 - [ ] Migrações V5 aplicadas em staging.
 - [ ] Projeto Supabase usa signing key assimétrica.
 - [ ] URL público e redirects exatos configurados sem wildcard amplo.
