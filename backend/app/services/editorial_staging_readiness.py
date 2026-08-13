@@ -72,6 +72,24 @@ def _check(code: str, ok: bool, success: str, failure: str) -> dict[str, object]
     return {"code": code, "ok": ok, "detail": success if ok else failure}
 
 
+def _normalize_catalog_char(value: object) -> str:
+    """Normaliza o tipo interno PostgreSQL ``char`` devolvido pelo driver."""
+
+    if isinstance(value, str):
+        normalized = value
+    elif isinstance(value, (bytes, bytearray, memoryview)):
+        try:
+            normalized = bytes(value).decode("ascii")
+        except UnicodeDecodeError as exc:
+            raise ValueError("Valor char do catálogo PostgreSQL não é ASCII") from exc
+    else:
+        raise TypeError("Valor char do catálogo PostgreSQL tem um tipo inesperado")
+
+    if len(normalized) != 1 or not normalized.isascii():
+        raise ValueError("Valor char do catálogo PostgreSQL não tem exatamente um carácter ASCII")
+    return normalized
+
+
 def evaluate_editorial_staging_snapshot(
     snapshot: EditorialDatabaseSnapshot,
 ) -> dict[str, object]:
@@ -326,7 +344,9 @@ async def collect_editorial_database_snapshot(
         list(EDITORIAL_TRIGGERS),
     )
     enabled_triggers = frozenset(
-        str(row["tgname"]) for row in trigger_rows if str(row["tgenabled"]) != "D"
+        str(row["tgname"])
+        for row in trigger_rows
+        if _normalize_catalog_char(row["tgenabled"]) in {"O", "R", "A"}
     )
 
     auth_users_exists = bool(
@@ -386,8 +406,8 @@ async def collect_editorial_database_snapshot(
         auth_fk_target=(
             f"{auth_fk['target_schema']}.{auth_fk['target_table']}" if auth_fk else None
         ),
-        auth_fk_delete=str(auth_fk["confdeltype"]) if auth_fk else None,
-        auth_fk_update=str(auth_fk["confupdtype"]) if auth_fk else None,
+        auth_fk_delete=_normalize_catalog_char(auth_fk["confdeltype"]) if auth_fk else None,
+        auth_fk_update=_normalize_catalog_char(auth_fk["confupdtype"]) if auth_fk else None,
         migrations=frozenset(str(row["migration_name"]) for row in migration_rows),
         active_staff_counts={str(row["role"]): int(row["count"]) for row in staff_rows},
     )

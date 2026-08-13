@@ -11,6 +11,7 @@ from app.services.editorial_staging_readiness import (
     EDITORIAL_TRIGGERS,
     REQUIRED_V5_MIGRATIONS,
     EditorialDatabaseSnapshot,
+    _normalize_catalog_char,
     evaluate_editorial_staging_snapshot,
     inspect_editorial_staging_readiness,
 )
@@ -71,6 +72,20 @@ def test_readiness_fails_closed_when_browser_role_can_bypass_rls() -> None:
 
     assert report["database_ready"] is False
     assert failed == {"browser_roles_unprivileged"}
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [(b"r", "r"), (bytearray(b"c"), "c"), (memoryview(b"D"), "D"), ("O", "O")],
+)
+def test_postgres_catalog_char_is_normalized(value: object, expected: str) -> None:
+    assert _normalize_catalog_char(value) == expected
+
+
+@pytest.mark.parametrize("value", [b"", b"rr", b"\xff", "", "rr", 1, None])
+def test_postgres_catalog_char_rejects_invalid_values(value: object) -> None:
+    with pytest.raises((TypeError, ValueError)):
+        _normalize_catalog_char(value)
 
 
 @pytest.mark.asyncio
@@ -135,7 +150,10 @@ async def test_disposable_supabase_shape_exercises_rls_privileges_and_staff_fk()
                 await connection.execute("DELETE FROM staff_profiles WHERE id = $1", staff_id)
                 await connection.execute("DELETE FROM auth.users WHERE id = $1", auth_user_id)
 
+        failed_checks = [
+            f"{check['code']}: {check['detail']}" for check in report["checks"] if not check["ok"]
+        ]
+        assert not failed_checks, failed_checks
         assert report["database_ready"] is True
-        assert all(check["ok"] for check in report["checks"])
     finally:
         await repository.close()
