@@ -61,12 +61,21 @@ test("CI creates the Supabase-shaped disposable database before Prisma migration
 });
 
 test("the staging inspector is read-only and keeps operational Auth gates explicit", async () => {
-  const [service, command, documentation, activation, executionPlan, migration] = await Promise.all([
+  const [
+    service,
+    command,
+    documentation,
+    activation,
+    executionPlan,
+    workflowFoundation,
+    migration,
+  ] = await Promise.all([
     source("backend/app/services/editorial_staging_readiness.py"),
     source("backend/scripts/inspect_editorial_staging_readiness.py"),
     source("docs/V5_EDITORIAL_STAGING_READINESS.md"),
     source("docs/V5_EDITORIAL_STAGING_ACTIVATION.md"),
     source("docs/V5_EDITORIAL_STAGING_EXECUTION_PLAN.md"),
+    source("docs/V5_STAGING_WORKFLOW_FOUNDATION.md"),
     source(
       "prisma/migrations/20260813150000_v5_harden_default_privileges/migration.sql",
     ),
@@ -92,6 +101,10 @@ test("the staging inspector is read-only and keeps operational Auth gates explic
   assert.match(executionPlan, /service_role[\s\S]*browser/i);
   assert.match(executionPlan, /PENDING[\s\S]*IN_REVIEW[\s\S]*APPROVED/);
   assert.match(executionPlan, /f0f626eaabf21c0efffb741a35117ce4ca58feeb/);
+  assert.match(workflowFoundation, /não foi executado/i);
+  assert.match(workflowFoundation, /Supabase não foi configurado ou consultado/i);
+  assert.match(workflowFoundation, /STAGING_FORBIDDEN_PROJECT_REFS/);
+  assert.match(workflowFoundation, /não autoriza.*fase seguinte/is);
   assert.match(
     migration,
     /ALTER DEFAULT PRIVILEGES\s+REVOKE ALL PRIVILEGES ON FUNCTIONS FROM PUBLIC/,

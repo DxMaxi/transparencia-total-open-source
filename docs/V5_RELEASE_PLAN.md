@@ -10,7 +10,7 @@ geração por IA, publicação, retirada ou tratamento de dados reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.10 integradas; plano de execução V5.11 em preparação local |
+| Código V5 | V5.1 a V5.11 integradas; fundação do workflow V5.12 em preparação local |
 | Frontend público | V5.10 publicada em modo de compatibilidade fail-closed |
 | API pública | `0.4.0`, sem endpoints V5 ativos |
 | Painel editorial | implementado no código, não ativado em produção |
@@ -95,6 +95,9 @@ O reforço dos privilégios futuros e a ordem das autorizações seguintes estã
 O destino, as autorizações independentes, as condições de paragem e o pacote de evidência estão
 definidos em
 [V5.11 — plano de execução editorial em staging](V5_EDITORIAL_STAGING_EXECUTION_PLAN.md).
+O workflow manual, as confirmações específicas e a validação inequívoca do destino são preparados
+em [V5.12 — fundação do workflow editorial de staging](V5_STAGING_WORKFLOW_FOUNDATION.md). Esta
+fundação local não configura nem consulta o Supabase e não autoriza a execução do workflow.
 
 ### 3. Backend V5 e migrações de produção
 
