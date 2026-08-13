@@ -145,8 +145,12 @@ def test_vote_staging_inspection_is_read_only_and_reports_uncertainty() -> None:
 
 class PublicProfileConnection:
     def __init__(self, *, nominal_vote_count: int = 0) -> None:
+        self.membership_query = ""
+        self.mandate_query = ""
+        self.attendance_query = ""
         self.availability_query = ""
         self.vote_query = ""
+        self.declaration_query = ""
         self.nominal_vote_count = nominal_vote_count
 
     async def fetch(self, query: str, *arguments: object) -> list[dict[str, Any]]:
@@ -162,6 +166,7 @@ class PublicProfileConnection:
                     "party_short": "P",
                     "constituency": "Lisboa",
                     "legislature": "XVII",
+                    "observed_at": datetime(2026, 8, 1),
                     "verified_at": datetime(2026, 8, 1),
                     "source_publisher": "PARLIAMENT",
                     "source_url": "https://www.parlamento.pt/",
@@ -169,16 +174,31 @@ class PublicProfileConnection:
                     "source_sha256": "b" * 64,
                 }
             ]
-        self.vote_query = query
+        if "FROM parliamentary_membership_snapshots membership" in query:
+            self.membership_query = query
+        elif "FROM mandates mandate" in query:
+            self.mandate_query = query
+        elif "FROM asset_declaration_metadata adm" in query:
+            self.declaration_query = query
+        elif "FROM vote_records vr" in query:
+            self.vote_query = query
         return []
 
     async def fetchrow(self, query: str, *arguments: object) -> dict[str, Any] | None:
-        if "FROM mandates m" in query:
+        if "latest_published_activity_snapshot" in query:
+            self.attendance_query = query
+            return None
+        if "latest_published_vote_snapshot" in query:
             self.availability_query = query
             return {
-                "total": 0,
-                "present": 0,
+                "verified_at": datetime(2026, 8, 1),
+                "source_publisher": "PARLIAMENT",
+                "source_url": "https://www.parlamento.pt/",
+                "source_retrieved_at": datetime(2026, 8, 1),
+                "source_sha256": "b" * 64,
                 "nominal_vote_count": self.nominal_vote_count,
+                "observed_from": None,
+                "observed_through": None,
             }
         return None
 
@@ -199,7 +219,7 @@ def test_public_vote_gate_returns_no_votes_without_review() -> None:
     assert profile["nominal_vote_count"] == 0
     assert profile["votes"] == []
     for query in (connection.availability_query, connection.vote_query):
-        assert "review.entity_type = 'PARLIAMENT_VOTES_SNAPSHOT'" in query
+        assert "entity_type = 'PARLIAMENT_VOTES_SNAPSHOT'" in query
         assert "JOIN LATERAL" in query
         assert "LEFT JOIN LATERAL" not in query
         assert "publishable = TRUE" in query
@@ -220,13 +240,18 @@ def test_profile_uses_reviewed_total_instead_of_limited_vote_list_length() -> No
 def test_latest_negative_vote_review_revokes_an_older_positive_review() -> None:
     _, connection = _public_profile_result()
 
-    for query in (connection.availability_query, connection.vote_query):
-        order_position = query.index("ORDER BY review.reviewed_at DESC, review.id DESC")
-        selection_position = query.rfind("SELECT review.publishable", 0, order_position)
+    for query, review_alias in (
+        (connection.availability_query, "candidate"),
+        (connection.vote_query, "review"),
+    ):
+        order_position = query.index(
+            f"ORDER BY {review_alias}.reviewed_at DESC, {review_alias}.id DESC"
+        )
+        selection_position = query.rfind(f"SELECT {review_alias}.publishable", 0, order_position)
         limit_position = query.index("LIMIT 1", order_position)
         gate_position = query.index("publishable = TRUE", limit_position)
         review_selection = query[selection_position:limit_position]
-        assert "review.publishable = TRUE" not in review_selection
+        assert f"{review_alias}.publishable = TRUE" not in review_selection
         assert selection_position < order_position < limit_position < gate_position
 
 
@@ -234,9 +259,11 @@ def test_review_of_old_source_does_not_authorise_a_new_vote_snapshot() -> None:
     _, connection = _public_profile_result()
 
     for query in (connection.availability_query, connection.vote_query):
-        assert "review.entity_id = snapshot.id" in query
-        assert "review.source_document_id = source.id" in query
-        assert "published_snapshot.id =" in query
+        assert "entity_id = snapshot.id" in query
+        assert "source_document_id = source.id" in query
+        assert "snapshot.parser_version = $3" in query
+    assert "available_event.snapshot_id = published.id" in connection.availability_query
+    assert "published_snapshot.id = ve.snapshot_id" in connection.vote_query
     assert "available_record.person_id = $1" in connection.availability_query
     assert "available_record.actor_type = 'PERSON'" in connection.availability_query
     assert "available_record.choice IN" in connection.availability_query
@@ -249,6 +276,41 @@ def test_review_of_old_source_does_not_authorise_a_new_vote_snapshot() -> None:
     assert "vr.choice IN ('FAVOR', 'AGAINST', 'ABSTENTION', 'ABSENT')" in connection.vote_query
     assert "'PAIRED'" not in connection.vote_query
     assert "source_archive_attestations vote_archive" in connection.vote_query
+
+
+def test_v56_profile_areas_have_independent_fail_closed_publication_gates() -> None:
+    profile, connection = _public_profile_result()
+
+    assert profile["contract_version"] == "v5.6"
+    assert profile["coverage"]["initiatives"]["state"] == "UNAVAILABLE"
+    assert profile["declarations"] == []
+    assert profile["declaration"] is None
+    assert profile["declaration_source"] is None
+    assert "não confirma" in profile["declaration_lookup_source"]["note"]
+
+    assert "review.entity_type = 'PERSON'" in connection.membership_query
+    assert "HAVING COUNT(*)" in connection.membership_query
+    assert "source_archive_attestations archive" in connection.membership_query
+
+    assert "candidate.entity_type = 'MANDATE'" in connection.mandate_query
+    assert "ORDER BY candidate.reviewed_at DESC, candidate.id DESC" in connection.mandate_query
+    assert "source.publisher <> 'MEDIA'" in connection.mandate_query
+    assert "source_archive_attestations mandate_archive" in connection.mandate_query
+
+    assert "candidate.entity_type = 'PARLIAMENT_ACTIVITY_SNAPSHOT'" in connection.attendance_query
+    assert "candidate.entity_type = 'MANDATE'" in connection.attendance_query
+    assert "mandate_review.publishable = TRUE" in connection.attendance_query
+    assert "source_archive_attestations activity_archive" in connection.attendance_query
+    assert "source_archive_attestations mandate_archive" in connection.attendance_query
+
+    assert "snapshot.parser_version = $3" in connection.availability_query
+    assert "exact_person.source_id IS NOT NULL" in connection.availability_query
+    assert "snapshot.parser_version = $3" in connection.vote_query
+    assert "exact_person.source_id IS NOT NULL" in connection.vote_query
+
+    assert "candidate.entity_type = 'ASSET_DECLARATION'" in connection.declaration_query
+    assert "sd.publisher = 'TRANSPARENCY_ENTITY'" in connection.declaration_query
+    assert "source_archive_attestations declaration_archive" in connection.declaration_query
 
 
 class InvestigatorConnection:

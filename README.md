@@ -23,7 +23,7 @@ definição da Open Source Initiative.
 > commit final desse fecho. A V5 começa pela governação de licença e pelo circuito editorial
 > privado; esta branch não altera os dados aprovados da V4.
 
-> **V5.1 a V5.4 integradas; V5.5 em desenvolvimento local:** o painel privado usa login por convite,
+> **V5.1 a V5.5.1 integradas; V5.6 em desenvolvimento local:** o painel privado usa login por convite,
 > MFA obrigatório, funções de administrador/revisor, comparação entre fonte atestada e JSON
 > normalizado, versões e decisões append-only. A V5.2 acrescentou propostas parlamentares privadas,
 > idempotentes e separadas por âmbito, com diferenças por identificador oficial exato. A V5.3 liga
@@ -32,12 +32,16 @@ definição da Open Source Initiative.
 > nem automática. A V5.4 acrescentou retirada por categoria fechada, efeito público confirmado,
 > histórico público redigido e correção obrigatoriamente seguida de nova revisão. A V5.5 organiza
 > a leitura pública parlamentar com pesquisa, filtros, paginação e explicadores determinísticos,
-> sem inferir temas, identidades, efeito jurídico ou impacto material. Consulte
+> sem inferir temas, identidades, efeito jurídico ou impacto material. A V5.5.1 estabilizou a
+> compatibilidade pública, a apresentação parlamentar e o contacto sem expor email pessoal. A
+> V5.6 separa identidade, observações, mandatos, presenças, autoria, votos nominais e declarações
+> através de portas de publicação independentes e cobertura explícita. Consulte
 > [Painel privado e fundação editorial V5.1](docs/V5_EDITORIAL_FOUNDATION.md),
 > [Adaptador parlamentar V5.2](docs/V5_PARLIAMENT_EDITORIAL_ADAPTER.md) e
 > [Publicação parlamentar por âmbito V5.3](docs/V5_PARLIAMENT_SCOPE_PUBLICATION.md),
 > [Retirada parlamentar imutável V5.4](docs/V5_PARLIAMENT_WITHDRAWAL.md) e
-> [Experiência pública parlamentar V5.5](docs/V5_PARLIAMENT_PUBLIC_EXPERIENCE.md).
+> [Experiência pública parlamentar V5.5](docs/V5_PARLIAMENT_PUBLIC_EXPERIENCE.md) e
+> [Perfis políticos auditáveis V5.6](docs/V5_POLITICIAN_PROFILES.md).
 
 ## Princípios
 
@@ -96,8 +100,9 @@ uma fonte pública; a plataforma torna também visíveis falhas, atrasos e limit
 - Formulário de direito de resposta com recibo temporal e hashes SHA-256 sem apagar o original.
 - Exportação em JSON/CSV de contratos, grafo, notícias, alertas e direitos de resposta, sempre com
   proveniência e condições de reutilização da fonte.
-- Perfil de político com cobertura explícita, votos individuais apenas quando nominais,
-  posições coletivas separadas e ligação à declaração de interesses.
+- Perfil de político com cobertura explícita por área, observações separadas de mandatos, votos
+  individuais apenas quando nominais e portal institucional de declarações separado da prova
+  individual.
 - Promessómetro filtrável com cinco estados, incluindo “Por verificar”, catálogo inicial do
   programa e fundamentação oficial por medida avaliada.
 - Infraestrutura Web Push disponível no backend, mas sem registo automático no website público.
@@ -317,7 +322,7 @@ Abra `http://localhost:3000`. A configuração pública não regista automaticam
 | `GET` | `/api/v1/health` | Saúde e configuração não sensível |
 | `GET` | `/api/v1/public/data-status` | Modo, contagens publicáveis e última execução por fonte |
 | `GET` | `/api/v1/public/politicians` | Diretório de perfis aprovados |
-| `GET` | `/api/v1/public/politicians/{slug}` | Perfil, assiduidade e votos nominais aprovados |
+| `GET` | `/api/v1/public/politicians/{slug}` | Perfil V5.6, cobertura, mandatos e atividade individual aprovada |
 | `GET` | `/api/v1/public/promises` | Medidas com prova e última revisão aceite |
 | `GET` | `/api/v1/public/investigator` | Grafo e comparações publicadas e verificadas |
 | `GET` | `/api/v1/public/parliament/sessions` | Reuniões observadas da fotografia de atividade aprovada |
@@ -486,10 +491,13 @@ python -m scripts.review_publication PERSON person_id \
   --confirm-source-reviewed
 ```
 
-Tipos aceites: `PERSON`, `PROMISE`, `PUBLIC_CONTRACT`, `INTEREST_ENTITY` e
-`INTEREST_RELATIONSHIP`. Uma relação só pode ser promovida depois de ambos os nós estarem
-verificados e publicados. Para retirar sem apagar o histórico, use `--withdraw` com nova
-fundamentação. Cada decisão acrescenta `DataPublicationReview` e `AuditEvent`.
+Tipos aceites: `PERSON`, `MANDATE`, `ASSET_DECLARATION`, `PROMISE`, `PUBLIC_CONTRACT`,
+`INTEREST_ENTITY` e `INTEREST_RELATIONSHIP`. Uma relação só pode ser promovida depois de ambos os
+nós estarem verificados e publicados. Uma declaração exige ainda
+`--confirm-legal-basis-reviewed`, fonte da Entidade para a Transparência e arquivo atestado; uma
+ligação geral ao portal nunca é prova individual. Para retirar sem apagar o histórico, use
+`--withdraw` com nova fundamentação. Cada decisão acrescenta `DataPublicationReview` e
+`AuditEvent`. Consulte [Perfis políticos auditáveis V5.6](docs/V5_POLITICIAN_PROFILES.md).
 
 ### Modos visíveis no website
 

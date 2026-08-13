@@ -50,7 +50,7 @@ export function PoliticianDirectory({ people }: { people: PublicPersonSummary[] 
           />
         </label>
         <label>
-          <span>Grupo parlamentar</span>
+          <span>Grupo indicado na fonte</span>
           <select value={party} onChange={(event) => setParty(event.target.value)}>
             <option value="ALL">Todos</option>
             {parties.map((item) => <option value={item} key={item}>{item}</option>)}
@@ -69,7 +69,13 @@ export function PoliticianDirectory({ people }: { people: PublicPersonSummary[] 
                   {roleLabels[person.role] ?? person.role.replaceAll("_", " ")}
                 </span>
                 <h2><a href={`/politicos/${person.slug}`}>{person.name}</a></h2>
-                <p>{person.party} · {person.constituency} · {person.legislature}</p>
+                <p>
+                  Grupo observado: {person.partyShort} — {person.party} · Círculo: {person.constituency}
+                  {" · "}{person.legislature}
+                </p>
+                <small className="directory-observation-date">
+                  Observado na fonte em {person.observedAt} · revisto em {person.verifiedAt}
+                </small>
                 <SourceLink source={person.profileSource} compact />
               </div>
               <a className="text-link" href={`/politicos/${person.slug}`}>Abrir ficha</a>
@@ -79,7 +85,7 @@ export function PoliticianDirectory({ people }: { people: PublicPersonSummary[] 
       ) : (
         <div className="empty-state card">
           <strong>Nenhum perfil corresponde à pesquisa</strong>
-          <span>Altere o nome ou o grupo parlamentar selecionado.</span>
+          <span>Altere o nome ou o grupo indicado na fonte.</span>
         </div>
       )}
     </section>

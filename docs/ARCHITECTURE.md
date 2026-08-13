@@ -90,6 +90,14 @@ Um `VoteRecord` recebe `actorType=PERSON` apenas quando o dataset contém identi
 pessoa. Texto livre sem ID permanece `UNKNOWN`; posições por grupo usam `PARTY`. A métrica de um
 perfil conta apenas `PERSON`.
 
+### Perfil político
+
+Uma fotografia de pertença indica apenas “observado em”. Um período de mandato exige datas
+oficiais e revisão `MANDATE` própria. Presenças dependem simultaneamente da publicação da fotografia
+de atividade e do mandato individual revisto. Iniciativas permanecem indisponíveis enquanto a
+normalização não fornecer uma relação de autoria por identificador oficial. A ligação geral ao
+portal da Entidade para a Transparência é uma porta de pesquisa, não prova individual.
+
 ### Estado de promessa
 
 A ingestão liga a frase e página do programa a evidência oficial. Um revisor propõe estado e

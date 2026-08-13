@@ -22,10 +22,12 @@ class PublicationConnection:
         people: list[dict[str, Any]],
         source_sha256: str,
         archive_attested: bool = True,
+        review_entity: str = "PERSON",
     ) -> None:
         self.people = people
         self.source_sha256 = source_sha256
         self.archive_attested = archive_attested
+        self.review_entity = review_entity
         self.commands: list[tuple[str, tuple[object, ...]]] = []
         self.fetch_queries: list[str] = []
         self.writes: list[tuple[str, list[tuple[object, ...]]]] = []
@@ -34,8 +36,31 @@ class PublicationConnection:
         return Transaction()
 
     async def fetchrow(self, query: str, *arguments: object) -> dict[str, Any] | None:
-        if "FROM people person" in query:
+        if "FROM people person" in query and self.review_entity == "PERSON":
             return {"id": "person-1", "active": True, "source_document_id": "source-1"}
+        if "FROM mandates mandate" in query and self.review_entity == "MANDATE":
+            return {
+                "id": "mandate-1",
+                "office_title": "Deputado à Assembleia da República",
+                "started_at": "2025-06-03T00:00:00Z",
+                "ended_at": None,
+                "source_document_id": "source-1",
+                "source_publisher": "PARLIAMENT",
+                "source_kind": "OPEN_DATASET",
+            }
+        if (
+            "FROM asset_declaration_metadata declaration" in query
+            and self.review_entity == "ASSET_DECLARATION"
+        ):
+            return {
+                "id": "declaration-1",
+                "declaration_type": "Registo de interesses",
+                "declared_at": "2026-01-15T00:00:00Z",
+                "public_access_status": "PUBLIC_METADATA",
+                "source_document_id": "source-1",
+                "source_publisher": "TRANSPARENCY_ENTITY",
+                "source_kind": "DECLARATION",
+            }
         if "FROM sync_runs" in query:
             return {
                 "dataset_url": "https://www.parlamento.pt/deputados-xvii.json",
@@ -174,6 +199,76 @@ def test_individual_person_review_is_bound_to_latest_source_document() -> None:
     assert result["publishable"] is True
     assert len(review_commands) == 1
     assert review_commands[0][1][8] == "source-1"
+
+
+def test_mandate_has_its_own_review_bound_to_its_official_source() -> None:
+    connection = PublicationConnection(
+        people=[],
+        source_sha256="a" * 64,
+        review_entity="MANDATE",
+    )
+
+    result = asyncio.run(
+        _repository(connection).review_publication(
+            entity_type="MANDATE",
+            entity_id="mandate-1",
+            publish=True,
+            reviewer_alias="revisor-01",
+            rationale="Período e cargo confirmados na fonte oficial arquivada.",
+        )
+    )
+
+    review_commands = [
+        item for item in connection.commands if "data_publication_reviews" in item[0]
+    ]
+    assert result["publishable"] is True
+    assert review_commands[0][1][1] == "MANDATE"
+    assert review_commands[0][1][8] == "source-1"
+
+
+def test_asset_declaration_requires_explicit_legal_review_confirmation() -> None:
+    connection = PublicationConnection(
+        people=[],
+        source_sha256="a" * 64,
+        review_entity="ASSET_DECLARATION",
+    )
+
+    with pytest.raises(ValueError, match="revisão jurídica"):
+        asyncio.run(
+            _repository(connection).review_publication(
+                entity_type="ASSET_DECLARATION",
+                entity_id="declaration-1",
+                publish=True,
+                reviewer_alias="revisor-legal-01",
+                rationale="Fonte e âmbito jurídico confirmados.",
+            )
+        )
+
+    assert connection.commands == []
+
+
+def test_asset_declaration_records_legal_review_confirmation_in_audit_decision() -> None:
+    connection = PublicationConnection(
+        people=[],
+        source_sha256="a" * 64,
+        review_entity="ASSET_DECLARATION",
+    )
+
+    result = asyncio.run(
+        _repository(connection).review_publication(
+            entity_type="ASSET_DECLARATION",
+            entity_id="declaration-1",
+            publish=True,
+            reviewer_alias="revisor-legal-01",
+            rationale="Fonte, âmbito e base legal confirmados.",
+            legal_basis_confirmed=True,
+        )
+    )
+
+    assert result["publishable"] is True
+    assert result["legal_basis_confirmed"] is True
+    audit_command = next(item for item in connection.commands if "audit_events" in item[0])
+    assert '"legal_basis_confirmed": true' in str(audit_command[1][6])
 
 
 def test_publication_rejects_changed_source_hash_before_writing() -> None:

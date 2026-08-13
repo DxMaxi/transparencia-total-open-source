@@ -98,7 +98,7 @@ test("deployment preflight rejects V4 when a reviewed compatibility route is mis
   );
 });
 
-test("deployment artifact contains the V5.5.1 parliamentary and contact styles", async () => {
+test("deployment artifact contains the V5.5.1 and V5.6 public styles", async () => {
   const root = await mkdtemp(join(tmpdir(), "tt-v551-artifact-"));
   try {
     const chunks = join(root, ".next", "static", "chunks");
@@ -106,11 +106,12 @@ test("deployment artifact contains the V5.5.1 parliamentary and contact styles",
     await writeFile(
       join(chunks, "public.css"),
       ".parliament-page--v551{}.parliament-search-form__primary{}" +
-        ".parliament-coverage__facts{}.contact-channel--pending{}",
+        ".parliament-coverage__facts{}.contact-channel--pending{}" +
+        ".profile-coverage-grid{}.profile-declaration-list{}",
       "utf8",
     );
     const result = await verifyNextArtifact(root);
-    assert.equal(result.markers, 4);
+    assert.equal(result.markers, 6);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

@@ -538,6 +538,7 @@ class PublishedPersonSummary(BaseModel):
     constituency: str
     legislature: str
     portrait_url: HttpUrl | None = None
+    observed_at: datetime
     verified_at: datetime
     profile_source: OfficialSource
 
@@ -553,12 +554,110 @@ class PublishedVote(BaseModel):
     is_nominal: bool = True
 
 
+class PublishedProfileCoverageArea(BaseModel):
+    state: Literal["AVAILABLE", "PARTIAL", "UNAVAILABLE"]
+    record_count: int = Field(ge=0)
+    note: str
+    observed_from: datetime | None = None
+    observed_through: datetime | None = None
+    source: OfficialSource | None = None
+
+
+class PublishedPoliticianCoverage(BaseModel):
+    identity: PublishedProfileCoverageArea
+    membership_observations: PublishedProfileCoverageArea
+    mandates: PublishedProfileCoverageArea
+    attendance: PublishedProfileCoverageArea
+    initiatives: PublishedProfileCoverageArea
+    nominal_votes: PublishedProfileCoverageArea
+    declarations: PublishedProfileCoverageArea
+    matching_rule: str = (
+        "Associações individuais exigem um identificador oficial inequívoco. Nomes, siglas "
+        "ou posições coletivas nunca são convertidos em atividade pessoal."
+    )
+
+
+class PublishedMembershipObservation(BaseModel):
+    id: str
+    legislature: str
+    parliamentary_name: str
+    party: str
+    party_short: str
+    constituency: str
+    observed_at: datetime
+    verified_at: datetime
+    source: OfficialSource
+
+
+class PublishedMandate(BaseModel):
+    id: str
+    office_title: str
+    legislature: str | None = None
+    party: str | None = None
+    party_short: str | None = None
+    constituency: str | None = None
+    started_at: datetime
+    ended_at: datetime | None = None
+    verified_at: datetime
+    source: OfficialSource
+
+
+class PublishedAttendanceSummary(BaseModel):
+    available: bool
+    record_count: int = Field(ge=0)
+    present_count: int = Field(ge=0)
+    absent_count: int = Field(ge=0)
+    excused_count: int = Field(ge=0)
+    attendance_rate: int | None = Field(default=None, ge=0, le=100)
+    observed_from: datetime | None = None
+    observed_through: datetime | None = None
+    note: str
+    source: OfficialSource | None = None
+
+
+class PublishedPoliticianInitiative(BaseModel):
+    id: str
+    number: str
+    initiative_type: str
+    title: str
+    status: str | None = None
+    introduced_at: datetime | None = None
+    relation: Literal["AUTHOR", "COAUTHOR", "PROPOSER"]
+    source: OfficialSource
+
+
+class PublishedAssetDeclaration(BaseModel):
+    id: str
+    declaration_type: str
+    declared_at: datetime | None = None
+    period_label: str | None = None
+    public_access_status: str
+    verified_at: datetime
+    source: OfficialSource
+
+
+class PublishedOfficialLookup(BaseModel):
+    publisher: SourcePublisher
+    label: str
+    url: HttpUrl
+    note: str
+
+
 class PublishedPoliticianProfile(PublishedPersonSummary):
+    contract_version: Literal["v5.6"] = "v5.6"
+    membership_observations: list[PublishedMembershipObservation] = Field(default_factory=list)
+    mandates: list[PublishedMandate] = Field(default_factory=list)
+    attendance: PublishedAttendanceSummary
     attendance_rate: int | None = Field(default=None, ge=0, le=100)
     attendance_label: str
     nominal_votes_available: bool
     nominal_vote_count: int = Field(ge=0)
-    declaration_source: OfficialSource
+    initiatives: list[PublishedPoliticianInitiative] = Field(default_factory=list)
+    declarations: list[PublishedAssetDeclaration] = Field(default_factory=list)
+    declaration: PublishedAssetDeclaration | None = None
+    declaration_source: OfficialSource | None = None
+    declaration_lookup_source: PublishedOfficialLookup
+    coverage: PublishedPoliticianCoverage
     votes: list[PublishedVote] = Field(default_factory=list)
 
 

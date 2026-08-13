@@ -114,9 +114,10 @@ fase e permanece limitada a 10 000 registos. A consulta reutiliza os índices de
 tipo e legislatura já existentes. Crescimento relevante deverá motivar medição com `EXPLAIN
 ANALYZE` e, se necessário, uma migração aditiva revista separadamente; a V5.5 não altera o esquema.
 
-A próxima etapa é a V5.6: completar perfis políticos a partir de mandatos, cargos, círculo,
-presenças, iniciativas e votos nominais com identificadores oficiais inequívocos e cobertura
-explicitamente declarada.
+A etapa local seguinte é a V5.6: completa o contrato dos perfis políticos a partir de mandatos,
+cargos, círculo, presenças, iniciativas e votos nominais com identificadores oficiais inequívocos e
+cobertura explicitamente declarada. O desenho e as limitações estão documentados em
+[Perfis políticos completos e auditáveis V5.6](V5_POLITICIAN_PROFILES.md).
 
 ## Garantias mantidas
 

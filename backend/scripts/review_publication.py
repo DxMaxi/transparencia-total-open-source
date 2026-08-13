@@ -20,6 +20,8 @@ def arguments() -> argparse.Namespace:
         "entity_type",
         choices=(
             "PERSON",
+            "MANDATE",
+            "ASSET_DECLARATION",
             "PROMISE",
             "PUBLIC_CONTRACT",
             "INTEREST_ENTITY",
@@ -37,9 +39,20 @@ def arguments() -> argparse.Namespace:
         action="store_true",
         help="Confirmação explícita obrigatória para publicar",
     )
+    parser.add_argument(
+        "--confirm-legal-basis-reviewed",
+        action="store_true",
+        help=("Confirmação adicional obrigatória para publicar metadados de uma declaração"),
+    )
     args = parser.parse_args()
     if args.publish and not args.confirm_source_reviewed:
         parser.error("--publish exige --confirm-source-reviewed")
+    if (
+        args.publish
+        and args.entity_type == "ASSET_DECLARATION"
+        and not args.confirm_legal_basis_reviewed
+    ):
+        parser.error("publicar ASSET_DECLARATION exige --confirm-legal-basis-reviewed")
     return args
 
 
@@ -53,6 +66,7 @@ async def run(args: argparse.Namespace) -> None:
             publish=args.publish,
             reviewer_alias=args.reviewer,
             rationale=args.rationale,
+            legal_basis_confirmed=args.confirm_legal_basis_reviewed,
         )
     finally:
         await repository.close()

@@ -117,30 +117,57 @@ test("ingestion paths fail closed without auto-publication", async () => {
   assert.doesNotMatch(baseRepository, /INSERT INTO contract_match_reviews/);
 });
 
-test("profiles separate individual votes from collective party positions", async () => {
-  const client = await readFile(new URL("../lib/public-data.ts", import.meta.url), "utf8");
-  const types = await readFile(new URL("../types/domain.ts", import.meta.url), "utf8");
-  const profile = await readFile(
-    new URL("../components/politician-profile.tsx", import.meta.url),
-    "utf8",
-  );
+test("V5.6 profiles expose independent, fail-closed coverage areas", async () => {
+  const [client, types, profile, repository, models, reviewScript, documentation] =
+    await Promise.all([
+      readFile(new URL("../lib/public-data.ts", import.meta.url), "utf8"),
+      readFile(new URL("../types/domain.ts", import.meta.url), "utf8"),
+      readFile(new URL("../components/politician-profile.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../backend/app/repositories/postgres.py", import.meta.url), "utf8"),
+      readFile(new URL("../backend/app/models/api.py", import.meta.url), "utf8"),
+      readFile(new URL("../backend/scripts/review_publication.py", import.meta.url), "utf8"),
+      readFile(new URL("../docs/V5_POLITICIAN_PROFILES.md", import.meta.url), "utf8"),
+    ]);
 
   assert.match(client, /nominal_votes_available:\s*boolean/);
   assert.match(client, /nominal_vote_count:\s*number/);
   assert.match(client, /nominalVotesAvailable:\s*result\.data\.nominal_votes_available/);
   assert.match(client, /nominalVoteCount:\s*result\.data\.nominal_vote_count/);
   assert.match(client, /vote\.is_nominal\s*&&\s*allowedChoices\.has/);
+  assert.match(client, /contract_version\?:\s*"v5\.6"/);
+  assert.match(client, /membership_observations\?/);
+  assert.match(client, /declaration_lookup_source\?/);
+  assert.match(client, /legacyProfileCoverage/);
+  assert.doesNotMatch(client, /toOfficialSource\(result\.data\.declaration_source\)/);
+  assert.doesNotMatch(client, /groupPositions/);
   assert.match(types, /nominalVotesAvailable:\s*boolean/);
   assert.match(types, /nominalVoteCount:\s*number/);
-  assert.match(types, /groupPositions:\s*VoteRecord\[\]/);
-  assert.match(client, /groupPositions:\s*\[\]/);
+  assert.match(types, /PoliticianProfileCoverage/);
+  assert.match(types, /membershipObservations:\s*MembershipObservation\[\]/);
+  assert.match(types, /declarations:\s*AssetDeclarationRecord\[\]/);
+  assert.match(types, /declarationLookupSource:\s*OfficialLookup/);
+  assert.doesNotMatch(types, /groupPositions/);
   assert.doesNotMatch(client, /actor_label\.replace/);
   assert.doesNotMatch(client, /partyKey/);
   assert.match(profile, /profile\.nominalVotesAvailable[\s\S]*profile\.nominalVoteCount/);
   assert.doesNotMatch(profile, /profile\.votes\.filter\([\s\S]*\.length/);
-  assert.match(profile, /Sem votos individuais publicáveis nesta fonte/);
-  assert.match(profile, /Não são votos individuais/);
-  assert.match(profile, /Posições recentes do grupo/);
-  assert.match(profile, /identificador oficial\s+inequívoco/);
+  assert.match(profile, /Cobertura desta ficha/);
+  assert.match(profile, /Sem votos individuais publicáveis nesta fotografia/);
+  assert.match(profile, /Grupo indicado na fonte/);
   assert.match(profile, /Uma sigla ou um nome semelhante não é suficiente/);
+  assert.doesNotMatch(profile, /Posições recentes do grupo/);
+  assert.match(profile, /identificador oficial\s+inequívoco/);
+  assert.match(repository, /_EXACT_PERSON_VOTE_PARSER_VERSION = "parliament-activity-v5"/);
+  assert.match(repository, /candidate\.entity_type = 'MANDATE'/);
+  assert.match(repository, /candidate\.entity_type = 'ASSET_DECLARATION'/);
+  assert.match(repository, /sd\.publisher = 'TRANSPARENCY_ENTITY'/);
+  assert.match(models, /contract_version: Literal\["v5\.6"\]/);
+  assert.match(models, /membership_observations: list\[PublishedMembershipObservation\]/);
+  assert.match(models, /declarations: list\[PublishedAssetDeclaration\]/);
+  assert.match(models, /declaration_lookup_source: PublishedOfficialLookup/);
+  assert.match(reviewScript, /"MANDATE"/);
+  assert.match(reviewScript, /"ASSET_DECLARATION"/);
+  assert.match(reviewScript, /--confirm-legal-basis-reviewed/);
+  assert.match(documentation, /não publica nem retira dados reais/i);
+  assert.match(documentation, /não existe correspondência aproximada/i);
 });

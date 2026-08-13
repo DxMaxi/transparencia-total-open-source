@@ -7,6 +7,8 @@ const REQUIRED_CSS_MARKERS = [
   ".parliament-search-form__primary",
   ".parliament-coverage__facts",
   ".contact-channel--pending",
+  ".profile-coverage-grid",
+  ".profile-declaration-list",
 ];
 
 async function cssFiles(directory) {
