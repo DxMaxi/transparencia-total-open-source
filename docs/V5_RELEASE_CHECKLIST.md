@@ -18,9 +18,11 @@ continuam a exigir autorizações separadas.
 - [x] V5.7 — estabilização e gate público integrados.
 - [x] V5.8 — prontidão editorial para staging integrada.
 - [x] V5.9 — diretório político paginado e auditável integrado.
-- [x] CI da integração V5.9 aprovado com PostgreSQL 17.
-- [x] Frontend V5.9 publicado em modo de compatibilidade fail-closed.
-- [x] README e documentação refletem a integração e publicação fail-closed da V5.9.
+- [x] V5.10 — blindagem dos privilégios futuros e do inspetor read-only integrada.
+- [x] CI da integração V5.10 aprovado com PostgreSQL 17.
+- [x] Frontend V5.10 publicado em modo de compatibilidade fail-closed.
+- [x] README e documentação refletem a integração e publicação fail-closed da V5.10.
+- [ ] Plano operacional V5.11 revisto e integrado antes de qualquer operação remota em staging.
 - [ ] Existe um milestone ou conjunto de issues para todos os itens ainda abertos.
 
 ## B. Estabilização pública
@@ -36,10 +38,10 @@ continuam a exigir autorizações separadas.
 
 ## C. Base de dados e autenticação em staging
 
-- [ ] Migrações V5 aplicadas numa base PostgreSQL 17 descartável com forma mínima do Supabase.
-- [ ] CI confirma a FK `auth.users`, RLS, triggers, `search_path` e ausência de privilégios browser.
-- [ ] Inventário de esquema, triggers, RLS e privilégios revisto.
-- [ ] CI confirma que defaults globais e específicos de `public` não reabrem objetos futuros aos
+- [x] Migrações V5 aplicadas numa base PostgreSQL 17 descartável com forma mínima do Supabase.
+- [x] CI confirma a FK `auth.users`, RLS, triggers, `search_path` e ausência de privilégios browser.
+- [ ] Inventário de esquema, triggers, RLS e privilégios revisto no projeto de staging confirmado.
+- [x] CI confirma que defaults globais e específicos de `public` não reabrem objetos futuros aos
   papéis browser.
 - [ ] Migrações V5 aplicadas em staging.
 - [ ] Projeto Supabase usa signing key assimétrica.
