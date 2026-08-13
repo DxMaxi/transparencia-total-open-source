@@ -1,8 +1,5 @@
-"use client";
-
-import { useMemo, useState } from "react";
 import { SourceLink } from "@/components/source-link";
-import type { PublicPersonSummary } from "@/types/public-data";
+import type { PublicPoliticianDirectory as DirectoryData } from "@/types/public-data";
 
 const roleLabels: Record<string, string> = {
   DEPUTY: "Deputado/a",
@@ -12,56 +9,75 @@ const roleLabels: Record<string, string> = {
   OTHER_PUBLIC_OFFICE: "Titular de cargo público",
 };
 
-function normalise(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase("pt-PT");
+const numberFormatter = new Intl.NumberFormat("pt-PT");
+
+function formatCount(directory: DirectoryData): string {
+  const visible = numberFormatter.format(directory.people.length);
+  if (!directory.totalIsExact) {
+    return `${visible} perfis nesta página · total ainda não confirmado`;
+  }
+  const total = numberFormatter.format(directory.total);
+  if (directory.people.length === directory.total) {
+    return `${total} ${directory.total === 1 ? "perfil publicado" : "perfis publicados"}`;
+  }
+  return `A mostrar ${visible} de ${total} perfis publicados`;
 }
 
-export function PoliticianDirectory({ people }: { people: PublicPersonSummary[] }) {
-  const [query, setQuery] = useState("");
-  const [party, setParty] = useState("ALL");
-  const parties = useMemo(
-    () => [...new Set(people.map((person) => person.partyShort))].sort((a, b) => a.localeCompare(b, "pt")),
-    [people],
-  );
-  const filtered = useMemo(() => {
-    const needle = normalise(query.trim());
-    return people.filter((person) => {
-      const matchesParty = party === "ALL" || person.partyShort === party;
-      const haystack = normalise(
-        `${person.name} ${person.party} ${person.partyShort} ${person.constituency}`,
-      );
-      return matchesParty && (!needle || haystack.includes(needle));
-    });
-  }, [party, people, query]);
+export function PoliticianDirectory({
+  directory,
+  nextHref,
+  previousHref,
+}: {
+  directory: DirectoryData;
+  nextHref?: string;
+  previousHref?: string;
+}) {
+  const hasFilters = Boolean(directory.query || directory.partyShort);
+  const unavailable = directory.compatibilityMode === "UNAVAILABLE";
 
   return (
-    <section aria-label="Perfis disponíveis">
-      <div className="directory-controls card">
+    <section id="diretorio" aria-label="Perfis disponíveis">
+      <form className="directory-controls card" action="/politicos#diretorio" method="get">
         <label>
-          <span>Pesquisar</span>
+          <span>Pesquisar no diretório publicado</span>
           <input
             type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            name="q"
+            defaultValue={directory.query}
+            maxLength={120}
             placeholder="Nome, partido ou círculo eleitoral"
           />
         </label>
         <label>
           <span>Grupo indicado na fonte</span>
-          <select value={party} onChange={(event) => setParty(event.target.value)}>
-            <option value="ALL">Todos</option>
-            {parties.map((item) => <option value={item} key={item}>{item}</option>)}
+          <select name="grupo" defaultValue={directory.partyShort ?? ""}>
+            <option value="">Todos os grupos</option>
+            {directory.parties.map((item) => (
+              <option value={item.value} key={item.value}>
+                {item.value} — {item.label} ({numberFormatter.format(item.count)})
+              </option>
+            ))}
           </select>
         </label>
-        <strong aria-live="polite">{filtered.length} de {people.length} perfis</strong>
-      </div>
+        <div className="directory-controls__actions">
+          <button className="button button--primary" type="submit">Pesquisar</button>
+          {hasFilters ? <a className="text-link" href="/politicos#diretorio">Limpar</a> : null}
+        </div>
+        <strong aria-live="polite">{formatCount(directory)}</strong>
+      </form>
 
-      {filtered.length ? (
+      <p className="directory-search-rule">{directory.searchRule}</p>
+      {directory.compatibilityMode === "LEGACY_LIMITED" ? (
+        <div className="notice notice--warning" role="status">
+          <strong>Consulta parcial.</strong>{" "}
+          A API ainda não confirmou que devolveu o diretório completo. O total permanece
+          indisponível até essa confirmação existir.
+        </div>
+      ) : null}
+
+      {directory.people.length ? (
         <div className="politician-directory">
-          {filtered.map((person) => (
+          {directory.people.map((person) => (
             <article className="politician-directory__card card" key={person.id}>
               <div className="profile-avatar" aria-hidden="true">{person.partyShort.slice(0, 3)}</div>
               <div>
@@ -84,10 +100,34 @@ export function PoliticianDirectory({ people }: { people: PublicPersonSummary[] 
         </div>
       ) : (
         <div className="empty-state card">
-          <strong>Nenhum perfil corresponde à pesquisa</strong>
-          <span>Altere o nome ou o grupo indicado na fonte.</span>
+          <strong>
+            {unavailable
+              ? "Diretório temporariamente indisponível"
+              : hasFilters
+                ? "Nenhum perfil corresponde à pesquisa"
+                : "Ainda não existem perfis publicáveis"}
+          </strong>
+          <span>
+            {unavailable
+              ? "Não apresentamos uma lista antiga ou não confirmada como substituição."
+              : hasFilters
+                ? "Altere o nome ou o grupo indicado na fonte."
+                : "A ausência de perfis publicados não significa ausência de titulares de cargos."}
+          </span>
         </div>
       )}
+
+      {previousHref || nextHref ? (
+        <nav className="politician-pagination" aria-label="Paginação do diretório de políticos">
+          {previousHref ? (
+            <a href={previousHref}>
+              {directory.paginationMode === "CURSOR" ? "Voltar ao início" : "Página anterior"}
+            </a>
+          ) : <span />}
+          <strong>{formatCount(directory)}</strong>
+          {nextHref ? <a href={nextHref}>Ver mais perfis</a> : <span />}
+        </nav>
+      ) : null}
     </section>
   );
 }

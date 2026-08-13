@@ -22,6 +22,7 @@ import type {
   PublicParliamentaryInitiative,
   PublicParliamentarySession,
   PublicParliamentaryVote,
+  PublicPoliticianDirectory,
   PublicPersonSummary,
   SourceSyncState,
 } from "@/types/public-data";
@@ -82,6 +83,23 @@ type RawPerson = {
   observed_at?: string | null;
   verified_at: string;
   profile_source: RawSource;
+};
+
+type RawPoliticianDirectory = {
+  items: RawPerson[];
+  total: number;
+  limit: number;
+  next_cursor?: string | null;
+  query?: string | null;
+  party_short?: string | null;
+  parties: Array<{
+    value: string;
+    label: string;
+    count: number;
+  }>;
+  total_is_exact: true;
+  pagination: "CURSOR";
+  search_rule: string;
 };
 
 type RawCoverageArea = {
@@ -676,13 +694,244 @@ function mapPerson(raw: RawPerson): PublicPersonSummary {
   };
 }
 
-export async function loadPublicPoliticians(): Promise<LoadedData<PublicPersonSummary[]>> {
-  const [status, result] = await Promise.all([
+const POLITICIAN_DIRECTORY_PAGE_SIZE = 24;
+const LEGACY_POLITICIAN_LIMIT = 500;
+
+function normaliseDirectorySearch(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-PT");
+}
+
+function filterLegacyPoliticians(
+  people: PublicPersonSummary[],
+  query?: string,
+  partyShort?: string,
+): PublicPersonSummary[] {
+  const needle = normaliseDirectorySearch(query?.trim() ?? "");
+  return people.filter((person) => {
+    const matchesParty = !partyShort || person.partyShort === partyShort;
+    const haystack = normaliseDirectorySearch(
+      `${person.name} ${person.party} ${person.partyShort} ${person.constituency} ${person.legislature}`,
+    );
+    return matchesParty && (!needle || haystack.includes(needle));
+  });
+}
+
+function legacyPartyFacets(
+  people: PublicPersonSummary[],
+  query?: string,
+): PublicPoliticianDirectory["parties"] {
+  const queryMatches = filterLegacyPoliticians(people, query);
+  const counts = new Map<string, { label: string; count: number }>();
+  queryMatches.forEach((person) => {
+    const current = counts.get(person.partyShort);
+    counts.set(person.partyShort, {
+      label: current?.label ?? person.party,
+      count: (current?.count ?? 0) + 1,
+    });
+  });
+  return [...counts.entries()]
+    .map(([value, item]) => ({ value, label: item.label, count: item.count }))
+    .sort((left, right) => left.value.localeCompare(right.value, "pt-PT"));
+}
+
+export type PublicPoliticianDirectoryFilters = {
+  query?: string;
+  partyShort?: string;
+  cursor?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+function politicianDirectoryPath(filters: PublicPoliticianDirectoryFilters): string {
+  const query = new URLSearchParams();
+  if (filters.query) query.set("q", filters.query);
+  if (filters.partyShort) query.set("party_short", filters.partyShort);
+  if (filters.cursor) query.set("cursor", filters.cursor);
+  query.set("limit", String(filters.pageSize ?? POLITICIAN_DIRECTORY_PAGE_SIZE));
+  return `/api/v1/public/politicians/explore?${query.toString()}`;
+}
+
+export async function loadPublicPoliticianDirectory(
+  filters: PublicPoliticianDirectoryFilters = {},
+): Promise<LoadedData<PublicPoliticianDirectory>> {
+  const limit = Math.min(100, Math.max(1, filters.pageSize ?? POLITICIAN_DIRECTORY_PAGE_SIZE));
+  const requestedPage = Math.min(500, Math.max(1, filters.page ?? 1));
+  const normalizedFilters = { ...filters, pageSize: limit };
+  const [status, current] = await Promise.all([
     loadPublicDataStatus(),
-    apiFetch<RawPerson[]>("/api/v1/public/politicians?limit=500"),
+    apiFetch<RawPoliticianDirectory>(politicianDirectoryPath(normalizedFilters)),
   ]);
-  if (result.ok && result.data.length) {
-    return { data: result.data.map(mapPerson), status, showingFallback: false };
+
+  if (
+    current.ok
+    && Array.isArray(current.data.items)
+    && Array.isArray(current.data.parties)
+    && Number.isSafeInteger(current.data.total)
+    && current.data.total >= 0
+    && Number.isSafeInteger(current.data.limit)
+    && current.data.limit >= 1
+    && current.data.limit <= 100
+    && current.data.total_is_exact === true
+    && current.data.pagination === "CURSOR"
+  ) {
+    return {
+      status,
+      showingFallback: false,
+      data: {
+        people: current.data.items.map(mapPerson),
+        total: current.data.total,
+        totalIsExact: true,
+        limit: current.data.limit,
+        nextCursor: current.data.next_cursor ?? undefined,
+        query: current.data.query ?? undefined,
+        partyShort: current.data.party_short ?? undefined,
+        parties: current.data.parties,
+        paginationMode: "CURSOR",
+        compatibilityMode: "CURRENT",
+        currentPage: 1,
+        hasNext: Boolean(current.data.next_cursor),
+        hasPrevious: Boolean(filters.cursor),
+        cursorRejected: false,
+        searchRule: current.data.search_rule
+          || "A pesquisa limita apenas identidades publicadas e nunca cria correspondências.",
+      },
+    };
+  }
+
+  if (!current.ok && current.status === 422 && filters.cursor) {
+    return {
+      status,
+      showingFallback: false,
+      data: {
+        people: [],
+        total: 0,
+        totalIsExact: false,
+        limit,
+        query: filters.query,
+        partyShort: filters.partyShort,
+        parties: [],
+        paginationMode: "CURSOR",
+        compatibilityMode: "UNAVAILABLE",
+        currentPage: 1,
+        hasNext: false,
+        hasPrevious: false,
+        cursorRejected: true,
+        searchRule:
+          "A ligação da página não é válida para estes filtros; a consulta recomeça no início.",
+      },
+    };
+  }
+
+  const legacy = await apiFetch<RawPerson[]>(
+    `/api/v1/public/politicians?limit=${LEGACY_POLITICIAN_LIMIT}`,
+  );
+  if (!legacy.ok || !Array.isArray(legacy.data)) {
+    return {
+      status,
+      showingFallback: false,
+      data: {
+        people: [],
+        total: 0,
+        totalIsExact: false,
+        limit,
+        query: filters.query,
+        partyShort: filters.partyShort,
+        parties: [],
+        paginationMode: "LEGACY_PAGE",
+        compatibilityMode: "UNAVAILABLE",
+        currentPage: 1,
+        hasNext: false,
+        hasPrevious: false,
+        cursorRejected: false,
+        searchRule:
+          "A pesquisa limita apenas identidades publicadas e nunca cria correspondências.",
+      },
+    };
+  }
+
+  const legacyPeople = legacy.data.map(mapPerson);
+  const filtered = filterLegacyPoliticians(
+    legacyPeople,
+    filters.query,
+    filters.partyShort,
+  );
+  const complete =
+    status.mode !== "UNAVAILABLE"
+    && status.counts.politicians === legacyPeople.length
+    && legacyPeople.length <= LEGACY_POLITICIAN_LIMIT;
+  const offset = (requestedPage - 1) * limit;
+  const page = filtered.slice(offset, offset + limit);
+
+  return {
+    status,
+    showingFallback: false,
+    data: {
+      people: page,
+      total: filtered.length,
+      totalIsExact: complete,
+      limit,
+      query: filters.query,
+      partyShort: filters.partyShort,
+      parties: legacyPartyFacets(legacyPeople, filters.query),
+      paginationMode: "LEGACY_PAGE",
+      compatibilityMode: complete ? "LEGACY_COMPLETE" : "LEGACY_LIMITED",
+      currentPage: requestedPage,
+      hasNext: offset + limit < filtered.length,
+      hasPrevious: requestedPage > 1,
+      cursorRejected: false,
+      searchRule:
+        "A pesquisa limita apenas identidades já publicadas e nunca cria correspondências.",
+    },
+  };
+}
+
+export async function loadPublicPoliticians(): Promise<LoadedData<PublicPersonSummary[]>> {
+  const statusPromise = loadPublicDataStatus();
+  let pageRequest = apiFetch<RawPoliticianDirectory>(
+    politicianDirectoryPath({ pageSize: 100 }),
+  );
+  const people: PublicPersonSummary[] = [];
+  const seenCursors = new Set<string>();
+  let cursor: string | undefined;
+
+  for (let page = 0; page < 100; page += 1) {
+    const result = await pageRequest;
+    if (!result.ok || !Array.isArray(result.data.items)) break;
+    people.push(...result.data.items.map(mapPerson));
+    const nextCursor = result.data.next_cursor ?? undefined;
+    if (!nextCursor) {
+      const complete = people.length === result.data.total;
+      return {
+        data: complete ? people : [],
+        status: await statusPromise,
+        showingFallback: false,
+      };
+    }
+    if (seenCursors.has(nextCursor)) break;
+    seenCursors.add(nextCursor);
+    cursor = nextCursor;
+    pageRequest = apiFetch<RawPoliticianDirectory>(
+      politicianDirectoryPath({ cursor, pageSize: 100 }),
+    );
+  }
+
+  const [status, legacy] = await Promise.all([
+    statusPromise,
+    apiFetch<RawPerson[]>(
+      `/api/v1/public/politicians?limit=${LEGACY_POLITICIAN_LIMIT}`,
+    ),
+  ]);
+  if (
+    legacy.ok
+    && Array.isArray(legacy.data)
+    && status.mode !== "UNAVAILABLE"
+    && legacy.data.length === status.counts.politicians
+    && legacy.data.length <= LEGACY_POLITICIAN_LIMIT
+  ) {
+    return { data: legacy.data.map(mapPerson), status, showingFallback: false };
   }
   return { data: [], status, showingFallback: false };
 }

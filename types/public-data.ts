@@ -124,6 +124,30 @@ export type PublicPersonSummary = {
   profileSource: OfficialSource;
 };
 
+export type PublicPoliticianFacet = {
+  value: string;
+  label: string;
+  count: number;
+};
+
+export type PublicPoliticianDirectory = {
+  people: PublicPersonSummary[];
+  total: number;
+  totalIsExact: boolean;
+  limit: number;
+  nextCursor?: string;
+  query?: string;
+  partyShort?: string;
+  parties: PublicPoliticianFacet[];
+  paginationMode: "CURSOR" | "LEGACY_PAGE";
+  compatibilityMode: "CURRENT" | "LEGACY_COMPLETE" | "LEGACY_LIMITED" | "UNAVAILABLE";
+  currentPage: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
+  cursorRejected: boolean;
+  searchRule: string;
+};
+
 export type PublicParliamentarySession = {
   id: string;
   sourceId: string;
