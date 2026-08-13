@@ -5,6 +5,7 @@ import { LEGAL_UPDATED_AT } from "@/lib/site";
 export const metadata: Metadata = {
   title: "Declaração de acessibilidade",
   description: "Compromisso, estado e contacto de acessibilidade da Transparência Total.",
+  alternates: { canonical: "/acessibilidade" },
 };
 
 export default function AccessibilityPage() {

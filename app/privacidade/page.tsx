@@ -11,6 +11,7 @@ import {
 export const metadata: Metadata = {
   title: "Política de privacidade",
   description: "Como a Transparência Total trata dados pessoais e protege os seus direitos.",
+  alternates: { canonical: "/privacidade" },
 };
 
 export default function PrivacyPage() {

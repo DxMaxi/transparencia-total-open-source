@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   title: "Promessómetro",
   description:
     "Compromissos do Programa do XXV Governo, com página oficial, estado de verificação e prova de execução quando exista.",
+  alternates: { canonical: "/promessas" },
 };
 
 export const revalidate = 60;

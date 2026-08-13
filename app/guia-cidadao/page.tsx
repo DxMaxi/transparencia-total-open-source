@@ -4,6 +4,7 @@ import { CitizenGuideAlerts } from "@/components/citizen-guide-alerts";
 export const metadata: Metadata = {
   title: "Guia Neutro do Cidadão",
   description: "Guia responsável para consultar legislação e serviços públicos oficiais.",
+  alternates: { canonical: "/guia-cidadao" },
 };
 
 export default function CitizenGuidePage() {

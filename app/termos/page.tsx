@@ -12,6 +12,7 @@ import {
 export const metadata: Metadata = {
   title: "Aviso legal e termos de utilização",
   description: "Identificação, limites editoriais e condições de utilização do projeto.",
+  alternates: { canonical: "/termos" },
 };
 
 export default function TermsPage() {
