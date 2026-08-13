@@ -119,6 +119,7 @@ export type PublicPersonSummary = {
   constituency: string;
   legislature: string;
   portraitUrl?: string;
+  observedAt: string;
   verifiedAt: string;
   profileSource: OfficialSource;
 };

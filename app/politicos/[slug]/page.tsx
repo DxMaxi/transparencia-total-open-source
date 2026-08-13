@@ -19,7 +19,7 @@ export async function generateMetadata({
   if (!loaded.data) return { title: "Perfil político" };
   return {
     title: loaded.data.name,
-    description: `${loaded.data.name}: cargo, grupo parlamentar, círculo e registos oficiais disponíveis.`,
+    description: `${loaded.data.name}: identidade, mandatos e atividade individual com cobertura e fontes oficiais visíveis.`,
   };
 }
 

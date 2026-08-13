@@ -45,7 +45,7 @@ test("V5.5 never links a party or politician by a similar label", async () => {
   assert.match(sync, /CODE_VERSION = "parliament-activity-v5"/);
   assert.doesNotMatch(client, /actor_label\.replace/);
   assert.doesNotMatch(client, /partyKey/);
-  assert.match(client, /groupPositions:\s*\[\]/);
+  assert.doesNotMatch(client, /groupPositions/);
   assert.match(profile, /identificador oficial\s+inequívoco/);
   assert.match(profile, /Uma sigla ou um nome semelhante não é suficiente/);
 });

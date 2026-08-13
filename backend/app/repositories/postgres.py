@@ -29,6 +29,7 @@ PUBLICATION_RULE = (
     "Apenas registos aprovados segundo a regra explícita do respetivo conjunto; "
     "a ingestão nunca equivale a publicação."
 )
+_EXACT_PERSON_VOTE_PARSER_VERSION = "parliament-activity-v5"
 
 _PUBLISHER_CODES = {
     "PARLIAMENT": "AR",
@@ -680,7 +681,7 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                        COALESCE(pa.short_name, '—') AS party_short,
                        COALESCE(ms.constituency, 'Não disponível') AS constituency,
                        COALESCE(ms.legislature, 'Não disponível') AS legislature,
-                       review.reviewed_at AS verified_at,
+                       ms.observed_at, review.reviewed_at AS verified_at,
                        sd.publisher::text AS source_publisher,
                        sd.url AS source_url, sd.retrieved_at AS source_retrieved_at,
                        sd.content_sha256 AS source_sha256
@@ -726,6 +727,7 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
             "constituency": row["constituency"],
             "legislature": row["legislature"],
             "portrait_url": row["photo_url"],
+            "observed_at": row["observed_at"],
             "verified_at": row["verified_at"],
             "profile_source": _source_from_row(row),
         }
@@ -743,86 +745,273 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
         if self.pool is None:
             raise RuntimeError("Base de dados não configurada")
         async with self.pool.acquire() as connection:
-            attendance = await connection.fetchrow(
+            membership_rows = await connection.fetch(
                 """
-                WITH latest_published_vote_snapshot AS (
-                    SELECT snapshot.id
-                    FROM parliament_activity_snapshots snapshot
+                WITH reviewed_sources AS (
+                    SELECT membership.source_document_id, membership.legislature,
+                           MAX(latest_review.reviewed_at) AS fully_reviewed_at,
+                           source.retrieved_at
+                    FROM parliamentary_membership_snapshots membership
                     JOIN source_documents source
-                      ON source.id = snapshot.source_document_id
+                      ON source.id = membership.source_document_id
                     JOIN LATERAL (
                         SELECT review.publishable, review.reviewed_at
                         FROM data_publication_reviews review
-                        WHERE review.entity_type = 'PARLIAMENT_VOTES_SNAPSHOT'
-                          AND review.entity_id = snapshot.id
-                          AND review.source_document_id = source.id
+                        WHERE review.entity_type = 'PERSON'
+                          AND review.entity_id = membership.person_id
+                          AND review.source_document_id = membership.source_document_id
                         ORDER BY review.reviewed_at DESC, review.id DESC
                         LIMIT 1
                     ) latest_review ON latest_review.publishable = TRUE
-                    WHERE snapshot.legislature = $2
-                      AND source.publisher = 'PARLIAMENT'
+                    WHERE source.publisher = 'PARLIAMENT'
                       AND EXISTS (
                           SELECT 1 FROM source_archive_attestations archive
                           WHERE archive.source_document_id = source.id
                             AND archive.content_sha256 = source.content_sha256
                             AND archive.retrieval_url = source.url
                       )
-                    ORDER BY latest_review.reviewed_at DESC,
+                    GROUP BY membership.source_document_id, membership.legislature,
+                             source.retrieved_at
+                    HAVING COUNT(*) = (
+                        SELECT COUNT(*)
+                        FROM parliamentary_membership_snapshots candidate
+                        WHERE candidate.source_document_id = membership.source_document_id
+                          AND candidate.legislature = membership.legislature
+                    )
+                )
+                SELECT membership.id,
+                       COALESCE(membership.parliamentary_name,
+                                person.parliamentary_name, person.full_name) AS parliamentary_name,
+                       COALESCE(party.name, 'Sem filiação indicada') AS party,
+                       COALESCE(party.short_name, '—') AS party_short,
+                       COALESCE(membership.constituency, 'Dados indisponíveis') AS constituency,
+                       membership.legislature, membership.observed_at,
+                       reviewed.fully_reviewed_at AS verified_at,
+                       source.publisher::text AS source_publisher,
+                       source.url AS source_url,
+                       source.retrieved_at AS source_retrieved_at,
+                       source.content_sha256 AS source_sha256
+                FROM parliamentary_membership_snapshots membership
+                JOIN reviewed_sources reviewed
+                  ON reviewed.source_document_id = membership.source_document_id
+                 AND reviewed.legislature = membership.legislature
+                JOIN people person ON person.id = membership.person_id
+                JOIN source_documents source ON source.id = membership.source_document_id
+                LEFT JOIN parties party ON party.id = membership.party_id
+                WHERE membership.person_id = $1
+                ORDER BY membership.observed_at DESC, membership.id DESC
+                LIMIT 100
+                """,
+                row["id"],
+            )
+
+            mandate_rows = await connection.fetch(
+                """
+                SELECT mandate.id, mandate.office_title, mandate.legislature,
+                       party.name AS party, party.short_name AS party_short,
+                       mandate.constituency, mandate.started_at, mandate.ended_at,
+                       review.reviewed_at AS verified_at,
+                       source.publisher::text AS source_publisher,
+                       source.url AS source_url,
+                       source.retrieved_at AS source_retrieved_at,
+                       source.content_sha256 AS source_sha256
+                FROM mandates mandate
+                JOIN source_documents source ON source.id = mandate.source_document_id
+                JOIN LATERAL (
+                    SELECT candidate.publishable, candidate.reviewed_at
+                    FROM data_publication_reviews candidate
+                    WHERE candidate.entity_type = 'MANDATE'
+                      AND candidate.entity_id = mandate.id
+                      AND candidate.source_document_id = source.id
+                    ORDER BY candidate.reviewed_at DESC, candidate.id DESC
+                    LIMIT 1
+                ) review ON review.publishable = TRUE
+                LEFT JOIN parties party ON party.id = mandate.party_id
+                WHERE mandate.person_id = $1
+                  AND source.publisher <> 'MEDIA'
+                  AND source.kind <> 'NEWS_ARTICLE'
+                  AND EXISTS (
+                      SELECT 1 FROM source_archive_attestations mandate_archive
+                      WHERE mandate_archive.source_document_id = source.id
+                        AND mandate_archive.content_sha256 = source.content_sha256
+                        AND mandate_archive.retrieval_url = source.url
+                  )
+                ORDER BY mandate.started_at DESC, mandate.id DESC
+                LIMIT 100
+                """,
+                row["id"],
+            )
+
+            attendance = await connection.fetchrow(
+                """
+                WITH latest_published_activity_snapshot AS (
+                    SELECT snapshot.id, snapshot.source_document_id,
+                           review.reviewed_at AS verified_at,
+                           source.publisher::text AS source_publisher,
+                           source.url AS source_url,
+                           source.retrieved_at AS source_retrieved_at,
+                           source.content_sha256 AS source_sha256
+                    FROM parliament_activity_snapshots snapshot
+                    JOIN source_documents source
+                      ON source.id = snapshot.source_document_id
+                    JOIN LATERAL (
+                        SELECT candidate.publishable, candidate.reviewed_at
+                        FROM data_publication_reviews candidate
+                        WHERE candidate.entity_type = 'PARLIAMENT_ACTIVITY_SNAPSHOT'
+                          AND candidate.entity_id = snapshot.id
+                          AND candidate.source_document_id = source.id
+                        ORDER BY candidate.reviewed_at DESC, candidate.id DESC
+                        LIMIT 1
+                    ) review ON review.publishable = TRUE
+                    WHERE snapshot.legislature = $2
+                      AND source.publisher = 'PARLIAMENT'
+                      AND EXISTS (
+                          SELECT 1 FROM source_archive_attestations activity_archive
+                          WHERE activity_archive.source_document_id = source.id
+                            AND activity_archive.content_sha256 = source.content_sha256
+                            AND activity_archive.retrieval_url = source.url
+                      )
+                    ORDER BY review.reviewed_at DESC,
                              snapshot.collected_at DESC, snapshot.id DESC
                     LIMIT 1
                 )
-                SELECT COUNT(*) FILTER (WHERE ar.present IS NOT NULL) AS total,
-                       COUNT(*) FILTER (WHERE ar.present = TRUE) AS present,
-                       (
-                           SELECT COUNT(*)
-                           FROM vote_records available_record
-                           JOIN vote_events available_event
-                             ON available_event.id = available_record.vote_event_id
-                           JOIN latest_published_vote_snapshot published_snapshot
-                             ON published_snapshot.id = available_event.snapshot_id
-                           JOIN source_documents available_source
-                             ON available_source.id = available_event.source_document_id
-                           WHERE available_record.person_id = $1
-                             AND available_record.actor_type = 'PERSON'
-                             AND available_record.choice IN (
-                                 'FAVOR', 'AGAINST', 'ABSTENTION', 'ABSENT'
-                             )
-                             AND available_record.source_document_id =
-                                 available_event.source_document_id
-                             AND available_event.is_nominal = TRUE
-                             AND available_source.publisher = 'PARLIAMENT'
-                             AND EXISTS (
-                                 SELECT 1
-                                 FROM source_archive_attestations available_archive
-                                 WHERE available_archive.source_document_id =
-                                       available_source.id
-                                   AND available_archive.content_sha256 =
-                                       available_source.content_sha256
-                                   AND available_archive.retrieval_url =
-                                       available_source.url
-                             )
-                       ) AS nominal_vote_count
-                FROM mandates m
-                JOIN attendance_records ar ON ar.mandate_id = m.id
-                JOIN source_documents attendance_source
-                  ON attendance_source.id = ar.source_document_id
-                WHERE m.person_id = $1
-                  AND EXISTS (
-                      SELECT 1
-                      FROM source_archive_attestations attendance_archive
-                      WHERE attendance_archive.source_document_id = attendance_source.id
-                        AND attendance_archive.content_sha256 =
-                            attendance_source.content_sha256
-                        AND attendance_archive.retrieval_url = attendance_source.url
-                  )
+                SELECT published.verified_at, published.source_publisher,
+                       published.source_url, published.source_retrieved_at,
+                       published.source_sha256,
+                       attendance_stats.record_count,
+                       attendance_stats.present_count,
+                       attendance_stats.absent_count,
+                       attendance_stats.excused_count,
+                       attendance_stats.observed_from,
+                       attendance_stats.observed_through
+                FROM latest_published_activity_snapshot published
+                JOIN LATERAL (
+                    SELECT COUNT(attendance_record.id) FILTER (
+                               WHERE attendance_record.present IS NOT NULL
+                           ) AS record_count,
+                           COUNT(attendance_record.id) FILTER (
+                               WHERE attendance_record.present = TRUE
+                           ) AS present_count,
+                           COUNT(attendance_record.id) FILTER (
+                               WHERE attendance_record.present = FALSE
+                           ) AS absent_count,
+                           COUNT(attendance_record.id) FILTER (
+                               WHERE attendance_record.is_excused = TRUE
+                           ) AS excused_count,
+                           MIN(session.starts_at) FILTER (
+                               WHERE attendance_record.present IS NOT NULL
+                           ) AS observed_from,
+                           MAX(session.starts_at) FILTER (
+                               WHERE attendance_record.present IS NOT NULL
+                           ) AS observed_through
+                    FROM parliamentary_sessions session
+                    JOIN attendance_records attendance_record
+                      ON attendance_record.session_id = session.id
+                     AND attendance_record.source_document_id = session.source_document_id
+                    JOIN mandates mandate
+                      ON mandate.id = attendance_record.mandate_id
+                     AND mandate.person_id = $1
+                    JOIN source_documents mandate_source
+                      ON mandate_source.id = mandate.source_document_id
+                    JOIN LATERAL (
+                        SELECT candidate.publishable
+                        FROM data_publication_reviews candidate
+                        WHERE candidate.entity_type = 'MANDATE'
+                          AND candidate.entity_id = mandate.id
+                          AND candidate.source_document_id = mandate_source.id
+                        ORDER BY candidate.reviewed_at DESC, candidate.id DESC
+                        LIMIT 1
+                    ) mandate_review ON mandate_review.publishable = TRUE
+                    WHERE session.snapshot_id = published.id
+                      AND session.source_document_id = published.source_document_id
+                      AND mandate_source.publisher <> 'MEDIA'
+                      AND mandate_source.kind <> 'NEWS_ARTICLE'
+                      AND EXISTS (
+                          SELECT 1 FROM source_archive_attestations mandate_archive
+                          WHERE mandate_archive.source_document_id = mandate_source.id
+                            AND mandate_archive.content_sha256 =
+                                mandate_source.content_sha256
+                            AND mandate_archive.retrieval_url = mandate_source.url
+                      )
+                ) attendance_stats ON TRUE
                 """,
                 row["id"],
                 row["legislature"],
             )
+
+            vote_availability = await connection.fetchrow(
+                """
+                WITH latest_published_vote_snapshot AS (
+                    SELECT snapshot.id, snapshot.source_document_id,
+                           review.reviewed_at AS verified_at,
+                           source.publisher::text AS source_publisher,
+                           source.url AS source_url,
+                           source.retrieved_at AS source_retrieved_at,
+                           source.content_sha256 AS source_sha256
+                    FROM parliament_activity_snapshots snapshot
+                    JOIN source_documents source
+                      ON source.id = snapshot.source_document_id
+                    JOIN LATERAL (
+                        SELECT candidate.publishable, candidate.reviewed_at
+                        FROM data_publication_reviews candidate
+                        WHERE candidate.entity_type = 'PARLIAMENT_VOTES_SNAPSHOT'
+                          AND candidate.entity_id = snapshot.id
+                          AND candidate.source_document_id = source.id
+                        ORDER BY candidate.reviewed_at DESC, candidate.id DESC
+                        LIMIT 1
+                    ) review ON review.publishable = TRUE
+                    WHERE snapshot.legislature = $2
+                      AND snapshot.parser_version = $3
+                      AND source.publisher = 'PARLIAMENT'
+                      AND EXISTS (
+                          SELECT 1 FROM source_archive_attestations vote_archive
+                          WHERE vote_archive.source_document_id = source.id
+                            AND vote_archive.content_sha256 = source.content_sha256
+                            AND vote_archive.retrieval_url = source.url
+                      )
+                    ORDER BY review.reviewed_at DESC,
+                             snapshot.collected_at DESC, snapshot.id DESC
+                    LIMIT 1
+                )
+                SELECT published.verified_at, published.source_publisher,
+                       published.source_url, published.source_retrieved_at,
+                       published.source_sha256,
+                       vote_stats.nominal_vote_count,
+                       vote_stats.observed_from,
+                       vote_stats.observed_through
+                FROM latest_published_vote_snapshot published
+                JOIN LATERAL (
+                    SELECT COUNT(*) AS nominal_vote_count,
+                           MIN(available_event.voted_at) AS observed_from,
+                           MAX(available_event.voted_at) AS observed_through
+                    FROM vote_records available_record
+                    JOIN vote_events available_event
+                      ON available_event.id = available_record.vote_event_id
+                    JOIN people exact_person
+                      ON exact_person.id = available_record.person_id
+                     AND exact_person.source_id IS NOT NULL
+                    WHERE available_event.snapshot_id = published.id
+                      AND available_event.source_document_id =
+                          published.source_document_id
+                      AND available_record.person_id = $1
+                      AND available_record.actor_type = 'PERSON'
+                      AND available_record.choice IN (
+                          'FAVOR', 'AGAINST', 'ABSTENTION', 'ABSENT'
+                      )
+                      AND available_record.source_document_id =
+                          available_event.source_document_id
+                      AND available_event.is_nominal = TRUE
+                ) vote_stats ON TRUE
+                """,
+                row["id"],
+                row["legislature"],
+                _EXACT_PERSON_VOTE_PARSER_VERSION,
+            )
+
             vote_rows = await connection.fetch(
                 """
                 WITH latest_published_vote_snapshot AS (
-                    SELECT snapshot.id
+                    SELECT snapshot.id, snapshot.source_document_id
                     FROM parliament_activity_snapshots snapshot
                     JOIN source_documents source
                       ON source.id = snapshot.source_document_id
@@ -836,6 +1025,7 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                         LIMIT 1
                     ) latest_review ON latest_review.publishable = TRUE
                     WHERE snapshot.legislature = $2
+                      AND snapshot.parser_version = $3
                       AND source.publisher = 'PARLIAMENT'
                       AND EXISTS (
                           SELECT 1 FROM source_archive_attestations archive
@@ -858,6 +1048,10 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                 JOIN vote_events ve ON ve.id = vr.vote_event_id
                 JOIN latest_published_vote_snapshot published_snapshot
                   ON published_snapshot.id = ve.snapshot_id
+                 AND published_snapshot.source_document_id = ve.source_document_id
+                JOIN people exact_person
+                  ON exact_person.id = vr.person_id
+                 AND exact_person.source_id IS NOT NULL
                 JOIN source_documents sd ON sd.id = ve.source_document_id
                 WHERE vr.person_id = $1 AND vr.actor_type = 'PERSON'
                   AND ve.is_nominal = TRUE
@@ -876,15 +1070,30 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                 """,
                 row["id"],
                 row["legislature"],
+                _EXACT_PERSON_VOTE_PARSER_VERSION,
             )
-            declaration = await connection.fetchrow(
+            declaration_rows = await connection.fetch(
                 """
-                SELECT sd.publisher::text AS source_publisher,
+                SELECT adm.id, adm.declaration_type, adm.declared_at,
+                       adm.period_label, adm.public_access_status,
+                       review.reviewed_at AS verified_at,
+                       sd.publisher::text AS source_publisher,
                        sd.url AS source_url, sd.retrieved_at AS source_retrieved_at,
                        sd.content_sha256 AS source_sha256
                 FROM asset_declaration_metadata adm
                 JOIN source_documents sd ON sd.id = adm.source_document_id
+                JOIN LATERAL (
+                    SELECT candidate.publishable, candidate.reviewed_at
+                    FROM data_publication_reviews candidate
+                    WHERE candidate.entity_type = 'ASSET_DECLARATION'
+                      AND candidate.entity_id = adm.id
+                      AND candidate.source_document_id = sd.id
+                    ORDER BY candidate.reviewed_at DESC, candidate.id DESC
+                    LIMIT 1
+                ) review ON review.publishable = TRUE
                 WHERE adm.person_id = $1
+                  AND sd.publisher = 'TRANSPARENCY_ENTITY'
+                  AND sd.kind <> 'NEWS_ARTICLE'
                   AND EXISTS (
                       SELECT 1
                       FROM source_archive_attestations declaration_archive
@@ -893,36 +1102,253 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                         AND declaration_archive.retrieval_url = sd.url
                   )
                 ORDER BY adm.declared_at DESC NULLS LAST, adm.created_at DESC
-                LIMIT 1
+                LIMIT 100
                 """,
                 row["id"],
             )
-        total = int(attendance["total"])
-        present = int(attendance["present"])
-        attendance_rate = round(present * 100 / total) if total else None
-        nominal_vote_count = int(attendance["nominal_vote_count"])
-        declaration_source = (
-            _source_from_row(declaration)
-            if declaration is not None
-            else {
-                "publisher": "EPT",
-                "label": "Entidade para a Transparência — consulta oficial",
-                "url": "https://www.tribunalconstitucional.pt/tc/ept/",
-                "retrieved_at": datetime.now(UTC),
-                "content_sha256": None,
+
+        membership_observations = [
+            {
+                "id": membership["id"],
+                "legislature": membership["legislature"],
+                "parliamentary_name": membership["parliamentary_name"],
+                "party": membership["party"],
+                "party_short": membership["party_short"],
+                "constituency": membership["constituency"],
+                "observed_at": membership["observed_at"],
+                "verified_at": membership["verified_at"],
+                "source": _source_from_row(membership),
             }
+            for membership in membership_rows
+        ]
+        mandates = [
+            {
+                "id": mandate["id"],
+                "office_title": mandate["office_title"],
+                "legislature": mandate["legislature"],
+                "party": mandate["party"],
+                "party_short": mandate["party_short"],
+                "constituency": mandate["constituency"],
+                "started_at": mandate["started_at"],
+                "ended_at": mandate["ended_at"],
+                "verified_at": mandate["verified_at"],
+                "source": _source_from_row(mandate),
+            }
+            for mandate in mandate_rows
+        ]
+
+        attendance_snapshot_available = attendance is not None
+        attendance_total = int(attendance["record_count"]) if attendance is not None else 0
+        attendance_present = int(attendance["present_count"]) if attendance is not None else 0
+        attendance_absent = int(attendance["absent_count"]) if attendance is not None else 0
+        attendance_excused = int(attendance["excused_count"]) if attendance is not None else 0
+        attendance_rate = (
+            round(attendance_present * 100 / attendance_total) if attendance_total else None
         )
+        attendance_source = _source_from_row(attendance) if attendance is not None else None
+        attendance_note = (
+            f"{attendance_present} presenças em {attendance_total} registos individuais "
+            "publicados e associados por mandato revisto."
+            if attendance_total
+            else (
+                "Existe uma fotografia parlamentar publicada, mas não contém presenças "
+                "individuais associáveis através de um mandato revisto. Isto não prova ausência."
+                if attendance_snapshot_available
+                else "Não existe uma fotografia de presenças publicada para esta legislatura."
+            )
+        )
+
+        vote_snapshot_available = vote_availability is not None
+        nominal_vote_count = (
+            int(vote_availability["nominal_vote_count"]) if vote_availability is not None else 0
+        )
+        vote_source = _source_from_row(vote_availability) if vote_availability is not None else None
+        declarations = [
+            {
+                "id": declaration["id"],
+                "declaration_type": declaration["declaration_type"],
+                "declared_at": declaration["declared_at"],
+                "period_label": declaration["period_label"],
+                "public_access_status": declaration["public_access_status"],
+                "verified_at": declaration["verified_at"],
+                "source": _source_from_row(declaration),
+            }
+            for declaration in declaration_rows
+        ]
+        declaration_record = declarations[0] if declarations else None
+        declaration_source = declaration_record["source"] if declaration_record else None
+
+        mandate_dates = [mandate["started_at"] for mandate in mandates]
+        membership_dates = [membership["observed_at"] for membership in membership_observations]
+        declaration_dates = [
+            declaration["declared_at"]
+            for declaration in declarations
+            if declaration["declared_at"] is not None
+        ]
         person.update(
             {
+                "contract_version": "v5.6",
+                "membership_observations": membership_observations,
+                "mandates": mandates,
+                "attendance": {
+                    "available": attendance_total > 0,
+                    "record_count": attendance_total,
+                    "present_count": attendance_present,
+                    "absent_count": attendance_absent,
+                    "excused_count": attendance_excused,
+                    "attendance_rate": attendance_rate,
+                    "observed_from": (
+                        attendance["observed_from"] if attendance is not None else None
+                    ),
+                    "observed_through": (
+                        attendance["observed_through"] if attendance is not None else None
+                    ),
+                    "note": attendance_note,
+                    "source": attendance_source,
+                },
                 "attendance_rate": attendance_rate,
-                "attendance_label": (
-                    f"{present} presenças em {total} registos oficiais com presença indicada."
-                    if total
-                    else "A fonte sincronizada não contém presenças individuais suficientes."
-                ),
+                "attendance_label": attendance_note,
                 "nominal_votes_available": nominal_vote_count > 0,
                 "nominal_vote_count": nominal_vote_count,
+                "initiatives": [],
+                "declarations": declarations,
+                "declaration": declaration_record,
                 "declaration_source": declaration_source,
+                "declaration_lookup_source": {
+                    "publisher": "EPT",
+                    "label": "Entidade para a Transparência — portal oficial",
+                    "url": "https://www.tribunalconstitucional.pt/tc/ept/",
+                    "note": (
+                        "Ligação para pesquisa institucional; não confirma a existência, "
+                        "conteúdo ou estado de uma declaração desta pessoa."
+                    ),
+                },
+                "coverage": {
+                    "identity": {
+                        "state": "AVAILABLE",
+                        "record_count": 1,
+                        "note": "Identidade e pertença observadas numa fotografia oficial revista.",
+                        "observed_from": row["observed_at"],
+                        "observed_through": row["observed_at"],
+                        "source": person["profile_source"],
+                    },
+                    "membership_observations": {
+                        "state": "AVAILABLE" if membership_observations else "UNAVAILABLE",
+                        "record_count": len(membership_observations),
+                        "note": (
+                            "São datas de observação da fonte, não datas inferidas de início "
+                            "ou fim de mandato."
+                        ),
+                        "observed_from": min(membership_dates) if membership_dates else None,
+                        "observed_through": max(membership_dates) if membership_dates else None,
+                        "source": (
+                            membership_observations[0]["source"]
+                            if membership_observations
+                            else None
+                        ),
+                    },
+                    "mandates": {
+                        "state": "AVAILABLE" if mandates else "UNAVAILABLE",
+                        "record_count": len(mandates),
+                        "note": (
+                            "Só entram períodos com datas oficiais, arquivo e revisão específica."
+                            if mandates
+                            else (
+                                "Não existem períodos de mandato datados e revistos "
+                                "para publicação."
+                            )
+                        ),
+                        "observed_from": min(mandate_dates) if mandate_dates else None,
+                        "observed_through": (
+                            max(
+                                (mandate["ended_at"] or mandate["started_at"])
+                                for mandate in mandates
+                            )
+                            if mandates
+                            else None
+                        ),
+                        "source": mandates[0]["source"] if mandates else None,
+                    },
+                    "attendance": {
+                        "state": (
+                            "AVAILABLE"
+                            if attendance_total
+                            else "PARTIAL"
+                            if attendance_snapshot_available
+                            else "UNAVAILABLE"
+                        ),
+                        "record_count": attendance_total,
+                        "note": attendance_note,
+                        "observed_from": (
+                            attendance["observed_from"] if attendance is not None else None
+                        ),
+                        "observed_through": (
+                            attendance["observed_through"] if attendance is not None else None
+                        ),
+                        "source": attendance_source,
+                    },
+                    "initiatives": {
+                        "state": "UNAVAILABLE",
+                        "record_count": 0,
+                        "note": (
+                            "A fotografia publicada ainda não fornece uma associação individual "
+                            "de autoria por identificador oficial; nomes não são usados para "
+                            "a criar."
+                        ),
+                        "observed_from": None,
+                        "observed_through": None,
+                        "source": None,
+                    },
+                    "nominal_votes": {
+                        "state": (
+                            "AVAILABLE"
+                            if nominal_vote_count
+                            else "PARTIAL"
+                            if vote_snapshot_available
+                            else "UNAVAILABLE"
+                        ),
+                        "record_count": nominal_vote_count,
+                        "note": (
+                            "Apenas votos nominais ligados ao identificador oficial da pessoa."
+                            if nominal_vote_count
+                            else (
+                                "A fotografia revista não contém votos individuais associáveis "
+                                "por identificador oficial. Isto não prova que a pessoa não votou."
+                                if vote_snapshot_available
+                                else (
+                                    "Não existe uma fotografia revista com ligações "
+                                    "individuais exatas."
+                                )
+                            )
+                        ),
+                        "observed_from": (
+                            vote_availability["observed_from"]
+                            if vote_availability is not None
+                            else None
+                        ),
+                        "observed_through": (
+                            vote_availability["observed_through"]
+                            if vote_availability is not None
+                            else None
+                        ),
+                        "source": vote_source,
+                    },
+                    "declarations": {
+                        "state": "AVAILABLE" if declarations else "UNAVAILABLE",
+                        "record_count": len(declarations),
+                        "note": (
+                            "Metadados publicados após revisão jurídica e editorial específica."
+                            if declarations
+                            else (
+                                "Não existem metadados de declaração aprovados para publicação; "
+                                "a ligação institucional serve apenas para pesquisa externa."
+                            )
+                        ),
+                        "observed_from": min(declaration_dates) if declaration_dates else None,
+                        "observed_through": max(declaration_dates) if declaration_dates else None,
+                        "source": declaration_source,
+                    },
+                },
                 "votes": [
                     {
                         "id": vote["id"],
@@ -2140,12 +2566,15 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
         publish: bool,
         reviewer_alias: str,
         rationale: str,
+        legal_basis_confirmed: bool = False,
     ) -> dict[str, Any]:
         """Promove ou retira um registo com decisão humana e rasto append-only."""
         if self.pool is None:
             raise RuntimeError("Base de dados não configurada")
         allowed = {
             "PERSON",
+            "MANDATE",
+            "ASSET_DECLARATION",
             "PROMISE",
             "PUBLIC_CONTRACT",
             "INTEREST_ENTITY",
@@ -2174,6 +2603,51 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                 )
                 evidence_exists = bool(current and current["source_document_id"])
                 if current is not None and current["source_document_id"] is not None:
+                    review_source_document_id = str(current["source_document_id"])
+                sensitivity = "PUBLIC_PERSONAL"
+            elif entity_type == "MANDATE":
+                current = await connection.fetchrow(
+                    """
+                    SELECT mandate.id, mandate.office_title, mandate.started_at,
+                           mandate.ended_at, mandate.source_document_id,
+                           source.publisher::text AS source_publisher,
+                           source.kind::text AS source_kind
+                    FROM mandates mandate
+                    JOIN source_documents source
+                      ON source.id = mandate.source_document_id
+                    WHERE mandate.id = $1
+                    """,
+                    entity_id,
+                )
+                evidence_exists = bool(
+                    current
+                    and current["source_publisher"] != "MEDIA"
+                    and current["source_kind"] != "NEWS_ARTICLE"
+                )
+                if current is not None:
+                    review_source_document_id = str(current["source_document_id"])
+                sensitivity = "PUBLIC_PERSONAL"
+            elif entity_type == "ASSET_DECLARATION":
+                current = await connection.fetchrow(
+                    """
+                    SELECT declaration.id, declaration.declaration_type,
+                           declaration.declared_at, declaration.public_access_status,
+                           declaration.source_document_id,
+                           source.publisher::text AS source_publisher,
+                           source.kind::text AS source_kind
+                    FROM asset_declaration_metadata declaration
+                    JOIN source_documents source
+                      ON source.id = declaration.source_document_id
+                    WHERE declaration.id = $1
+                    """,
+                    entity_id,
+                )
+                evidence_exists = bool(
+                    current
+                    and current["source_publisher"] == "TRANSPARENCY_ENTITY"
+                    and current["source_kind"] != "NEWS_ARTICLE"
+                )
+                if current is not None:
                     review_source_document_id = str(current["source_document_id"])
                 sensitivity = "PUBLIC_PERSONAL"
             elif entity_type == "PROMISE":
@@ -2254,6 +2728,11 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                 raise ValueError("Entidade a rever não encontrada")
             if publish and not evidence_exists:
                 raise ValueError("A publicação exige prova associada e dependências publicadas")
+            if publish and entity_type == "ASSET_DECLARATION" and not legal_basis_confirmed:
+                raise ValueError(
+                    "A publicação de uma declaração exige confirmação da revisão jurídica "
+                    "e da base legal"
+                )
             if publish and review_source_document_id is not None:
                 archive_exists = await connection.fetchval(
                     """
@@ -2323,6 +2802,8 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                 "rationale": rationale,
                 "reviewed_at": datetime.now(UTC).isoformat(),
             }
+            if entity_type == "ASSET_DECLARATION":
+                decision["legal_basis_confirmed"] = legal_basis_confirmed
             await connection.execute(
                 """
                 INSERT INTO data_publication_reviews

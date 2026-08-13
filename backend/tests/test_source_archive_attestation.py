@@ -414,7 +414,8 @@ def test_public_projection_queries_require_matching_archive_attestations() -> No
 
     assert status_source.count("source_archive_attestations") >= 6
     assert "source_archive_attestations profile_archive" in people_source
-    assert "source_archive_attestations attendance_archive" in profile_source
+    assert "source_archive_attestations activity_archive" in profile_source
+    assert "source_archive_attestations mandate_archive" in profile_source
     assert "source_archive_attestations vote_archive" in profile_source
     assert "source_archive_attestations declaration_archive" in profile_source
     assert "source_archive_attestations programme_archive" in promises_source

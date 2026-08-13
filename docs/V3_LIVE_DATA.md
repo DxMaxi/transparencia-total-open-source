@@ -65,8 +65,11 @@ para verificar a fonte, o SHA-256, as contagens e os avisos sem devolver nomes o
 
 | Projeção | Porta de publicação |
 |---|---|
-| Perfis | fonte arquivada + última `DataPublicationReview(PERSON)` publicável + snapshot oficial |
-| Votos no perfil | fonte arquivada + pessoa por ID, `actorType=PERSON`, votação nominal, escolha conhecida + última revisão positiva da mesma fotografia |
+| Identidade do perfil | fonte arquivada + última `DataPublicationReview(PERSON)` publicável + fotografia oficial |
+| Mandatos no perfil | fonte oficial não noticiosa arquivada + última `DataPublicationReview(MANDATE)` positiva |
+| Presenças no perfil | fotografia de atividade publicada + mandato individual revisto e arquivado |
+| Votos no perfil | fonte arquivada + normalizador V5 + pessoa por ID oficial, `actorType=PERSON`, votação nominal, escolha conhecida + última revisão positiva da mesma fotografia |
+| Declarações no perfil | metadado individual EPT arquivado + revisão jurídica confirmada + última `DataPublicationReview(ASSET_DECLARATION)` positiva |
 | Promessas | fontes do programa/evidência arquivadas + estado verificável + última `PromiseReview=ACCEPT` |
 | Contratos | fonte arquivada + `verificationStatus=VERIFIED` e `publicationStatus=PUBLISHED` |
 | Grafo | fonte arquivada + aresta e ambos os nós verificados/publicados |

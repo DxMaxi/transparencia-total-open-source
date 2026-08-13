@@ -3,9 +3,13 @@ import "server-only";
 import { cache } from "react";
 import { initialGovernmentCommitments } from "@/lib/government-programme";
 import type {
+  AttendanceSummary,
   GovernmentPromise,
+  OfficialLookup,
   OfficialSource,
   PoliticianProfileData,
+  PoliticianProfileCoverage,
+  ProfileCoverageArea,
   PromiseStatus,
   VoteChoice,
 } from "@/types/domain";
@@ -75,16 +79,106 @@ type RawPerson = {
   constituency: string;
   legislature: string;
   portrait_url?: string | null;
+  observed_at?: string | null;
   verified_at: string;
   profile_source: RawSource;
 };
 
+type RawCoverageArea = {
+  state: "AVAILABLE" | "PARTIAL" | "UNAVAILABLE";
+  record_count: number;
+  note: string;
+  observed_from?: string | null;
+  observed_through?: string | null;
+  source?: RawSource | null;
+};
+
 type RawProfile = RawPerson & {
+  contract_version?: "v5.6";
+  membership_observations?: Array<{
+    id: string;
+    legislature: string;
+    parliamentary_name: string;
+    party: string;
+    party_short: string;
+    constituency: string;
+    observed_at: string;
+    verified_at: string;
+    source: RawSource;
+  }>;
+  mandates?: Array<{
+    id: string;
+    office_title: string;
+    legislature?: string | null;
+    party?: string | null;
+    party_short?: string | null;
+    constituency?: string | null;
+    started_at: string;
+    ended_at?: string | null;
+    verified_at: string;
+    source: RawSource;
+  }>;
+  attendance?: {
+    available: boolean;
+    record_count: number;
+    present_count: number;
+    absent_count: number;
+    excused_count: number;
+    attendance_rate?: number | null;
+    observed_from?: string | null;
+    observed_through?: string | null;
+    note: string;
+    source?: RawSource | null;
+  };
   attendance_rate?: number | null;
   attendance_label: string;
   nominal_votes_available: boolean;
   nominal_vote_count: number;
-  declaration_source: RawSource;
+  initiatives?: Array<{
+    id: string;
+    number: string;
+    initiative_type: string;
+    title: string;
+    status?: string | null;
+    introduced_at?: string | null;
+    relation: "AUTHOR" | "COAUTHOR" | "PROPOSER";
+    source: RawSource;
+  }>;
+  declarations?: Array<{
+    id: string;
+    declaration_type: string;
+    declared_at?: string | null;
+    period_label?: string | null;
+    public_access_status: string;
+    verified_at: string;
+    source: RawSource;
+  }>;
+  declaration?: {
+    id: string;
+    declaration_type: string;
+    declared_at?: string | null;
+    period_label?: string | null;
+    public_access_status: string;
+    verified_at: string;
+    source: RawSource;
+  } | null;
+  declaration_source?: RawSource | null;
+  declaration_lookup_source?: {
+    publisher: string;
+    label: string;
+    url: string;
+    note: string;
+  };
+  coverage?: {
+    identity: RawCoverageArea;
+    membership_observations: RawCoverageArea;
+    mandates: RawCoverageArea;
+    attendance: RawCoverageArea;
+    initiatives: RawCoverageArea;
+    nominal_votes: RawCoverageArea;
+    declarations: RawCoverageArea;
+    matching_rule: string;
+  };
   votes: Array<{
     id: string;
     title: string;
@@ -204,6 +298,75 @@ function toOfficialSource(source: RawSource): OfficialSource {
     publisher: source.publisher as OfficialSource["publisher"],
     retrievedAt: source.retrieved_at,
     sha256: source.content_sha256 ?? undefined,
+  };
+}
+
+function mapCoverageArea(area: RawCoverageArea): ProfileCoverageArea {
+  return {
+    state: area.state,
+    recordCount: area.record_count,
+    note: area.note,
+    observedFrom: area.observed_from ? formatDate(area.observed_from) : undefined,
+    observedThrough: area.observed_through ? formatDate(area.observed_through) : undefined,
+    source: area.source ? toOfficialSource(area.source) : undefined,
+  };
+}
+
+function unavailableCoverage(note: string): ProfileCoverageArea {
+  return { state: "UNAVAILABLE", recordCount: 0, note };
+}
+
+function legacyProfileCoverage(
+  raw: RawProfile,
+  profileSource: OfficialSource,
+): PoliticianProfileCoverage {
+  const attendanceState = raw.attendance_rate == null ? "UNAVAILABLE" : "PARTIAL";
+  const voteState = raw.nominal_vote_count > 0 ? "PARTIAL" : "UNAVAILABLE";
+  return {
+    identity: {
+      state: "AVAILABLE",
+      recordCount: 1,
+      note: "Identidade publicada no contrato anterior da API.",
+      observedFrom: formatDate(raw.observed_at ?? raw.verified_at),
+      observedThrough: formatDate(raw.observed_at ?? raw.verified_at),
+      source: profileSource,
+    },
+    membershipObservations: {
+      state: "PARTIAL",
+      recordCount: 1,
+      note: (
+        "A API anterior expõe apenas a observação mais recente; não a transforma numa data "
+        + "de início de mandato."
+      ),
+      observedFrom: formatDate(raw.observed_at ?? raw.verified_at),
+      observedThrough: formatDate(raw.observed_at ?? raw.verified_at),
+      source: profileSource,
+    },
+    mandates: unavailableCoverage(
+      "A API em produção ainda não expõe períodos de mandato revistos individualmente.",
+    ),
+    attendance: {
+      state: attendanceState,
+      recordCount: 0,
+      note: raw.attendance_label,
+    },
+    initiatives: unavailableCoverage(
+      "Não existe associação individual por identificador oficial neste contrato da API.",
+    ),
+    nominalVotes: {
+      state: voteState,
+      recordCount: raw.nominal_vote_count,
+      note: raw.nominal_vote_count > 0
+        ? "Votos nominais publicados pela API anterior; cobertura temporal não exposta."
+        : "A API anterior não devolveu votos individuais publicáveis.",
+    },
+    declarations: unavailableCoverage(
+      "Uma ligação geral ao portal institucional não prova uma declaração individual.",
+    ),
+    matchingRule: (
+      "Associações individuais exigem um identificador oficial inequívoco. Nomes, siglas "
+      + "ou posições coletivas nunca são convertidos em atividade pessoal."
+    ),
   };
 }
 
@@ -507,6 +670,7 @@ function mapPerson(raw: RawPerson): PublicPersonSummary {
     constituency: raw.constituency,
     legislature: raw.legislature,
     portraitUrl: raw.portrait_url ?? undefined,
+    observedAt: formatDate(raw.observed_at ?? raw.verified_at),
     verifiedAt: formatDate(raw.verified_at),
     profileSource: toOfficialSource(raw.profile_source),
   };
@@ -740,31 +904,158 @@ export async function loadPublicPolitician(
   ]);
   if (result.ok) {
     const allowedChoices = new Set(["FAVOR", "AGAINST", "ABSTENTION", "ABSENT"]);
+    const profileSource = toOfficialSource(result.data.profile_source);
+    const votes = result.data.votes
+      .filter((vote) => vote.is_nominal && allowedChoices.has(vote.choice))
+      .map((vote) => ({
+        id: vote.id,
+        title: vote.title,
+        date: formatDate(vote.date),
+        choice: vote.choice as VoteChoice,
+        result: vote.result,
+        initiativeNumber: vote.initiative_number,
+        source: toOfficialSource(vote.source),
+        isNominal: vote.is_nominal,
+      }));
+    const attendance: AttendanceSummary = result.data.attendance
+      ? {
+          available: result.data.attendance.available,
+          recordCount: result.data.attendance.record_count,
+          presentCount: result.data.attendance.present_count,
+          absentCount: result.data.attendance.absent_count,
+          excusedCount: result.data.attendance.excused_count,
+          attendanceRate: result.data.attendance.attendance_rate ?? undefined,
+          observedFrom: result.data.attendance.observed_from
+            ? formatDate(result.data.attendance.observed_from)
+            : undefined,
+          observedThrough: result.data.attendance.observed_through
+            ? formatDate(result.data.attendance.observed_through)
+            : undefined,
+          note: result.data.attendance.note,
+          source: result.data.attendance.source
+            ? toOfficialSource(result.data.attendance.source)
+            : undefined,
+        }
+      : {
+          available: result.data.attendance_rate != null,
+          recordCount: 0,
+          presentCount: 0,
+          absentCount: 0,
+          excusedCount: 0,
+          attendanceRate: result.data.attendance_rate ?? undefined,
+          note: result.data.attendance_label,
+        };
+    const fallbackLookupSource = result.data.declaration_source;
+    const declarationLookupSource: OfficialLookup = result.data.declaration_lookup_source
+      ? {
+          publisher: result.data.declaration_lookup_source.publisher as OfficialSource["publisher"],
+          label: result.data.declaration_lookup_source.label,
+          url: result.data.declaration_lookup_source.url,
+          note: result.data.declaration_lookup_source.note,
+        }
+      : {
+          publisher: (fallbackLookupSource?.publisher ?? "EPT") as OfficialSource["publisher"],
+          label: fallbackLookupSource?.label ?? "Entidade para a Transparência — portal oficial",
+          url: fallbackLookupSource?.url ?? "https://www.tribunalconstitucional.pt/tc/ept/",
+          note: (
+            "Ligação para pesquisa institucional; não confirma a existência, o conteúdo "
+            + "ou o estado de uma declaração desta pessoa."
+          ),
+        };
+    const coverage: PoliticianProfileCoverage = result.data.coverage
+      ? {
+          identity: mapCoverageArea(result.data.coverage.identity),
+          membershipObservations: mapCoverageArea(
+            result.data.coverage.membership_observations,
+          ),
+          mandates: mapCoverageArea(result.data.coverage.mandates),
+          attendance: mapCoverageArea(result.data.coverage.attendance),
+          initiatives: mapCoverageArea(result.data.coverage.initiatives),
+          nominalVotes: mapCoverageArea(result.data.coverage.nominal_votes),
+          declarations: mapCoverageArea(result.data.coverage.declarations),
+          matchingRule: result.data.coverage.matching_rule,
+        }
+      : legacyProfileCoverage(result.data, profileSource);
+    const declarations = (
+      result.data.declarations
+      ?? (result.data.declaration ? [result.data.declaration] : [])
+    ).map((item) => ({
+      id: item.id,
+      declarationType: item.declaration_type,
+      declaredAt: item.declared_at ? formatDate(item.declared_at) : undefined,
+      periodLabel: item.period_label ?? undefined,
+      publicAccessStatus: item.public_access_status,
+      verifiedAt: formatDate(item.verified_at),
+      source: toOfficialSource(item.source),
+    }));
+    const membershipObservations = (result.data.membership_observations ?? []).map((item) => ({
+      id: item.id,
+      legislature: item.legislature,
+      parliamentaryName: item.parliamentary_name,
+      party: item.party,
+      partyShort: item.party_short,
+      constituency: item.constituency,
+      observedAt: formatDate(item.observed_at),
+      verifiedAt: formatDate(item.verified_at),
+      source: toOfficialSource(item.source),
+    }));
+    if (result.data.contract_version !== "v5.6" && !membershipObservations.length) {
+      membershipObservations.push({
+        id: `legacy-observation-${result.data.id}`,
+        legislature: result.data.legislature,
+        parliamentaryName: result.data.name,
+        party: result.data.party,
+        partyShort: result.data.party_short,
+        constituency: result.data.constituency,
+        observedAt: formatDate(result.data.observed_at ?? result.data.verified_at),
+        verifiedAt: formatDate(result.data.verified_at),
+        source: profileSource,
+      });
+    }
     return {
       status,
       showingFallback: false,
       data: {
         ...mapPerson(result.data),
+        contractVersion: result.data.contract_version ?? "legacy",
         role: formatRole(result.data.role),
-        attendanceRate: result.data.attendance_rate ?? undefined,
-        attendanceLabel: result.data.attendance_label,
+        attendanceRate: (
+          result.data.attendance?.attendance_rate
+          ?? result.data.attendance_rate
+          ?? undefined
+        ),
+        attendanceLabel: result.data.attendance?.note ?? result.data.attendance_label,
         nominalVotesAvailable: result.data.nominal_votes_available,
         nominalVoteCount: result.data.nominal_vote_count,
-        declarationSource: toOfficialSource(result.data.declaration_source),
-        votes: result.data.votes
-          .filter((vote) => vote.is_nominal && allowedChoices.has(vote.choice))
-          .map((vote) => ({
-            id: vote.id,
-            title: vote.title,
-            date: formatDate(vote.date),
-            choice: vote.choice as VoteChoice,
-            result: vote.result,
-            initiativeNumber: vote.initiative_number,
-            source: toOfficialSource(vote.source),
-            isNominal: vote.is_nominal,
-          })),
-        // A V5 só acrescentará contexto coletivo quando existir um ID oficial exato.
-        groupPositions: [],
+        membershipObservations,
+        mandates: (result.data.mandates ?? []).map((item) => ({
+          id: item.id,
+          officeTitle: item.office_title,
+          legislature: item.legislature ?? undefined,
+          party: item.party ?? undefined,
+          partyShort: item.party_short ?? undefined,
+          constituency: item.constituency ?? undefined,
+          startedAt: formatDate(item.started_at),
+          endedAt: item.ended_at ? formatDate(item.ended_at) : undefined,
+          verifiedAt: formatDate(item.verified_at),
+          source: toOfficialSource(item.source),
+        })),
+        attendance,
+        initiatives: (result.data.initiatives ?? []).map((item) => ({
+          id: item.id,
+          number: item.number,
+          initiativeType: item.initiative_type,
+          title: item.title,
+          status: item.status ?? undefined,
+          introducedAt: item.introduced_at ? formatDate(item.introduced_at) : undefined,
+          relation: item.relation,
+          source: toOfficialSource(item.source),
+        })),
+        declarations,
+        declaration: declarations[0],
+        declarationLookupSource,
+        coverage,
+        votes,
       },
     };
   }

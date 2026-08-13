@@ -85,6 +85,12 @@ Não são recolhidos conteúdos de declarações, identificadores pessoais, resp
 áreas autenticadas. A existência ou ausência de uma ligação nunca é convertida em alegação sobre
 cumprimento, incumprimento ou conteúdo de uma declaração.
 
+Na V5.6, o perfil público distingue esta ligação geral de um eventual metadado individual. O
+índice atual não cria esse metadado. Um registo futuro em `AssetDeclarationMetadata` só poderá ser
+projetado depois de recolha separada e autorizada, original EPT atestado, revisão jurídica
+confirmada e última decisão editorial positiva ligada ao mesmo documento. Sem toda essa cadeia, a
+área permanece como `Dados indisponíveis` e o portal surge apenas como pesquisa externa.
+
 ## Tribunal de Contas, Parlamento Europeu e Portal da Transparência do SNS
 
 `OfficialIndexCollector` fornece o contrato mínimo comum:

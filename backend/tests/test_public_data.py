@@ -44,11 +44,48 @@ class FakePublicRepository:
             return None
         return {
             **self._person(),
+            "contract_version": "v5.6",
+            "membership_observations": [
+                {
+                    "id": "membership-1",
+                    "legislature": "XVII",
+                    "parliamentary_name": "Pessoa Publicada",
+                    "party": "Partido",
+                    "party_short": "P",
+                    "constituency": "Lisboa",
+                    "observed_at": datetime(2026, 8, 1, tzinfo=UTC),
+                    "verified_at": datetime(2026, 8, 2, tzinfo=UTC),
+                    "source": self._source("https://www.parlamento.pt/"),
+                }
+            ],
+            "mandates": [],
+            "attendance": {
+                "available": False,
+                "record_count": 0,
+                "present_count": 0,
+                "absent_count": 0,
+                "excused_count": 0,
+                "attendance_rate": None,
+                "observed_from": None,
+                "observed_through": None,
+                "note": "Sem registos individuais suficientes.",
+                "source": None,
+            },
             "attendance_rate": None,
             "attendance_label": "Sem registos individuais suficientes.",
             "nominal_votes_available": False,
             "nominal_vote_count": 0,
-            "declaration_source": self._source("https://www.tribunalconstitucional.pt/tc/ept/"),
+            "initiatives": [],
+            "declarations": [],
+            "declaration": None,
+            "declaration_source": None,
+            "declaration_lookup_source": {
+                "publisher": "EPT",
+                "label": "Entidade para a Transparência — portal oficial",
+                "url": "https://www.tribunalconstitucional.pt/tc/ept/",
+                "note": "Portal de pesquisa; não é prova individual.",
+            },
+            "coverage": self._coverage(),
             "votes": [],
         }
 
@@ -70,8 +107,43 @@ class FakePublicRepository:
             "constituency": "Lisboa",
             "legislature": "XVII",
             "portrait_url": None,
+            "observed_at": datetime(2026, 8, 1, tzinfo=UTC),
             "verified_at": datetime(2026, 8, 1, tzinfo=UTC),
             "profile_source": cls._source("https://www.parlamento.pt/"),
+        }
+
+    @classmethod
+    def _coverage(cls) -> dict[str, Any]:
+        unavailable = {
+            "state": "UNAVAILABLE",
+            "record_count": 0,
+            "note": "Dados indisponíveis.",
+            "observed_from": None,
+            "observed_through": None,
+            "source": None,
+        }
+        return {
+            "identity": {
+                "state": "AVAILABLE",
+                "record_count": 1,
+                "note": "Identidade observada e revista.",
+                "observed_from": datetime(2026, 8, 1, tzinfo=UTC),
+                "observed_through": datetime(2026, 8, 1, tzinfo=UTC),
+                "source": cls._source("https://www.parlamento.pt/"),
+            },
+            "membership_observations": {
+                "state": "AVAILABLE",
+                "record_count": 1,
+                "note": "Uma observação oficial revista.",
+                "observed_from": datetime(2026, 8, 1, tzinfo=UTC),
+                "observed_through": datetime(2026, 8, 1, tzinfo=UTC),
+                "source": cls._source("https://www.parlamento.pt/"),
+            },
+            "mandates": dict(unavailable),
+            "attendance": dict(unavailable),
+            "initiatives": dict(unavailable),
+            "nominal_votes": dict(unavailable),
+            "declarations": dict(unavailable),
         }
 
     @staticmethod
@@ -102,7 +174,14 @@ def test_public_status_and_profiles_have_explicit_contract() -> None:
     assert status_response.json()["counts"]["politicians"] == 1
     assert list_response.status_code == 200
     assert list_response.json()[0]["profile_source"]["url"].startswith("https://")
+    assert list_response.json()[0]["observed_at"].startswith("2026-08-01")
     assert profile_response.status_code == 200
+    assert profile_response.json()["contract_version"] == "v5.6"
+    assert profile_response.json()["coverage"]["mandates"]["state"] == "UNAVAILABLE"
+    assert profile_response.json()["declarations"] == []
+    assert profile_response.json()["declaration"] is None
+    assert profile_response.json()["declaration_source"] is None
+    assert "não é prova" in profile_response.json()["declaration_lookup_source"]["note"]
     assert profile_response.json()["attendance_rate"] is None
     assert profile_response.json()["nominal_votes_available"] is False
     assert profile_response.json()["nominal_vote_count"] == 0

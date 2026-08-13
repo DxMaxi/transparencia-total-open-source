@@ -18,8 +18,9 @@ export default async function PoliticiansPage() {
         <span className="eyebrow">Diretório auditável</span>
         <h1>Políticos</h1>
         <p>
-          Só aparecem perfis cuja publicação foi aprovada. A pertença parlamentar indica a data
-          de observação da fonte, nunca uma data de início inferida.
+          Só aparecem identidades observadas numa fonte oficial arquivada e aprovadas por revisão
+          humana. Cada ficha separa mandatos, presenças, iniciativas, votos e declarações, e mostra
+          claramente quando uma dessas áreas ainda não tem cobertura publicável.
         </p>
       </header>
       <DataModeBanner status={loaded.status} showingFallback={loaded.showingFallback} />
