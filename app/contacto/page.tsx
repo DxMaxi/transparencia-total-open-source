@@ -10,6 +10,7 @@ import {
 export const metadata: Metadata = {
   title: "Contacto",
   description: "Contactar a Transparência Total para correções, privacidade ou acessibilidade.",
+  alternates: { canonical: "/contacto" },
 };
 
 export default function ContactPage() {

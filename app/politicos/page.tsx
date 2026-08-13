@@ -6,6 +6,7 @@ import { loadPublicPoliticians } from "@/lib/public-data";
 export const metadata: Metadata = {
   title: "Políticos",
   description: "Perfis de titulares de cargos políticos com fonte oficial e revisão visível.",
+  alternates: { canonical: "/politicos" },
 };
 
 export const revalidate = 60;

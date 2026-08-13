@@ -4,6 +4,7 @@ import { RightOfReplyForm } from "@/components/right-of-reply-form";
 export const metadata: Metadata = {
   title: "Direito de resposta auditável",
   description: "Canal de resposta e retificação com histórico, timestamp e SHA-256.",
+  alternates: { canonical: "/direito-de-resposta" },
 };
 
 export default function RightOfReplyPage() {

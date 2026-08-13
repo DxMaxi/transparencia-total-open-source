@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import {
   ArrowRightIcon,
   ChartIcon,
@@ -11,6 +12,10 @@ import { DataStatusCard } from "@/components/data-status-card";
 import { SourceLink } from "@/components/source-link";
 import { initialGovernmentCommitments } from "@/lib/government-programme";
 import { loadPublicDataStatus } from "@/lib/public-data";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
 const officialSources = [
   {

@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   title: "Atividade parlamentar",
   description:
     "Pesquise reuniões, iniciativas e votações da Assembleia da República com filtros, fonte, revisão e limitações visíveis.",
+  alternates: { canonical: "/atividade-parlamentar" },
 };
 
 export const revalidate = 60;
@@ -177,7 +178,10 @@ export default async function ParliamentActivityPage({
     posicao: kind === "votes" ? choice : undefined,
   };
   const pageCount = Math.max(1, Math.ceil(explorer.total / explorer.limit));
-  if (explorer.availability.explorer && page > pageCount) {
+  const hasNextPage = explorer.totalIsExact
+    ? page < pageCount
+    : explorer.total > explorer.offset + explorer.limit;
+  if (explorer.availability.explorer && explorer.totalIsExact && page > pageCount) {
     redirect(buildHref(urlState, pageCount));
   }
   const firstResult = explorer.total ? explorer.offset + 1 : 0;
@@ -602,7 +606,13 @@ export default async function ParliamentActivityPage({
           </div>
         ) : null}
 
-        <Paginator currentPage={page} pageCount={pageCount} state={urlState} />
+        <Paginator
+          currentPage={page}
+          hasNextPage={hasNextPage}
+          pageCount={pageCount}
+          state={urlState}
+          totalIsExact={explorer.totalIsExact}
+        />
       </section>
 
       {!explorer.availability.publicationHistory ? (
@@ -709,19 +719,27 @@ function VoteCard({ vote }: { vote: PublicParliamentaryVote }) {
 
 function Paginator({
   currentPage,
+  hasNextPage,
   pageCount,
   state,
+  totalIsExact,
 }: {
   currentPage: number;
+  hasNextPage: boolean;
   pageCount: number;
   state: UrlState;
+  totalIsExact: boolean;
 }) {
-  if (pageCount === 1 && currentPage === 1) return null;
+  if (currentPage === 1 && !hasNextPage) return null;
   return (
     <nav className="parliament-pagination" aria-label="Paginação dos resultados">
       {currentPage > 1 ? <Link href={buildHref(state, currentPage - 1)}>Anterior</Link> : <span />}
-      <strong>Página {Math.min(currentPage, pageCount)} de {pageCount}</strong>
-      {currentPage < pageCount ? <Link href={buildHref(state, currentPage + 1)}>Seguinte</Link> : <span />}
+      <strong>
+        {totalIsExact
+          ? `Página ${Math.min(currentPage, pageCount)} de ${pageCount}`
+          : `Página ${currentPage}`}
+      </strong>
+      {hasNextPage ? <Link href={buildHref(state, currentPage + 1)}>Seguinte</Link> : <span />}
     </nav>
   );
 }

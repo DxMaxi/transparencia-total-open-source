@@ -114,7 +114,7 @@ Portal SNS usado pelo colector:
 
 ## Portal BASE e dados.gov.pt
 
-Catálogo oficial: <https://dados.gov.pt/pt/datasets/contratos-publicos-portal-base-impic-contratos-de-2012-a-2026/>
+Catálogo oficial: <https://dados.gov.pt/pt/datasets/contratos-publicos-portal-base-impic-contratos-de-2012-a-2025/>
 
 O colector aceita JSON, XML e ZIP com limites de download, tamanho descomprimido e taxa de compressão.
 Uma operação explicitamente confirmada em staging arquiva e atesta os bytes antes de carregar um

@@ -5,6 +5,7 @@ import { LEGAL_UPDATED_AT } from "@/lib/site";
 export const metadata: Metadata = {
   title: "Política de cookies",
   description: "Cookies e armazenamento local utilizados pela Transparência Total.",
+  alternates: { canonical: "/cookies" },
 };
 
 export default function CookiesPage() {

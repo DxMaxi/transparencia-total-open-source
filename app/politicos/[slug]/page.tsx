@@ -16,10 +16,28 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const loaded = await loadPolitician(slug);
-  if (!loaded.data) return { title: "Perfil político" };
+  if (!loaded.data) {
+    return loaded.status.mode === "UNAVAILABLE"
+      ? {
+          title: "Perfil temporariamente indisponível",
+          robots: { index: false, follow: false },
+        }
+      : {
+          title: "Página não encontrada",
+          robots: { index: false, follow: false },
+        };
+  }
+  const description = `${loaded.data.name}: identidade, mandatos e atividade individual com cobertura e fontes oficiais visíveis.`;
   return {
     title: loaded.data.name,
-    description: `${loaded.data.name}: identidade, mandatos e atividade individual com cobertura e fontes oficiais visíveis.`,
+    description,
+    alternates: { canonical: `/politicos/${loaded.data.slug}` },
+    openGraph: {
+      type: "profile",
+      title: loaded.data.name,
+      description,
+      url: `/politicos/${loaded.data.slug}`,
+    },
   };
 }
 

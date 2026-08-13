@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   title: "Metodologia e neutralidade",
   description:
     "Critérios de recolha, proveniência, revisão, publicação, correção e neutralidade da Transparência Total.",
+  alternates: { canonical: "/metodologia" },
 };
 
 const sources = [

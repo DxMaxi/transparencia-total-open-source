@@ -23,7 +23,7 @@ definição da Open Source Initiative.
 > commit final desse fecho. A V5 começa pela governação de licença e pelo circuito editorial
 > privado; esta branch não altera os dados aprovados da V4.
 
-> **V5.1 a V5.5.1 integradas; V5.6 em desenvolvimento local:** o painel privado usa login por convite,
+> **V5.1 a V5.6 integradas; estabilização e gate da V5 em desenvolvimento local:** o painel privado usa login por convite,
 > MFA obrigatório, funções de administrador/revisor, comparação entre fonte atestada e JSON
 > normalizado, versões e decisões append-only. A V5.2 acrescentou propostas parlamentares privadas,
 > idempotentes e separadas por âmbito, com diferenças por identificador oficial exato. A V5.3 liga
@@ -35,7 +35,11 @@ definição da Open Source Initiative.
 > sem inferir temas, identidades, efeito jurídico ou impacto material. A V5.5.1 estabilizou a
 > compatibilidade pública, a apresentação parlamentar e o contacto sem expor email pessoal. A
 > V5.6 separa identidade, observações, mandatos, presenças, autoria, votos nominais e declarações
-> através de portas de publicação independentes e cobertura explícita. Consulte
+> através de portas de publicação independentes e cobertura explícita. O frontend V5.6 está
+> publicado em modo de compatibilidade, mas a API pública continua em `0.4.0`; painel, explorador
+> V5, histórico e IA permanecem inativos até existir uma ativação operacional separada. O plano e
+> a checklist de fecho estão em [Plano de conclusão da V5](docs/V5_RELEASE_PLAN.md) e
+> [Checklist de conclusão da V5](docs/V5_RELEASE_CHECKLIST.md). Consulte também
 > [Painel privado e fundação editorial V5.1](docs/V5_EDITORIAL_FOUNDATION.md),
 > [Adaptador parlamentar V5.2](docs/V5_PARLIAMENT_EDITORIAL_ADAPTER.md) e
 > [Publicação parlamentar por âmbito V5.3](docs/V5_PARLIAMENT_SCOPE_PUBLICATION.md),
@@ -151,6 +155,8 @@ coletores, revisão e envio push ficam no backend. Consulte [Arquitetura](docs/A
 [adaptador de publicação parlamentar V5.3](docs/V5_PARLIAMENT_SCOPE_PUBLICATION.md), do
 [circuito de retirada parlamentar V5.4](docs/V5_PARLIAMENT_WITHDRAWAL.md), do
 [explorador parlamentar público V5.5](docs/V5_PARLIAMENT_PUBLIC_EXPERIENCE.md), do
+[plano de conclusão da V5](docs/V5_RELEASE_PLAN.md), da
+[checklist de conclusão da V5](docs/V5_RELEASE_CHECKLIST.md), do
 [runbook de recuperação](docs/DATABASE_RECOVERY.md), do
 [backup cifrado Backblaze B2 EU](docs/BACKUP_BACKBLAZE_B2.md), além do
 [modelo de AIPD/RGPD](docs/DPIA_TEMPLATE.md).
@@ -231,7 +237,7 @@ fora do intervalo e hashes de resposta inválidos.
 
 ## Pré-requisitos
 
-- Node.js 22 ou superior e npm 10+
+- Node.js 24 e npm 10+
 - Python 3.12 ou superior
 - Docker com Compose, recomendado para PostgreSQL local
 - Git
