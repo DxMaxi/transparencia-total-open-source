@@ -10,8 +10,8 @@ geração por IA, publicação, retirada ou tratamento de dados reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.9 integradas; V5.10 em preparação local |
-| Frontend público | V5.9 publicada em modo de compatibilidade fail-closed |
+| Código V5 | V5.1 a V5.10 integradas; plano de execução V5.11 em preparação local |
+| Frontend público | V5.10 publicada em modo de compatibilidade fail-closed |
 | API pública | `0.4.0`, sem endpoints V5 ativos |
 | Painel editorial | implementado no código, não ativado em produção |
 | IA | fornecedor desativado; protótipos sem fila editorial persistente |
@@ -92,6 +92,9 @@ O procedimento e a separação entre prova automática, inspeção read-only e c
 definidos em [V5.8 — prontidão editorial para staging](V5_EDITORIAL_STAGING_READINESS.md).
 O reforço dos privilégios futuros e a ordem das autorizações seguintes estão definidos em
 [V5.10 — gate de ativação editorial em staging](V5_EDITORIAL_STAGING_ACTIVATION.md).
+O destino, as autorizações independentes, as condições de paragem e o pacote de evidência estão
+definidos em
+[V5.11 — plano de execução editorial em staging](V5_EDITORIAL_STAGING_EXECUTION_PLAN.md).
 
 ### 3. Backend V5 e migrações de produção
 
