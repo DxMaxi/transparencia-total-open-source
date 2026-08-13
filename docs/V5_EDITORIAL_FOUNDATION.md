@@ -118,6 +118,11 @@ deliberada.
 7. Só depois de revisão de segurança e CI verde configurar produção. Deploy, migração e criação de
    staff exigem autorizações operacionais separadas.
 
+A preparação V5.8 acrescenta um PostgreSQL descartável com a forma mínima do Supabase, exerce a FK
+`staff_profiles → auth.users` no CI e fornece uma inspeção estrutural exclusivamente read-only. A
+ordem completa e as verificações que continuam obrigatoriamente manuais estão em
+[V5.8 — prontidão editorial para staging](V5_EDITORIAL_STAGING_READINESS.md).
+
 ## Entregas parlamentares seguintes
 
 A adaptação privada das fotografias parlamentares está descrita em

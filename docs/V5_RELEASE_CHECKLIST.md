@@ -33,7 +33,8 @@ continuam a exigir autorizações separadas.
 
 ## C. Base de dados e autenticação em staging
 
-- [ ] Migrações V5 aplicadas numa base PostgreSQL 17 descartável.
+- [ ] Migrações V5 aplicadas numa base PostgreSQL 17 descartável com forma mínima do Supabase.
+- [ ] CI confirma a FK `auth.users`, RLS, triggers, `search_path` e ausência de privilégios browser.
 - [ ] Inventário de esquema, triggers, RLS e privilégios revisto.
 - [ ] Migrações V5 aplicadas em staging.
 - [ ] Projeto Supabase usa signing key assimétrica.

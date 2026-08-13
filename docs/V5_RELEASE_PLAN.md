@@ -73,6 +73,8 @@ Objetivo: comprovar a fundação V5.1 a V5.4 sem acesso de escrita à produção
 
 Critérios de saída:
 
+- CI aplica as migrações num PostgreSQL 17 descartável com `auth.users`, `anon` e `authenticated`
+  presentes antes da migração, exercitando o caminho específico do Supabase;
 - migrações V5 aplicadas numa base descartável e depois em staging;
 - Supabase Auth configurado com signing key assimétrica, URLs exatos e sem registo público;
 - conta `ADMIN` de ensaio criada por convite e ligada a `staff_profiles`;
@@ -81,6 +83,9 @@ Critérios de saída:
 - percurso `PENDING → IN_REVIEW → APPROVED` comprovado sem alteração da projeção pública;
 - publicação e retirada parlamentares comprovadas em PostgreSQL descartável ou staging;
 - correção cria nova versão e regressa a `PENDING` sem alterar o histórico.
+
+O procedimento e a separação entre prova automática, inspeção read-only e controlos manuais estão
+definidos em [V5.8 — prontidão editorial para staging](V5_EDITORIAL_STAGING_READINESS.md).
 
 ### 3. Backend V5 e migrações de produção
 
