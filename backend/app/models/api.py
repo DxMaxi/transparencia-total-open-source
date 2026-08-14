@@ -400,13 +400,44 @@ class ContractMatchCandidate(BaseModel):
 
 
 class RightOfReplyRequest(BaseModel):
-    target_type: str = Field(pattern=r"^[A-Z_]{2,64}$")
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    target_type: Literal[
+        "POLITICIAN_PROFILE",
+        "PARLIAMENTARY_INITIATIVE",
+        "PARLIAMENTARY_VOTE",
+        "GOVERNMENT_PROMISE",
+        "PUBLIC_CONTRACT",
+        "INTEREST_RELATIONSHIP",
+        "STATEMENT_VOTE_COMPARISON",
+        "JUDICIAL_CASE",
+        "NEWS_ARTICLE",
+    ]
     target_id: str = Field(min_length=1, max_length=128)
     original_record_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     claimant_public_name: str = Field(min_length=2, max_length=200)
     claimant_role: str = Field(min_length=2, max_length=200)
     statement_text: str = Field(min_length=20, max_length=10_000)
     official_response_url: HttpUrl | None = None
+    legitimacy_confirmed: bool
+
+    @field_validator("official_response_url")
+    @classmethod
+    def official_response_must_be_public_https(cls, value: HttpUrl | None) -> HttpUrl | None:
+        if value is None:
+            return value
+        if value.scheme != "https":
+            raise ValueError("A ligação oficial tem de usar HTTPS")
+        if value.username is not None or value.password is not None:
+            raise ValueError("A ligação oficial não pode incluir credenciais")
+        return value
+
+    @field_validator("legitimacy_confirmed")
+    @classmethod
+    def legitimacy_must_be_confirmed(cls, value: bool) -> bool:
+        if value is not True:
+            raise ValueError("A legitimidade e a política de privacidade têm de ser confirmadas")
+        return value
 
 
 class RightOfReplyReceipt(BaseModel):

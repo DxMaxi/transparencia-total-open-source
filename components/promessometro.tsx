@@ -67,6 +67,7 @@ export function Promessometro({ promises }: { promises: GovernmentPromise[] }) {
               key={filter.value}
               type="button"
               className={activeFilter === filter.value ? "filter-pill is-active" : "filter-pill"}
+              aria-pressed={activeFilter === filter.value}
               onClick={() => setActiveFilter(filter.value)}
             >
               {filter.label}
@@ -80,9 +81,12 @@ export function Promessometro({ promises }: { promises: GovernmentPromise[] }) {
             {areas.map((item) => <option value={item} key={item}>{item}</option>)}
           </select>
         </label>
+        <p className="filter-result-count" role="status" aria-live="polite">
+          {filtered.length} {filtered.length === 1 ? "compromisso visível" : "compromissos visíveis"}
+        </p>
       </div>
 
-      <div className="promise-list" aria-live="polite">
+      <div className="promise-list">
         {filtered.map((promise) => (
           <article className="promise-card card" key={promise.id}>
             <div className="promise-card__top">

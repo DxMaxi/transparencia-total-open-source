@@ -14,6 +14,14 @@ def test_health_contract() -> None:
         "parliament_explorer_v1",
         "parliament_publication_history_v1",
     ]
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-frame-options"] == "DENY"
+    assert response.headers["x-xss-protection"] == "0"
+    assert response.headers["referrer-policy"] == "no-referrer"
+    assert response.headers["cross-origin-opener-policy"] == "same-origin"
+    assert response.headers["cross-origin-resource-policy"] == "same-site"
+    assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
+    assert "strict-transport-security" not in response.headers
 
 
 def test_push_broadcast_requires_admin_configuration() -> None:

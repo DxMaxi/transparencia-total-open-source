@@ -24,6 +24,7 @@ def build_right_of_reply_receipt(
             "original_record_sha256": payload.original_record_sha256,
             "claimant_public_name": payload.claimant_public_name,
             "claimant_role": payload.claimant_role,
+            "legitimacy_confirmed": payload.legitimacy_confirmed,
             "statement_sha256": statement_sha256,
             "official_response_url": (
                 str(payload.official_response_url) if payload.official_response_url else None

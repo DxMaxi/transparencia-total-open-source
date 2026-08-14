@@ -85,16 +85,26 @@ Frequência inicial sugerida:
 
 Uma falha deve marcar `SyncRun=FAILED/PARTIAL`, alertar a equipa e manter a última versão válida.
 
+No repositório, `.github/workflows/official-index-sync.yml` executa a atualização diária antes de
+`.github/workflows/operational-status.yml` verificar a frescura. A atualização escreve apenas
+índices e registos operacionais de sincronização; não promove conteúdo editorial. O workflow
+`.github/workflows/public-smoke.yml` testa o domínio público após cada push em `main` e numa
+execução diária, com repetição enquanto o deployment propaga.
+
 ## Checklist pós-publicação
 
 - HTTPS e redirecionamento ativo em frontend e API.
 - CORS contém apenas origens reais.
 - Swagger/ReDoc desativados em produção.
-- Não existe registo de Service Worker, pedido de notificações ou armazenamento não essencial.
-- Registos e caches PWA de versões anteriores são removidos de forma restrita ao projeto.
+- O service worker só é registado depois de escolha explícita no rodapé.
+- O controlo de revogação elimina apenas o service worker e os caches do projeto.
+- Rotas privadas, pedidos autenticados e respostas `private`/`no-store` nunca entram no cache.
+- Não existe pedido de notificações na interface pública.
 - Migrações aplicadas e capacidade real de recuperação descrita sem garantias inexistentes.
 - Última cópia B2 cifrada e último ensaio de restauro com execução, SHA-256, RPO e RTO registados.
 - URLs oficiais, hashes e datas visíveis nos dados reais.
 - Dados de demonstração ausentes do domínio oficial.
 - Política de correções e contacto público disponíveis.
 - Privacidade, cookies, termos/aviso legal e acessibilidade publicados.
+- Workflow `Public smoke` verde para o commit integrado.
+- Workflow `Official index sync` e monitor de frescura sem falhas não justificadas.

@@ -28,7 +28,9 @@ export function RightOfReplyForm() {
     }
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
-    const payload = Object.fromEntries(form.entries());
+    const payload = Object.fromEntries(
+      [...form.entries()].filter(([, value]) => value !== ""),
+    );
     setPending(true);
     try {
       const response = await fetch(`${apiUrl}/api/v1/right-of-reply`, {
@@ -36,8 +38,13 @@ export function RightOfReplyForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const body = await response.json();
-      if (!response.ok) throw new Error(body.detail || "Não foi possível registar a submissão.");
+      const body = await response.json().catch(() => null);
+      if (!response.ok) {
+        const detail = typeof body?.detail === "string"
+          ? body.detail
+          : "Não foi possível registar a submissão.";
+        throw new Error(detail);
+      }
       setReceipt(body as Receipt);
       formElement.reset();
     } catch (reason) {
@@ -99,8 +106,17 @@ export function RightOfReplyForm() {
           </label>
           <label className="reply-field-wide">
             Declaração de resposta
-            <textarea name="statement_text" required minLength={20} maxLength={10000} rows={8} />
-            <small>Não inclua contactos, NIF, morada ou outros dados pessoais não necessários.</small>
+            <textarea
+              name="statement_text"
+              required
+              minLength={20}
+              maxLength={10000}
+              rows={8}
+              aria-describedby="reply-data-minimization-hint"
+            />
+            <small id="reply-data-minimization-hint">
+              Não inclua contactos, NIF, morada ou outros dados pessoais não necessários.
+            </small>
           </label>
           <label className="reply-field-wide">
             Ligação HTTPS para declaração pública oficial (opcional)
@@ -109,7 +125,7 @@ export function RightOfReplyForm() {
         </div>
 
         <label className="reply-confirmation">
-          <input type="checkbox" required />
+          <input type="checkbox" name="legitimacy_confirmed" value="true" required />
           <span>
             Confirmo que a resposta se refere ao registo indicado, que tenho legitimidade
             para a apresentar e que li a <a href="/privacidade">política de privacidade</a>.
