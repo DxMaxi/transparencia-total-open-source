@@ -40,6 +40,7 @@ def test_right_of_reply_receipt_is_deterministic_and_preserves_original() -> Non
         claimant_role="Representante legal",
         statement_text=("Declaração demonstrativa suficientemente longa para o registo auditável."),
         official_response_url="https://www.base.gov.pt/Base4/pt/pesquisa/?type=contratos",
+        legitimacy_confirmed=True,
     )
     receipt = build_right_of_reply_receipt(
         payload,

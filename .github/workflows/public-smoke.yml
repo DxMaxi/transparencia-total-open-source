@@ -1,0 +1,33 @@
+name: Public smoke
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "53 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: transparencia-total-public-smoke
+  cancel-in-progress: true
+
+jobs:
+  public-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PUBLIC_SITE_URL: https://www.transparenciatotal.pt
+      SMOKE_ATTEMPTS: "12"
+      SMOKE_DELAY_MS: "20000"
+      SMOKE_TIMEOUT_MS: "15000"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Verificar frontend, API pública, PWA e cabeçalhos
+        run: npm run smoke:public

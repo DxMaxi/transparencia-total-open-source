@@ -24,7 +24,7 @@ continuam a exigir autorizações separadas.
 - [x] README e documentação refletem a integração e publicação fail-closed da V5.10.
 - [x] V5.11 — plano operacional revisto e integrado antes de qualquer operação remota em staging.
 - [x] V5.12 — workflow segregado de staging revisto e integrado, ainda sem qualquer execução.
-- [ ] Existe um milestone ou conjunto de issues para todos os itens ainda abertos.
+- [x] Existe um [conjunto de issues de conclusão](https://github.com/DxMaxi/transparencia-total-open-source/issues/58) para todos os itens ainda abertos.
 
 ## B. Estabilização pública
 
@@ -154,7 +154,7 @@ continuam a exigir autorizações separadas.
 - [ ] Navegação e filtros são consistentes em desktop e telemóvel.
 - [ ] Auditoria de acessibilidade completa ou método público equivalente concluído.
 - [ ] Metas de desempenho definidas e medidas em rede móvel.
-- [ ] Instalação PWA é uma escolha explícita.
+- [x] Instalação PWA e ativação do modo offline são escolhas explícitas e reversíveis.
 - [ ] Pedido de notificações ocorre apenas após consentimento informado.
 - [ ] Preferências de alerta podem ser alteradas e apagadas.
 - [ ] Revogação desativa a subscrição no navegador e no backend.

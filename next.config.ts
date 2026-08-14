@@ -45,11 +45,15 @@ const contentSecurityPolicy = [
   "font-src 'self' data:",
   "form-action 'self'",
   "frame-ancestors 'none'",
+  "frame-src 'none'",
   "img-src 'self' data: https:",
+  "manifest-src 'self'",
+  "media-src 'self'",
   "object-src 'none'",
   `script-src ${scriptSources}`,
   "style-src 'self' 'unsafe-inline'",
-  isDevelopment ? "worker-src 'self' blob:" : "worker-src 'none'",
+  isDevelopment ? "worker-src 'self' blob:" : "worker-src 'self'",
+  ...(!isDevelopment ? ["upgrade-insecure-requests"] : []),
 ].join("; ");
 
 const nextConfig: NextConfig = {
@@ -82,14 +86,33 @@ const nextConfig: NextConfig = {
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-XSS-Protection", value: "0" },
           { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
           { key: "X-DNS-Prefetch-Control", value: "off" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          { key: "Strict-Transport-Security", value: "max-age=31536000" },
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=31536000; includeSubDomains",
+          },
           { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+          { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
+          { key: "Origin-Agent-Cluster", value: "?1" },
           {
             key: "Permissions-Policy",
-            value: "camera=(), geolocation=(), microphone=(), payment=(), usb=()",
+            value: [
+              "accelerometer=()",
+              "autoplay=()",
+              "camera=()",
+              "display-capture=()",
+              "fullscreen=(self)",
+              "geolocation=()",
+              "gyroscope=()",
+              "magnetometer=()",
+              "microphone=()",
+              "payment=()",
+              "publickey-credentials-get=()",
+              "usb=()",
+            ].join(", "),
           },
           {
             key: "Content-Security-Policy",

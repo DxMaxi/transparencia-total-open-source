@@ -45,16 +45,22 @@ test("legal information is reachable and supports real controller identification
   assert.match(site, /NEXT_PUBLIC_LEGAL_TAX_ID/);
 });
 
-test("the public release exposes security headers and removes legacy PWA state", async () => {
+test("the public release exposes security headers and opt-in PWA controls", async () => {
   const config = await readFile(new URL("next.config.ts", root), "utf8");
   const layout = await readFile(new URL("app/layout.tsx", root), "utf8");
+  const footer = await readFile(new URL("components/site-footer.tsx", root), "utf8");
+  const controls = await readFile(new URL("components/pwa-controls.tsx", root), "utf8");
   assert.match(config, /Content-Security-Policy/);
   assert.match(config, /X-Content-Type-Options/);
   assert.match(config, /X-Frame-Options/);
   assert.match(config, /Strict-Transport-Security/);
   assert.match(config, /connect-src/);
-  assert.match(layout, /BrowserStorageCleanup/);
-  assert.doesNotMatch(layout, /PwaRegister/);
+  assert.match(config, /worker-src 'self'/);
+  assert.match(layout, /manifest:\s*["']\/manifest\.json/);
+  assert.doesNotMatch(layout, /BrowserStorageCleanup|PwaRegister/);
+  assert.match(footer, /<PwaControls \/>/);
+  assert.match(controls, /onClick={enableOfflineMode}/);
+  assert.match(controls, /onClick={disableOfflineMode}/);
 });
 
 test("the right-of-reply form never falls back to a query-string submission", async () => {

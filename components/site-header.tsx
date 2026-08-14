@@ -45,21 +45,25 @@ export function SiteHeader() {
               type="button"
               aria-label={open ? "Fechar menu" : "Abrir menu"}
               aria-expanded={open}
+              aria-controls="mobile-primary-navigation"
               onClick={() => setOpen((value) => !value)}
             >
               <MenuIcon />
             </button>
           </div>
         </div>
-        {open && (
-          <nav className="mobile-nav shell" aria-label="Navegação móvel">
-            {navItems.map((item) => (
-              <a key={item.href} href={item.href} onClick={() => setOpen(false)}>
-                {item.label}
-              </a>
-            ))}
-          </nav>
-        )}
+        <nav
+          id="mobile-primary-navigation"
+          className="mobile-nav shell"
+          aria-label="Navegação móvel"
+          hidden={!open}
+        >
+          {navItems.map((item) => (
+            <a key={item.href} href={item.href} onClick={() => setOpen(false)}>
+              {item.label}
+            </a>
+          ))}
+        </nav>
       </header>
     </>
   );

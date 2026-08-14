@@ -19,15 +19,17 @@ export default function CookiesPage() {
       <section className="card legal-card">
         <h2>Configuração pública atual</h2>
         <p>
-          Na configuração pública atual, a Transparência Total não coloca cookies de
-          publicidade, personalização, sessão ou medição de audiência e não regista um
-          service worker no navegador. Por isso não apresentamos um aviso de consentimento
-          que não teria escolhas reais para gerir.
+          A Transparência Total não coloca cookies de publicidade, personalização, sessão
+          ou medição de audiência. O modo offline permanece desativado até a pessoa escolher
+          explicitamente “Ativar modo offline” no rodapé; visitar o site, por si só, não
+          regista o service worker nem cria os respetivos caches.
         </p>
         <p>
-          O código remove apenas o service worker e os caches com o prefixo do projeto que
-          possam ter sido criados por versões anteriores. Esta limpeza técnica não identifica
-          o visitante, não envia o conteúdo desses caches ao projeto e não cria armazenamento novo.
+          Quando ativado, o navegador guarda apenas páginas públicas e recursos essenciais
+          em caches com o prefixo do projeto. Rotas de administração, autenticação e API,
+          respostas privadas ou sem autorização de cache e pedidos com credenciais são excluídos.
+          O botão “Desativar e apagar cache” remove o registo e apenas esses caches, sem ler ou
+          eliminar armazenamento de outros websites.
         </p>
         <h2>Cache normal do navegador</h2>
         <p>
@@ -38,13 +40,16 @@ export default function CookiesPage() {
         <h2>Base legal</h2>
         <p>
           O artigo 5.º da Lei n.º 41/2004 exige consentimento para armazenamento ou acesso
-          não essencial no equipamento. Se essa configuração mudar, a nova tecnologia ficará
-          desativada até existir informação clara e, quando exigido, consentimento prévio.
+          não essencial no equipamento. A escolha do botão é a ação explícita que ativa o modo
+          offline; pode ser revogada no mesmo controlo. O projeto não usa essa escolha para
+          identificar a pessoa nem recebe uma lista das páginas existentes no cache.
         </p>
         <h2>Alterações futuras</h2>
         <p>
           Esta página será atualizada antes de ativar analítica, publicidade, notificações
-          ou outra tecnologia de armazenamento. Para questões, consulte o{" "}
+          ou outra tecnologia de armazenamento. O modo offline não pede autorização para
+          notificações; essa capacidade continua separada e desativada na interface pública.
+          Para questões, consulte o{" "}
           <InstitutionalContactLink fallbackLabel="canal institucional" />.
         </p>
         <p className="legal-updated">Atualizada em {LEGAL_UPDATED_AT}.</p>

@@ -28,6 +28,8 @@ export default function AccessibilityPage() {
         <p>
           Foi feita autoavaliação do código, da navegação por teclado, da estrutura de títulos,
           dos nomes acessíveis de controlos, do redimensionamento e das versões móvel e desktop.
+          Os filtros anunciam estado e quantidade de resultados, o menu móvel expõe a relação
+          com a navegação controlada e o modo offline comunica cada mudança sem depender da cor.
           As verificações automáticas complementam, mas não substituem, testes com tecnologias
           de apoio e pessoas com deficiência.
         </p>
@@ -36,6 +38,7 @@ export default function AccessibilityPage() {
           <li>Documentos e páginas de entidades externas podem não cumprir o mesmo nível.</li>
           <li>Algumas tabelas extensas exigem deslocação horizontal em ecrãs pequenos.</li>
           <li>A conformidade com leitores de ecrã ainda não foi validada em todas as combinações de sistema e navegador.</li>
+          <li>A instalação como aplicação depende das capacidades e da interface próprias de cada navegador.</li>
         </ul>
         <h2>Contacto e alternativa acessível</h2>
         <p>

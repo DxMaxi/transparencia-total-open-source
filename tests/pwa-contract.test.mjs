@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 
 const root = new URL("../", import.meta.url);
@@ -26,27 +26,35 @@ test("generated PNG icons have the dimensions declared in the manifest", async (
   }
 });
 
-test("service worker implements offline and push paths", async () => {
+test("service worker caches only public, explicitly cacheable resources", async () => {
   const worker = await readFile(new URL("public/sw.js", root), "utf8");
-  assert.match(worker, /offline\.html/);
+  assert.match(worker, /CACHE_PREFIX = "transparencia-total-"/);
+  assert.match(worker, /PRIVATE_PATH_PREFIXES = \["\/admin", "\/auth", "\/api"\]/);
+  assert.match(worker, /request\.headers\.has\("authorization"\)/);
+  assert.match(worker, /private\|no-store/);
+  assert.match(worker, /key\.startsWith\(CACHE_PREFIX\)/);
+  assert.match(worker, /safeNotificationTarget/);
+  assert.match(worker, /target\.origin !== self\.location\.origin/);
   assert.match(worker, /addEventListener\("push"/);
   assert.match(worker, /addEventListener\("notificationclick"/);
-  assert.match(worker, /url\.origin !== self\.location\.origin/);
 });
 
-test("the public layout does not register device storage without an explicit choice", async () => {
+test("offline mode is an explicit reversible choice", async () => {
   const layout = await readFile(new URL("app/layout.tsx", root), "utf8");
-  assert.doesNotMatch(layout, /PwaRegister/);
-  assert.match(layout, /BrowserStorageCleanup/);
-  assert.doesNotMatch(layout, /manifest:\s*["']\/manifest\.json/);
+  const footer = await readFile(new URL("components/site-footer.tsx", root), "utf8");
+  const controls = await readFile(new URL("components/pwa-controls.tsx", root), "utf8");
+
+  assert.match(layout, /manifest:\s*["']\/manifest\.json/);
+  assert.doesNotMatch(layout, /BrowserStorageCleanup|PwaRegister/);
+  assert.match(footer, /<PwaControls \/>/);
+  assert.match(controls, /onClick={enableOfflineMode}/);
+  assert.match(controls, /navigator\.serviceWorker\.register\("\/sw\.js"/);
+  assert.match(controls, /registration\.unregister\(\)/);
+  assert.match(controls, /key\.startsWith\(PROJECT_CACHE_PREFIX\)/);
+  assert.doesNotMatch(controls, /localStorage|sessionStorage|indexedDB/);
 });
 
-test("legacy browser storage cleanup is restricted to this project's PWA assets", async () => {
-  const cleanup = await readFile(
-    new URL("components/browser-storage-cleanup.tsx", root),
-    "utf8",
-  );
-  assert.match(cleanup, /pathname === ["']\/sw\.js["']/);
-  assert.match(cleanup, /startsWith\(LEGACY_CACHE_PREFIX\)/);
-  assert.doesNotMatch(cleanup, /localStorage|sessionStorage|indexedDB/);
+test("obsolete automatic registration and cleanup components are removed", async () => {
+  await assert.rejects(access(new URL("components/pwa-register.tsx", root)));
+  await assert.rejects(access(new URL("components/browser-storage-cleanup.tsx", root)));
 });

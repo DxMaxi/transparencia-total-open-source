@@ -1,5 +1,4 @@
-import type { Metadata } from "next";
-import { BrowserStorageCleanup } from "@/components/browser-storage-cleanup";
+import type { Metadata, Viewport } from "next";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { SITE_URL } from "@/lib/site";
@@ -15,6 +14,7 @@ export const metadata: Metadata = {
   description:
     "Plataforma cívica, neutra e aberta para acompanhar promessas, votações e atividade política em Portugal.",
   applicationName: "Transparência Total / Fator Cívico",
+  manifest: "/manifest.json",
   formatDetection: { telephone: false },
   openGraph: {
     type: "website",
@@ -32,6 +32,11 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  colorScheme: "light",
+  themeColor: "#07182a",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -40,7 +45,6 @@ export default function RootLayout({
   return (
     <html lang="pt-PT">
       <body>
-        <BrowserStorageCleanup />
         <a className="skip-link" href="#conteudo">Saltar para o conteúdo</a>
         <SiteHeader />
         <div id="conteudo">{children}</div>

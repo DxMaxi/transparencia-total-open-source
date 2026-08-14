@@ -1,5 +1,6 @@
 import { LandmarkIcon } from "@/components/icons";
 import { InstitutionalContactLink } from "@/components/institutional-contact-link";
+import { PwaControls } from "@/components/pwa-controls";
 import { LEGAL_RESPONSIBLE } from "@/lib/site";
 
 export function SiteFooter() {
@@ -14,6 +15,7 @@ export function SiteFooter() {
           </p>
           <span className="footer-responsible">Responsável: {LEGAL_RESPONSIBLE}</span>
           <InstitutionalContactLink fallbackLabel="Contacto institucional em preparação" />
+          <PwaControls />
         </div>
         <div>
           <strong>Projeto</strong>

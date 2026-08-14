@@ -105,8 +105,8 @@ uma fonte pública; a plataforma torna também visíveis falhas, atrasos e limit
   legislatura, permitem pesquisa, filtros e paginação e mostram lacunas sem preencher dados por
   inferência.
 
-- Frontend Next.js responsivo. O manifesto, Service Worker e notificações permanecem
-  desligados da interface pública até existir uma escolha explícita do utilizador.
+- Frontend Next.js responsivo. Manifesto e modo offline estão disponíveis apenas por escolha
+  explícita e reversível no rodapé; notificações continuam desligadas da interface pública.
 - Pipeline do Investigador Cívico preservado na API, sem página pública até existir um conjunto
   de relações efetivamente revisto.
 - Componentes de grafo e de comparação preservados para trabalho futuro, sem exposição pública
@@ -196,7 +196,7 @@ transparencia-total/
 │   ├── icons/                   # Ícones PWA 96/192/512
 │   ├── manifest.json
 │   ├── offline.html
-│   └── sw.js                    # Infraestrutura inativa; versões antigas são removidas no cliente
+│   └── sw.js                    # Cache público opt-in; exclui rotas privadas e respostas no-store
 ├── types/                       # Contratos TypeScript da interface
 ├── backend/
 │   ├── app/
@@ -336,7 +336,8 @@ Noutro terminal:
 npm run dev:next
 ```
 
-Abra `http://localhost:3000`. A configuração pública não regista automaticamente o Service Worker.
+Abra `http://localhost:3000`. O Service Worker só é registado quando escolher “Ativar modo
+offline” no rodapé e pode ser removido, juntamente com os caches do projeto, no mesmo controlo.
 
 ## API principal
 
@@ -600,12 +601,14 @@ parecer jurídico nem, por si só, prova conformidade.
 
 ## PWA e notificações push opcionais
 
-O website público não regista atualmente `public/sw.js` nem pede autorização de notificações.
-Esta infraestrutura só deve ser ativada depois de acrescentar uma escolha explícita, atualizar
-a política de cookies/armazenamento e validar o fluxo de revogação.
+O manifesto está publicado, mas visitar o website não regista `public/sw.js`. O rodapé apresenta
+uma escolha explícita para ativar o modo offline e outra para anular o registo e apagar apenas
+caches com o prefixo `transparencia-total-`. Rotas `/admin`, `/auth` e `/api`, pedidos com
+autorização e respostas `private`/`no-store` são excluídos do cache.
 
-O layout executa uma limpeza limitada a registos `/sw.js` e caches com o prefixo do projeto para
-retirar instalações de versões anteriores. Não cria identificadores nem armazenamento novo.
+O modo offline não pede autorização de notificações. A subscrição push continua fora da interface
+pública até existir consentimento informado, preferências editáveis e revogação no navegador e
+backend. Consulte a [política de cookies](app/cookies/page.tsx).
 
 Gere um par VAPID:
 
@@ -620,8 +623,9 @@ Quando ativado por escolha explícita, `public/sw.js` fornece:
 
 - instalação com `public/manifest.json` e ícones maskable;
 - fallback `offline.html` para navegação sem rede;
-- cache limitado a recursos da mesma origem;
-- receção de push e abertura do URL associado ao alerta.
+- cache limitado a recursos públicos e cacheáveis da mesma origem;
+- limpeza limitada aos caches do próprio projeto;
+- receção de push e abertura apenas de URLs públicas da mesma origem.
 
 Em iPhone/iPad, as notificações web exigem que o utilizador adicione a PWA ao ecrã principal e
 autorize os alertas. Android e desktop apresentam o pedido no fluxo normal do navegador.
@@ -647,7 +651,11 @@ pytest backend
 ```
 
 Os testes do coletor usam fixtures locais. Testes contra portais oficiais devem ser separados dos
-testes de CI para evitar carga, instabilidade e falsos alarmes.
+testes de CI para evitar carga, instabilidade e falsos alarmes. `npm run smoke:public` valida o
+domínio oficial, a ligação à API pública, o 404, o manifesto, o Service Worker e os cabeçalhos. Os
+workflows agendados atualizam os índices operacionais antes do monitor de frescura, sem promover
+conteúdo editorial. O restante fecho da V5 está organizado na
+[issue de acompanhamento #58](https://github.com/DxMaxi/transparencia-total-open-source/issues/58).
 
 ## Publicação gratuita
 
