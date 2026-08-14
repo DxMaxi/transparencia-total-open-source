@@ -129,6 +129,7 @@ svg { flex: 0 0 auto; }
 .sync-source-list span { overflow: hidden; color: #9eb2c0; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .sync-state { color: #94a3b8; font-size: 8px; text-transform: uppercase; white-space: nowrap; }
 .sync-state--succeeded { color: #5eead4; }
+.sync-state--stale { color: #fdba74; }
 .sync-state--partial, .sync-state--running { color: #f6c65b; }
 .sync-state--failed { color: #fda4af; }
 

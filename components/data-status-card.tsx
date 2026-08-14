@@ -22,6 +22,37 @@ const syncStateLabels: Record<string, string> = {
   FAILED: "Falhou",
 };
 
+const MAX_SOURCE_AGE_HOURS = 36;
+const MAX_SOURCE_AGE_MS = MAX_SOURCE_AGE_HOURS * 60 * 60 * 1000;
+
+function syncStatePresentation(
+  source: PublicDataStatus["sources"][number],
+  generatedAt: string,
+) {
+  const current = {
+    label: syncStateLabels[source.status] ?? "Estado desconhecido",
+    statusClass: source.status.toLowerCase(),
+  };
+  if (source.status !== "SUCCEEDED" && source.status !== "PARTIAL") return current;
+
+  const referenceTime = Date.parse(generatedAt);
+  const finishedAt = source.finishedAt ? Date.parse(source.finishedAt) : Number.NaN;
+  const missingTimestamp = !Number.isFinite(referenceTime) || !Number.isFinite(finishedAt);
+  if (missingTimestamp) {
+    return {
+      label: source.status === "PARTIAL" ? "Parcial sem data" : "Sem data",
+      statusClass: "stale",
+    };
+  }
+  if (referenceTime - finishedAt > MAX_SOURCE_AGE_MS) {
+    return {
+      label: source.status === "PARTIAL" ? "Parcial antigo" : "Desatualizado",
+      statusClass: "stale",
+    };
+  }
+  return current;
+}
+
 export function DataStatusCard({ status }: { status: PublicDataStatus }) {
   const live = status.mode === "LIVE";
   const total = Object.values(status.counts).reduce((sum, count) => sum + count, 0);
@@ -46,14 +77,17 @@ export function DataStatusCard({ status }: { status: PublicDataStatus }) {
           <div><strong>{status.counts.parliamentSessions}</strong><span>reuniões</span></div>
         </div>
         <div className="sync-source-list" aria-label="Cobertura das sincronizações">
-          {visibleSources.map((source) => (
-            <div key={source.sourceName}>
-              <span>{sourceLabels[source.sourceName] ?? source.sourceName}</span>
-              <strong className={`sync-state sync-state--${source.status.toLowerCase()}`}>
-                {syncStateLabels[source.status] ?? "Estado desconhecido"}
-              </strong>
-            </div>
-          ))}
+          {visibleSources.map((source) => {
+            const presentation = syncStatePresentation(source, status.generatedAt);
+            return (
+              <div key={source.sourceName}>
+                <span>{sourceLabels[source.sourceName] ?? source.sourceName}</span>
+                <strong className={`sync-state sync-state--${presentation.statusClass}`}>
+                  {presentation.label}
+                </strong>
+              </div>
+            );
+          })}
         </div>
         <div className="audit-note"><CheckIcon /> Recolha e publicação são etapas separadas; índices recolhidos não equivalem a factos aprovados.</div>
       </div>

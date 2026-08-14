@@ -14,16 +14,14 @@ test("public frontend never replaces unavailable official data with demonstratio
   assert.doesNotMatch(banner, /fictícia|demonstrativos/i);
 });
 
-test("public status exposes every operational V4 source without truncation", async () => {
-  const repository = await readFile(
-    new URL("../backend/app/repositories/postgres.py", import.meta.url),
-    "utf8",
-  );
-  const client = await readFile(new URL("../lib/public-data.ts", import.meta.url), "utf8");
-  const card = await readFile(
-    new URL("../components/data-status-card.tsx", import.meta.url),
-    "utf8",
-  );
+test("public status exposes every operational V4 source and its freshness", async () => {
+  const [repository, client, card, styles, monitor] = await Promise.all([
+    readFile(new URL("../backend/app/repositories/postgres.py", import.meta.url), "utf8"),
+    readFile(new URL("../lib/public-data.ts", import.meta.url), "utf8"),
+    readFile(new URL("../components/data-status-card.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+    readFile(new URL("../.github/workflows/operational-status.yml", import.meta.url), "utf8"),
+  ]);
 
   for (const source of [
     "PARLIAMENT_DEPUTIES",
@@ -42,6 +40,14 @@ test("public status exposes every operational V4 source without truncation", asy
   assert.match(card, /COURT_OF_AUDIT/);
   assert.match(card, /EUROPEAN_PARLIAMENT/);
   assert.doesNotMatch(card, /sources\.slice\(0,\s*7/);
+
+  const cardMaxAge = card.match(/MAX_SOURCE_AGE_HOURS = (\d+);/)?.[1];
+  const monitorMaxAge = monitor.match(/V4_SOURCE_MAX_AGE_HOURS:\s*"(\d+)"/)?.[1];
+  assert.equal(cardMaxAge, monitorMaxAge);
+  assert.match(card, /source\.finishedAt/);
+  assert.match(card, /Desatualizado/);
+  assert.match(card, /Parcial antigo/);
+  assert.match(styles, /\.sync-state--stale/);
 });
 
 test("parliament V4 is snapshot-scoped, reviewed and explicit about partial availability", async () => {

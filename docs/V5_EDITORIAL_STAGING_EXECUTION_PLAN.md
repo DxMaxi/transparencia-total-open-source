@@ -28,11 +28,11 @@ migrações V5, a FK para `auth.users`, RLS, triggers, `search_path` fixo e aus�
 browser presentes ou futuros. Esta prova não substitui o inventário nem o ensaio no projeto remoto
 de staging.
 
-## Fundação técnica V5.12 em preparação local
+## Fundação técnica V5.12 integrada
 
-O plano V5.11 foi integrado sem executar qualquer operação remota. A branch local V5.12 prepara um
-workflow dedicado a staging; enquanto essa entrega não for revista, integrada e configurada, o
-workflow não está disponível em `main`. O workflow
+O plano V5.11 foi integrado sem executar qualquer operação remota. A V5.12 integra em `main` um
+workflow dedicado a staging; o environment GitHub `staging`, as variáveis, os segredos e qualquer
+execução remota continuam por configurar e autorizar separadamente. O workflow
 `.github/workflows/production-operations.yml`:
 
 - pertence ao environment GitHub `production`;
@@ -40,9 +40,9 @@ workflow não está disponível em `main`. O workflow
 - usa nomes de credenciais de produção;
 - nunca pode ser reutilizado, copiado com as mesmas credenciais ou apontado para staging.
 
-Antes de qualquer operação remota, a entrega V5.12 tem de ser revista e ter CI verde. Ela acrescenta
+A entrega V5.12 foi revista, integrada e teve CI verde. Acrescenta
 `.github/workflows/staging-editorial-operations.yml`, validadores sanitizados e os respetivos testes
-de contrato. O workflow:
+de contrato. Antes de qualquer operação remota, o workflow:
 
 - aceitar apenas execução manual por `workflow_dispatch`, sem `push`, calendário ou execução
   automática;
@@ -59,7 +59,7 @@ de contrato. O workflow:
 - não imprimir ligações, tokens, chaves, emails, UUID Auth, seed TOTP, QR code ou conteúdo editorial;
 - parar no primeiro erro e conservar apenas evidência sanitizada.
 
-A implementação local está descrita em
+A implementação integrada está descrita em
 [V5.12 — fundação do workflow editorial de staging](V5_STAGING_WORKFLOW_FOUNDATION.md). A existência
 do ficheiro, um eventual commit, PR ou merge não autoriza a sua execução, não configura o
 environment GitHub e não permite reutilizar credenciais de produção.
