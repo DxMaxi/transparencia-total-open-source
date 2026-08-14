@@ -2,8 +2,12 @@
 
 ## Estado e limite
 
-Esta entrega prepara apenas o código do primeiro workflow segregado de staging. Em 13 de agosto de
-2026, o workflow não foi executado, o environment GitHub `staging` não foi criado nem alterado, o
+A fundação foi revista e integrada em `main` em 13 de agosto de 2026 pela
+[pull request #50](https://github.com/DxMaxi/transparencia-total-open-source/pull/50), com CI e
+deployment automático do frontend aprovados. Este fecho cobre apenas código, validadores, testes e
+documentação.
+
+O workflow não foi executado, o environment GitHub `staging` não foi criado nem alterado, o
 Supabase não foi configurado ou consultado, não foram adicionadas credenciais e não houve qualquer
 migração, utilizador, recolha, revisão, publicação, retirada ou operação sobre dados reais.
 
@@ -128,15 +132,15 @@ redirects continuam fora desta entrega; a sua futura configuração deve voltar 
 [alterações incompatíveis anunciadas pelo Supabase](https://supabase.com/changelog?types=breaking-change)
 na data da execução.
 
-## Critérios de saída da V5.12
+## Critérios de saída da V5.12 — concluídos no código
 
-A fundação só pode ser considerada integrada quando:
+A fundação foi considerada integrada depois de:
 
-- os testes Python, JavaScript, lint, tipagem, validação Prisma e build estiverem aprovados;
+- os testes Python, JavaScript, lint, tipagem, validação Prisma e build terem sido aprovados;
 - a revisão confirmar que não existe acionamento automático nem referência a produção;
-- o patch e os limites acima forem aprovados numa pull request própria;
+- o patch e os limites acima terem sido aprovados numa pull request própria;
 - a checklist continuar a mostrar como pendentes todas as ações remotas não executadas.
 
-Mesmo depois disso, a primeira ação possível é apenas pedir autorização para um inventário remoto
-read-only do destino exato. Configurar o environment, adicionar o secret, executar o inventário,
-migrar ou inspecionar são decisões distintas e permanecem fora desta entrega local.
+Mesmo depois da integração, a primeira ação possível é apenas pedir autorização para um inventário
+remoto read-only do destino exato. Configurar o environment, adicionar o secret, executar o
+inventário, migrar ou inspecionar são decisões distintas e permanecem fora desta entrega de código.

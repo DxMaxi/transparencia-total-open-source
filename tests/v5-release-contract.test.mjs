@@ -108,12 +108,14 @@ test("the V5 release gate covers product, editorial, legal and recovery evidence
   assert.match(checklist, /Backup pós-migração cifrado/);
   assert.match(checklist, /Restauro pós-migração aprovado/);
   assert.match(checklist, /História Git integral pesquisada por segredos/);
-  assert.match(readme, /V5\.1 a V5\.11 integradas/);
-  assert.match(readme, /fundação operacional V5\.12 em preparação local/);
+  assert.match(readme, /V5\.1 a V5\.12 integradas/);
+  assert.match(readme, /ativação remota de staging pendente/);
+  assert.match(checklist, /\[x\] V5\.12 — workflow segregado de staging revisto e integrado/);
+  assert.match(checklist, /\[x\] Workflow manual de staging integrado/);
   assert.match(readme, /V5_EDITORIAL_STAGING_EXECUTION_PLAN\.md/);
   assert.match(readme, /V5_STAGING_WORKFLOW_FOUNDATION\.md/);
   assert.match(plan, /V5_EDITORIAL_STAGING_EXECUTION_PLAN\.md/);
   assert.match(plan, /V5_STAGING_WORKFLOW_FOUNDATION\.md/);
   assert.match(readme, /docs\/V5_RELEASE_PLAN\.md/);
-  assert.doesNotMatch(readme, /V5\.11 em preparação local/);
+  assert.doesNotMatch(readme, /V5\.12 em preparação local/);
 });
