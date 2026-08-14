@@ -123,7 +123,5 @@ async def root() -> dict[str, str]:
     return {
         "name": settings.app_name,
         "health": f"{settings.api_prefix}/health",
-        "documentation": "/docs"
-        if settings.environment != "production"
-        else "disabled",
+        "documentation": "/docs" if settings.environment != "production" else "disabled",
     }
