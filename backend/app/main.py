@@ -86,12 +86,8 @@ async def add_security_headers(
         "Permissions-Policy",
         "camera=(), geolocation=(), microphone=(), payment=(), usb=()",
     )
-    development_docs = (
-        settings.environment != "production"
-        and (
-            request.url.path.startswith("/docs")
-            or request.url.path.startswith("/redoc")
-        )
+    development_docs = settings.environment != "production" and (
+        request.url.path.startswith("/docs") or request.url.path.startswith("/redoc")
     )
     if not development_docs:
         response.headers.setdefault(
@@ -106,6 +102,7 @@ async def add_security_headers(
     if request.url.path == f"{settings.api_prefix}/right-of-reply":
         response.headers["Cache-Control"] = "no-store"
     return response
+
 
 app.include_router(health.router, prefix=settings.api_prefix)
 app.include_router(parliament.router, prefix=settings.api_prefix)
@@ -126,5 +123,7 @@ async def root() -> dict[str, str]:
     return {
         "name": settings.app_name,
         "health": f"{settings.api_prefix}/health",
-        "documentation": "/docs" if settings.environment != "production" else "disabled",
+        "documentation": "/docs"
+        if settings.environment != "production"
+        else "disabled",
     }
