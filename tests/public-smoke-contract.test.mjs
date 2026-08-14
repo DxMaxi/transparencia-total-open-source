@@ -40,7 +40,7 @@ test("public smoke runs after main changes and on a daily schedule", async () =>
     "utf8",
   );
 
-  assert.match(workflow, /push:\n\s+branches:\n\s+- main/);
+  assert.match(workflow, /push:\r?\n\s+branches:\r?\n\s+- main/);
   assert.match(workflow, /schedule:/);
   assert.match(workflow, /npm run smoke:public/);
   assert.match(workflow, /SMOKE_ATTEMPTS: "12"/);
