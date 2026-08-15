@@ -55,6 +55,7 @@ function syncStatePresentation(
 
 export function DataStatusCard({ status }: { status: PublicDataStatus }) {
   const live = status.mode === "LIVE";
+  const unavailable = status.mode === "UNAVAILABLE";
   const total = Object.values(status.counts).reduce((sum, count) => sum + count, 0);
   const visibleSources = status.sources.filter((source) => source.sourceName in sourceLabels);
   return (
@@ -67,18 +68,32 @@ export function DataStatusCard({ status }: { status: PublicDataStatus }) {
       </div>
       <div className="hero-dashboard__body">
         <div className="dashboard-title-row">
-          <div><span>Publicação controlada</span><strong>{total} registos aprovados</strong></div>
+          <div><span>Publicação controlada</span><strong>{unavailable ? "Dados temporariamente indisponíveis" : `${total} registos aprovados`}</strong></div>
           {live ? <CheckIcon /> : <ClockIcon />}
         </div>
         <div className="dashboard-public-counts">
-          <div><strong>{status.counts.politicians}</strong><span>perfis</span></div>
-          <div><strong>{status.counts.parliamentInitiatives}</strong><span>iniciativas</span></div>
-          <div><strong>{status.counts.parliamentVotes}</strong><span>votações</span></div>
-          <div><strong>{status.counts.parliamentSessions}</strong><span>reuniões</span></div>
+          <div>
+            <strong>{unavailable ? "—" : status.counts.politicians}</strong>
+            <span>perfis</span>
+          </div>
+          <div>
+            <strong>{unavailable ? "—" : status.counts.parliamentInitiatives}</strong>
+            <span>iniciativas</span>
+          </div>
+          <div>
+            <strong>{unavailable ? "—" : status.counts.parliamentVotes}</strong>
+            <span>votações</span>
+          </div>
+          <div>
+            <strong>{unavailable ? "—" : status.counts.parliamentSessions}</strong>
+            <span>reuniões</span>
+          </div>
         </div>
         <div className="sync-source-list" aria-label="Cobertura das sincronizações">
           {visibleSources.map((source) => {
-            const presentation = syncStatePresentation(source, status.generatedAt);
+            const presentation = unavailable
+              ? { label: "Indisponível", statusClass: "failed" }
+              : syncStatePresentation(source, status.generatedAt);
             return (
               <div key={source.sourceName}>
                 <span>{sourceLabels[source.sourceName] ?? source.sourceName}</span>

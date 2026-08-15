@@ -35,3 +35,15 @@ test("right-of-reply form sends explicit legitimacy and omits empty optional fie
   assert.match(component, /filter\(\(\[, value\]\) => value !== ""\)/);
   assert.match(component, /aria-describedby="reply-data-minimization-hint"/);
 });
+
+test("unavailable API never presents missing data as zero published records", async () => {
+  const component = await readFile(
+    new URL("components/data-status-card.tsx", root),
+    "utf8",
+  );
+
+  assert.match(component, /const unavailable = status\.mode === "UNAVAILABLE"/);
+  assert.match(component, /Dados temporariamente indisponíveis/);
+  assert.match(component, /unavailable \? "—" : status\.counts\.politicians/);
+  assert.match(component, /label: "Indisponível"/);
+});
