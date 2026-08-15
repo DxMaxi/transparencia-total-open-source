@@ -56,6 +56,7 @@ class OfficialIndexStagingRepository(PostgresRepository):
                 len(raw_document.content),
                 raw_document.mime_type,
                 raw_document.content,
+                timeout=180,
             )
             existing = await connection.fetchrow(
                 """
@@ -64,6 +65,7 @@ class OfficialIndexStagingRepository(PostgresRepository):
                 WHERE storage_key = $1
                 """,
                 storage_key,
+                timeout=180,
             )
             if existing is None:
                 raise RuntimeError("O objecto bruto não foi criado nem encontrado")
