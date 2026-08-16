@@ -12,6 +12,11 @@ router = APIRouter(tags=["Sistema"])
 
 async def _database_is_ready(repository: PostgresRepository) -> bool:
     if repository.pool is None:
+        try:
+            await repository.connect()
+        except Exception:
+            return False
+    if repository.pool is None:
         return False
     try:
         async with repository.pool.acquire() as connection:

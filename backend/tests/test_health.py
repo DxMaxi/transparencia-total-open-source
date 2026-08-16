@@ -2,6 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.repositories.official_index_staging import OfficialIndexStagingRepository
 
 
 def test_health_contract() -> None:
@@ -76,3 +77,68 @@ def test_civic_guide_is_disabled_by_default() -> None:
             },
         )
     assert response.status_code == 503
+
+
+def test_database_outage_keeps_process_live_and_readiness_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fail_connect(self: OfficialIndexStagingRepository) -> None:
+        raise OSError("database unavailable")
+
+    monkeypatch.setattr(OfficialIndexStagingRepository, "connect", fail_connect)
+
+    with TestClient(app) as client:
+        live_response = client.get("/api/v1/health/live")
+        ready_response = client.get("/api/v1/health/ready")
+
+    assert live_response.status_code == 200
+    assert live_response.json() == {"status": "ok"}
+    assert ready_response.status_code == 503
+    assert ready_response.json()["detail"]["database_ready"] is False
+
+
+def test_readiness_retries_database_after_startup_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeConnection:
+        async def fetchval(self, _query: str) -> int:
+            return 1
+
+    class FakeAcquire:
+        async def __aenter__(self) -> FakeConnection:
+            return FakeConnection()
+
+        async def __aexit__(
+            self,
+            _exc_type: object,
+            _exc: object,
+            _traceback: object,
+        ) -> None:
+            return None
+
+    class FakePool:
+        def acquire(self) -> FakeAcquire:
+            return FakeAcquire()
+
+        async def close(self) -> None:
+            return None
+
+    attempts = 0
+
+    async def flaky_connect(self: OfficialIndexStagingRepository) -> None:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise OSError("temporary database outage")
+        self.pool = FakePool()  # type: ignore[assignment]
+
+    monkeypatch.setattr(OfficialIndexStagingRepository, "connect", flaky_connect)
+
+    with TestClient(app) as client:
+        live_response = client.get("/api/v1/health/live")
+        ready_response = client.get("/api/v1/health/ready")
+
+    assert live_response.status_code == 200
+    assert ready_response.status_code == 200
+    assert ready_response.json()["database_ready"] is True
+    assert attempts == 2

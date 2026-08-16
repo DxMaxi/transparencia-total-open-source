@@ -1,3 +1,4 @@
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -26,6 +27,7 @@ from app.repositories.official_index_staging import OfficialIndexStagingReposito
 
 settings = get_settings()
 configure_logging(settings.log_level)
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -38,10 +40,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     repository = OfficialIndexStagingRepository(settings)
     staff_auth = SupabaseJwtVerifier(settings)
-    await repository.connect()
     app.state.repository = repository
     app.state.staff_auth = staff_auth
     try:
+        try:
+            await repository.connect()
+        except Exception:
+            logger.exception("database_startup_connection_failed")
         yield
     finally:
         await staff_auth.close()
