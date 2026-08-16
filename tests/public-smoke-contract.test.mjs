@@ -34,13 +34,16 @@ test("public smoke covers every public route and deployment guard", async () => 
   assert.match(script, /__public-smoke-unknown-route__/);
 });
 
-test("public smoke runs after main changes and on a daily schedule", async () => {
+test("public smoke runs after a successful Production deployment and on a daily schedule", async () => {
   const workflow = await readFile(
     new URL(".github/workflows/public-smoke.yml", root),
     "utf8",
   );
 
-  assert.match(workflow, /push:\r?\n\s+branches:\r?\n\s+- main/);
+  assert.match(workflow, /deployment_status:/);
+  assert.match(workflow, /github\.event\.deployment_status\.state == 'success'/);
+  assert.match(workflow, /github\.event\.deployment\.environment == 'Production'/);
+  assert.doesNotMatch(workflow, /push:\r?\n\s+branches:\r?\n\s+- main/);
   assert.match(workflow, /schedule:/);
   assert.match(workflow, /npm run smoke:public/);
   assert.match(workflow, /SMOKE_ATTEMPTS: "12"/);

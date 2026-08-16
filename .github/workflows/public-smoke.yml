@@ -1,9 +1,7 @@
 name: Public smoke
 
 on:
-  push:
-    branches:
-      - main
+  deployment_status:
   schedule:
     - cron: "53 6 * * *"
   workflow_dispatch:
@@ -17,6 +15,10 @@ concurrency:
 
 jobs:
   public-smoke:
+    if: >-
+      github.event_name != 'deployment_status' ||
+      (github.event.deployment_status.state == 'success' &&
+       github.event.deployment.environment == 'Production')
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
