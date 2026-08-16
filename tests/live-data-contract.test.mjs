@@ -177,3 +177,15 @@ test("V5.6 profiles expose independent, fail-closed coverage areas", async () =>
   assert.match(documentation, /não publica nem retira dados reais/i);
   assert.match(documentation, /não existe correspondência aproximada/i);
 });
+test("Promessómetro marks the editorial catalogue as fallback when the API is unavailable", async () => {
+  const client = await readFile(new URL("../lib/public-data.ts", import.meta.url), "utf8");
+
+  assert.match(
+    client,
+    /if \(result\.ok\) \{\s*return \{ data: initialGovernmentCommitments, status, showingFallback: true \};\s*\}/,
+  );
+  assert.match(
+    client,
+    /data: initialGovernmentCommitments,[\s\S]*mode: "UNAVAILABLE"[\s\S]*showingFallback: true/,
+  );
+});

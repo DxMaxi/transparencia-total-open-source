@@ -1358,7 +1358,18 @@ export async function loadPublicPromises(): Promise<LoadedData<GovernmentPromise
       })),
     };
   }
-  return { data: initialGovernmentCommitments, status, showingFallback: false };
+  if (result.ok) {
+    return { data: initialGovernmentCommitments, status, showingFallback: true };
+  }
+  return {
+    data: initialGovernmentCommitments,
+    status: {
+      ...status,
+      mode: "UNAVAILABLE",
+      message: "O Promessómetro está temporariamente indisponível; é apresentada apenas a base editorial inicial.",
+    },
+    showingFallback: true,
+  };
 }
 
 export async function loadPublicInvestigator(): Promise<LoadedData<PublicInvestigatorDataset>> {
