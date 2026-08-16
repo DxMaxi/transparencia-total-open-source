@@ -1,6 +1,7 @@
 from datetime import date
 from typing import Annotated, Literal
 
+import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from app.api.dependencies import get_repository
@@ -46,7 +47,20 @@ async def public_data_status(
     repository: Annotated[PostgresRepository, Depends(get_repository)],
 ) -> PublicDataStatus:
     _cache(response)
-    return PublicDataStatus.model_validate(await repository.get_public_data_status())
+    try:
+        data = await repository.get_public_data_status()
+    except (
+        RuntimeError,
+        OSError,
+        TimeoutError,
+        asyncpg.PostgresError,
+        asyncpg.InterfaceError,
+    ) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="O servi?o de dados est? temporariamente indispon?vel.",
+        ) from exc
+    return PublicDataStatus.model_validate(data)
 
 
 @router.get("/politicians", response_model=list[PublishedPersonSummary])

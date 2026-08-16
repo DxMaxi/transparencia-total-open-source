@@ -209,3 +209,20 @@ def test_status_never_claims_live_data_without_database() -> None:
     assert response.status_code == 200
     assert response.json()["mode"] == "UNAVAILABLE"
     assert response.json()["database_configured"] is False
+
+
+def test_status_database_failure_returns_controlled_503() -> None:
+    class FailingRepository:
+        async def get_public_data_status(self) -> dict[str, Any]:
+            raise OSError("internal database connection details")
+
+    app.dependency_overrides[get_repository] = lambda: FailingRepository()
+    try:
+        with TestClient(app) as client:
+            response = client.get("/api/v1/public/data-status")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == ("O servi?o de dados est? temporariamente indispon?vel.")
+    assert "internal database connection details" not in response.text
