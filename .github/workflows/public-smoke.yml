@@ -33,3 +33,12 @@ jobs:
           node-version: 24
       - name: Verificar frontend, API pública, PWA e cabeçalhos
         run: npm run smoke:public
+
+      - name: Instalar dependencias Node para E2E
+        run: npm ci
+
+      - name: Instalar Chromium para Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Executar E2E publico no Chromium
+        run: npx playwright test tests/e2e/public-site.spec.js --workers=1

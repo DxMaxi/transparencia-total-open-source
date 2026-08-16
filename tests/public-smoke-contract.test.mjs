@@ -46,6 +46,12 @@ test("public smoke runs after a successful Production deployment and on a daily 
   assert.doesNotMatch(workflow, /push:\r?\n\s+branches:\r?\n\s+- main/);
   assert.match(workflow, /schedule:/);
   assert.match(workflow, /npm run smoke:public/);
+  assert.match(workflow, /npm ci/);
+  assert.match(workflow, /npx playwright install --with-deps chromium/);
+  assert.match(
+    workflow,
+    /npx playwright test tests\/e2e\/public-site\.spec\.js --workers=1/,
+  );
   assert.match(workflow, /SMOKE_ATTEMPTS: "12"/);
 });
 
