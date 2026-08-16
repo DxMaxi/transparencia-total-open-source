@@ -277,7 +277,7 @@ async function apiFetch<T>(path: string): Promise<ApiResult<T>> {
     const response = await fetch(`${apiBaseUrl}${path}`, {
       headers: { Accept: "application/json" },
       next: { revalidate: 60 },
-      signal: AbortSignal.timeout(4_000),
+      signal: AbortSignal.timeout(10_000),
     });
     if (!response.ok) return { ok: false, status: response.status };
     return { ok: true, data: (await response.json()) as T };
