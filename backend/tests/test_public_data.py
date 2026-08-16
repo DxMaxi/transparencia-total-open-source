@@ -224,5 +224,7 @@ def test_status_database_failure_returns_controlled_503() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 503
-    assert response.json()["detail"] == ("O servi?o de dados est? temporariamente indispon?vel.")
+    assert response.json()["detail"] == (
+        "O servi\u00e7o de dados est\u00e1 temporariamente indispon\u00edvel."
+    )
     assert "internal database connection details" not in response.text

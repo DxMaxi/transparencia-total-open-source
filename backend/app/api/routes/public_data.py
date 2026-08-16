@@ -58,7 +58,7 @@ async def public_data_status(
     ) as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="O servi?o de dados est? temporariamente indispon?vel.",
+            detail="O servi\u00e7o de dados est\u00e1 temporariamente indispon\u00edvel.",
         ) from exc
     return PublicDataStatus.model_validate(data)
 
