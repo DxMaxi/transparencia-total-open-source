@@ -59,8 +59,15 @@ test("public pages declare stable canonical addresses", async () => {
 });
 
 test("politician metadata distinguishes a missing profile from an unavailable API", async () => {
-  const profile = await read("../app/politicos/[slug]/page.tsx");
+  const [profile, client] = await Promise.all([
+    read("../app/politicos/[slug]/page.tsx"),
+    read("../lib/public-data.ts"),
+  ]);
 
+  assert.match(
+    client,
+    /if \(result\.status === 404\) \{\s*return \{ data: null, status, showingFallback: false \};\s*\}\s*return \{\s*data: null,\s*status: \{\s*\.\.\.status,\s*mode: "UNAVAILABLE"/,
+  );
   assert.match(profile, /loaded\.status\.mode === "UNAVAILABLE"/);
   assert.match(profile, /title: "Perfil temporariamente indisponível"/);
   assert.match(profile, /title: "Página não encontrada"/);

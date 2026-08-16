@@ -1308,7 +1308,18 @@ export async function loadPublicPolitician(
       },
     };
   }
-  return { data: null, status, showingFallback: false };
+  if (result.status === 404) {
+    return { data: null, status, showingFallback: false };
+  }
+  return {
+    data: null,
+    status: {
+      ...status,
+      mode: "UNAVAILABLE",
+      message: "O perfil está temporariamente indisponível devido a uma falha na API pública.",
+    },
+    showingFallback: false,
+  };
 }
 
 export async function loadPublicPromises(): Promise<LoadedData<GovernmentPromise[]>> {
