@@ -66,6 +66,10 @@ jobs:
           CONFIRM_DISPOSABLE_DATABASE: "true"
       - run: npm run db:deploy
       - run: python -m pip install --upgrade pip
+      - name: Verificar sincronizacao das dependencias Python
+        run: python backend/scripts/check_dependency_sync.py
+      - name: Validar instalacao pelas requirements do backend
+        run: python -m pip install -r backend/requirements.txt
       - run: python -m pip install -e './backend[dev]'
       - run: ruff check backend
       - run: ruff format --check backend
