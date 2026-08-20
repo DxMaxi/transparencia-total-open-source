@@ -43,6 +43,9 @@ export default async function EditorialQueuePage({
           <p>Consulte a prova oficial, compare a versão normalizada e registe cada decisão.</p>
         </div>
         <div className="admin-heading-actions">
+          <Link className="button button--primary" href="/admin/revisao/ia">
+            Propostas DRE por IA
+          </Link>
           <Link className="button button--primary" href="/admin/revisao/parlamento">
             Importar fotografia parlamentar
           </Link>

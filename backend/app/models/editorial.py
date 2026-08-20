@@ -220,6 +220,16 @@ class AiDreProposalRequest(BaseModel):
     confirm_ai_not_source: Literal[True]
 
 
+class AiDreRegenerationRequest(EditorialDecisionRequest):
+    """Nova versão de IA ligada à versão e à prova que o revisor viu."""
+
+    expected_current_version_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    confirm_private_only: Literal[True]
+    confirm_archived_source_only: Literal[True]
+    confirm_ai_not_source: Literal[True]
+    confirm_new_immutable_version: Literal[True]
+
+
 class ParliamentEditorialPublicationRequest(EditorialDecisionRequest):
     """Confirmação explícita de uma publicação parlamentar já aprovada."""
 

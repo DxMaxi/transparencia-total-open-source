@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 
 from app.core.config import Settings
 from app.models.api import CitizenSummary
-from app.models.editorial import AiDreProposalRequest, StaffSession
+from app.models.editorial import AiDreProposalRequest, AiDreRegenerationRequest, StaffSession
 from app.repositories.ai_editorial import AiDreSnapshot, AiEditorialRepository, ai_subject_id
 from app.repositories.editorial import EditorialConflictError, EditorialRepository
 from app.services.ai_summarizer import PROMPT_SHA256, PROMPT_VERSION, Summarizer
@@ -89,12 +89,137 @@ class AiEditorialService:
         repository: AiEditorialRepository,
         editorial: EditorialRepository,
         settings: Settings,
-        summarizer: Summarizer,
+        summarizer: Summarizer | None,
     ) -> None:
         self.repository = repository
         self.editorial = editorial
         self.settings = settings
         self.summarizer = summarizer
+
+    async def list_dre_snapshots(
+        self,
+        *,
+        query: str | None,
+        limit: int,
+    ) -> dict[str, object]:
+        snapshots, invalid_count = await self.repository.list_dre_snapshots(
+            query=query,
+            limit=limit,
+        )
+        subject_ids = {
+            snapshot.snapshot_id: ai_subject_id(
+                snapshot_id=snapshot.snapshot_id,
+                provider=self.settings.ai_provider,
+                model=self.settings.openai_model,
+                prompt_sha256=PROMPT_SHA256,
+            )
+            for snapshot in snapshots
+        }
+        existing = await self.repository.list_existing_proposals(
+            subject_ids=list(subject_ids.values())
+        )
+        used_today = await self.repository.count_ai_generation_attempts_today()
+        remaining_today = max(0, self.settings.ai_daily_generation_limit - used_today)
+        provider_enabled = self.settings.ai_provider != "disabled"
+        return {
+            "items": [
+                {
+                    "snapshot_id": snapshot.snapshot_id,
+                    "official_identifier": snapshot.official_identifier,
+                    "title": snapshot.title,
+                    "source_url": snapshot.source_url,
+                    "source_content_sha256": snapshot.source_content_sha256,
+                    "normalised_text_sha256": snapshot.normalised_text_sha256,
+                    "source_characters": snapshot.source_characters,
+                    "retrieved_at": snapshot.retrieved_at,
+                    "published_at": snapshot.published_at,
+                    "collected_at": snapshot.collected_at,
+                    "parser_version": snapshot.parser_version,
+                    "archive": {
+                        "storage_backend": snapshot.archive_storage_backend,
+                        "byte_size": snapshot.archive_byte_size,
+                        "archived_at": snapshot.archive_archived_at,
+                        "attestation_sha256": snapshot.archive_attestation_sha256,
+                    },
+                    "existing_case": existing.get(subject_ids[snapshot.snapshot_id]),
+                    "generation_eligible": (
+                        provider_enabled
+                        and remaining_today > 0
+                        and subject_ids[snapshot.snapshot_id] not in existing
+                    ),
+                }
+                for snapshot in snapshots
+            ],
+            "excluded_invalid_snapshots": invalid_count,
+            "provider": {
+                "enabled": provider_enabled,
+                "name": self.settings.ai_provider,
+                "model": self.settings.openai_model,
+                "prompt_version": PROMPT_VERSION,
+                "prompt_sha256": PROMPT_SHA256,
+                "store": False,
+            },
+            "daily_limit": self.settings.ai_daily_generation_limit,
+            "attempts_today": used_today,
+            "remaining_today": remaining_today,
+            "publication_performed": False,
+            "generation_rule": (
+                "Cada pedido usa apenas o snapshot DRE arquivado e cria uma proposta privada; "
+                "reutilizações exatas não chamam novamente o modelo."
+            ),
+        }
+
+    async def case_source(
+        self,
+        *,
+        case_id: str,
+        offset: int = 0,
+        limit: int = 40_000,
+    ) -> dict[str, object]:
+        if offset < 0 or not 1 <= limit <= 50_000:
+            raise EditorialConflictError("Intervalo do texto DRE inválido")
+        case, snapshot = await self.repository.load_ai_case_snapshot(case_id)
+        current_version = self._current_version(case)
+        effective_offset = (
+            max(0, snapshot.source_characters - limit)
+            if offset >= snapshot.source_characters
+            else offset
+        )
+        text_end = min(snapshot.source_characters, effective_offset + limit)
+        visible_text = snapshot.extracted_text[effective_offset:text_end]
+        return {
+            "case_id": case_id,
+            "case_revision": self._case_revision(case),
+            "current_version_sha256": str(current_version["normalized_sha256"]),
+            "snapshot_id": snapshot.snapshot_id,
+            "official_identifier": snapshot.official_identifier,
+            "title": snapshot.title,
+            "source_url": snapshot.source_url,
+            "retrieved_at": snapshot.retrieved_at,
+            "published_at": snapshot.published_at,
+            "collected_at": snapshot.collected_at,
+            "source_content_sha256": snapshot.source_content_sha256,
+            "normalised_text_sha256": snapshot.normalised_text_sha256,
+            "parser_version": snapshot.parser_version,
+            "source_characters": snapshot.source_characters,
+            "text_limit": limit,
+            "text_offset": effective_offset,
+            "text_end": text_end,
+            "has_previous_text": effective_offset > 0,
+            "has_next_text": text_end < snapshot.source_characters,
+            "extracted_text": visible_text,
+            "archive": {
+                "storage_backend": snapshot.archive_storage_backend,
+                "byte_size": snapshot.archive_byte_size,
+                "archived_at": snapshot.archive_archived_at,
+                "attestation_sha256": snapshot.archive_attestation_sha256,
+            },
+            "review_rule": (
+                "Compare cada afirmação e âncora com este texto oficial arquivado; "
+                "a IA não é fonte e pode abster-se."
+            ),
+            "publication_performed": False,
+        }
 
     async def create_dre_proposal(
         self,
@@ -135,7 +260,7 @@ class AiEditorialService:
                 metadata=attempt_metadata,
             )
             try:
-                summary = await self.summarizer.summarize(snapshot.legal_document())
+                summary = await self._summarizer().summarize(snapshot.legal_document())
                 abstained = validate_summary_against_source(summary, snapshot.extracted_text)
                 generated_at = datetime.now(UTC)
                 normalized_data = self._normalized_proposal(
@@ -190,13 +315,160 @@ class AiEditorialService:
             )
             return self._result(case, created=created, reused=not created)
 
+    async def regenerate_dre_proposal(
+        self,
+        *,
+        case_id: str,
+        payload: AiDreRegenerationRequest,
+        actor: StaffSession,
+    ) -> dict[str, object]:
+        case, snapshot = await self.repository.load_ai_case_snapshot(case_id)
+        current_version = self._validate_regeneration_target(case=case, payload=payload)
+
+        async with self.repository.generation_guard():
+            # Repete a leitura depois de adquirir o bloqueio global. Uma decisão
+            # concorrente continua protegida pelo expected_revision transacional.
+            case, snapshot = await self.repository.load_ai_case_snapshot(case_id)
+            current_version = self._validate_regeneration_target(case=case, payload=payload)
+            used_today = await self.repository.count_ai_generation_attempts_today()
+            if used_today >= self.settings.ai_daily_generation_limit:
+                raise EditorialConflictError(
+                    "O limite diário de propostas de IA foi atingido; não foi chamado nenhum modelo"
+                )
+
+            subject_id = str(case["subject_id"])
+            previous_version_sha256 = str(current_version["normalized_sha256"])
+            attempt_id = f"ai_attempt_{uuid.uuid4().hex}"
+            attempt_metadata = self._attempt_metadata(
+                snapshot=snapshot,
+                subject_id=subject_id,
+                case_id=case_id,
+                previous_version_sha256=previous_version_sha256,
+            )
+            await self.repository.record_generation_event(
+                attempt_id=attempt_id,
+                action="REQUESTED",
+                actor_alias=actor.public_alias,
+                metadata=attempt_metadata,
+            )
+            try:
+                summary = await self._summarizer().summarize(snapshot.legal_document())
+                abstained = validate_summary_against_source(summary, snapshot.extracted_text)
+                normalized_data = self._normalized_proposal(
+                    snapshot=snapshot,
+                    summary=summary,
+                    generated_at=datetime.now(UTC),
+                    abstained=abstained,
+                    attempt_id=attempt_id,
+                )
+                regenerated = await self.editorial.regenerate_ai_case(
+                    case_id=case_id,
+                    expected_revision=payload.expected_revision,
+                    expected_current_version_sha256=payload.expected_current_version_sha256,
+                    normalized_data=normalized_data,
+                    origin_alias=(
+                        f"ai:{self.settings.ai_provider}:{self.settings.openai_model}"[:80]
+                    ),
+                    rationale=payload.rationale,
+                    actor=actor,
+                )
+            except Exception as exc:
+                await self.repository.record_generation_event(
+                    attempt_id=attempt_id,
+                    action="FAILED",
+                    actor_alias=actor.public_alias,
+                    metadata={
+                        **attempt_metadata,
+                        "failure_category": _failure_category(exc),
+                    },
+                )
+                if isinstance(exc, ValueError) and not isinstance(
+                    exc,
+                    EditorialConflictError,
+                ):
+                    raise AiGenerationError(
+                        "O fornecedor não devolveu uma proposta estruturada válida"
+                    ) from exc
+                raise
+
+            await self.repository.record_generation_event(
+                attempt_id=attempt_id,
+                action="SUCCEEDED",
+                actor_alias=actor.public_alias,
+                metadata={
+                    **attempt_metadata,
+                    "case_id": case_id,
+                    "output_sha256": _sha256_json(summary.model_dump(mode="json")),
+                },
+            )
+            return {
+                "case": regenerated,
+                "created": False,
+                "reused": False,
+                "regenerated": True,
+                "state": "PRIVATE_PENDING_REVIEW",
+                "publication_performed": False,
+            }
+
+    @staticmethod
+    def _current_version(case: dict[str, object]) -> dict[str, object]:
+        versions = case.get("versions")
+        if not isinstance(versions, list):
+            raise EditorialConflictError("O processo de IA não contém uma versão atual")
+        current = next(
+            (
+                version
+                for version in versions
+                if isinstance(version, dict) and version.get("is_current")
+            ),
+            None,
+        )
+        if current is None:
+            raise EditorialConflictError("O processo de IA não contém uma versão atual")
+        return current
+
+    @staticmethod
+    def _case_revision(case: dict[str, object]) -> int:
+        revision = case.get("revision")
+        if not isinstance(revision, int) or isinstance(revision, bool):
+            raise EditorialConflictError("O processo de IA não contém uma revisão válida")
+        return revision
+
+    def _validate_regeneration_target(
+        self,
+        *,
+        case: dict[str, object],
+        payload: AiDreRegenerationRequest,
+    ) -> dict[str, object]:
+        if self._case_revision(case) != payload.expected_revision:
+            raise EditorialConflictError(
+                "O processo foi alterado por outra decisão; atualize antes de continuar"
+            )
+        if str(case["current_state"]) not in {"IN_REVIEW", "APPROVED", "REJECTED"}:
+            raise EditorialConflictError(
+                "Inicie a revisão humana antes de pedir uma nova versão de IA"
+            )
+        current = self._current_version(case)
+        if str(current["normalized_sha256"]) != payload.expected_current_version_sha256:
+            raise EditorialConflictError(
+                "A versão comparada já não é a atual; atualize antes de continuar"
+            )
+        return current
+
+    def _summarizer(self) -> Summarizer:
+        if self.summarizer is None:
+            raise ValueError("O gerador de IA não foi configurado para esta operação")
+        return self.summarizer
+
     def _attempt_metadata(
         self,
         *,
         snapshot: AiDreSnapshot,
         subject_id: str,
+        case_id: str | None = None,
+        previous_version_sha256: str | None = None,
     ) -> dict[str, object]:
-        return {
+        metadata: dict[str, object] = {
             "contract_version": AI_DRE_CONTRACT_VERSION,
             "subject_id": subject_id,
             "snapshot_id": snapshot.snapshot_id,
@@ -209,6 +481,11 @@ class AiEditorialService:
             "prompt_sha256": PROMPT_SHA256,
             "provider_store": False,
         }
+        if case_id is not None:
+            metadata["regeneration_case_id"] = case_id
+        if previous_version_sha256 is not None:
+            metadata["previous_version_sha256"] = previous_version_sha256
+        return metadata
 
     def _normalized_proposal(
         self,

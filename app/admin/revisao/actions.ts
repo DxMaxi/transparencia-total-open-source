@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { EditorialApiError, editorialFetch } from "@/lib/editorial-api";
 import {
+  type AiDreProposalResult,
   PARLIAMENT_WITHDRAWAL_REASON_LABELS,
   type EditorialCaseDetail,
   type ParliamentEditorialPublicationResult,
@@ -136,6 +137,78 @@ export async function createParliamentProposal(formData: FormData) {
   redirect(
     `/admin/revisao/${created!.case.id}?sucesso=${created!.created ? "importado" : "existente"}`,
   );
+}
+
+export async function createAiDreProposal(formData: FormData) {
+  const snapshotId = evidenceId(formData, "snapshot_id");
+  let created: AiDreProposalResult | null = null;
+  let failure: string | null = null;
+  try {
+    for (const [field, message] of [
+      ["confirm_private_only", "Confirme que a proposta permanece privada"],
+      ["confirm_archived_source_only", "Confirme o uso exclusivo da fonte DRE arquivada"],
+      ["confirm_ai_not_source", "Confirme que a IA não é fonte nem revisora"],
+    ] as const) {
+      if (formData.get(field) !== "on") throw new Error(message);
+    }
+    created = await editorialFetch<AiDreProposalResult>("/ai/dre-proposals", {
+      method: "POST",
+      body: JSON.stringify({
+        snapshot_id: snapshotId,
+        confirm_private_only: true,
+        confirm_archived_source_only: true,
+        confirm_ai_not_source: true,
+      }),
+    });
+  } catch (error) {
+    failure = actionError(error);
+  }
+  if (failure) redirect(failureDestination("/admin/revisao/ia", failure));
+  revalidatePath("/admin/revisao");
+  revalidatePath("/admin/revisao/ia");
+  redirect(
+    `/admin/revisao/${created!.case.id}?sucesso=${created!.created ? "ai-created" : "ai-existing"}`,
+  );
+}
+
+export async function regenerateAiDreProposal(formData: FormData) {
+  const id = caseId(formData);
+  let failure: string | null = null;
+  try {
+    for (const [field, message] of [
+      ["confirm_private_only", "Confirme que a nova versão permanece privada"],
+      ["confirm_archived_source_only", "Confirme o uso exclusivo da fonte DRE arquivada"],
+      ["confirm_ai_not_source", "Confirme que a IA não é fonte nem revisora"],
+      ["confirm_new_immutable_version", "Confirme que será acrescentada uma nova versão"],
+    ] as const) {
+      if (formData.get(field) !== "on") throw new Error(message);
+    }
+    await editorialFetch<AiDreProposalResult>(
+      `/ai/cases/${encodeURIComponent(id)}/regenerate`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          expected_revision: expectedRevision(formData),
+          expected_current_version_sha256: sha256(
+            formData,
+            "expected_current_version_sha256",
+          ),
+          rationale: requiredText(formData, "rationale"),
+          confirm_private_only: true,
+          confirm_archived_source_only: true,
+          confirm_ai_not_source: true,
+          confirm_new_immutable_version: true,
+        }),
+      },
+    );
+  } catch (error) {
+    failure = actionError(error);
+  }
+  if (failure) redirect(failureDestination(`/admin/revisao/${id}`, failure));
+  revalidatePath("/admin/revisao");
+  revalidatePath("/admin/revisao/ia");
+  revalidatePath(`/admin/revisao/${id}`);
+  redirect(`/admin/revisao/${id}?sucesso=ai-regenerated`);
 }
 
 export async function startEditorialReview(formData: FormData) {

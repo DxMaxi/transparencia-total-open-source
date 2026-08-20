@@ -104,8 +104,14 @@ async def add_security_headers(
             "Strict-Transport-Security",
             "max-age=31536000; includeSubDomains",
         )
-    if request.url.path == f"{settings.api_prefix}/right-of-reply":
+    private_or_sensitive_path = (
+        request.url.path == f"{settings.api_prefix}/right-of-reply"
+        or request.url.path.startswith(f"{settings.api_prefix}/editorial")
+        or request.url.path.startswith(f"{settings.api_prefix}/ai")
+    )
+    if private_or_sensitive_path:
         response.headers["Cache-Control"] = "no-store"
+        response.headers["Pragma"] = "no-cache"
     return response
 
 

@@ -76,6 +76,93 @@ export type EditorialSourceCandidate = {
   archive_attested: true;
 };
 
+export type AiDreSnapshotCandidate = {
+  snapshot_id: string;
+  official_identifier: string | null;
+  title: string;
+  source_url: string;
+  source_content_sha256: string;
+  normalised_text_sha256: string;
+  source_characters: number;
+  retrieved_at: string;
+  published_at: string | null;
+  collected_at: string;
+  parser_version: string;
+  archive: {
+    storage_backend: string;
+    byte_size: number;
+    archived_at: string;
+    attestation_sha256: string;
+  };
+  existing_case: null | {
+    id: string;
+    state: EditorialState;
+    revision: number;
+    version_number: number;
+    normalized_sha256: string;
+    updated_at: string;
+  };
+  generation_eligible: boolean;
+};
+
+export type AiDreSnapshotList = {
+  items: AiDreSnapshotCandidate[];
+  excluded_invalid_snapshots: number;
+  provider: {
+    enabled: boolean;
+    name: "disabled" | "openai";
+    model: string;
+    prompt_version: string;
+    prompt_sha256: string;
+    store: false;
+  };
+  daily_limit: number;
+  attempts_today: number;
+  remaining_today: number;
+  publication_performed: false;
+  generation_rule: string;
+};
+
+export type AiDreSourceEvidence = {
+  case_id: string;
+  case_revision: number;
+  current_version_sha256: string;
+  snapshot_id: string;
+  official_identifier: string | null;
+  title: string;
+  source_url: string;
+  retrieved_at: string;
+  published_at: string | null;
+  collected_at: string;
+  source_content_sha256: string;
+  normalised_text_sha256: string;
+  parser_version: string;
+  source_characters: number;
+  text_limit: number;
+  text_offset: number;
+  text_end: number;
+  has_previous_text: boolean;
+  has_next_text: boolean;
+  extracted_text: string;
+  archive: {
+    storage_backend: string;
+    byte_size: number;
+    archived_at: string;
+    attestation_sha256: string;
+  };
+  review_rule: string;
+  publication_performed: false;
+};
+
+export type AiDreProposalResult = {
+  case: EditorialCaseDetail;
+  created: boolean;
+  reused: boolean;
+  regenerated?: boolean;
+  state: "PRIVATE_PENDING_REVIEW";
+  publication_performed: false;
+};
+
 export type EditorialVersion = {
   id: string;
   version_number: number;

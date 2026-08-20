@@ -780,6 +780,143 @@ class EditorialRepository:
             )
         return await self.get_case(case_id)
 
+    async def regenerate_ai_case(
+        self,
+        *,
+        case_id: str,
+        expected_revision: int,
+        expected_current_version_sha256: str,
+        normalized_data: dict[str, Any],
+        origin_alias: str,
+        rationale: str,
+        actor: StaffSession,
+    ) -> dict[str, object]:
+        """Acrescenta uma versão AI e atribui a decisão CORRECT ao humano que a pediu."""
+
+        validate_normalized_data(normalized_data)
+        clean_alias = origin_alias.strip()
+        clean_rationale = rationale.strip()
+        if not 3 <= len(clean_alias) <= 80:
+            raise EditorialConflictError("Identidade de origem editorial inválida")
+        if len(clean_rationale) < 20:
+            raise EditorialConflictError("A fundamentação de regeneração é demasiado curta")
+
+        version_id = _new_id("editorial_version")
+        decision_id = _new_id("editorial_decision")
+        normalized_json = _canonical_json(normalized_data)
+        normalized_sha256 = hashlib.sha256(normalized_json.encode("utf-8")).hexdigest()
+        created_at = datetime.now(UTC).replace(tzinfo=None)
+
+        try:
+            async with self.pool.acquire() as connection, connection.transaction():
+                case = await connection.fetchrow(
+                    """
+                    SELECT c.id, c.kind, c.subject_type, c.origin, c.current_version_id,
+                           c.current_state, c.revision, version.version_number,
+                           version.normalized_sha256
+                    FROM editorial_cases c
+                    JOIN editorial_versions version ON version.id = c.current_version_id
+                    WHERE c.id = $1
+                    FOR UPDATE OF c
+                    """,
+                    case_id,
+                )
+                if case is None:
+                    raise EditorialNotFoundError("Processo editorial não encontrado")
+                if (
+                    str(case["kind"]) != EditorialCaseKind.AI_EXPLANATION.value
+                    or str(case["subject_type"]) != "DRE_DOCUMENT_SNAPSHOT"
+                    or str(case["origin"]) != EditorialOrigin.AI.value
+                ):
+                    raise EditorialConflictError(
+                        "O processo não pertence ao circuito editorial DRE de IA"
+                    )
+                previous_state = EditorialState(str(case["current_state"]))
+                revision = int(case["revision"])
+                if revision != expected_revision:
+                    raise EditorialConflictError(
+                        "O processo foi alterado por outra decisão; atualize antes de continuar"
+                    )
+                if previous_state not in {
+                    EditorialState.IN_REVIEW,
+                    EditorialState.APPROVED,
+                    EditorialState.REJECTED,
+                }:
+                    raise EditorialConflictError(
+                        "Inicie a revisão humana antes de pedir uma nova versão de IA"
+                    )
+                if str(case["normalized_sha256"]) != expected_current_version_sha256:
+                    raise EditorialConflictError(
+                        "A versão comparada já não é a atual; atualize antes de continuar"
+                    )
+                if str(case["normalized_sha256"]) == normalized_sha256:
+                    raise EditorialConflictError("A nova geração não altera a proposta atual")
+
+                await connection.execute(
+                    """
+                    INSERT INTO editorial_versions
+                        (id, case_id, version_number, normalized_json,
+                         normalized_sha256, previous_version_id, origin,
+                         created_by_id, created_by_alias, created_at)
+                    VALUES ($1, $2, $3, $4::jsonb, $5, $6,
+                            'AI', NULL, $7, $8)
+                    """,
+                    version_id,
+                    case_id,
+                    int(case["version_number"]) + 1,
+                    normalized_json,
+                    normalized_sha256,
+                    case["current_version_id"],
+                    clean_alias,
+                    created_at,
+                )
+                next_revision = revision + 1
+                digest = self._decision_sha256(
+                    decision_id=decision_id,
+                    case_id=case_id,
+                    version_id=version_id,
+                    action=EditorialAction.CORRECT,
+                    previous_state=previous_state,
+                    resulting_state=EditorialState.PENDING,
+                    case_revision=next_revision,
+                    rationale=clean_rationale,
+                    source_confirmed=False,
+                    actor=actor,
+                    created_at=created_at,
+                )
+                await self._insert_decision(
+                    connection,
+                    decision_id=decision_id,
+                    case_id=case_id,
+                    version_id=version_id,
+                    action=EditorialAction.CORRECT,
+                    previous_state=previous_state,
+                    resulting_state=EditorialState.PENDING,
+                    case_revision=next_revision,
+                    rationale=clean_rationale,
+                    source_confirmed=False,
+                    actor=actor,
+                    decision_sha256=digest,
+                    created_at=created_at,
+                )
+                await connection.execute(
+                    """
+                    UPDATE editorial_cases
+                    SET current_version_id = $2,
+                        current_state = 'PENDING',
+                        revision = $3,
+                        updated_at = $4
+                    WHERE id = $1
+                    """,
+                    case_id,
+                    version_id,
+                    next_revision,
+                    created_at,
+                )
+        except asyncpg.UniqueViolationError as exc:
+            raise EditorialConflictError("A nova versão de IA já existe no histórico") from exc
+        return await self.get_case(case_id)
+
     async def correct_case(
         self,
         *,

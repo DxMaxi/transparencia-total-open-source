@@ -3,15 +3,18 @@ import {
   approveEditorialCase,
   correctEditorialCase,
   publishParliamentCase,
+  regenerateAiDreProposal,
   rejectEditorialCase,
   startEditorialReview,
   withdrawParliamentCase,
 } from "../actions";
+import { AiEditorialComparison } from "../ai-comparison";
 import { editorialFetch, getEditorialContext } from "@/lib/editorial-api";
 import {
   KIND_LABELS,
   PARLIAMENT_WITHDRAWAL_REASON_LABELS,
   STATE_LABELS,
+  type AiDreSourceEvidence,
   type EditorialCaseDetail,
   type ParliamentEditorialPublicationPreview,
   type ParliamentEditorialWithdrawalPreview,
@@ -43,14 +46,41 @@ function safeOfficialSourceUrl(value: string): string | null {
   }
 }
 
+function successMessage(value: string | undefined): string {
+  if (value === "published") {
+    return "O âmbito parlamentar foi publicado e todas as provas foram acrescentadas ao histórico.";
+  }
+  if (value === "withdrawn") {
+    return "O âmbito foi retirado sem apagar a publicação, a versão ou os hashes anteriores.";
+  }
+  if (value === "ai-created") {
+    return "A proposta de IA foi acrescentada em privado e aguarda revisão humana.";
+  }
+  if (value === "ai-existing") {
+    return "A proposta exata já existia; nenhuma nova chamada ao modelo foi efetuada.";
+  }
+  if (value === "ai-regenerated") {
+    return "A nova proposta de IA foi acrescentada como versão imutável; a anterior permanece no histórico.";
+  }
+  return "A decisão foi acrescentada ao histórico imutável.";
+}
+
+function sourceTextOffset(value: string | undefined): number {
+  if (!value || !/^\d{1,9}$/.test(value)) return 0;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isSafeInteger(parsed) ? parsed : 0;
+}
+
 export default async function EditorialCasePage({
   params,
   searchParams,
 }: {
   params: Promise<{ case_id: string }>;
-  searchParams: Promise<{ erro?: string; sucesso?: string }>;
+  searchParams: Promise<{ erro?: string; sucesso?: string; source_offset?: string }>;
 }) {
-  const [{ case_id: caseId }, { erro, sucesso }] = await Promise.all([params, searchParams]);
+  const [{ case_id: caseId }, query] = await Promise.all([params, searchParams]);
+  const { erro, sucesso } = query;
+  const sourceOffset = sourceTextOffset(query.source_offset);
   const [item, { staff }] = await Promise.all([
     editorialFetch<EditorialCaseDetail>(`/cases/${encodeURIComponent(caseId)}`),
     getEditorialContext(),
@@ -59,16 +89,28 @@ export default async function EditorialCasePage({
     (item.kind === "PARLIAMENT_ACTIVITY" &&
       item.subject_type === "PARLIAMENT_ACTIVITY_SNAPSHOT") ||
     (item.kind === "PARLIAMENT_VOTE" && item.subject_type === "PARLIAMENT_VOTES_SNAPSHOT");
-  const parliamentPublication = isParliamentPublicationCase && item.current_state === "APPROVED"
-    ? await editorialFetch<ParliamentEditorialPublicationPreview>(
-        `/parliament/cases/${encodeURIComponent(caseId)}/publication`,
-      )
-    : null;
-  const parliamentWithdrawal = isParliamentPublicationCase && item.current_state === "PUBLISHED"
-    ? await editorialFetch<ParliamentEditorialWithdrawalPreview>(
-        `/parliament/cases/${encodeURIComponent(caseId)}/withdrawal`,
-      )
-    : null;
+  const isAiDreCase =
+    item.kind === "AI_EXPLANATION" && item.subject_type === "DRE_DOCUMENT_SNAPSHOT";
+  const [parliamentPublication, parliamentWithdrawal, aiSourceEvidence] = await Promise.all([
+    isParliamentPublicationCase && item.current_state === "APPROVED"
+      ? editorialFetch<ParliamentEditorialPublicationPreview>(
+          `/parliament/cases/${encodeURIComponent(caseId)}/publication`,
+        )
+      : Promise.resolve(null),
+    isParliamentPublicationCase && item.current_state === "PUBLISHED"
+      ? editorialFetch<ParliamentEditorialWithdrawalPreview>(
+          `/parliament/cases/${encodeURIComponent(caseId)}/withdrawal`,
+        )
+      : Promise.resolve(null),
+    isAiDreCase
+      ? editorialFetch<AiDreSourceEvidence>(
+          `/ai/cases/${encodeURIComponent(caseId)}/source?${new URLSearchParams({
+            offset: sourceOffset.toString(),
+            limit: "40000",
+          }).toString()}`,
+        )
+      : Promise.resolve(null),
+  ]);
   const currentVersion = item.versions.find((version) => version.is_current);
   if (!currentVersion) throw new Error("O processo não tem versão atual");
   const officialSourceUrl = safeOfficialSourceUrl(item.source.url);
@@ -97,11 +139,7 @@ export default async function EditorialCasePage({
       ) : null}
       {sucesso ? (
         <p className="private-message private-message--success" role="status">
-          {sucesso === "published"
-            ? "O âmbito parlamentar foi publicado e todas as provas foram acrescentadas ao histórico."
-            : sucesso === "withdrawn"
-              ? "O âmbito foi retirado sem apagar a publicação, a versão ou os hashes anteriores."
-            : "A decisão foi acrescentada ao histórico imutável."}
+          {successMessage(sucesso)}
         </p>
       ) : null}
 
@@ -110,6 +148,15 @@ export default async function EditorialCasePage({
         <p>{item.publication_notice}</p>
       </aside>
 
+      {aiSourceEvidence ? (
+        <AiEditorialComparison
+          evidence={aiSourceEvidence}
+          normalizedData={currentVersion.normalized_data}
+          normalizedSha256={currentVersion.normalized_sha256}
+          origin={currentVersion.origin}
+          createdByAlias={currentVersion.created_by_alias}
+        />
+      ) : (
       <section className="admin-compare-grid" aria-label="Comparação entre fonte e normalização">
         <article className="admin-proof-panel">
           <p className="eyebrow">Fonte original</p>
@@ -167,9 +214,11 @@ export default async function EditorialCasePage({
           </footer>
         </article>
       </section>
+      )}
 
       <EditorialActions
         item={item}
+        aiSourceEvidence={aiSourceEvidence}
         normalizedData={currentVersion.normalized_data}
         parliamentPublication={parliamentPublication}
         parliamentWithdrawal={parliamentWithdrawal}
@@ -252,7 +301,7 @@ export default async function EditorialCasePage({
         {item.versions.map((version) => (
           <details key={version.id} open={version.is_current}>
             <summary>
-              Versão {version.version_number} {version.is_current ? "· atual" : ""} · {version.created_by_alias}
+              Versão {version.version_number} {version.is_current ? "· atual" : ""} · origem {version.origin === "AI" ? "IA" : version.origin === "HUMAN" ? "humana" : "ingestão"} · {version.created_by_alias}
             </summary>
             <pre>{JSON.stringify(version.normalized_data, null, 2)}</pre>
             <code>{version.normalized_sha256}</code>
@@ -265,12 +314,14 @@ export default async function EditorialCasePage({
 
 function EditorialActions({
   item,
+  aiSourceEvidence,
   normalizedData,
   parliamentPublication,
   parliamentWithdrawal,
   staff,
 }: {
   item: EditorialCaseDetail;
+  aiSourceEvidence: AiDreSourceEvidence | null;
   normalizedData: Record<string, unknown>;
   parliamentPublication: ParliamentEditorialPublicationPreview | null;
   parliamentWithdrawal: ParliamentEditorialWithdrawalPreview | null;
@@ -351,6 +402,10 @@ function EditorialActions({
         <ParliamentWithdrawalAction preview={parliamentWithdrawal} staff={staff} />
       ) : null}
 
+      {aiSourceEvidence && ["IN_REVIEW", "APPROVED", "REJECTED"].includes(item.current_state) ? (
+        <AiRegenerationAction item={item} evidence={aiSourceEvidence} />
+      ) : null}
+
       {canCorrect ? (
         <details className="admin-correction-panel">
           <summary>Acrescentar versão corrigida</summary>
@@ -377,6 +432,59 @@ function EditorialActions({
         </details>
       ) : null}
     </section>
+  );
+}
+
+function AiRegenerationAction({
+  item,
+  evidence,
+}: {
+  item: EditorialCaseDetail;
+  evidence: AiDreSourceEvidence;
+}) {
+  return (
+    <details className="admin-correction-panel ai-regeneration-panel">
+      <summary>Pedir uma nova versão ao modelo</summary>
+      <div className="ai-regeneration-warning">
+        <strong>A versão atual não será substituída.</strong>
+        <p>
+          O pedido conta para o limite diário. O resultado será uma nova versão privada com origem
+          IA, regressará a “Por rever” e conservará todas as decisões anteriores.
+        </p>
+      </div>
+      <form action={regenerateAiDreProposal}>
+        <input type="hidden" name="case_id" value={item.id} />
+        <input type="hidden" name="expected_revision" value={item.revision} />
+        <input
+          type="hidden"
+          name="expected_current_version_sha256"
+          value={evidence.current_version_sha256}
+        />
+        <label>
+          Motivo verificável para a nova geração
+          <textarea name="rationale" minLength={20} maxLength={2000} required />
+        </label>
+        <label className="admin-confirmation">
+          <input name="confirm_private_only" type="checkbox" required />
+          <span>A nova proposta permanecerá privada e sem publicação automática.</span>
+        </label>
+        <label className="admin-confirmation">
+          <input name="confirm_archived_source_only" type="checkbox" required />
+          <span>Será usado apenas o mesmo snapshot DRE arquivado e atestado.</span>
+        </label>
+        <label className="admin-confirmation">
+          <input name="confirm_ai_not_source" type="checkbox" required />
+          <span>A IA não é fonte, não é revisora e pode responder que não é possível determinar.</span>
+        </label>
+        <label className="admin-confirmation">
+          <input name="confirm_new_immutable_version" type="checkbox" required />
+          <span>Confirmo que pretendo acrescentar uma nova versão sem apagar a atual.</span>
+        </label>
+        <button className="button button--primary" type="submit">
+          Gerar e acrescentar nova versão
+        </button>
+      </form>
+    </details>
   );
 }
 
