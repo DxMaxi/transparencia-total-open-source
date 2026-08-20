@@ -56,8 +56,10 @@ jobs:
           cache: npm
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version-file: .python-version
           cache: pip
+      - name: Verificar paridade do runtime Python
+        run: python backend/scripts/check_python_runtime_policy.py --check-interpreter
       - run: npm ci
       - name: Preparar contrato Supabase apenas na base descartável
         run: npm run db:test:bootstrap-supabase

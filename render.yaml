@@ -16,7 +16,7 @@ services:
     autoDeployTrigger: checksPass
     envVars:
       - key: PYTHON_VERSION
-        value: 3.13.5
+        value: 3.13.15
       - key: ENVIRONMENT
         value: production
       - key: AI_PROVIDER

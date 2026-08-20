@@ -49,8 +49,13 @@ Nunca adicionar neste documento segredos, chaves, `.env`, dumps, tokens, passwor
 - `package.json` exige **Node 24.x**.
 - CI usa Node 24.
 - O ambiente local oficial deve respeitar Node 24 para evitar resultados não reprodutíveis.
-- O backend declara Python `>=3.12`.
-- No checkpoint de 2026-08-15, CI usa Python 3.12 e Render declara Python 3.13.5; esta divergência está registada na issue #76.
+- O backend suporta exclusivamente Python `>=3.13,<3.14`.
+- [`.python-version`](../.python-version) é a fonte canónica da revisão exata, atualmente
+  `3.13.15`; os workflows GitHub leem esse ficheiro e Render e Docker têm de declarar a mesma
+  revisão.
+- `backend/scripts/check_python_runtime_policy.py` verifica a paridade e, no CI, confirma também o
+  intérprete instalado. Não fechar a ocorrência P2.2 da issue #76 sem CI verde e verificação
+  read-only do deployment Render correspondente.
 
 ## 4. Estado da V5
 

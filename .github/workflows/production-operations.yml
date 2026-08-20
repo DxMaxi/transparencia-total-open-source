@@ -108,7 +108,7 @@ jobs:
       - uses: actions/setup-python@v6
         if: ${{ inputs.operation != 'migrate' }}
         with:
-          python-version: '3.12'
+          python-version-file: .python-version
           cache: pip
 
       - name: Validar configuração obrigatória
