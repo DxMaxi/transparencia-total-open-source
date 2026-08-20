@@ -163,6 +163,103 @@ export type AiDreProposalResult = {
   publication_performed: false;
 };
 
+export type AiEditorialPublicSource = {
+  publisher: "DRE";
+  label: string;
+  title: string;
+  official_identifier: string | null;
+  url: string;
+  retrieved_at: string;
+  published_at: string | null;
+  content_sha256: string;
+  normalised_text_sha256: string;
+};
+
+export type AiEditorialGenerationProof = {
+  provider: string;
+  model: string;
+  prompt_version: string;
+  prompt_sha256: string;
+  input_sha256: string;
+  output_sha256: string;
+  generated_at: string;
+  source_characters: number;
+  processed_characters: number;
+  source_truncated: boolean;
+  provider_store: false;
+};
+
+export type AiEditorialPublicationPreview = {
+  case_id: string;
+  case_state: EditorialState;
+  revision: number;
+  public_id: string;
+  source: AiEditorialPublicSource | null;
+  generation: AiEditorialGenerationProof | null;
+  editorial_version_sha256: string;
+  output_sha256: string;
+  publication_proof_sha256: string;
+  public_projection: Record<string, unknown> | null;
+  eligible: boolean;
+  blockers: Array<{ code: string; detail: string }>;
+  automatic_publication: false;
+  publication_rule: string;
+};
+
+export type AiEditorialPublicationResult = {
+  created: true;
+  case_id: string;
+  state: "PUBLISHED";
+  revision: number;
+  public_id: string;
+  decision_sha256: string;
+  event_sha256: string;
+  publication_review_id: string;
+  audit_event_id: string;
+  publication_rule: string;
+};
+
+export type AiEditorialWithdrawalPreview = {
+  case_id: string;
+  case_state: EditorialState;
+  revision: number;
+  public_id: string;
+  source: AiEditorialPublicSource | null;
+  generation: AiEditorialGenerationProof | null;
+  editorial_version_sha256: string;
+  output_sha256: string;
+  publication_proof_sha256: string;
+  public_review_id: string;
+  publication_audit_event_id: string;
+  publication_event_id: string;
+  publication_event_sha256: string;
+  public_effect: {
+    kind: "DATA_UNAVAILABLE";
+    public_id: string;
+    message: string;
+  };
+  public_effect_sha256: string;
+  eligible: boolean;
+  blockers: Array<{ code: string; detail: string }>;
+  withdrawal_rule: string;
+};
+
+export type AiEditorialWithdrawalResult = {
+  created: true;
+  case_id: string;
+  state: "WITHDRAWN";
+  revision: number;
+  public_id: string;
+  reason_category: ParliamentWithdrawalReason;
+  decision_sha256: string;
+  event_sha256: string;
+  publication_review_id: string;
+  audit_event_id: string;
+  public_effect: AiEditorialWithdrawalPreview["public_effect"];
+  public_effect_sha256: string;
+  withdrawal_rule: string;
+};
+
 export type EditorialVersion = {
   id: string;
   version_number: number;

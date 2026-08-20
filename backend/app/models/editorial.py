@@ -230,6 +230,60 @@ class AiDreRegenerationRequest(EditorialDecisionRequest):
     confirm_new_immutable_version: Literal[True]
 
 
+class AiEditorialPublicationRequest(EditorialDecisionRequest):
+    """Publicação explícita da versão DRE de IA que o administrador confirmou."""
+
+    public_rationale: str = Field(min_length=20, max_length=500)
+    expected_public_id: str = Field(pattern=r"^dre-[0-9a-f]{64}$")
+    expected_source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_normalised_text_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_editorial_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_output_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_publication_proof_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    confirm_source_reviewed: Literal[True]
+    confirm_ai_label_reviewed: Literal[True]
+    confirm_no_prediction_or_recommendation: Literal[True]
+    confirm_publication: Literal[True]
+
+    @field_validator("public_rationale")
+    @classmethod
+    def strip_ai_public_rationale(cls, value: str) -> str:
+        stripped = value.strip()
+        if len(stripped) < 20:
+            raise ValueError("O resumo público deve ter pelo menos 20 caracteres úteis")
+        return stripped
+
+
+class AiEditorialWithdrawalRequest(EditorialDecisionRequest):
+    """Retirada explícita ligada à projeção e aos eventos publicados exatos."""
+
+    rationale: str = Field(min_length=20, max_length=1850)
+    public_rationale: str = Field(min_length=20, max_length=500)
+    reason_category: ParliamentWithdrawalReason
+    expected_public_id: str = Field(pattern=r"^dre-[0-9a-f]{64}$")
+    expected_source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_normalised_text_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_editorial_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_output_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_publication_proof_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_public_review_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    expected_publication_audit_event_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    expected_publication_event_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    expected_publication_event_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_public_effect_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    confirm_no_selective_removal: Literal[True]
+    confirm_public_effect_reviewed: Literal[True]
+    confirm_withdrawal: Literal[True]
+
+    @field_validator("public_rationale")
+    @classmethod
+    def strip_ai_withdrawal_public_rationale(cls, value: str) -> str:
+        stripped = value.strip()
+        if len(stripped) < 20:
+            raise ValueError("O resumo público deve ter pelo menos 20 caracteres úteis")
+        return stripped
+
+
 class ParliamentEditorialPublicationRequest(EditorialDecisionRequest):
     """Confirmação explícita de uma publicação parlamentar já aprovada."""
 

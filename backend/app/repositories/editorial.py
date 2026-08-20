@@ -841,6 +841,7 @@ class EditorialRepository:
                     EditorialState.IN_REVIEW,
                     EditorialState.APPROVED,
                     EditorialState.REJECTED,
+                    EditorialState.WITHDRAWN,
                 }:
                     raise EditorialConflictError(
                         "Inicie a revisão humana antes de pedir uma nova versão de IA"

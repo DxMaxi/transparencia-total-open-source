@@ -21,14 +21,19 @@ test("V5 stabilization never presents a progressive parliamentary total as exact
   assert.doesNotMatch(page, /<strong>Página \{Math\.min\(currentPage, pageCount\)\} de/);
 });
 
-test("the sitemap adds only published politician slugs and keeps static routes on API failure", async () => {
+test("the sitemap adds only published public records and keeps static routes on API failure", async () => {
   const sitemap = await read("../app/sitemap.ts");
 
   assert.match(sitemap, /export default async function sitemap/);
   assert.match(sitemap, /loadPublicPoliticians\(\)/);
   assert.match(sitemap, /new Set\(/);
   assert.match(sitemap, /\.map\(\(slug\) => `\/politicos\/\$\{slug\}`\)/);
-  assert.match(sitemap, /return \[\.\.\.staticEntries, \.\.\.profileEntries\]/);
+  assert.match(sitemap, /loadPublicAiExplanations\(\{ pageSize: 100 \}\)/);
+  assert.match(sitemap, /`\$\{SITE_URL\}\/explicacoes\/\$\{item\.id\}`/);
+  assert.match(
+    sitemap,
+    /return \[\.\.\.staticEntries, \.\.\.profileEntries, \.\.\.explanationEntries\]/,
+  );
   assert.match(sitemap, /politicians\.data/);
   assert.doesNotMatch(sitemap, /loadPublicPolitician\(/);
 });
@@ -39,6 +44,7 @@ test("public pages declare stable canonical addresses", async () => {
     ["../app/politicos/page.tsx", "/politicos"],
     ["../app/atividade-parlamentar/page.tsx", "/atividade-parlamentar"],
     ["../app/promessas/page.tsx", "/promessas"],
+    ["../app/explicacoes/page.tsx", "/explicacoes"],
     ["../app/guia-cidadao/page.tsx", "/guia-cidadao"],
     ["../app/metodologia/page.tsx", "/metodologia"],
     ["../app/direito-de-resposta/page.tsx", "/direito-de-resposta"],
@@ -115,7 +121,7 @@ test("the V5 release gate covers product, editorial, legal and recovery evidence
   assert.match(checklist, /Backup pós-migração cifrado/);
   assert.match(checklist, /Restauro pós-migração aprovado/);
   assert.match(checklist, /História Git integral pesquisada por segredos/);
-  assert.match(readme, /V5\.1 a V5\.12 integradas/);
+  assert.match(readme, /V5\.1 a V5\.14 integradas/);
   assert.match(readme, /ativação remota de staging pendente/);
   assert.match(checklist, /\[x\] V5\.12 — workflow segregado de staging revisto e integrado/);
   assert.match(checklist, /\[x\] Workflow manual de staging integrado/);

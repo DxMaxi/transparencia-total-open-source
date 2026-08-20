@@ -72,6 +72,9 @@ export default async function Home() {
               <a className="button button--ghost" href="/politicos">
                 Ver representantes
               </a>
+              <a className="button button--ghost" href="/explicacoes">
+                Explicações com IA revista
+              </a>
             </div>
             <div className="source-stack">
               <span>Fontes oficiais acompanhadas</span>

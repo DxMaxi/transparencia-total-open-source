@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import {
+  AI_PUBLIC_CAPABILITY,
   REQUIRED_PUBLIC_CAPABILITIES,
   verifyPublicApiCompatibility,
 } from "../scripts/check-public-api-compatibility.mjs";
@@ -17,7 +18,7 @@ function compatibleFetch(requestedUrls) {
       return Response.json({
         status: "ok",
         version: "0.5.0-alpha.0",
-        public_capabilities: REQUIRED_PUBLIC_CAPABILITIES,
+        public_capabilities: [...REQUIRED_PUBLIC_CAPABILITIES, AI_PUBLIC_CAPABILITY],
       });
     }
     if (path === "/api/v1/public/parliament/explore") {
@@ -36,6 +37,19 @@ function compatibleFetch(requestedUrls) {
     if (path === "/api/v1/public/parliament/publication-history") {
       return Response.json([]);
     }
+    if (path === "/api/v1/public/ai-explanations") {
+      return Response.json({
+        items: [],
+        total: 0,
+        limit: 1,
+        offset: 0,
+        total_is_exact: true,
+        publication_rule: "Só conteúdo publicado e revisto.",
+      });
+    }
+    if (path === "/api/v1/public/ai-explanations/publication-history") {
+      return Response.json([]);
+    }
     return Response.json({ detail: "not found" }, { status: 404 });
   };
 }
@@ -47,8 +61,24 @@ test("deployment preflight proves the V5.5 API contract before promoting the fro
   });
   assert.equal(result.apiVersion, "0.5.0-alpha.0");
   assert.equal(result.mode, "CURRENT");
-  assert.deepEqual(result.capabilities, REQUIRED_PUBLIC_CAPABILITIES);
-  assert.equal(requestedUrls.length, 3);
+  assert.deepEqual(result.capabilities, [...REQUIRED_PUBLIC_CAPABILITIES, AI_PUBLIC_CAPABILITY]);
+  assert.equal(requestedUrls.length, 5);
+});
+
+test("deployment preflight rejects a declared V5.15 capability with broken routes", async () => {
+  const fetchImpl = compatibleFetch([]);
+  await assert.rejects(
+    verifyPublicApiCompatibility("https://api.example.test", {
+      fetchImpl: async (url, options) => {
+        const path = new URL(url).pathname;
+        if (path === "/api/v1/public/ai-explanations") {
+          return Response.json({ detail: "not found" }, { status: 404 });
+        }
+        return fetchImpl(url, options);
+      },
+    }),
+    /ai-explanations.*HTTP 404/,
+  );
 });
 
 test("deployment preflight accepts V4 only through all reviewed compatibility routes", async () => {
@@ -98,7 +128,7 @@ test("deployment preflight rejects V4 when a reviewed compatibility route is mis
   );
 });
 
-test("deployment artifact contains the V5.5.1 and V5.6 public styles", async () => {
+test("deployment artifact contains the V5.5.1, V5.6 and V5.15 public styles", async () => {
   const root = await mkdtemp(join(tmpdir(), "tt-v551-artifact-"));
   try {
     const chunks = join(root, ".next", "static", "chunks");
@@ -107,11 +137,12 @@ test("deployment artifact contains the V5.5.1 and V5.6 public styles", async () 
       join(chunks, "public.css"),
       ".parliament-page--v551{}.parliament-search-form__primary{}" +
         ".parliament-coverage__facts{}.contact-channel--pending{}" +
-        ".profile-coverage-grid{}.profile-declaration-list{}",
+        ".profile-coverage-grid{}.profile-declaration-list{}" +
+        ".ai-publication-panel{}.ai-public-card-grid{}.ai-public-detail__hero{}",
       "utf8",
     );
     const result = await verifyNextArtifact(root);
-    assert.equal(result.markers, 6);
+    assert.equal(result.markers, 9);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

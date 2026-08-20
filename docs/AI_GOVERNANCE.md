@@ -2,11 +2,12 @@
 
 ## Estado de implementação
 
-`AI_PROVIDER=disabled` mantém a IA desligada por omissão e o website não apresenta resumos gerados
-por IA. A V5 dispõe de um primeiro circuito privado para propostas de resumo DRE: só aceita snapshots
-previamente persistidos, concluídos e ligados ao arquivo oficial atestado; exige staff ativo com MFA;
-e cria uma versão editorial imutável `PENDING`. Ingestão, geração, revisão, aprovação e publicação
-continuam a ser operações diferentes.
+`AI_PROVIDER=disabled` mantém novas gerações de IA desligadas por omissão. Esta configuração não
+apaga nem oculta uma explicação anteriormente publicada e revista: geração e leitura pública são
+operações independentes. A V5 dispõe de um circuito privado para propostas de resumo DRE que só
+aceita snapshots previamente persistidos, concluídos e ligados ao arquivo oficial atestado; exige
+staff ativo com MFA; e cria uma versão editorial imutável `PENDING`. Ingestão, geração, revisão,
+aprovação e publicação continuam a ser operações diferentes.
 
 O painel privado permite pesquisar snapshots DRE que voltaram a passar a verificação do texto,
 hashes e atestação, pedir a proposta com confirmações explícitas e comparar lado a lado o texto
@@ -16,11 +17,16 @@ exige que o revisor já tenha iniciado a revisão, fica ligada à revisão e ao 
 e acrescenta uma versão `AI` seguida de uma decisão humana `CORRECT`. Nunca altera nem apaga a versão
 anterior.
 
-Não existe ainda projeção pública para `AI_EXPLANATION`. Mesmo que um revisor aprove a versão, nenhum
-endpoint desta fase a publica. As antigas rotas de geração direta e o script que imprimia resumos
-sem persistência devolvem uma recusa explícita. A fase de publicação só pode ser acrescentada com um
-adaptador específico, nova confirmação humana e prova de que a versão aprovada é exatamente a
-versão apresentada ao público.
+A projeção pública para `AI_EXPLANATION` só aceita a versão exata já aprovada e exige uma segunda
+decisão explícita de um `ADMIN` com MFA `aal2`. O servidor reconstrói a projeção, valida novamente a
+fonte, a atestação, o texto, as âncoras e todos os hashes, e grava revisão pública, auditoria, decisão
+e evento de publicação na mesma transação. A publicação não chama o modelo. Se qualquer prova não
+coincidir, se existir ambiguidade ou se faltar uma peça, a explicação não é apresentada.
+
+As antigas rotas de geração direta e o script que imprimia resumos sem persistência continuam a
+devolver uma recusa explícita. A consulta pública expõe apenas o contrato revisto, a fonte oficial,
+as provas por SHA-256 e o alias público do revisor; não expõe notas privadas nem identificadores
+internos do processo editorial.
 
 ## Papel permitido
 
@@ -69,12 +75,29 @@ coberto; o revisor vê o tamanho processado e se houve truncagem.
 4. Remover inferências e assinalar conteúdo não extraído.
 5. Aprovar, rejeitar ou pedir nova geração.
 6. Registar revisor, data, modelo, prompt e decisão.
+7. Publicar separadamente, confirmando a projeção e os hashes exatos apresentados pelo servidor.
 
 Pedir nova geração conta para o limite diário e faz o processo regressar a `PENDING`. Não é uma
 aprovação implícita: a nova versão tem de percorrer novamente todo o circuito humano.
 
-Conteúdo `PENDING` não entra em boletins públicos. Uma nova versão do diploma torna o resumo anterior
-obsoleto, sem o apagar.
+Conteúdo `PENDING`, `IN_REVIEW` ou apenas `APPROVED` não entra na consulta pública. Uma retirada
+preserva a versão e todos os eventos, substitui o efeito público ativo por **dados indisponíveis** e
+mantém um histórico redigido. Uma correção ou nova geração acrescenta outra versão `PENDING` e exige
+todo o circuito de revisão e publicação. Uma nova versão do diploma não altera silenciosamente a
+explicação anterior.
+
+## Contrato público e limites
+
+Cada explicação publicada é rotulada **“Explicação gerada por IA — revista por humano”** e mostra a
+fonte oficial, data de recolha, SHA-256 do documento, modelo, versão e SHA-256 do prompt, entrada,
+saída, versão editorial, projeção e evento. Mostra também âncoras e limitações, incluindo truncagem da
+fonte quando aplicável.
+
+O contrato declara expressamente que a IA não é fonte, que o texto não é notícia automática, que
+não é previsão e que não recomenda partidos nem sentido de voto. O identificador público deriva do
+SHA-256 do documento oficial; IDs internos, notas privadas e fundamentações internas permanecem fora
+da API pública. O detalhe e o histórico são lidos em transações `repeatable read` e falham fechados
+se as provas imutáveis deixarem de coincidir.
 
 ## Boletins
 

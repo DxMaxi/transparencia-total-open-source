@@ -12,6 +12,11 @@ from app.models.api import (
     PublishedPoliticianProfile,
     PublishedPromise,
 )
+from app.models.public_ai import (
+    PublishedAiExplanation,
+    PublishedAiExplanationList,
+    PublishedAiPublicationHistoryItem,
+)
 from app.models.public_parliament import (
     PublishedParliamentaryInitiative,
     PublishedParliamentarySession,
@@ -20,6 +25,7 @@ from app.models.public_parliament import (
     PublishedParliamentPublicationHistoryItem,
 )
 from app.models.public_politicians import PublishedPoliticianDirectory
+from app.repositories.ai_editorial_publication import PublicAiExplanationRepository
 from app.repositories.postgres import PostgresRepository
 from app.repositories.public_parliament import PublicParliamentRepository
 from app.repositories.public_politicians import (
@@ -152,6 +158,70 @@ async def public_investigator(
     except RuntimeError as exc:
         raise _unavailable(exc) from exc
     return PublicInvestigatorDataset.model_validate(row)
+
+
+@router.get("/ai-explanations", response_model=PublishedAiExplanationList)
+async def public_ai_explanations(
+    response: Response,
+    repository: Annotated[PostgresRepository, Depends(get_repository)],
+    q: str | None = Query(default=None, max_length=120),
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0, le=10_000),
+) -> PublishedAiExplanationList:
+    """Lista apenas explicações DRE publicadas por ADMIN depois de revisão humana."""
+
+    query = q.strip() if q and q.strip() else None
+    _cache(response)
+    try:
+        result = await PublicAiExplanationRepository(repository.pool).list_explanations(
+            query=query,
+            limit=limit,
+            offset=offset,
+        )
+    except RuntimeError as exc:
+        raise _unavailable(exc) from exc
+    return PublishedAiExplanationList.model_validate(result)
+
+
+@router.get(
+    "/ai-explanations/publication-history",
+    response_model=list[PublishedAiPublicationHistoryItem],
+)
+async def public_ai_publication_history(
+    response: Response,
+    repository: Annotated[PostgresRepository, Depends(get_repository)],
+    limit: int = Query(default=30, ge=1, le=100),
+) -> list[PublishedAiPublicationHistoryItem]:
+    """Expõe razões públicas e hashes; nunca devolve notas editoriais privadas."""
+
+    _cache(response)
+    try:
+        rows = await PublicAiExplanationRepository(repository.pool).list_publication_history(
+            limit=limit
+        )
+    except RuntimeError as exc:
+        raise _unavailable(exc) from exc
+    return [PublishedAiPublicationHistoryItem.model_validate(row) for row in rows]
+
+
+@router.get("/ai-explanations/{public_id}", response_model=PublishedAiExplanation)
+async def public_ai_explanation(
+    public_id: str,
+    response: Response,
+    repository: Annotated[PostgresRepository, Depends(get_repository)],
+) -> PublishedAiExplanation:
+    """Devolve a versão pública exata ou 404; nunca recua para uma proposta privada."""
+
+    _cache(response)
+    try:
+        row = await PublicAiExplanationRepository(repository.pool).get_explanation(
+            public_id=public_id
+        )
+    except RuntimeError as exc:
+        raise _unavailable(exc) from exc
+    if row is None:
+        raise HTTPException(status_code=404, detail="Explicação pública não encontrada")
+    return PublishedAiExplanation.model_validate(row)
 
 
 @router.get("/parliament/sessions", response_model=list[PublishedParliamentarySession])

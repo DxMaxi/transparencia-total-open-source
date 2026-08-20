@@ -1,6 +1,7 @@
 """Circuito real de proposta IA numa base PostgreSQL descartável."""
 
 import hashlib
+import json
 import os
 import uuid
 from datetime import UTC, datetime
@@ -17,11 +18,17 @@ from app.models.archive import PrivateRawDocument
 from app.models.editorial import (
     AiDreProposalRequest,
     AiDreRegenerationRequest,
+    AiEditorialPublicationRequest,
+    AiEditorialWithdrawalRequest,
     EditorialAction,
     StaffRole,
     StaffSession,
 )
 from app.repositories.ai_editorial import AiEditorialRepository
+from app.repositories.ai_editorial_publication import (
+    AiEditorialPublicationRepository,
+    PublicAiExplanationRepository,
+)
 from app.repositories.dre_staging import DreStagingRepository
 from app.repositories.editorial import EditorialConflictError, EditorialRepository
 from app.services.ai_editorial import AiEditorialService
@@ -89,6 +96,7 @@ async def _prepare_staff(
     connection: asyncpg.Connection,
     *,
     suffix: str,
+    role: StaffRole = StaffRole.REVIEWER,
 ) -> StaffSession:
     auth_user_id = uuid.uuid4()
     if await connection.fetchval("SELECT to_regclass('auth.users') IS NOT NULL"):
@@ -101,23 +109,24 @@ async def _prepare_staff(
             "INSERT INTO auth.users (id) VALUES ($1) ON CONFLICT (id) DO NOTHING",
             auth_user_id,
         )
-    staff_id = f"staff_ai_{suffix}"
-    alias = f"revisor-ai-{suffix[:10]}"
+    staff_id = f"staff_ai_{role.value.lower()}_{suffix}"
+    alias = f"{role.value.lower()}-ai-{suffix[:10]}"
     await connection.execute(
         """
         INSERT INTO staff_profiles
             (id, auth_user_id, public_alias, role, active, created_at, updated_at)
-        VALUES ($1, $2, $3, 'REVIEWER', TRUE, NOW(), NOW())
+        VALUES ($1, $2, $3, $4::"StaffRole", TRUE, NOW(), NOW())
         """,
         staff_id,
         auth_user_id,
         alias,
+        role.value,
     )
     return StaffSession(
         staff_id=staff_id,
         auth_user_id=auth_user_id,
         public_alias=alias,
-        role=StaffRole.REVIEWER,
+        role=role,
         assurance_level="aal2",
         mfa_required=False,
     )
@@ -407,4 +416,238 @@ async def test_ai_review_lists_exact_evidence_and_regenerates_as_an_immutable_ve
         "SUCCEEDED",
         "REQUESTED",
         "SUCCEEDED",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_ai_publication_withdrawal_and_republication_are_exact_and_immutable(
+    repository: DreStagingRepository,
+) -> None:
+    assert repository.pool is not None
+    suffix = uuid.uuid4().hex
+    document = _document(f"publication-{suffix}")
+    assert document.raw_document is not None
+    receipt = ContentAddressedFileArchive.from_settings(repository.settings).archive(
+        document.raw_document
+    )
+    stored = await repository.store_dre_document(
+        document,
+        code_version="dre-ai-publication-test-v1",
+        archive_receipt=receipt,
+    )
+    async with repository.pool.acquire() as connection, connection.transaction():
+        reviewer = await _prepare_staff(connection, suffix=suffix)
+        admin = await _prepare_staff(
+            connection,
+            suffix=f"admin-{suffix}",
+            role=StaffRole.ADMIN,
+        )
+
+    fake = FakeSummarizer()
+    settings = Settings(
+        _env_file=None,
+        environment="test",
+        ai_provider="openai",
+        openai_api_key="test-key-not-used-by-the-fake",
+        ai_daily_generation_limit=20,
+    )
+    ai_repository = AiEditorialRepository(repository.pool)
+    editorial = EditorialRepository(repository.pool)
+    service = AiEditorialService(
+        repository=ai_repository,
+        editorial=editorial,
+        settings=settings,
+        summarizer=fake,
+    )
+    created = await service.create_dre_proposal(
+        payload=AiDreProposalRequest(
+            snapshot_id=str(stored["snapshot_id"]),
+            confirm_private_only=True,
+            confirm_archived_source_only=True,
+            confirm_ai_not_source=True,
+        ),
+        actor=reviewer,
+    )
+    case = created["case"]
+    assert isinstance(case, dict)
+    case_id = str(case["id"])
+    await editorial.transition(
+        case_id=case_id,
+        action=EditorialAction.START_REVIEW,
+        expected_revision=1,
+        rationale="Revisão humana iniciada contra o texto DRE arquivado e atestado.",
+        source_confirmed=False,
+        actor=reviewer,
+    )
+    await editorial.transition(
+        case_id=case_id,
+        action=EditorialAction.APPROVE,
+        expected_revision=2,
+        rationale="Resumo, incertezas e âncoras confirmados no documento oficial integral.",
+        source_confirmed=True,
+        actor=reviewer,
+    )
+
+    publisher = AiEditorialPublicationRepository(repository.pool)
+    public = PublicAiExplanationRepository(repository.pool)
+    preview = await publisher.inspect(case_id=case_id)
+    assert preview["eligible"] is True
+    source = preview["source"]
+    generation = preview["generation"]
+    assert isinstance(source, dict)
+    assert isinstance(generation, dict)
+    publication = AiEditorialPublicationRequest(
+        expected_revision=int(preview["revision"]),
+        rationale=("Administrador confirmou a versão exata, a fonte, o rótulo de IA e os limites."),
+        public_rationale=(
+            "Explicação publicada após comparação humana integral com o documento oficial."
+        ),
+        expected_public_id=str(preview["public_id"]),
+        expected_source_sha256=str(source["content_sha256"]),
+        expected_normalised_text_sha256=str(source["normalised_text_sha256"]),
+        expected_editorial_sha256=str(preview["editorial_version_sha256"]),
+        expected_output_sha256=str(preview["output_sha256"]),
+        expected_publication_proof_sha256=str(preview["publication_proof_sha256"]),
+        confirm_source_reviewed=True,
+        confirm_ai_label_reviewed=True,
+        confirm_no_prediction_or_recommendation=True,
+        confirm_publication=True,
+    )
+
+    with pytest.raises(EditorialConflictError, match="prova de publicação"):
+        await publisher.publish(
+            case_id=case_id,
+            payload=publication.model_copy(update={"expected_publication_proof_sha256": "f" * 64}),
+            actor=admin,
+        )
+    async with repository.pool.acquire() as connection:
+        assert (
+            await connection.fetchval(
+                "SELECT COUNT(*) FROM editorial_publication_events WHERE case_id = $1",
+                case_id,
+            )
+            == 0
+        )
+
+    published = await publisher.publish(case_id=case_id, payload=publication, actor=admin)
+    assert published["state"] == "PUBLISHED"
+    public_id = str(published["public_id"])
+    public_item = await public.get_explanation(public_id=public_id)
+    assert public_item is not None
+    assert public_item["label"] == "Explicação gerada por IA — revista por humano"
+    assert public_item["ai_is_source"] is False
+    assert public_item["not_prediction"] is True
+    assert public_item["no_voting_recommendation"] is True
+    assert public_item["source"]["content_sha256"] == document.content_sha256
+    public_json = json.dumps(public_item, default=str, ensure_ascii=False)
+    assert case_id not in public_json
+    assert publication.rationale not in public_json
+
+    listing = await public.list_explanations(query="Explicação", limit=20, offset=0)
+    assert listing["total"] == 1
+    assert len(listing["items"]) == 1
+    history = await public.list_publication_history(limit=10)
+    assert history[0]["action"] == "PUBLISHED"
+    assert history[0]["public_rationale"] == publication.public_rationale
+    assert publication.rationale not in json.dumps(history, default=str, ensure_ascii=False)
+
+    withdrawal_preview = await publisher.inspect_withdrawal(case_id=case_id)
+    assert withdrawal_preview["eligible"] is True
+    withdrawal = AiEditorialWithdrawalRequest(
+        expected_revision=int(withdrawal_preview["revision"]),
+        rationale=("Ensaio isolado demonstra uma divergência reproduzível que exige nova versão."),
+        public_rationale=(
+            "Explicação retirada por divergência reproduzível; a prova permanece no histórico."
+        ),
+        reason_category="SOURCE_DIVERGENCE",
+        expected_public_id=public_id,
+        expected_source_sha256=str(source["content_sha256"]),
+        expected_normalised_text_sha256=str(source["normalised_text_sha256"]),
+        expected_editorial_sha256=str(withdrawal_preview["editorial_version_sha256"]),
+        expected_output_sha256=str(withdrawal_preview["output_sha256"]),
+        expected_publication_proof_sha256=str(withdrawal_preview["publication_proof_sha256"]),
+        expected_public_review_id=str(withdrawal_preview["public_review_id"]),
+        expected_publication_audit_event_id=str(withdrawal_preview["publication_audit_event_id"]),
+        expected_publication_event_id=str(withdrawal_preview["publication_event_id"]),
+        expected_publication_event_sha256=str(withdrawal_preview["publication_event_sha256"]),
+        expected_public_effect_sha256=str(withdrawal_preview["public_effect_sha256"]),
+        confirm_no_selective_removal=True,
+        confirm_public_effect_reviewed=True,
+        confirm_withdrawal=True,
+    )
+    withdrawn = await publisher.withdraw(case_id=case_id, payload=withdrawal, actor=admin)
+    assert withdrawn["state"] == "WITHDRAWN"
+    assert await public.get_explanation(public_id=public_id) is None
+    assert (await public.list_explanations(query=None, limit=20, offset=0))["total"] == 0
+    history = await public.list_publication_history(limit=10)
+    assert [item["action"] for item in history[:2]] == ["WITHDRAWN", "PUBLISHED"]
+    assert history[0]["public_effect"]["kind"] == "DATA_UNAVAILABLE"
+    assert history[0]["reason_category"] == "SOURCE_DIVERGENCE"
+
+    withdrawn_case = await editorial.get_case(case_id)
+    current = next(version for version in withdrawn_case["versions"] if version["is_current"])
+    regenerated = await service.regenerate_dre_proposal(
+        case_id=case_id,
+        payload=AiDreRegenerationRequest(
+            expected_revision=int(withdrawn_case["revision"]),
+            expected_current_version_sha256=str(current["normalized_sha256"]),
+            rationale=(
+                "Nova geração pedida após a retirada para corrigir a divergência documentada."
+            ),
+            confirm_private_only=True,
+            confirm_archived_source_only=True,
+            confirm_ai_not_source=True,
+            confirm_new_immutable_version=True,
+        ),
+        actor=reviewer,
+    )
+    regenerated_case = regenerated["case"]
+    assert isinstance(regenerated_case, dict)
+    assert regenerated_case["current_state"] == "PENDING"
+    await editorial.transition(
+        case_id=case_id,
+        action=EditorialAction.START_REVIEW,
+        expected_revision=int(regenerated_case["revision"]),
+        rationale="A nova versão será novamente comparada com a mesma prova oficial.",
+        source_confirmed=False,
+        actor=reviewer,
+    )
+    approved_again = await editorial.transition(
+        case_id=case_id,
+        action=EditorialAction.APPROVE,
+        expected_revision=int(regenerated_case["revision"]) + 1,
+        rationale="A nova versão e todas as âncoras foram revistas integralmente.",
+        source_confirmed=True,
+        actor=reviewer,
+    )
+    assert approved_again["current_state"] == "APPROVED"
+    republish_preview = await publisher.inspect(case_id=case_id)
+    republish_source = republish_preview["source"]
+    assert isinstance(republish_source, dict)
+    republished = await publisher.publish(
+        case_id=case_id,
+        payload=AiEditorialPublicationRequest(
+            expected_revision=int(republish_preview["revision"]),
+            rationale="Administrador reviu a correção e todas as provas antes da republicação.",
+            public_rationale="Nova versão publicada após correção e nova revisão humana integral.",
+            expected_public_id=public_id,
+            expected_source_sha256=str(republish_source["content_sha256"]),
+            expected_normalised_text_sha256=str(republish_source["normalised_text_sha256"]),
+            expected_editorial_sha256=str(republish_preview["editorial_version_sha256"]),
+            expected_output_sha256=str(republish_preview["output_sha256"]),
+            expected_publication_proof_sha256=str(republish_preview["publication_proof_sha256"]),
+            confirm_source_reviewed=True,
+            confirm_ai_label_reviewed=True,
+            confirm_no_prediction_or_recommendation=True,
+            confirm_publication=True,
+        ),
+        actor=admin,
+    )
+    assert republished["state"] == "PUBLISHED"
+    assert await public.get_explanation(public_id=public_id) is not None
+    history = await public.list_publication_history(limit=10)
+    assert [item["action"] for item in history[:3]] == [
+        "PUBLISHED",
+        "WITHDRAWN",
+        "PUBLISHED",
     ]
