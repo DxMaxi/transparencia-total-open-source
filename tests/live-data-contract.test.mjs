@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import {
+  classifyPublicApiError,
+  publicApiEndpointLabel,
+  PUBLIC_API_REVALIDATE_SECONDS,
+  PUBLIC_API_TIMEOUT_MS,
+} from "../lib/public-api-policy.ts";
 
 test("public frontend never replaces unavailable official data with demonstrations", async () => {
   const client = await readFile(new URL("../lib/public-data.ts", import.meta.url), "utf8");
@@ -12,6 +18,30 @@ test("public frontend never replaces unavailable official data with demonstratio
   assert.match(banner, /Dados oficiais publicados/);
   assert.match(banner, /Dados oficiais temporariamente indisponíveis/);
   assert.doesNotMatch(banner, /fictícia|demonstrativos/i);
+});
+
+test("public API failures are classified and logged without query data", async () => {
+  const client = await readFile(new URL("../lib/public-data.ts", import.meta.url), "utf8");
+
+  const timeout = new Error("the raw message must not be logged");
+  timeout.name = "TimeoutError";
+  const abort = new Error("the raw message must not be logged");
+  abort.name = "AbortError";
+
+  assert.equal(classifyPublicApiError(timeout), "timeout");
+  assert.equal(classifyPublicApiError(abort), "abort");
+  assert.equal(classifyPublicApiError(new TypeError("connection details")), "network");
+  assert.equal(classifyPublicApiError(new SyntaxError("response body")), "invalid_json");
+  assert.equal(
+    publicApiEndpointLabel("/api/v1/public/parliament/explore?q=private-search&cursor=secret"),
+    "/api/v1/public/parliament/explore",
+  );
+  assert.equal(publicApiEndpointLabel("not-an-api-path?token=secret"), "/invalid");
+  assert.equal(PUBLIC_API_TIMEOUT_MS, 10_000);
+  assert.equal(PUBLIC_API_REVALIDATE_SECONDS, 60);
+  assert.match(client, /public_api_fetch_failed/);
+  assert.match(client, /retry_policy: "none"/);
+  assert.doesNotMatch(client, /error\.message/);
 });
 
 test("public status exposes every operational V4 source and its freshness", async () => {

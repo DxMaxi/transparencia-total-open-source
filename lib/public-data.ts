@@ -2,6 +2,13 @@ import "server-only";
 
 import { cache } from "react";
 import { initialGovernmentCommitments } from "@/lib/government-programme";
+import {
+  classifyPublicApiError,
+  publicApiEndpointLabel,
+  PUBLIC_API_REVALIDATE_SECONDS,
+  PUBLIC_API_TIMEOUT_MS,
+  type PublicApiFailureReason,
+} from "@/lib/public-api-policy";
 import type {
   AttendanceSummary,
   GovernmentPromise,
@@ -30,7 +37,7 @@ import type {
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, "") ?? "";
 type ApiResult<T> =
   | { ok: true; data: T }
-  | { ok: false; status?: number };
+  | { ok: false; reason: PublicApiFailureReason; status?: number };
 
 type RawSource = {
   publisher: string;
@@ -271,18 +278,56 @@ export type LoadedData<T> = {
   showingFallback: boolean;
 };
 
+let missingApiConfigurationReported = false;
+
+function reportPublicApiFailure(
+  path: string,
+  reason: PublicApiFailureReason,
+  startedAt: number,
+  status?: number,
+): void {
+  console.warn("public_api_fetch_failed", {
+    endpoint: publicApiEndpointLabel(path),
+    reason,
+    status: status ?? null,
+    elapsed_ms: Math.max(0, Date.now() - startedAt),
+    timeout_ms: PUBLIC_API_TIMEOUT_MS,
+    retry_policy: "none",
+  });
+}
+
 async function apiFetch<T>(path: string): Promise<ApiResult<T>> {
-  if (!apiBaseUrl) return { ok: false };
+  const startedAt = Date.now();
+  if (!apiBaseUrl) {
+    if (!missingApiConfigurationReported) {
+      reportPublicApiFailure(path, "not_configured", startedAt);
+      missingApiConfigurationReported = true;
+    }
+    return { ok: false, reason: "not_configured" };
+  }
+
   try {
     const response = await fetch(`${apiBaseUrl}${path}`, {
       headers: { Accept: "application/json" },
-      next: { revalidate: 60 },
-      signal: AbortSignal.timeout(10_000),
+      next: { revalidate: PUBLIC_API_REVALIDATE_SECONDS },
+      signal: AbortSignal.timeout(PUBLIC_API_TIMEOUT_MS),
     });
-    if (!response.ok) return { ok: false, status: response.status };
-    return { ok: true, data: (await response.json()) as T };
-  } catch {
-    return { ok: false };
+    if (!response.ok) {
+      reportPublicApiFailure(path, "http", startedAt, response.status);
+      return { ok: false, reason: "http", status: response.status };
+    }
+
+    try {
+      return { ok: true, data: (await response.json()) as T };
+    } catch (error) {
+      const reason = classifyPublicApiError(error);
+      reportPublicApiFailure(path, reason, startedAt, response.status);
+      return { ok: false, reason, status: response.status };
+    }
+  } catch (error) {
+    const reason = classifyPublicApiError(error);
+    reportPublicApiFailure(path, reason, startedAt);
+    return { ok: false, reason };
   }
 }
 
