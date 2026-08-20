@@ -365,8 +365,9 @@ offline” no rodapé e pode ser removido, juntamente com os caches do projeto, 
 | `GET` | `/api/v1/transparency-entity/resources` | Indexar recursos públicos da EPT; exige `X-Admin-Key` |
 | `GET` | `/api/v1/base/resources/{year}` | Descobrir o recurso anual oficial BASE |
 | `GET` | `/api/v1/base/contracts/preview?year=2026&limit=25` | Pré-visualizar contratos; exige `X-Admin-Key` |
-| `POST` | `/api/v1/ai/summaries` | Propor resumo estruturado para revisão |
-| `POST` | `/api/v1/ai/civic-guide` | Explicar factos de impacto já verificados |
+| `POST` | `/api/v1/editorial/ai/dre-proposals` | Criar proposta privada `PENDING` a partir de snapshot DRE atestado; exige staff com MFA |
+| `POST` | `/api/v1/ai/summaries` | Rota legada desativada (`410`); não gera nem publica |
+| `POST` | `/api/v1/ai/civic-guide` | Rota legada desativada (`410`) até ter circuito próprio persistente |
 | `POST` | `/api/v1/push/subscriptions` | Guardar subscrição e filtros regionais |
 | `POST` | `/api/v1/push/broadcast` | Enviar alerta; exige `X-Admin-Key` |
 | `POST` | `/api/v1/right-of-reply` | Registar contestação com recibo e hashes |
@@ -539,33 +540,43 @@ ligação geral ao portal nunca é prova individual. Para retirar sem apagar o h
 
 ## Pipeline de IA
 
-A IA está desligada por omissão e não existe ainda conteúdo de IA publicado no website. Os dois
-endpoints atuais são protótipos técnicos: devolvem propostas com metadados e revisão obrigatória,
-mas ainda não as guardam numa fila privada, não registam uma decisão editorial e não alimentam a
-projecção pública. O script DRE apenas apresenta o resultado no terminal.
+A IA continua desligada por omissão e não existe conteúdo de IA publicado no website. O circuito
+V5 aceita apenas um `snapshot_id` DRE já recolhido, concluído e ligado a um arquivo oficial atestado.
+Uma pessoa da equipa editorial autenticada com MFA confirma que pede uma proposta privada. O
+resultado fica numa versão editorial imutável com estado `PENDING`, origem `AI`, modelo, versão e
+hash do prompt, hashes da entrada e saída, documento usado e indicação de truncagem. A identidade
+humana fica registada na decisão de submissão; a IA nunca é revisor nem fonte.
 
-Por isso, definir as variáveis abaixo é apropriado apenas para desenvolvimento controlado. Não deve
-ser feito em produção antes de existir persistência `PENDING`, autenticação e limites de utilização,
-revisão humana explícita e publicação imutável de versões aprovadas:
+Pedidos iguais reutilizam a mesma proposta sem chamar novamente o modelo. Um bloqueio PostgreSQL
+impede gerações simultâneas entre instâncias, e cada tentativa conta para o limite diário antes da
+chamada externa. Tentativas e resultados são acrescentados ao histórico técnico sem guardar o
+texto do documento nesse evento. Nenhum adaptador de publicação de IA existe nesta fase; aprovar um
+processo não o projeta no site público.
+
+As rotas antigas `/api/v1/ai/summaries` e `/api/v1/ai/civic-guide`, bem como o comando direto
+`scripts.summarize_dre`, estão fechados para impedir respostas não persistidas. A ativação seguinte
+deve ocorrer primeiro em staging, com uma chave restrita no backend e ensaios editoriais controlados:
 
 ```dotenv
 AI_PROVIDER=openai
 OPENAI_API_KEY=sk-...
 OPENAI_MODEL=gpt-5.6
 OPENAI_STORE=false
+AI_DAILY_GENERATION_LIMIT=20
+AI_REQUEST_TIMEOUT_SECONDS=90
 ```
 
-Depois:
+O resumo DRE usa a Responses API com Structured Outputs/Pydantic. Segmenta textos longos e devolve
+campos separados para mudanças, pessoas afetadas, prazos, direitos, incertezas, glossário e âncoras.
+O servidor verifica que as referências das âncoras existem literalmente na fonte ou que houve uma
+abstenção explícita. Esta verificação não prova que a interpretação está correta: a comparação
+humana integral continua obrigatória.
 
-```bash
-cd backend
-python -m scripts.summarize_dre 'https://data.dre.pt/eli/lei/48/2018/08/14/p/dre/pt/html'
-```
-
-O resumo DRE usa a Responses API com Structured Outputs/Pydantic. Devolve a versão e o hash do prompt,
-segmenta textos longos e devolve campos separados para mudanças, pessoas afetadas, prazos,
-direitos, incertezas, glossário e âncoras. `requires_human_review` é sempre verdadeiro. Nunca
-publique automaticamente o resultado bruto do modelo.
+`OPENAI_STORE=false` é imposto pelo servidor. Segundo a política oficial do fornecedor, isto não é
+uma promessa de retenção zero: por omissão podem existir registos de monitorização de abuso por até
+30 dias. Só se enviam documentos públicos, nunca dados de utilizadores, identificadores protegidos,
+credenciais ou conteúdo editorial privado. Consulte a [política oficial de controlos de dados da
+API OpenAI](https://developers.openai.com/api/docs/guides/your-data#default-usage-policies-by-endpoint).
 
 O Guia do Cidadão usa uma instrução independente, versionada em
 `backend/app/services/civic_guide.py`. O endpoint recebe apenas um perfil genérico e uma lista de

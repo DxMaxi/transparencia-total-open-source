@@ -315,6 +315,38 @@ class EditorialRepository:
             idempotent=True,
         )
 
+    async def create_ai_case(
+        self,
+        *,
+        subject_type: str,
+        subject_id: str,
+        source_document_id: str,
+        normalized_data: dict[str, Any],
+        origin_alias: str,
+        submission_rationale: str,
+        actor: StaffSession,
+    ) -> tuple[dict[str, object], bool]:
+        """Cria uma proposta de IA privada, imutável e idempotente.
+
+        A pessoa que pediu a geração fica na decisão ``SUBMIT``. O processo e a
+        versão mantêm origem ``AI`` e ``created_by_id`` nulo; o modelo nunca é
+        apresentado como revisor nem como fonte.
+        """
+
+        return await self._create_initial_case(
+            kind=EditorialCaseKind.AI_EXPLANATION,
+            subject_type=subject_type,
+            subject_id=subject_id,
+            source_document_id=source_document_id,
+            normalized_data=normalized_data,
+            origin=EditorialOrigin.AI,
+            created_by_id=None,
+            created_by_alias=origin_alias,
+            submission_rationale=submission_rationale,
+            actor=actor,
+            idempotent=True,
+        )
+
     async def _create_initial_case(
         self,
         *,

@@ -69,8 +69,10 @@ class Settings(BaseSettings):
     openai_api_key: SecretStr | None = None
     openai_model: str = "gpt-5.6"
     openai_store: bool = False
-    ai_max_source_chars: int = 220_000
-    ai_chunk_chars: int = 48_000
+    ai_max_source_chars: int = Field(default=220_000, ge=10_000, le=500_000)
+    ai_chunk_chars: int = Field(default=48_000, ge=5_000, le=100_000)
+    ai_daily_generation_limit: int = Field(default=20, ge=1, le=500)
+    ai_request_timeout_seconds: float = Field(default=90.0, ge=10.0, le=180.0)
 
     vapid_public_key: str | None = None
     vapid_private_key: SecretStr | None = None
@@ -133,6 +135,13 @@ class Settings(BaseSettings):
     def validate_identifier_pepper(cls, value: SecretStr | None) -> SecretStr | None:
         if value is not None and len(value.get_secret_value()) < 32:
             raise ValueError("PROTECTED_IDENTIFIER_PEPPER deve ter pelo menos 32 caracteres")
+        return value
+
+    @field_validator("openai_store")
+    @classmethod
+    def require_private_ai_requests(cls, value: bool) -> bool:
+        if value:
+            raise ValueError("OPENAI_STORE tem de permanecer false no circuito editorial")
         return value
 
     @field_validator("supabase_url")

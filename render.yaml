@@ -21,6 +21,12 @@ services:
         value: production
       - key: AI_PROVIDER
         value: disabled
+      - key: OPENAI_STORE
+        value: "false"
+      - key: AI_DAILY_GENERATION_LIMIT
+        value: "20"
+      - key: AI_REQUEST_TIMEOUT_SECONDS
+        value: "90"
       - key: DATABASE_URL
         fromDatabase:
           name: transparencia-total-db
