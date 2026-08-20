@@ -7,8 +7,19 @@ from app.repositories.official_index_staging import OfficialIndexStagingReposito
 
 
 def test_health_contract() -> None:
-    with TestClient(app) as client:
-        response = client.get("/api/v1/health")
+    class UnconfiguredRepository:
+        pool = None
+
+        async def connect(self) -> None:
+            return None
+
+    app.dependency_overrides[get_repository] = UnconfiguredRepository
+    try:
+        with TestClient(app) as client:
+            response = client.get("/api/v1/health")
+    finally:
+        app.dependency_overrides.clear()
+
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
     assert response.json()["version"] == "0.5.0-alpha.0"
