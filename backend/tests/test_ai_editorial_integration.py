@@ -83,7 +83,9 @@ def _document(suffix: str = "") -> LegalDocument:
     return LegalDocument(
         title="Lei n.º 2/2026",
         source_url=raw.source_url,
-        official_identifier=f"Lei n.º 2/2026{f' - {suffix}' if suffix else ''}",
+        # O marcador aleatório já torna o documento, URL e hashes únicos. Mantê-lo fora do
+        # identificador oficial evita fabricar sequências numéricas que se parecem com NIF/NIPC.
+        official_identifier="Lei n.º 2/2026",
         published_at=retrieved_at,
         text=text,
         content_sha256=raw.content_sha256,
