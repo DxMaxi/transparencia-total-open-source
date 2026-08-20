@@ -131,7 +131,7 @@ def test_push_broadcast_requires_admin_configuration() -> None:
     with TestClient(app) as client:
         response = client.post(
             "/api/v1/push/broadcast",
-            json={"title": "Alerta", "body": "Atualização oficial", "url": "/"},
+            json={"alert_id": "alert-approved-1"},
         )
     assert response.status_code in {401, 503}
 

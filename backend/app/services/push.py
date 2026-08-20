@@ -29,8 +29,13 @@ class PushService:
                 ttl=3600,
             )
             return True
-        except WebPushException:
-            logger.exception("push_delivery_failed")
+        except WebPushException as exc:
+            response = getattr(exc, "response", None)
+            status_code = getattr(response, "status_code", None)
+            logger.warning(
+                "push_delivery_failed",
+                extra={"push_status_code": status_code if isinstance(status_code, int) else None},
+            )
             return False
 
     def broadcast(

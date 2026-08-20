@@ -30,6 +30,8 @@
    adaptador do preview incluído no projeto.
 4. Configure:
    - `NEXT_PUBLIC_API_URL=https://api.example.org`
+   - `NEXT_PUBLIC_VAPID_PUBLIC_KEY=…` apenas quando os alertas estiverem ativados; esta é a chave
+     pública e não autoriza envios.
    - `NEXT_PUBLIC_CONTACT_EMAIL=contacto@seudominio.pt` apenas depois de a caixa institucional
      estar validada e operacional; sem esta variável, o site não publica um email pessoal.
    - `NEXT_PUBLIC_LEGAL_RESPONSIBLE_NAME=…`
@@ -64,6 +66,14 @@ DATABASE_URL='URL externa do Render' npm run db:deploy
 Depois, atualize `NEXT_PUBLIC_API_URL` no Vercel. Em planos gratuitos, espere suspensão por
 inatividade e retenção reduzida do PostgreSQL; não os trate como arquivo oficial durável.
 
+Para ativar alertas, configure `VAPID_PRIVATE_KEY` apenas como segredo do backend e defina
+`VAPID_SUBJECT` com um contacto institucional válido. Nunca copie a chave privada para uma variável
+`NEXT_PUBLIC_*`, para o repositório ou para logs. Sem ambas as extremidades configuradas, a
+interface apresenta os alertas como indisponíveis. A difusão recebe apenas um `alert_id` e falha
+fechada se o registo não estiver publicado, revisto, vigente e ligado a arquivo oficial atestado.
+O backend aceita endpoints HTTPS apenas dos serviços push suportados de Google/Chromium, Mozilla,
+Apple e Windows; qualquer novo fornecedor exige revisão e teste antes de alargar essa allowlist.
+
 ## Fly.io
 
 1. Instale e autentique `flyctl`.
@@ -96,10 +106,15 @@ execução diária, com repetição enquanto o deployment propaga.
 - HTTPS e redirecionamento ativo em frontend e API.
 - CORS contém apenas origens reais.
 - Swagger/ReDoc desativados em produção.
-- O service worker só é registado depois de escolha explícita no rodapé.
-- O controlo de revogação elimina apenas o service worker e os caches do projeto.
+- O service worker só é registado depois de ativar o modo offline ou consentir alertas.
+- Consentir alertas não ativa a cache offline; essa escolha continua no rodapé.
+- O controlo offline apaga apenas os caches do projeto e conserva o worker se ainda existir uma
+  subscrição push ativa.
 - Rotas privadas, pedidos autenticados e respostas `private`/`no-store` nunca entram no cache.
-- Não existe pedido de notificações na interface pública.
+- A autorização de notificações só é pedida depois de consentimento informado e ação explícita.
+- Preferências e subscrição podem ser alteradas e apagadas no navegador e no backend.
+- Uma difusão só pode ser reconstruída a partir de um alerta publicado e de fonte atestada.
+- Se houver várias instâncias de backend, existe rate limit partilhado além da proteção local.
 - Migrações aplicadas e capacidade real de recuperação descrita sem garantias inexistentes.
 - Última cópia B2 cifrada e último ensaio de restauro com execução, SHA-256, RPO e RTO registados.
 - URLs oficiais, hashes e datas visíveis nos dados reais.

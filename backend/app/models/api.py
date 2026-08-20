@@ -1,8 +1,10 @@
+import base64
+import binascii
 import re
 from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, SecretStr, field_validator
 
@@ -14,6 +16,14 @@ _CANONICAL_UUID = re.compile(
     r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
     r"[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
 )
+_PUSH_ENDPOINT_HOSTS = frozenset(
+    {
+        "fcm.googleapis.com",
+        "updates.push.services.mozilla.com",
+        "web.push.apple.com",
+    }
+)
+_PUSH_ENDPOINT_SUFFIXES = ("notify.windows.com",)
 
 
 def _contains_protected_identifier(value: str) -> bool:
@@ -171,20 +181,64 @@ class SummaryResponse(BaseModel):
 
 
 class PushSubscriptionKeys(BaseModel):
-    p256dh: str = Field(min_length=20, max_length=512)
-    auth: str = Field(min_length=8, max_length=256)
+    p256dh: str = Field(min_length=80, max_length=100)
+    auth: str = Field(min_length=20, max_length=32)
+
+    @staticmethod
+    def _decode(value: str) -> bytes:
+        padding = "=" * ((4 - len(value) % 4) % 4)
+        try:
+            return base64.b64decode(
+                value + padding,
+                altchars=b"-_",
+                validate=True,
+            )
+        except (ValueError, binascii.Error) as exc:
+            raise ValueError("A chave Web Push não usa base64url válido") from exc
+
+    @field_validator("p256dh")
+    @classmethod
+    def valid_p256dh(cls, value: str) -> str:
+        decoded = cls._decode(value)
+        if len(decoded) != 65 or decoded[0] != 4:
+            raise ValueError("A chave p256dh não representa um ponto P-256 não comprimido")
+        return value
+
+    @field_validator("auth")
+    @classmethod
+    def valid_auth_secret(cls, value: str) -> str:
+        if len(cls._decode(value)) != 16:
+            raise ValueError("O segredo auth Web Push tem de conter 16 bytes")
+        return value
 
 
 class BrowserPushSubscription(BaseModel):
     endpoint: HttpUrl
-    expirationTime: int | None = None
+    expirationTime: int | None = Field(default=None, ge=0)
     keys: PushSubscriptionKeys
+
+    @field_validator("endpoint")
+    @classmethod
+    def trusted_push_service(cls, value: HttpUrl) -> HttpUrl:
+        host = (value.host or "").lower().rstrip(".")
+        allowed = host in _PUSH_ENDPOINT_HOSTS or any(
+            host.endswith(f".{suffix}") for suffix in _PUSH_ENDPOINT_SUFFIXES
+        )
+        if value.scheme != "https" or not allowed:
+            raise ValueError("O endpoint não pertence a um serviço Web Push suportado")
+        return value
 
 
 class PushSubscriptionRequest(BaseModel):
     subscription: BrowserPushSubscription
-    districts: list[str] = Field(default_factory=list, max_length=20)
-    municipalities: list[str] = Field(default_factory=list, max_length=50)
+    districts: list[Annotated[str, Field(min_length=1, max_length=100)]] = Field(
+        default_factory=list,
+        max_length=20,
+    )
+    municipalities: list[Annotated[str, Field(min_length=1, max_length=100)]] = Field(
+        default_factory=list,
+        max_length=50,
+    )
 
 
 class PushSubscriptionResponse(BaseModel):
@@ -192,22 +246,22 @@ class PushSubscriptionResponse(BaseModel):
     id: str
 
 
-class PushBroadcastRequest(BaseModel):
-    title: str = Field(min_length=1, max_length=80)
-    body: str = Field(min_length=1, max_length=220)
-    url: str = Field(default="/", min_length=1, max_length=1024)
-    tag: str = Field(default="transparencia-total-update", pattern=r"^[a-z0-9-]{1,80}$")
-    district: str | None = Field(default=None, max_length=100)
-    municipality: str | None = Field(default=None, max_length=100)
+class PushSubscriptionRemovalRequest(BaseModel):
+    endpoint: HttpUrl
 
-    @field_validator("url")
-    @classmethod
-    def same_origin_path(cls, value: str) -> str:
-        if not value.startswith("/") or value.startswith("//"):
-            raise ValueError("O destino push deve ser um caminho da própria aplicação")
-        if "\\" in value or any(ord(character) < 32 for character in value):
-            raise ValueError("O caminho da notificação contém caracteres inválidos")
-        return value
+
+class PushSubscriptionRemovalResponse(BaseModel):
+    removed: Literal[True] = True
+
+
+class PushBroadcastRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    alert_id: str = Field(
+        min_length=1,
+        max_length=100,
+        pattern=r"^[A-Za-z0-9_-]+$",
+    )
 
 
 class PushBroadcastResponse(BaseModel):

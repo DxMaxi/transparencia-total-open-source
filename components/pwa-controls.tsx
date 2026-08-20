@@ -5,12 +5,35 @@ import { useEffect, useState } from "react";
 type PwaState = "checking" | "inactive" | "working" | "active" | "unsupported" | "error";
 
 const PROJECT_CACHE_PREFIX = "transparencia-total-";
+const OFFLINE_PREFERENCE_CACHE = `${PROJECT_CACHE_PREFIX}offline-preference`;
 
 function isProjectRegistration(registration: ServiceWorkerRegistration): boolean {
   const worker = registration.installing ?? registration.waiting ?? registration.active;
   if (!worker) return false;
   const workerUrl = new URL(worker.scriptURL);
   return workerUrl.origin === window.location.origin && workerUrl.pathname === "/sw.js";
+}
+
+async function sendOfflineCommand(
+  registration: ServiceWorkerRegistration,
+  type: "ENABLE_OFFLINE" | "DISABLE_OFFLINE",
+): Promise<void> {
+  const worker = registration.active;
+  if (!worker) throw new Error("Service worker ainda não está ativo");
+
+  await new Promise<void>((resolve, reject) => {
+    const channel = new MessageChannel();
+    const timeout = window.setTimeout(
+      () => reject(new Error("Service worker não confirmou a escolha")),
+      10_000,
+    );
+    channel.port1.onmessage = (event) => {
+      window.clearTimeout(timeout);
+      if (event.data?.ok === true) resolve();
+      else reject(new Error("Service worker recusou a escolha"));
+    };
+    worker.postMessage({ type }, [channel.port2]);
+  });
 }
 
 export function PwaControls() {
@@ -25,9 +48,10 @@ export function PwaControls() {
         return;
       }
       try {
-        const registrations = await navigator.serviceWorker.getRegistrations();
+        const enabled = "caches" in window
+          && await window.caches.has(OFFLINE_PREFERENCE_CACHE);
         if (!cancelled) {
-          setState(registrations.some(isProjectRegistration) ? "active" : "inactive");
+          setState(enabled ? "active" : "inactive");
         }
       } catch {
         if (!cancelled) setState("error");
@@ -48,6 +72,8 @@ export function PwaControls() {
     setState("working");
     try {
       await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+      const registration = await navigator.serviceWorker.ready;
+      await sendOfflineCommand(registration, "ENABLE_OFFLINE");
       setState("active");
     } catch {
       setState("error");
@@ -62,9 +88,12 @@ export function PwaControls() {
     setState("working");
     try {
       const registrations = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(
-        registrations.filter(isProjectRegistration).map((registration) => registration.unregister()),
-      );
+      const projectRegistrations = registrations.filter(isProjectRegistration);
+      for (const registration of projectRegistrations) {
+        await sendOfflineCommand(registration, "DISABLE_OFFLINE");
+        const pushSubscription = await registration.pushManager.getSubscription();
+        if (!pushSubscription) await registration.unregister();
+      }
       if ("caches" in window) {
         const keys = await window.caches.keys();
         await Promise.all(

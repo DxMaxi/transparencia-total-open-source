@@ -23,7 +23,7 @@ definição da Open Source Initiative.
 > commit final desse fecho. A V5 começa pela governação de licença e pelo circuito editorial
 > privado; esta branch não altera os dados aprovados da V4.
 
-> **V5.1 a V5.14 integradas; V5.15 em validação e ativação remota de staging pendente:** o painel privado usa
+> **V5.1 a V5.15 integradas; V5.16 em endurecimento e ativação remota de staging pendente:** o painel privado usa
 > login por convite,
 > MFA obrigatório, funções de administrador/revisor, comparação entre fonte atestada e JSON
 > normalizado, versões e decisões append-only. A V5.2 acrescentou propostas parlamentares privadas,
@@ -56,6 +56,7 @@ definição da Open Source Initiative.
 > [Plano de execução editorial em staging V5.11](docs/V5_EDITORIAL_STAGING_EXECUTION_PLAN.md),
 > [Fundação do workflow de staging V5.12](docs/V5_STAGING_WORKFLOW_FOUNDATION.md),
 > [Publicação responsável de explicações DRE V5.15](docs/V5_AI_PUBLICATION.md),
+> [Endurecimento do candidato de release V5.16](docs/V5_RELEASE_HARDENING.md),
 > [Adaptador parlamentar V5.2](docs/V5_PARLIAMENT_EDITORIAL_ADAPTER.md) e
 > [Publicação parlamentar por âmbito V5.3](docs/V5_PARLIAMENT_SCOPE_PUBLICATION.md),
 > [Retirada parlamentar imutável V5.4](docs/V5_PARLIAMENT_WITHDRAWAL.md) e
@@ -76,7 +77,7 @@ definição da Open Source Initiative.
 - **Histórico imutável:** correções acrescentam versões e eventos de auditoria; não apagam o
   fundamento anterior.
 - **Privacidade mínima:** o website público não usa analítica, publicidade, cookies não essenciais,
-  notificações ou perfis de visitantes.
+  notificações sem consentimento ou perfis de visitantes.
 
 O nome “Transparência Total” descreve a ambição. Nenhum sistema pode garantir a completude de
 uma fonte pública; a plataforma torna também visíveis falhas, atrasos e limites conhecidos.
@@ -109,7 +110,8 @@ uma fonte pública; a plataforma torna também visíveis falhas, atrasos e limit
   inferência.
 
 - Frontend Next.js responsivo. Manifesto e modo offline estão disponíveis apenas por escolha
-  explícita e reversível no rodapé; notificações continuam desligadas da interface pública.
+  explícita e reversível no rodapé; alertas regionais exigem consentimento informado e podem ser
+  alterados e apagados no navegador e no backend.
 - Pipeline do Investigador Cívico preservado na API, sem página pública até existir um conjunto
   de relações efetivamente revisto.
 - Componentes de grafo e de comparação preservados para trabalho futuro, sem exposição pública
@@ -127,7 +129,8 @@ uma fonte pública; a plataforma torna também visíveis falhas, atrasos e limit
   individual.
 - Promessómetro filtrável com cinco estados, incluindo “Por verificar”, catálogo inicial do
   programa e fundamentação oficial por medida avaliada.
-- Infraestrutura Web Push disponível no backend, mas sem registo automático no website público.
+- Infraestrutura Web Push sem registo automático; só envia um `CitizenAlert` com a última revisão
+  pública positiva, estado publicado, vigência válida e arquivo oficial atestado.
 - API FastAPI com documentação OpenAPI, CORS restrito e endpoints de saúde.
 - Descoberta e normalização resiliente dos datasets da Assembleia da República e dos recursos
   anuais JSON/XML/ZIP do Portal BASE publicados através do dados.gov.pt.
@@ -376,7 +379,7 @@ offline” no rodapé e pode ser removido, juntamente com os caches do projeto, 
 | `POST` | `/api/v1/ai/summaries` | Rota legada desativada (`410`); não gera nem publica |
 | `POST` | `/api/v1/ai/civic-guide` | Rota legada desativada (`410`) até ter circuito próprio persistente |
 | `POST` | `/api/v1/push/subscriptions` | Guardar subscrição e filtros regionais |
-| `POST` | `/api/v1/push/broadcast` | Enviar alerta; exige `X-Admin-Key` |
+| `POST` | `/api/v1/push/broadcast` | Enviar um alerta já publicado pelo respetivo ID; exige `X-Admin-Key` |
 | `POST` | `/api/v1/right-of-reply` | Registar contestação com recibo e hashes |
 | `GET` | `/api/v1/open-data/{dataset}.json` | Exportar registos publicados e verificados |
 | `GET` | `/api/v1/open-data/{dataset}.csv` | Exportar os mesmos registos em CSV |
@@ -640,9 +643,14 @@ uma escolha explícita para ativar o modo offline e outra para anular o registo 
 caches com o prefixo `transparencia-total-`. Rotas `/admin`, `/auth` e `/api`, pedidos com
 autorização e respostas `private`/`no-store` são excluídos do cache.
 
-O modo offline não pede autorização de notificações. A subscrição push continua fora da interface
-pública até existir consentimento informado, preferências editáveis e revogação no navegador e
-backend. Consulte a [política de cookies](app/cookies/page.tsx).
+Consentir alertas também pode registar o worker técnico, mas não cria nem ativa a cache offline.
+Se o modo offline for desativado enquanto existir uma subscrição push, o worker é conservado apenas
+para essa subscrição; os caches do projeto são apagados.
+
+O modo offline não pede autorização de notificações. A área de alertas só pede essa autorização
+depois de consentimento informado e permite alterar a região, desativar o endpoint no navegador e
+apagá-lo no backend. Se a remoção remota falhar, a interface distingue claramente essa situação e
+permite repetir a tentativa. Consulte a [política de cookies](app/cookies/page.tsx).
 
 Gere um par VAPID:
 
@@ -660,6 +668,10 @@ Quando ativado por escolha explícita, `public/sw.js` fornece:
 - cache limitado a recursos públicos e cacheáveis da mesma origem;
 - limpeza limitada aos caches do próprio projeto;
 - receção de push e abertura apenas de URLs públicas da mesma origem.
+
+O endpoint de difusão aceita apenas o ID de um `CitizenAlert` já publicado, cuja última revisão de
+publicação é positiva, não expirado e ligado a uma fonte arquivada com URL e SHA-256 coincidentes.
+Título, texto, destino e território não são aceites como conteúdo livre do pedido administrativo.
 
 Em iPhone/iPad, as notificações web exigem que o utilizador adicione a PWA ao ecrã principal e
 autorize os alertas. Android e desktop apresentam o pedido no fluxo normal do navegador.

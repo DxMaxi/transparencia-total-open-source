@@ -22,7 +22,8 @@ export default function CookiesPage() {
           A Transparência Total não coloca cookies de publicidade, personalização, sessão
           ou medição de audiência. O modo offline permanece desativado até a pessoa escolher
           explicitamente “Ativar modo offline” no rodapé; visitar o site, por si só, não
-          regista o service worker nem cria os respetivos caches.
+          regista o service worker nem cria os respetivos caches. Ativar apenas alertas regista
+          o serviço técnico de notificações, mas não ativa a cache offline.
         </p>
         <p>
           Quando ativado, o navegador guarda apenas páginas públicas e recursos essenciais
@@ -30,6 +31,20 @@ export default function CookiesPage() {
           respostas privadas ou sem autorização de cache e pedidos com credenciais são excluídos.
           O botão “Desativar e apagar cache” remove o registo e apenas esses caches, sem ler ou
           eliminar armazenamento de outros websites.
+        </p>
+        <h2>Alertas opcionais</h2>
+        <p>
+          A autorização de notificações só é pedida depois de escolher uma região, assinalar o
+          consentimento e carregar no botão de ativação. O navegador cria então um endpoint e
+          chaves técnicas de subscrição; a API conserva esses valores e as regiões indicadas
+          apenas para entregar alertas aprovados. Não é usada geolocalização, analítica ou
+          publicidade.
+        </p>
+        <p>
+          As preferências podem ser alteradas. “Desativar e apagar alertas” remove a subscrição
+          no navegador e pede a eliminação exata do endpoint no backend. Se a API estiver
+          temporariamente indisponível, os alertas ficam desligados no navegador e a página
+          permite repetir a eliminação remota. O modo offline é uma escolha separada.
         </p>
         <h2>Cache normal do navegador</h2>
         <p>
@@ -42,14 +57,14 @@ export default function CookiesPage() {
           O artigo 5.º da Lei n.º 41/2004 exige consentimento para armazenamento ou acesso
           não essencial no equipamento. A escolha do botão é a ação explícita que ativa o modo
           offline; pode ser revogada no mesmo controlo. O projeto não usa essa escolha para
-          identificar a pessoa nem recebe uma lista das páginas existentes no cache.
+          identificar a pessoa nem recebe uma lista das páginas existentes no cache. A autorização
+          de alertas tem consentimento próprio e pode ser retirada de forma independente.
         </p>
         <h2>Alterações futuras</h2>
         <p>
-          Esta página será atualizada antes de ativar analítica, publicidade, notificações
-          ou outra tecnologia de armazenamento. O modo offline não pede autorização para
-          notificações; essa capacidade continua separada e desativada na interface pública.
-          Para questões, consulte o{" "}
+          Esta página será atualizada antes de ativar analítica, publicidade ou outra tecnologia
+          de armazenamento não descrita acima. O modo offline não pede autorização para
+          notificações e as duas escolhas permanecem separadas. Para questões, consulte o{" "}
           <InstitutionalContactLink fallbackLabel="canal institucional" />.
         </p>
         <p className="legal-updated">Atualizada em {LEGAL_UPDATED_AT}.</p>

@@ -67,6 +67,12 @@ export default function PrivacyPage() {
                 <td>Enquanto o registo relacionado estiver publicado e, depois disso, durante o período necessário à auditoria e defesa de direitos.</td>
               </tr>
               <tr>
+                <td>Alertas opcionais</td>
+                <td>Endpoint e chaves de subscrição gerados pelo navegador, região e concelho indicados e instantes técnicos de criação ou atualização.</td>
+                <td>Entregar apenas os alertas escolhidos, com base no consentimento explícito. Não recolhemos geolocalização nem usamos a subscrição para medir navegação ou criar perfis.</td>
+                <td>Até a pessoa apagar a subscrição, o endpoint expirar ou deixar de ser tecnicamente utilizável.</td>
+              </tr>
+              <tr>
                 <td>Contacto por email</td>
                 <td>Endereço, conteúdo da mensagem e metadados de entrega.</td>
                 <td>Responder ao pedido e conservar prova do seguimento, conforme o pedido e o interesse legítimo do projeto.</td>
@@ -97,8 +103,9 @@ export default function PrivacyPage() {
         <h2>5. Destinatários, prestadores e transferências</h2>
         <p>
           O website usa Vercel, a API usa Render, a base de dados usa Supabase e o código e as
-          operações usam GitHub. O prestador do email institucional será indicado antes de o
-          canal ser ativado. Estes prestadores recebem apenas os
+          operações usam GitHub. Quando os alertas são ativados, o serviço push escolhido pelo
+          navegador trata o endpoint e os metadados técnicos necessários à entrega. O prestador do
+          email institucional será indicado antes de o canal ser ativado. Estes prestadores recebem apenas os
           dados técnicos necessários às respetivas funções, sujeitos às suas condições e
           mecanismos de proteção. Alguns podem tratar dados fora do Espaço Económico Europeu;
           quando isso aconteça, o tratamento deve apoiar-se num mecanismo válido do capítulo V

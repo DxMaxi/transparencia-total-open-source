@@ -1,6 +1,8 @@
 import { test, expect } from "@playwright/test";
 
-const baseURL = "https://www.transparenciatotal.pt";
+const baseURL = (
+  process.env.PLAYWRIGHT_BASE_URL || "https://www.transparenciatotal.pt"
+).replace(/\/$/, "");
 
 test.describe("Transparência Total — auditoria pública", () => {
   test("páginas principais abrem sem erro", async ({ page }) => {
@@ -84,6 +86,34 @@ test.describe("Transparência Total — auditoria pública", () => {
     );
 
     expect(bodyWidth).toBeLessThanOrEqual(390);
+  });
+
+  test("modo offline só cria cache depois da escolha e pode ser apagado", async ({ page }) => {
+    await page.goto(baseURL);
+    await page.evaluate(async () => {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((registration) => registration.unregister()));
+      const keys = await caches.keys();
+      await Promise.all(
+        keys
+          .filter((key) => key.startsWith("transparencia-total-"))
+          .map((key) => caches.delete(key)),
+      );
+    });
+    await page.reload();
+
+    const initialCaches = await page.evaluate(() => caches.keys());
+    expect(initialCaches.filter((key) => key.startsWith("transparencia-total-"))).toEqual([]);
+
+    await page.getByRole("button", { name: "Ativar modo offline" }).click();
+    await expect(page.getByText(/Ativo\. Páginas públicas/)).toBeVisible();
+    const enabledCaches = await page.evaluate(() => caches.keys());
+    expect(enabledCaches).toContain("transparencia-total-offline-preference");
+
+    await page.getByRole("button", { name: "Desativar e apagar cache" }).click();
+    await expect(page.getByText(/Desativado\. Nenhum cache offline/)).toBeVisible();
+    const finalCaches = await page.evaluate(() => caches.keys());
+    expect(finalCaches.filter((key) => key.startsWith("transparencia-total-"))).toEqual([]);
   });
 
   test("página de políticos carrega interface pública", async ({ page }) => {

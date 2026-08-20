@@ -1,6 +1,6 @@
 # PROJECT HANDOFF — Transparência Total / Fator Cívico
 
-Atualizado em: **2026-08-15**
+Atualizado em: **2026-08-20**
 
 Este documento existe para permitir continuidade segura entre sessões de trabalho, colaboradores e chats sem depender de memória externa ao repositório.
 
@@ -71,11 +71,17 @@ Frentes ainda pertencentes à V5:
 - #54 — migração, segurança, recuperação e release de produção
 - #76 — bugs, riscos e dívida técnica encontrados na auditoria profunda de 2026-08-15
 
+Desde esse checkpoint, a V5.13–V5.15 fechou o circuito privado, a revisão e a publicação específica
+de explicações DRE com IA. A capacidade pública é anunciada apenas quando o esquema real a suporta;
+sem essa prova, API e frontend apresentam indisponibilidade controlada. A V5.16 endurece as
+escritas públicas, o consentimento e revogação push, a cache PWA, a acessibilidade e o E2E local no
+CI. Estes avanços não equivalem à execução dos gates de staging ou produção ainda abertos.
+
 A melhoria de UX iniciada em agosto de 2026 faz parte da estabilização/conclusão da **V5**. Não deve ser tratada como início de uma V6 nem como autorização para reescrever o projeto.
 
 ## 5. Baseline técnico conhecido
 
-Checkpoint validado antes da auditoria profunda:
+Checkpoint histórico validado antes da auditoria profunda:
 
 - commit `11bc16f` — `test: add public E2E audit coverage`
 - commit `11bf420` — `fix: avoid false zero counts when public API is unavailable`
@@ -85,6 +91,10 @@ Checkpoint validado antes da auditoria profunda:
 - pesquisa de segredos não encontrou credenciais reais conhecidas; repetir antes do release final
 
 Este baseline não substitui a verificação do `HEAD` atual.
+
+Baseline ao entrar na V5.16: `b6eda1a`, depois da integração das propostas, revisão e publicação
+responsável de IA e da porta de prontidão de esquema. O número exato de testes deve ser recolhido
+novamente no candidato final, não copiado deste handoff.
 
 ## 6. Correção importante já aplicada
 
@@ -160,7 +170,9 @@ mypy --config-file backend/pyproject.toml backend/app
 pytest backend
 ```
 
-Antes do release final devem também correr os E2E Playwright no browser real depois de a integração CI respetiva estar concluída.
+O CI executa os E2E Playwright contra o artefacto Next local. O workflow `Public smoke` repete-os no
+browser real depois de um deployment Production bem-sucedido; ambos têm de ficar verdes no
+candidato final.
 
 ## 9. Regras de dados e publicação que não podem ser quebradas
 

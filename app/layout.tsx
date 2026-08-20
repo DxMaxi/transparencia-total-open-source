@@ -47,7 +47,7 @@ export default function RootLayout({
       <body>
         <a className="skip-link" href="#conteudo">Saltar para o conteúdo</a>
         <SiteHeader />
-        <div id="conteudo">{children}</div>
+        <div id="conteudo" tabIndex={-1}>{children}</div>
         <SiteFooter />
       </body>
     </html>
