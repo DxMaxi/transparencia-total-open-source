@@ -1,7 +1,10 @@
+from typing import Annotated
+
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from openai import APIError
 
+from app.api.dependencies import require_editorial_staff
 from app.core.config import get_settings
 from app.models.api import (
     CitizenGuideRequest,
@@ -11,6 +14,7 @@ from app.models.api import (
     SummaryRequest,
     SummaryResponse,
 )
+from app.models.editorial import StaffSession
 from app.services.ai_summarizer import PROMPT_SHA256, get_summarizer
 from app.services.civic_guide import (
     CIVIC_GUIDE_PROMPT_SHA256,
@@ -24,7 +28,10 @@ router = APIRouter(prefix="/ai", tags=["IA — resumos cidadãos"])
 
 
 @router.post("/summaries", response_model=SummaryResponse)
-async def summarize(request: SummaryRequest) -> SummaryResponse:
+async def summarize(
+    request: SummaryRequest,
+    _actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> SummaryResponse:
     settings = get_settings()
     if settings.ai_provider == "disabled":
         raise HTTPException(status_code=503, detail="Pipeline de IA desativado")
@@ -57,7 +64,10 @@ async def summarize(request: SummaryRequest) -> SummaryResponse:
 
 
 @router.post("/civic-guide", response_model=CitizenGuideResponse)
-async def civic_guide(request: CitizenGuideRequest) -> CitizenGuideResponse:
+async def civic_guide(
+    request: CitizenGuideRequest,
+    _actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> CitizenGuideResponse:
     settings = get_settings()
     if settings.ai_provider == "disabled":
         raise HTTPException(status_code=503, detail="Pipeline de IA desativado")

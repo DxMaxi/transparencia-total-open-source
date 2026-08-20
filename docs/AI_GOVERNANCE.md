@@ -2,16 +2,17 @@
 
 ## Estado de implementação
 
-Na V4, `AI_PROVIDER=disabled` mantém a IA desligada em produção e o website não apresenta resumos
-gerados por IA. Os endpoints de resumo e guia são contratos técnicos experimentais: validam a saída
-estruturada e devolvem metadados do modelo e do prompt, mas não persistem uma proposta `PENDING`, não
-criam uma fila de revisão e não publicam conteúdo aprovado. O script de resumo DRE apenas escreve o
-resultado no terminal.
+`AI_PROVIDER=disabled` mantém a IA desligada por omissão e o website não apresenta resumos gerados
+por IA. Os endpoints de resumo e guia são contratos técnicos experimentais: exigem uma identidade
+editorial ativa com MFA, validam a saída estruturada e devolvem metadados do modelo e do prompt, mas
+ainda não persistem uma proposta `PENDING`, não criam uma fila de revisão e não publicam conteúdo
+aprovado. O script de resumo DRE apenas escreve o resultado no terminal.
 
 Ativar o fornecedor em produção antes de completar esse circuito não é uma forma válida de lançar a
-funcionalidade. A fase seguinte deve carregar os factos verificados no servidor, arquivar cada
-proposta de forma privada, limitar e autenticar a geração, registar aprovação ou rejeição humana e
-publicar somente uma nova versão imutável aprovada com ligações às fontes oficiais.
+funcionalidade. A autenticação impede geração pública anónima, mas não transforma a resposta
+experimental em conteúdo publicável. A fase seguinte deve carregar os factos verificados no
+servidor, arquivar cada proposta de forma privada, limitar a geração, registar aprovação ou rejeição
+humana e publicar somente uma nova versão imutável aprovada com ligações às fontes oficiais.
 
 ## Papel permitido
 
