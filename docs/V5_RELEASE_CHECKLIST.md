@@ -30,6 +30,7 @@ continuam a exigir autorizações separadas.
 - [x] Capacidade pública de IA só é anunciada depois de a prontidão real do esquema ser provada.
 - [x] V5.16 — antiabuso, revogação push, cache allowlist, acessibilidade e E2E local integrados.
 - [x] V5.17 — CSP privada por pedido e gate automático WCAG A/AA integrados.
+- [x] V5.18 — pesquisa global publicada e orçamento móvel repetível integrados.
 - [x] Existe um [conjunto de issues de conclusão](https://github.com/DxMaxi/transparencia-total-open-source/issues/58) para todos os itens ainda abertos.
 
 ## B. Estabilização pública
@@ -154,12 +155,12 @@ continuam a exigir autorizações separadas.
 
 ## J. Pesquisa, comparação e PWA
 
-- [ ] Pesquisa global indexa apenas dados publicados.
-- [ ] Resultados mostram tipo, fonte, data e estado de cobertura.
+- [x] Pesquisa global consulta apenas projeções publicadas e não cria um índice editorial paralelo.
+- [x] Resultados mostram tipo, fonte, recolha, revisão, SHA-256 e estado de cobertura.
 - [ ] Comparações exigem o mesmo universo, período e metodologia.
 - [ ] Navegação e filtros são consistentes em desktop e telemóvel.
 - [x] Método público equivalente com axe-core no Chromium e limites documentados concluído.
-- [ ] Metas de desempenho definidas e medidas em rede móvel.
+- [x] Metas móveis definidas e medidas pela mediana de três execuções Lighthouse no CI.
 - [x] Instalação PWA e ativação do modo offline são escolhas explícitas e reversíveis.
 - [x] Pedido de notificações ocorre apenas após consentimento informado.
 - [x] Preferências de alerta podem ser alteradas e apagadas.

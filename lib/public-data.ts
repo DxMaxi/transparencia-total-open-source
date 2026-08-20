@@ -22,6 +22,7 @@ import type {
 } from "@/types/domain";
 import type {
   PublicDataStatus,
+  PublicGlobalSearch,
   PublicAiExplanation,
   PublicAiExplanationList,
   PublicAiPublicationHistoryItem,
@@ -48,6 +49,50 @@ type RawSource = {
   url: string;
   retrieved_at?: string;
   content_sha256?: string | null;
+};
+
+type RawGlobalSearch = {
+  query: string;
+  legislature: string;
+  section_limit: number;
+  total_results: number;
+  available_sections: number;
+  unavailable_sections: number;
+  sections: Array<{
+    kind:
+      | "politicians"
+      | "parliament_sessions"
+      | "parliament_initiatives"
+      | "parliament_votes"
+      | "promises"
+      | "ai_explanations";
+    label: string;
+    availability: "AVAILABLE" | "UNAVAILABLE";
+    total?: number | null;
+    total_is_exact: boolean;
+    items: Array<{
+      id: string;
+      kind:
+        | "politicians"
+        | "parliament_sessions"
+        | "parliament_initiatives"
+        | "parliament_votes"
+        | "promises"
+        | "ai_explanations";
+      title: string;
+      description: string;
+      href: string;
+      source: RawSource;
+      verified_at: string;
+      observed_at?: string | null;
+      coverage_state: "AVAILABLE";
+      coverage_note: string;
+    }>;
+    view_all_href: string;
+    coverage_note: string;
+  }>;
+  publication_rule: string;
+  search_rule: string;
 };
 
 type RawAiExplanation = {
@@ -450,6 +495,169 @@ function toOfficialSource(source: RawSource): OfficialSource {
     publisher: source.publisher as OfficialSource["publisher"],
     retrievedAt: source.retrieved_at,
     sha256: source.content_sha256 ?? undefined,
+  };
+}
+
+const globalSearchKinds = new Set([
+  "politicians",
+  "parliament_sessions",
+  "parliament_initiatives",
+  "parliament_votes",
+  "promises",
+  "ai_explanations",
+]);
+
+function isValidRawGlobalSearch(value: unknown): value is RawGlobalSearch {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as RawGlobalSearch;
+  if (
+    typeof candidate.query !== "string"
+    || candidate.query.length < 2
+    || typeof candidate.legislature !== "string"
+    || !Number.isSafeInteger(candidate.section_limit)
+    || candidate.section_limit < 1
+    || candidate.section_limit > 20
+    || !Number.isSafeInteger(candidate.total_results)
+    || candidate.total_results < 0
+    || !Number.isSafeInteger(candidate.available_sections)
+    || candidate.available_sections < 1
+    || !Number.isSafeInteger(candidate.unavailable_sections)
+    || !Array.isArray(candidate.sections)
+    || candidate.sections.length !== globalSearchKinds.size
+    || typeof candidate.publication_rule !== "string"
+    || typeof candidate.search_rule !== "string"
+  ) {
+    return false;
+  }
+  if (!candidate.sections.every((section) => section && typeof section === "object")) {
+    return false;
+  }
+  const kinds = new Set(candidate.sections.map((section) => section.kind));
+  if (kinds.size !== globalSearchKinds.size) return false;
+  const sectionsAreValid = candidate.sections.every((section) => {
+    if (
+      !globalSearchKinds.has(section.kind)
+      || !["AVAILABLE", "UNAVAILABLE"].includes(section.availability)
+      || typeof section.label !== "string"
+      || typeof section.coverage_note !== "string"
+      || typeof section.view_all_href !== "string"
+      || !section.view_all_href.startsWith("/")
+      || !Array.isArray(section.items)
+    ) {
+      return false;
+    }
+    if (
+      section.availability === "AVAILABLE"
+      && (
+        !Number.isSafeInteger(section.total)
+        || (section.total ?? -1) < 0
+        || section.total_is_exact !== true
+        || section.items.length > candidate.section_limit
+      )
+    ) {
+      return false;
+    }
+    if (
+      section.availability === "UNAVAILABLE"
+      && (section.total != null || section.total_is_exact || section.items.length)
+    ) {
+      return false;
+    }
+    return section.items.every((item) => (
+      Boolean(item)
+      && typeof item === "object"
+      && item.kind === section.kind
+      && typeof item.id === "string"
+      && typeof item.title === "string"
+      && typeof item.description === "string"
+      && typeof item.href === "string"
+      && item.href.startsWith("/")
+      && typeof item.verified_at === "string"
+      && item.coverage_state === "AVAILABLE"
+      && typeof item.coverage_note === "string"
+      && Boolean(item.source)
+      && typeof item.source.url === "string"
+      && typeof item.source.retrieved_at === "string"
+      && typeof item.source.content_sha256 === "string"
+      && /^[0-9a-f]{64}$/.test(item.source.content_sha256)
+    ));
+  });
+  if (!sectionsAreValid) return false;
+  const available = candidate.sections.filter(
+    (section) => section.availability === "AVAILABLE",
+  );
+  return (
+    candidate.available_sections === available.length
+    && candidate.unavailable_sections === candidate.sections.length - available.length
+    && candidate.total_results === available.reduce(
+      (total, section) => total + (section.total ?? 0),
+      0,
+    )
+  );
+}
+
+export async function loadPublicGlobalSearch(
+  rawQuery: string,
+  legislature = "XVII",
+): Promise<PublicGlobalSearch> {
+  const queryText = rawQuery.trim().slice(0, 120);
+  const parameters = new URLSearchParams({
+    q: queryText,
+    legislature,
+    section_limit: "5",
+  });
+  const result = await apiFetch<RawGlobalSearch>(
+    `/api/v1/public/search?${parameters.toString()}`,
+  );
+  if (result.ok && isValidRawGlobalSearch(result.data)) {
+    return {
+      query: result.data.query,
+      legislature: result.data.legislature,
+      sectionLimit: result.data.section_limit,
+      totalResults: result.data.total_results,
+      availableSections: result.data.available_sections,
+      unavailableSections: result.data.unavailable_sections,
+      sections: result.data.sections.map((section) => ({
+        kind: section.kind,
+        label: section.label,
+        availability: section.availability,
+        total: section.total ?? undefined,
+        totalIsExact: section.total_is_exact,
+        items: section.items.map((item) => ({
+          id: item.id,
+          kind: item.kind,
+          title: item.title,
+          description: item.description,
+          href: item.href,
+          source: toOfficialSource(item.source),
+          verifiedAt: item.verified_at,
+          observedAt: item.observed_at ?? undefined,
+          coverageState: item.coverage_state,
+          coverageNote: item.coverage_note,
+        })),
+        viewAllHref: section.view_all_href,
+        coverageNote: section.coverage_note,
+      })),
+      publicationRule: result.data.publication_rule,
+      searchRule: result.data.search_rule,
+      available: true,
+    };
+  }
+
+  return {
+    query: queryText,
+    legislature,
+    sectionLimit: 5,
+    totalResults: 0,
+    availableSections: 0,
+    unavailableSections: 6,
+    sections: [],
+    publicationRule: (
+      "A consulta não substitui projeções publicadas por listas antigas, exemplos locais ou "
+      + "conteúdo por rever."
+    ),
+    searchRule: "Pesquisar nunca cria associações, conclusões ou conteúdo de IA.",
+    available: false,
   };
 }
 

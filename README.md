@@ -23,7 +23,7 @@ definição da Open Source Initiative.
 > commit final desse fecho. A V5 começa pela governação de licença e pelo circuito editorial
 > privado; esta branch não altera os dados aprovados da V4.
 
-> **V5.1 a V5.17 integradas; ativação remota de staging pendente:** o painel privado usa
+> **V5.1 a V5.18 integradas; ativação remota de staging pendente:** o painel privado usa
 > login por convite,
 > MFA obrigatório, funções de administrador/revisor, comparação entre fonte atestada e JSON
 > normalizado, versões e decisões append-only. A V5.2 acrescentou propostas parlamentares privadas,
@@ -49,7 +49,9 @@ definição da Open Source Initiative.
 > com fonte, hashes, rótulo público e histórico imutável. A V5.16 acrescenta antiabuso, revogação
 > de alertas, cache pública por consentimento e E2E no CI. A V5.17 aplica CSP com `nonce` por pedido
 > às rotas editoriais privadas e transforma a verificação automática WCAG A/AA das páginas
-> públicas num gate permanente. O plano e
+> públicas num gate permanente. A V5.18 acrescenta pesquisa global apenas sobre projeções
+> publicadas, fonte, data, hash e cobertura em cada resultado, e um orçamento móvel Lighthouse
+> baseado na mediana de três execuções. O plano e
 > a checklist de fecho estão em [Plano de conclusão da V5](docs/V5_RELEASE_PLAN.md) e
 > [Checklist de conclusão da V5](docs/V5_RELEASE_CHECKLIST.md). Consulte também
 > [Painel privado e fundação editorial V5.1](docs/V5_EDITORIAL_FOUNDATION.md),
@@ -61,6 +63,7 @@ definição da Open Source Initiative.
 > [Publicação responsável de explicações DRE V5.15](docs/V5_AI_PUBLICATION.md),
 > [Endurecimento do candidato de release V5.16](docs/V5_RELEASE_HARDENING.md),
 > [Gate público de segurança e acessibilidade V5.17](docs/V5_PUBLIC_QUALITY_GATE.md),
+> [Pesquisa global e desempenho móvel V5.18](docs/V5_GLOBAL_SEARCH_AND_PERFORMANCE.md),
 > [Adaptador parlamentar V5.2](docs/V5_PARLIAMENT_EDITORIAL_ADAPTER.md) e
 > [Publicação parlamentar por âmbito V5.3](docs/V5_PARLIAMENT_SCOPE_PUBLICATION.md),
 > [Retirada parlamentar imutável V5.4](docs/V5_PARLIAMENT_WITHDRAWAL.md) e

@@ -25,9 +25,16 @@ const filters: Array<{ value: "ALL" | PromiseStatus; label: string }> = [
   { value: "ABANDONED", label: "Abandonadas" },
 ];
 
-export function Promessometro({ promises }: { promises: GovernmentPromise[] }) {
+export function Promessometro({
+  promises,
+  initialQuery = "",
+}: {
+  promises: GovernmentPromise[];
+  initialQuery?: string;
+}) {
   const [activeFilter, setActiveFilter] = useState<"ALL" | PromiseStatus>("ALL");
   const [area, setArea] = useState("ALL");
+  const [query, setQuery] = useState(initialQuery);
 
   const areas = useMemo(
     () => [...new Set(promises.map((promise) => promise.area))].sort(),
@@ -37,7 +44,12 @@ export function Promessometro({ promises }: { promises: GovernmentPromise[] }) {
   const filtered = promises.filter((promise) => {
     const statusMatches = activeFilter === "ALL" || promise.status === activeFilter;
     const areaMatches = area === "ALL" || promise.area === area;
-    return statusMatches && areaMatches;
+    const needle = query.trim().toLocaleLowerCase("pt-PT");
+    const queryMatches = !needle || [promise.title, promise.area, promise.rationale]
+      .join(" ")
+      .toLocaleLowerCase("pt-PT")
+      .includes(needle);
+    return statusMatches && areaMatches && queryMatches;
   });
 
   const counts = promises.reduce<Record<PromiseStatus, number>>(
@@ -61,6 +73,16 @@ export function Promessometro({ promises }: { promises: GovernmentPromise[] }) {
       </div>
 
       <div className="filter-bar card" aria-label="Filtros do promessómetro">
+        <label className="promise-query">
+          <span>Pesquisar no catálogo publicado</span>
+          <input
+            type="search"
+            value={query}
+            maxLength={120}
+            placeholder="Ex.: habitação"
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </label>
         <div className="filter-pills" role="group" aria-label="Filtrar por estado">
           {filters.map((filter) => (
             <button
@@ -88,7 +110,7 @@ export function Promessometro({ promises }: { promises: GovernmentPromise[] }) {
 
       <div className="promise-list">
         {filtered.map((promise) => (
-          <article className="promise-card card" key={promise.id}>
+          <article className="promise-card card" id={`promessa-${promise.id}`} key={promise.id}>
             <div className="promise-card__top">
               <div>
                 <div className="promise-card__meta">

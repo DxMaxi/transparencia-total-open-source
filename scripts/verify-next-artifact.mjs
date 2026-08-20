@@ -12,6 +12,8 @@ const REQUIRED_CSS_MARKERS = [
   ".ai-publication-panel",
   ".ai-public-card-grid",
   ".ai-public-detail__hero",
+  ".global-search-box",
+  ".global-search-result__proof",
 ];
 
 async function cssFiles(directory) {

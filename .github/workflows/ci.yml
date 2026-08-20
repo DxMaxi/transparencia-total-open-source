@@ -36,6 +36,16 @@ jobs:
         env:
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
           PLAYWRIGHT_START_SERVER: "1"
+      - name: Aplicar orçamento móvel repetível
+        run: npm run performance:mobile
+      - name: Guardar diagnóstico Lighthouse apenas quando falhar
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lighthouse-diagnostics
+          path: .sites-runtime/lighthouse/
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Guardar diagnóstico E2E apenas quando falhar
         if: failure()
         uses: actions/upload-artifact@v7
