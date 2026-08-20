@@ -23,7 +23,7 @@ definição da Open Source Initiative.
 > commit final desse fecho. A V5 começa pela governação de licença e pelo circuito editorial
 > privado; esta branch não altera os dados aprovados da V4.
 
-> **V5.1 a V5.15 integradas; V5.16 em endurecimento e ativação remota de staging pendente:** o painel privado usa
+> **V5.1 a V5.17 integradas; ativação remota de staging pendente:** o painel privado usa
 > login por convite,
 > MFA obrigatório, funções de administrador/revisor, comparação entre fonte atestada e JSON
 > normalizado, versões e decisões append-only. A V5.2 acrescentou propostas parlamentares privadas,
@@ -46,7 +46,10 @@ definição da Open Source Initiative.
 > prontidão em staging; não o executa, não configura o Supabase e não toca em dados reais. A V5.13
 > e a V5.14 fecharam a autenticação MFA e a revisão privada de propostas DRE. A V5.15 acrescenta a
 > publicação e retirada específicas de explicações com IA, sempre como decisão `ADMIN` separada,
-> com fonte, hashes, rótulo público e histórico imutável. O plano e
+> com fonte, hashes, rótulo público e histórico imutável. A V5.16 acrescenta antiabuso, revogação
+> de alertas, cache pública por consentimento e E2E no CI. A V5.17 aplica CSP com `nonce` por pedido
+> às rotas editoriais privadas e transforma a verificação automática WCAG A/AA das páginas
+> públicas num gate permanente. O plano e
 > a checklist de fecho estão em [Plano de conclusão da V5](docs/V5_RELEASE_PLAN.md) e
 > [Checklist de conclusão da V5](docs/V5_RELEASE_CHECKLIST.md). Consulte também
 > [Painel privado e fundação editorial V5.1](docs/V5_EDITORIAL_FOUNDATION.md),
@@ -57,6 +60,7 @@ definição da Open Source Initiative.
 > [Fundação do workflow de staging V5.12](docs/V5_STAGING_WORKFLOW_FOUNDATION.md),
 > [Publicação responsável de explicações DRE V5.15](docs/V5_AI_PUBLICATION.md),
 > [Endurecimento do candidato de release V5.16](docs/V5_RELEASE_HARDENING.md),
+> [Gate público de segurança e acessibilidade V5.17](docs/V5_PUBLIC_QUALITY_GATE.md),
 > [Adaptador parlamentar V5.2](docs/V5_PARLIAMENT_EDITORIAL_ADAPTER.md) e
 > [Publicação parlamentar por âmbito V5.3](docs/V5_PARLIAMENT_SCOPE_PUBLICATION.md),
 > [Retirada parlamentar imutável V5.4](docs/V5_PARLIAMENT_WITHDRAWAL.md) e

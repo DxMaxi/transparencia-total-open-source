@@ -2,11 +2,15 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSupabasePublicConfig } from "./config";
 
-export async function refreshSupabaseSession(request: NextRequest) {
+export async function refreshSupabaseSession(
+  request: NextRequest,
+  forwardedHeaders: Headers = request.headers,
+) {
   const config = getSupabasePublicConfig();
-  if (!config) return NextResponse.next({ request });
+  const nextResponse = () => NextResponse.next({ request: { headers: forwardedHeaders } });
+  if (!config) return nextResponse();
 
-  let response = NextResponse.next({ request });
+  let response = nextResponse();
   const supabase = createServerClient(config.url, config.publishableKey, {
     cookies: {
       getAll() {
@@ -14,7 +18,7 @@ export async function refreshSupabaseSession(request: NextRequest) {
       },
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-        response = NextResponse.next({ request });
+        response = nextResponse();
         cookiesToSet.forEach(({ name, value, options }) =>
           response.cookies.set(name, value, options),
         );

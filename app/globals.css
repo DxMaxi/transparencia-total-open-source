@@ -154,7 +154,7 @@ svg { flex: 0 0 auto; }
 a.feature-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
 .feature-card--large { grid-row: span 2; min-height: 618px; padding: 36px; background: linear-gradient(145deg, white 0%, #f5faf8 100%); }
 .feature-card--accent { background: var(--teal); color: white; border-color: var(--teal); }
-.feature-card--accent .eyebrow, .feature-card--accent p { color: #d2f5f0; }
+.feature-card--accent .eyebrow, .feature-card.feature-card--accent > p { color: #d2f5f0; }
 .feature-icon { width: 48px; height: 48px; display: grid; place-items: center; margin-bottom: 34px; border-radius: 14px; background: var(--teal-pale); color: var(--teal); }
 .feature-card--accent .feature-icon { background: rgba(255,255,255,.14); color: white; }
 .feature-card h3 { max-width: 540px; margin: 9px 0 0; font-size: 28px; line-height: 1.14; letter-spacing: -.035em; }

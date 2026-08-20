@@ -45,6 +45,7 @@
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@cloudflare/vite-plugin": "1.51.2",
     "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "4.2.1",
@@ -64,6 +65,9 @@
     "vinext": "0.0.45",
     "vite": "8.2.1",
     "wrangler": "4.120.1"
+  },
+  "overrides": {
+    "deepmerge-ts": "8.0.1"
   },
   "type": "module",
   "displayName": "Transparência Total"

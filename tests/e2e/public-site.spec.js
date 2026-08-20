@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 
 const baseURL = (
   process.env.PLAYWRIGHT_BASE_URL || "https://www.transparenciatotal.pt"
@@ -134,5 +135,54 @@ test.describe("Transparência Total — auditoria pública", () => {
     await expect(
       page.locator("body")
     ).not.toContainText(/Application error|Internal Server Error/i);
+  });
+
+  test("páginas públicas respeitam WCAG 2 A e AA sem violações automáticas", async ({ page }) => {
+    const routes = [
+      "/",
+      "/politicos",
+      "/atividade-parlamentar",
+      "/promessas",
+      "/explicacoes",
+      "/guia-cidadao",
+      "/metodologia",
+      "/contacto",
+      "/direito-de-resposta",
+      "/privacidade",
+      "/cookies",
+      "/termos",
+      "/acessibilidade",
+      "/investigador",
+    ];
+
+    for (const route of routes) {
+      await page.goto(`${baseURL}${route}`, { waitUntil: "domcontentloaded" });
+      const results = await new AxeBuilder({ page })
+        .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
+        .analyze();
+
+      expect(
+        results.violations,
+        `Violações automáticas de acessibilidade em ${route}`,
+      ).toEqual([]);
+    }
+  });
+
+  test("rotas editoriais usam CSP por pedido e nunca são guardadas em cache", async ({ page }) => {
+    const response = await page.goto(`${baseURL}/auth/entrar`, {
+      waitUntil: "domcontentloaded",
+    });
+
+    expect(response).not.toBeNull();
+    expect(response.status()).toBe(200);
+    const headers = response.headers();
+    const policy = headers["content-security-policy"] ?? "";
+
+    expect(headers["cache-control"]).toContain("private");
+    expect(headers["cache-control"]).toContain("no-store");
+    expect(policy).toMatch(/script-src[^;]*'nonce-[A-Za-z0-9+/_=-]+'/);
+    expect(policy).toContain("'strict-dynamic'");
+    expect(policy).not.toContain("'unsafe-inline'");
+    await expect(page.locator("h1")).toHaveText(/Administração e revisão editorial/i);
   });
 });

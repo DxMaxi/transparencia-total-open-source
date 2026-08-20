@@ -47,6 +47,9 @@ test("legal information is reachable and supports real controller identification
 
 test("the public release exposes security headers and opt-in PWA controls", async () => {
   const config = await readFile(new URL("next.config.ts", root), "utf8");
+  const csp = await readFile(new URL("lib/content-security-policy.ts", root), "utf8");
+  const proxy = await readFile(new URL("proxy.ts", root), "utf8");
+  const supabaseProxy = await readFile(new URL("lib/supabase/proxy.ts", root), "utf8");
   const layout = await readFile(new URL("app/layout.tsx", root), "utf8");
   const footer = await readFile(new URL("components/site-footer.tsx", root), "utf8");
   const controls = await readFile(new URL("components/pwa-controls.tsx", root), "utf8");
@@ -54,8 +57,16 @@ test("the public release exposes security headers and opt-in PWA controls", asyn
   assert.match(config, /X-Content-Type-Options/);
   assert.match(config, /X-Frame-Options/);
   assert.match(config, /Strict-Transport-Security/);
-  assert.match(config, /connect-src/);
-  assert.match(config, /worker-src 'self'/);
+  assert.match(csp, /connect-src/);
+  assert.match(csp, /worker-src 'self'/);
+  assert.match(csp, /'strict-dynamic'/);
+  assert.match(csp, /'nonce-\$\{nonce\}'/);
+  assert.match(proxy, /pathname\.startsWith\("\/admin\/"\)/);
+  assert.match(proxy, /pathname\.startsWith\("\/auth\/"\)/);
+  assert.match(proxy, /crypto\.randomUUID\(\)/);
+  assert.match(proxy, /requestHeaders\.set\("x-nonce", nonce\)/);
+  assert.match(proxy, /response\.headers\.set\("Content-Security-Policy"/);
+  assert.match(supabaseProxy, /request:\s*\{\s*headers:\s*forwardedHeaders\s*\}/);
   assert.match(layout, /manifest:\s*["']\/manifest\.json/);
   assert.doesNotMatch(layout, /BrowserStorageCleanup|PwaRegister/);
   assert.match(footer, /<PwaControls \/>/);
@@ -84,4 +95,12 @@ test("the public contact channel never falls back to the maintainer personal ema
   assert.match(contents, /NEXT_PUBLIC_CONTACT_EMAIL/);
   assert.match(contents, /Email institucional em configuração/);
   assert.match(contents, /Um endereço pessoal não é\s+apresentado como substituição/);
+});
+
+test("the Prisma toolchain overrides the vulnerable recursive merge release", async () => {
+  const packageJson = JSON.parse(await readFile(new URL("package.json", root), "utf8"));
+  const packageLock = JSON.parse(await readFile(new URL("package-lock.json", root), "utf8"));
+
+  assert.equal(packageJson.overrides?.["deepmerge-ts"], "8.0.1");
+  assert.equal(packageLock.packages?.["node_modules/deepmerge-ts"]?.version, "8.0.1");
 });

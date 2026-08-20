@@ -11,7 +11,7 @@ reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.15 integradas; V5.16 em endurecimento; staging remoto pendente |
+| Código V5 | V5.1 a V5.17 integradas; staging remoto pendente |
 | Frontend público | V5.15 publicado; capacidades sem esquema pronto ficam fail-closed |
 | API pública | `0.5.0-alpha.0`; capacidades anunciadas apenas após prova read-only do esquema |
 | Painel editorial | implementado no código, não ativado em produção |
@@ -20,7 +20,7 @@ reais.
 | Perfis | contrato V5.6 preparado; várias áreas sem dados individuais publicáveis |
 | Promessómetro | catálogo editorial inicial de 10 compromissos |
 | Investigador Cívico | zero contratos e zero relações na projeção pública |
-| PWA e alertas | consentimento e revogação em endurecimento; configuração remota pendente |
+| PWA e alertas | consentimento, revogação e cache opt-in integrados; configuração remota pendente |
 | Repositório | privado e licenciado como código disponível para uso não comercial |
 
 ## O que significa concluir a V5
