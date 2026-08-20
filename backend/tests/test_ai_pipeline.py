@@ -12,9 +12,7 @@ def test_prompt_is_versioned_and_hashed() -> None:
 
 
 def test_experimental_ai_routes_require_editorial_staff_with_mfa() -> None:
-    route = (ROOT / "backend" / "app" / "api" / "routes" / "ai.py").read_text(
-        encoding="utf-8"
-    )
+    route = (ROOT / "backend" / "app" / "api" / "routes" / "ai.py").read_text(encoding="utf-8")
 
     assert route.count("Depends(require_editorial_staff)") == 2
     assert "StaffSession" in route
