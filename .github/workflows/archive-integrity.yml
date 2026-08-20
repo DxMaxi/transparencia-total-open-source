@@ -24,7 +24,7 @@ jobs:
       OFFICIAL_USER_AGENT: ${{ secrets.PRODUCTION_OFFICIAL_USER_AGENT }}
       RAW_ARCHIVE_WARNING_BYTES: ${{ vars.RAW_ARCHIVE_WARNING_BYTES || '400000000' }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version-file: .python-version
