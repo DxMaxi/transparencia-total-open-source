@@ -99,7 +99,9 @@ def _check_docker(repository_root: Path, version: str, failures: list[str]) -> N
         return
 
     python_from_lines = [
-        line.strip() for line in dockerfile_lines if line.lstrip().startswith("FROM python:")
+        line.strip()
+        for line in dockerfile_lines
+        if line.lstrip().startswith("FROM python:")
     ]
     expected = f"FROM python:{version}-slim AS runtime"
     if python_from_lines != [expected]:
