@@ -7,7 +7,7 @@ name = "transparencia-total-api"
 version = "0.5.0a0"
 description = "API e coletores oficiais da plataforma Transparência Total"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.13,<3.14"
 license = "PolyForm-Noncommercial-1.0.0"
 dependencies = [
   "asyncpg>=0.30,<1",
@@ -46,14 +46,14 @@ norecursedirs = ["work"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+target-version = "py313"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM", "ASYNC"]
 ignore = ["UP038"]
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.13"
 plugins = ["pydantic.mypy"]
 strict = true
 ignore_missing_imports = true

@@ -255,9 +255,13 @@ fora do intervalo e hashes de resposta inválidos.
 ## Pré-requisitos
 
 - Node.js 24 e npm 10+
-- Python 3.12 ou superior
+- Python 3.13.15
 - Docker com Compose, recomendado para PostgreSQL local
 - Git
+
+A revisão exata do Python é definida em [`.python-version`](.python-version). CI, Render e a imagem
+Docker têm de coincidir com esse ficheiro; o backend suporta apenas a série `3.13`. Consulte a
+[política de runtime Python](docs/PYTHON_RUNTIME_POLICY.md) antes de atualizar a versão.
 
 ## Instalação local, passo a passo
 
@@ -304,8 +308,9 @@ inclua a migração criada no pull request.
 Linux/macOS:
 
 ```bash
-python3 -m venv .venv
+python3.13 -m venv .venv
 source .venv/bin/activate
+python backend/scripts/check_python_runtime_policy.py --check-interpreter
 python -m pip install --upgrade pip
 python -m pip install -e './backend[dev]'
 ```
@@ -313,8 +318,9 @@ python -m pip install -e './backend[dev]'
 Windows PowerShell:
 
 ```powershell
-py -3.12 -m venv .venv
+py -3.13 -m venv .venv
 .venv\Scripts\Activate.ps1
+python backend/scripts/check_python_runtime_policy.py --check-interpreter
 python -m pip install --upgrade pip
 python -m pip install -e './backend[dev]'
 ```
