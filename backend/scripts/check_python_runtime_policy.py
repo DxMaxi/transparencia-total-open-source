@@ -99,9 +99,7 @@ def _check_docker(repository_root: Path, version: str, failures: list[str]) -> N
         return
 
     python_from_lines = [
-        line.strip()
-        for line in dockerfile_lines
-        if line.lstrip().startswith("FROM python:")
+        line.strip() for line in dockerfile_lines if line.lstrip().startswith("FROM python:")
     ]
     expected = f"FROM python:{version}-slim AS runtime"
     if python_from_lines != [expected]:
@@ -162,10 +160,13 @@ def _check_workflows(repository_root: Path, failures: list[str]) -> None:
                     f"{relative_path}: setup-python #{block_index} ainda define "
                     "python-version diretamente"
                 )
-            if re.search(
-                r"(?m)^\s+python-version-file:\s*['\"]?\.python-version['\"]?\s*$",
-                block,
-            ) is None:
+            if (
+                re.search(
+                    r"(?m)^\s+python-version-file:\s*['\"]?\.python-version['\"]?\s*$",
+                    block,
+                )
+                is None
+            ):
                 failures.append(
                     f"{relative_path}: setup-python #{block_index} deve usar "
                     "python-version-file: .python-version"
