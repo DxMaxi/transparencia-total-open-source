@@ -1,60 +1,8 @@
 import type { NextConfig } from "next";
-
-function apiOrigin(): string | null {
-  const configured = process.env.NEXT_PUBLIC_API_URL?.trim();
-  if (!configured) return null;
-  try {
-    const url = new URL(configured);
-    const localHttp =
-      url.protocol === "http:" && ["localhost", "127.0.0.1"].includes(url.hostname);
-    return url.protocol === "https:" || localHttp ? url.origin : null;
-  } catch {
-    return null;
-  }
-}
-
-function supabaseOrigin(): string | null {
-  const configured = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  if (!configured) return null;
-  try {
-    const url = new URL(configured);
-    const localHttp =
-      url.protocol === "http:" && ["localhost", "127.0.0.1"].includes(url.hostname);
-    return url.protocol === "https:" || localHttp ? url.origin : null;
-  } catch {
-    return null;
-  }
-}
+import { buildContentSecurityPolicy } from "./lib/content-security-policy";
 
 const isDevelopment = process.env.NODE_ENV !== "production";
-const connectSources = [
-  "'self'",
-  apiOrigin(),
-  supabaseOrigin(),
-  ...(isDevelopment ? ["ws:", "wss:"] : []),
-].filter(Boolean).join(" ");
-const scriptSources = [
-  "'self'",
-  "'unsafe-inline'",
-  ...(isDevelopment ? ["'unsafe-eval'"] : []),
-].join(" ");
-const contentSecurityPolicy = [
-  "default-src 'self'",
-  "base-uri 'self'",
-  `connect-src ${connectSources}`,
-  "font-src 'self' data:",
-  "form-action 'self'",
-  "frame-ancestors 'none'",
-  "frame-src 'none'",
-  "img-src 'self' data: https:",
-  "manifest-src 'self'",
-  "media-src 'self'",
-  "object-src 'none'",
-  `script-src ${scriptSources}`,
-  "style-src 'self' 'unsafe-inline'",
-  isDevelopment ? "worker-src 'self' blob:" : "worker-src 'self'",
-  ...(!isDevelopment ? ["upgrade-insecure-requests"] : []),
-].join("; ");
+const contentSecurityPolicy = buildContentSecurityPolicy({ isDevelopment });
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,

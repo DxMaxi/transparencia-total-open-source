@@ -29,6 +29,7 @@ continuam a exigir autorizações separadas.
 - [x] V5.15 — publicação e retirada específicas de explicações de IA integradas.
 - [x] Capacidade pública de IA só é anunciada depois de a prontidão real do esquema ser provada.
 - [x] V5.16 — antiabuso, revogação push, cache allowlist, acessibilidade e E2E local integrados.
+- [x] V5.17 — CSP privada por pedido e gate automático WCAG A/AA integrados.
 - [x] Existe um [conjunto de issues de conclusão](https://github.com/DxMaxi/transparencia-total-open-source/issues/58) para todos os itens ainda abertos.
 
 ## B. Estabilização pública
@@ -157,7 +158,7 @@ continuam a exigir autorizações separadas.
 - [ ] Resultados mostram tipo, fonte, data e estado de cobertura.
 - [ ] Comparações exigem o mesmo universo, período e metodologia.
 - [ ] Navegação e filtros são consistentes em desktop e telemóvel.
-- [ ] Auditoria de acessibilidade completa ou método público equivalente concluído.
+- [x] Método público equivalente com axe-core no Chromium e limites documentados concluído.
 - [ ] Metas de desempenho definidas e medidas em rede móvel.
 - [x] Instalação PWA e ativação do modo offline são escolhas explícitas e reversíveis.
 - [x] Pedido de notificações ocorre apenas após consentimento informado.
