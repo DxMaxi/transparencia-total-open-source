@@ -1,9 +1,12 @@
 from datetime import UTC, datetime
 from typing import Any
 
+import asyncpg
+import pytest
 from fastapi.testclient import TestClient
 
 from app.api.dependencies import get_repository
+from app.api.routes import public_data
 from app.main import app
 
 
@@ -228,3 +231,48 @@ def test_status_database_failure_returns_controlled_503() -> None:
         "O servi\u00e7o de dados est\u00e1 temporariamente indispon\u00edvel."
     )
     assert "internal database connection details" not in response.text
+
+
+def test_ai_public_routes_fail_closed_when_editorial_schema_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    internal_error = 'relation "editorial_cases" does not exist'
+
+    class FailingAiRepository:
+        def __init__(self, _pool: object) -> None:
+            pass
+
+        async def list_explanations(self, **_kwargs: object) -> dict[str, object]:
+            raise asyncpg.UndefinedTableError(internal_error)
+
+        async def list_publication_history(self, **_kwargs: object) -> list[object]:
+            raise asyncpg.UndefinedTableError(internal_error)
+
+        async def get_explanation(self, **_kwargs: object) -> dict[str, object] | None:
+            raise asyncpg.UndefinedTableError(internal_error)
+
+    class ConfiguredRepository:
+        pool = object()
+
+    monkeypatch.setattr(
+        public_data,
+        "PublicAiExplanationRepository",
+        FailingAiRepository,
+    )
+    app.dependency_overrides[get_repository] = ConfiguredRepository
+    try:
+        with TestClient(app) as client:
+            responses = [
+                client.get("/api/v1/public/ai-explanations"),
+                client.get("/api/v1/public/ai-explanations/publication-history"),
+                client.get(f"/api/v1/public/ai-explanations/dre-{'a' * 64}"),
+            ]
+    finally:
+        app.dependency_overrides.clear()
+
+    for response in responses:
+        assert response.status_code == 503
+        assert response.json()["detail"] == (
+            "As explica\u00e7\u00f5es p\u00fablicas est\u00e3o temporariamente indispon\u00edveis."
+        )
+        assert internal_error not in response.text
