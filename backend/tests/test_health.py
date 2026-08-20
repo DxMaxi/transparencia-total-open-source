@@ -1,6 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from app.api.dependencies import get_repository
 from app.main import app
 from app.repositories.official_index_staging import OfficialIndexStagingRepository
 
@@ -14,7 +15,6 @@ def test_health_contract() -> None:
     assert response.json()["public_capabilities"] == [
         "parliament_explorer_v1",
         "parliament_publication_history_v1",
-        "ai_explanations_v1",
     ]
     assert response.headers["x-content-type-options"] == "nosniff"
     assert response.headers["x-frame-options"] == "DENY"
@@ -24,6 +24,96 @@ def test_health_contract() -> None:
     assert response.headers["cross-origin-resource-policy"] == "same-site"
     assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
     assert "strict-transport-security" not in response.headers
+
+
+class _SchemaConnection:
+    def __init__(self, result: bool | Exception) -> None:
+        self.result = result
+        self.arguments: tuple[object, ...] | None = None
+
+    async def fetchval(self, _query: str, *arguments: object) -> bool:
+        self.arguments = arguments
+        if isinstance(self.result, Exception):
+            raise self.result
+        return self.result
+
+
+class _SchemaAcquire:
+    def __init__(self, connection: _SchemaConnection) -> None:
+        self.connection = connection
+
+    async def __aenter__(self) -> _SchemaConnection:
+        return self.connection
+
+    async def __aexit__(
+        self,
+        _exc_type: object,
+        _exc: object,
+        _traceback: object,
+    ) -> None:
+        return None
+
+
+class _SchemaPool:
+    def __init__(self, connection: _SchemaConnection) -> None:
+        self.connection = connection
+
+    def acquire(self) -> _SchemaAcquire:
+        return _SchemaAcquire(self.connection)
+
+
+class _SchemaRepository:
+    def __init__(self, result: bool | Exception) -> None:
+        self.connection = _SchemaConnection(result)
+        self.pool = _SchemaPool(self.connection)
+
+
+def test_health_advertises_ai_only_after_schema_and_migrations_are_ready() -> None:
+    repository = _SchemaRepository(True)
+    app.dependency_overrides[get_repository] = lambda: repository
+    try:
+        with TestClient(app) as client:
+            response = client.get("/api/v1/health")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["public_capabilities"] == [
+        "parliament_explorer_v1",
+        "parliament_publication_history_v1",
+        "ai_explanations_v1",
+    ]
+    assert repository.connection.arguments is not None
+    required_relations, relation_count, required_migrations, migration_count = (
+        repository.connection.arguments
+    )
+    assert isinstance(required_relations, list)
+    assert isinstance(relation_count, int)
+    assert isinstance(required_migrations, list)
+    assert isinstance(migration_count, int)
+    assert relation_count == len(required_relations)
+    assert migration_count == len(required_migrations)
+    assert "public.editorial_cases" in required_relations
+    assert "20260811110000_v5_editorial_foundation" in required_migrations
+
+
+@pytest.mark.parametrize("result", [False, OSError("catalogue unavailable")])
+def test_health_hides_ai_when_schema_readiness_is_not_proven(
+    result: bool | Exception,
+) -> None:
+    repository = _SchemaRepository(result)
+    app.dependency_overrides[get_repository] = lambda: repository
+    try:
+        with TestClient(app) as client:
+            response = client.get("/api/v1/health")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["public_capabilities"] == [
+        "parliament_explorer_v1",
+        "parliament_publication_history_v1",
+    ]
 
 
 def test_push_broadcast_requires_admin_configuration() -> None:

@@ -47,6 +47,22 @@ def _unavailable(exc: RuntimeError) -> HTTPException:
     )
 
 
+def _ai_unavailable() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="As explicações públicas estão temporariamente indisponíveis.",
+    )
+
+
+_AI_PUBLIC_DATABASE_ERRORS = (
+    RuntimeError,
+    OSError,
+    TimeoutError,
+    asyncpg.PostgresError,
+    asyncpg.InterfaceError,
+)
+
+
 @router.get("/data-status", response_model=PublicDataStatus)
 async def public_data_status(
     response: Response,
@@ -178,8 +194,8 @@ async def public_ai_explanations(
             limit=limit,
             offset=offset,
         )
-    except RuntimeError as exc:
-        raise _unavailable(exc) from exc
+    except _AI_PUBLIC_DATABASE_ERRORS as exc:
+        raise _ai_unavailable() from exc
     return PublishedAiExplanationList.model_validate(result)
 
 
@@ -199,8 +215,8 @@ async def public_ai_publication_history(
         rows = await PublicAiExplanationRepository(repository.pool).list_publication_history(
             limit=limit
         )
-    except RuntimeError as exc:
-        raise _unavailable(exc) from exc
+    except _AI_PUBLIC_DATABASE_ERRORS as exc:
+        raise _ai_unavailable() from exc
     return [PublishedAiPublicationHistoryItem.model_validate(row) for row in rows]
 
 
@@ -217,8 +233,8 @@ async def public_ai_explanation(
         row = await PublicAiExplanationRepository(repository.pool).get_explanation(
             public_id=public_id
         )
-    except RuntimeError as exc:
-        raise _unavailable(exc) from exc
+    except _AI_PUBLIC_DATABASE_ERRORS as exc:
+        raise _ai_unavailable() from exc
     if row is None:
         raise HTTPException(status_code=404, detail="Explicação pública não encontrada")
     return PublishedAiExplanation.model_validate(row)

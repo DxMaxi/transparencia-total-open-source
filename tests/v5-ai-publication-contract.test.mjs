@@ -38,10 +38,11 @@ test("V5.15 separa aprovação, publicação ADMIN+MFA e retirada imutável de I
 });
 
 test("a projeção pública revalida fonte, hashes, âncoras, evento e porta pública", async () => {
-  const [repository, publicRoute, publicModels] = await Promise.all([
+  const [repository, publicRoute, publicModels, healthRoute] = await Promise.all([
     source("backend/app/repositories/ai_editorial_publication.py"),
     source("backend/app/api/routes/public_data.py"),
     source("backend/app/models/public_ai.py"),
+    source("backend/app/api/routes/health.py"),
   ]);
 
   for (const evidence of [
@@ -67,6 +68,17 @@ test("a projeção pública revalida fonte, hashes, âncoras, evento e porta pú
   assert.match(publicModels, /human_reviewed: Literal\[True\]/);
   assert.match(publicModels, /ai_is_source: Literal\[False\]/);
   assert.doesNotMatch(publicModels, /case_id|version_id|rationale.*internal/i);
+  assert.match(publicRoute, /_AI_PUBLIC_DATABASE_ERRORS/);
+  assert.match(publicRoute, /_ai_unavailable/);
+  assert.match(healthRoute, /_ai_public_schema_is_ready/);
+  assert.match(healthRoute, /to_regclass\(name\)/);
+  assert.match(healthRoute, /FROM "_prisma_migrations"/);
+  assert.match(healthRoute, /finished_at IS NOT NULL/);
+  assert.match(healthRoute, /rolled_back_at IS NULL/);
+  assert.match(
+    healthRoute,
+    /if await _ai_public_schema_is_ready\(repository\):[\s\S]*capabilities\.append\("ai_explanations_v1"\)/,
+  );
 });
 
 test("o painel e o site tornam o rótulo, os limites e as provas impossíveis de omitir", async () => {
