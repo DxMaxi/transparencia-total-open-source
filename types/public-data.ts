@@ -36,6 +36,51 @@ export type PublicDataStatus = {
   publicationRule: string;
 };
 
+export type PublicGlobalSearchKind =
+  | "politicians"
+  | "parliament_sessions"
+  | "parliament_initiatives"
+  | "parliament_votes"
+  | "promises"
+  | "ai_explanations";
+
+export type PublicGlobalSearchItem = {
+  id: string;
+  kind: PublicGlobalSearchKind;
+  title: string;
+  description: string;
+  href: string;
+  source: OfficialSource;
+  verifiedAt: string;
+  observedAt?: string;
+  coverageState: "AVAILABLE";
+  coverageNote: string;
+};
+
+export type PublicGlobalSearchSection = {
+  kind: PublicGlobalSearchKind;
+  label: string;
+  availability: "AVAILABLE" | "UNAVAILABLE";
+  total?: number;
+  totalIsExact: boolean;
+  items: PublicGlobalSearchItem[];
+  viewAllHref: string;
+  coverageNote: string;
+};
+
+export type PublicGlobalSearch = {
+  query: string;
+  legislature: string;
+  sectionLimit: number;
+  totalResults: number;
+  availableSections: number;
+  unavailableSections: number;
+  sections: PublicGlobalSearchSection[];
+  publicationRule: string;
+  searchRule: string;
+  available: boolean;
+};
+
 export type PublicAiSummary = {
   title: string;
   summary2Minutes: string;

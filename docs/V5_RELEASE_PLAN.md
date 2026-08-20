@@ -11,8 +11,8 @@ reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.17 integradas; staging remoto pendente |
-| Frontend público | V5.15 publicado; capacidades sem esquema pronto ficam fail-closed |
+| Código V5 | V5.1 a V5.18 integradas; staging remoto pendente |
+| Frontend público | V5.18 preparado; capacidades sem backend ou esquema pronto ficam fail-closed |
 | API pública | `0.5.0-alpha.0`; capacidades anunciadas apenas após prova read-only do esquema |
 | Painel editorial | implementado no código, não ativado em produção |
 | IA | geração, revisão, publicação e retirada implementadas; esquema remoto ainda não ativado |
@@ -210,6 +210,12 @@ Critérios de saída:
 - notificações só são pedidas após consentimento informado;
 - preferências, cancelamento e eliminação da subscrição são acessíveis;
 - nenhum alerta é criado a partir de conteúdo privado ou não revisto.
+
+A pesquisa federada por secções, a prova visível em cada resultado, o gate de capacidade da API e
+o orçamento móvel repetível estão definidos em
+[V5.18 — pesquisa global publicada e orçamento móvel](V5_GLOBAL_SEARCH_AND_PERFORMANCE.md).
+Comparações entre universos permanecem fora da pesquisa e continuam pendentes até existir uma
+metodologia que prove comparabilidade.
 
 ### 10. Fontes adicionais e cobertura histórica
 

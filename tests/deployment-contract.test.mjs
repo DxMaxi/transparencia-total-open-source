@@ -34,6 +34,36 @@ function compatibleFetch(requestedUrls) {
         facets: {},
       });
     }
+    if (path === "/api/v1/public/search") {
+      const kinds = [
+        "politicians",
+        "parliament_sessions",
+        "parliament_initiatives",
+        "parliament_votes",
+        "promises",
+        "ai_explanations",
+      ];
+      return Response.json({
+        query: "lei",
+        legislature: "XVII",
+        section_limit: 1,
+        total_results: 0,
+        available_sections: 6,
+        unavailable_sections: 0,
+        sections: kinds.map((kind) => ({
+          kind,
+          label: kind,
+          availability: "AVAILABLE",
+          total: 0,
+          total_is_exact: true,
+          items: [],
+          view_all_href: "/",
+          coverage_note: "Só projeções publicadas.",
+        })),
+        publication_rule: "Só projeções publicadas.",
+        search_rule: "Não cria associações.",
+      });
+    }
     if (path === "/api/v1/public/parliament/publication-history") {
       return Response.json([]);
     }
@@ -62,7 +92,59 @@ test("deployment preflight proves the V5.5 API contract before promoting the fro
   assert.equal(result.apiVersion, "0.5.0-alpha.0");
   assert.equal(result.mode, "CURRENT");
   assert.deepEqual(result.capabilities, [...REQUIRED_PUBLIC_CAPABILITIES, AI_PUBLIC_CAPABILITY]);
-  assert.equal(requestedUrls.length, 5);
+  assert.equal(requestedUrls.length, 6);
+});
+
+test("deployment preflight waits when a versioned API is missing global search", async () => {
+  const fetchImpl = compatibleFetch([]);
+  await assert.rejects(
+    verifyPublicApiCompatibility("https://api.example.test", {
+      fetchImpl: async (url, options) => {
+        const path = new URL(url).pathname;
+        if (path === "/api/v1/health") {
+          return Response.json({
+            status: "ok",
+            version: "0.5.0-alpha.0",
+            public_capabilities: [
+              "parliament_explorer_v1",
+              "parliament_publication_history_v1",
+            ],
+          });
+        }
+        return fetchImpl(url, options);
+      },
+    }),
+    /global_search_v1/,
+  );
+});
+
+test("a preview can render fail-closed before the production API gains global search", async () => {
+  const requestedUrls = [];
+  const fetchImpl = compatibleFetch(requestedUrls);
+  const result = await verifyPublicApiCompatibility("https://api.example.test", {
+    requireGlobalSearch: false,
+    fetchImpl: async (url, options) => {
+      const path = new URL(url).pathname;
+      if (path === "/api/v1/health") {
+        requestedUrls.push(url);
+        return Response.json({
+          status: "ok",
+          version: "0.5.0-alpha.0",
+          public_capabilities: [
+            "parliament_explorer_v1",
+            "parliament_publication_history_v1",
+          ],
+        });
+      }
+      return fetchImpl(url, options);
+    },
+  });
+
+  assert.equal(result.mode, "CURRENT_AI_FAIL_CLOSED");
+  assert.equal(
+    requestedUrls.some((url) => new URL(url).pathname === "/api/v1/public/search"),
+    false,
+  );
 });
 
 test("deployment preflight rejects a declared V5.15 capability with broken routes", async () => {
@@ -128,7 +210,7 @@ test("deployment preflight rejects V4 when a reviewed compatibility route is mis
   );
 });
 
-test("deployment artifact contains the V5.5.1, V5.6 and V5.15 public styles", async () => {
+test("deployment artifact contains the V5.5.1 through V5.18 public styles", async () => {
   const root = await mkdtemp(join(tmpdir(), "tt-v551-artifact-"));
   try {
     const chunks = join(root, ".next", "static", "chunks");
@@ -138,11 +220,12 @@ test("deployment artifact contains the V5.5.1, V5.6 and V5.15 public styles", as
       ".parliament-page--v551{}.parliament-search-form__primary{}" +
         ".parliament-coverage__facts{}.contact-channel--pending{}" +
         ".profile-coverage-grid{}.profile-declaration-list{}" +
-        ".ai-publication-panel{}.ai-public-card-grid{}.ai-public-detail__hero{}",
+        ".ai-publication-panel{}.ai-public-card-grid{}.ai-public-detail__hero{}" +
+        ".global-search-box{}.global-search-result__proof{}",
       "utf8",
     );
     const result = await verifyNextArtifact(root);
-    assert.equal(result.markers, 9);
+    assert.equal(result.markers, 11);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

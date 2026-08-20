@@ -8,6 +8,7 @@ const publicRoutes = [
   "/atividade-parlamentar",
   "/promessas",
   "/explicacoes",
+  "/pesquisa",
   "/guia-cidadao",
   "/metodologia",
   "/direito-de-resposta",

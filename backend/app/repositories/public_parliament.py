@@ -396,6 +396,57 @@ class PublicParliamentRepository:
             "facets": facets,
         }
 
+    async def search_global(
+        self,
+        *,
+        query: str,
+        legislature: str,
+        limit: int,
+    ) -> dict[str, dict[str, object]]:
+        """Pesquisa as três projeções sem calcular facetas ou misturar os seus totais."""
+
+        pool = self._require_pool()
+        async with pool.acquire() as connection:
+            sessions, session_total = await self._explore_sessions(
+                connection,
+                legislature=legislature,
+                query=query,
+                date_from=None,
+                date_to=None,
+                limit=limit,
+                offset=0,
+            )
+            initiatives, initiative_total = await self._explore_initiatives(
+                connection,
+                legislature=legislature,
+                query=query,
+                date_from=None,
+                date_to=None,
+                initiative_type=None,
+                initiative_status=None,
+                limit=limit,
+                offset=0,
+            )
+            votes, vote_total = await self._explore_votes(
+                connection,
+                legislature=legislature,
+                query=query,
+                date_from=None,
+                date_to=None,
+                initiative_type=None,
+                vote_result=None,
+                is_nominal=None,
+                party_source_id=None,
+                choice=None,
+                limit=limit,
+                offset=0,
+            )
+        return {
+            "sessions": {"items": sessions, "total": session_total},
+            "initiatives": {"items": initiatives, "total": initiative_total},
+            "votes": {"items": votes, "total": vote_total},
+        }
+
     async def _explore_sessions(
         self,
         connection: Any,
