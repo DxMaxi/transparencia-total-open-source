@@ -105,7 +105,7 @@ jobs:
           node-version: 24
           cache: npm
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         if: ${{ inputs.operation != 'migrate' }}
         with:
           python-version-file: .python-version

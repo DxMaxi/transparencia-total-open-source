@@ -25,7 +25,7 @@ jobs:
       RAW_ARCHIVE_WARNING_BYTES: ${{ vars.RAW_ARCHIVE_WARNING_BYTES || '400000000' }}
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version-file: .python-version
           cache: pip
