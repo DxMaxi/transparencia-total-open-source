@@ -53,6 +53,8 @@ export default function TermsPage() {
           <li>Ausência de dados não significa ausência, incumprimento ou suspeita.</li>
           <li>Posições de grupos parlamentares não são atribuídas a deputados individuais.</li>
           <li>Uma ligação entre entidades não constitui acusação nem prova de ilegalidade.</li>
+          <li>IA não é fonte: explicações automáticas são rotuladas, revistas e podem abster-se.</li>
+          <li>Alertas referem apenas conteúdo publicado e não garantem cobertura completa ou imediata.</li>
           <li>O conteúdo é informativo e não substitui aconselhamento jurídico, fiscal ou financeiro.</li>
         </ul>
         <h2>Correções e direito de resposta</h2>

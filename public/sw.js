@@ -1,8 +1,11 @@
 const CACHE_PREFIX = "transparencia-total-";
-const CACHE_VERSION = "v4";
+const CACHE_VERSION = "v5";
 const STATIC_CACHE = `${CACHE_PREFIX}${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_PREFIX}${CACHE_VERSION}-runtime`;
+const OFFLINE_PREFERENCE_CACHE = `${CACHE_PREFIX}offline-preference`;
+const OFFLINE_MARKER = "/__tt-offline-enabled__";
 const OFFLINE_URL = "/offline.html";
+let offlineModeEnabled = false;
 const PRECACHE = [
   "/",
   "/politicos",
@@ -18,10 +21,42 @@ const PRECACHE = [
   "/icons/icon-512.png",
 ];
 const PRIVATE_PATH_PREFIXES = ["/admin", "/auth", "/api"];
+const PUBLIC_PAGE_PATHS = new Set([
+  "/",
+  "/acessibilidade",
+  "/atividade-parlamentar",
+  "/contacto",
+  "/cookies",
+  "/direito-de-resposta",
+  "/explicacoes",
+  "/guia-cidadao",
+  "/investigador",
+  "/metodologia",
+  "/politicos",
+  "/privacidade",
+  "/promessas",
+  "/termos",
+  "/offline.html",
+  "/manifest.json",
+  "/favicon.svg",
+  "/robots.txt",
+  "/sitemap.xml",
+]);
+const PUBLIC_ASSET_PREFIXES = ["/_next/static/", "/_next/image/", "/icons/"];
+const PUBLIC_RECORD_PREFIXES = ["/explicacoes/", "/politicos/"];
 
 function isPrivatePath(pathname) {
   return PRIVATE_PATH_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
+function isExplicitlyCacheablePath(url) {
+  if (PUBLIC_ASSET_PREFIXES.some((prefix) => url.pathname.startsWith(prefix))) return true;
+  if (url.search) return false;
+  return (
+    PUBLIC_PAGE_PATHS.has(url.pathname)
+    || PUBLIC_RECORD_PREFIXES.some((prefix) => url.pathname.startsWith(prefix))
   );
 }
 
@@ -30,6 +65,7 @@ function isPublicRequest(request, url) {
     request.method === "GET"
     && url.origin === self.location.origin
     && !isPrivatePath(url.pathname)
+    && isExplicitlyCacheablePath(url)
     && !request.headers.has("authorization")
   );
 }
@@ -46,6 +82,38 @@ async function storeRuntime(request, response) {
   await cache.put(request, response.clone());
 }
 
+function offlineMarkerRequest() {
+  return new Request(new URL(OFFLINE_MARKER, self.location.origin));
+}
+
+async function hasOfflinePreference() {
+  if (!(await caches.has(OFFLINE_PREFERENCE_CACHE))) return false;
+  const preference = await caches.open(OFFLINE_PREFERENCE_CACHE);
+  return Boolean(await preference.match(offlineMarkerRequest()));
+}
+
+async function enableOfflineMode() {
+  try {
+    const staticCache = await caches.open(STATIC_CACHE);
+    await staticCache.addAll(PRECACHE);
+    const preference = await caches.open(OFFLINE_PREFERENCE_CACHE);
+    await preference.put(offlineMarkerRequest(), new Response("enabled"));
+    offlineModeEnabled = true;
+  } catch (error) {
+    await caches.delete(STATIC_CACHE);
+    throw error;
+  }
+}
+
+async function disableOfflineMode() {
+  offlineModeEnabled = false;
+  await Promise.all([
+    caches.delete(STATIC_CACHE),
+    caches.delete(RUNTIME_CACHE),
+    caches.delete(OFFLINE_PREFERENCE_CACHE),
+  ]);
+}
+
 function safeNotificationTarget(value) {
   try {
     const target = new URL(typeof value === "string" ? value : "/", self.location.origin);
@@ -57,28 +125,53 @@ function safeNotificationTarget(value) {
 }
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(STATIC_CACHE).then((cache) => cache.addAll(PRECACHE)));
-  self.skipWaiting();
+  event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
+    (async () => {
+      const keys = await caches.keys();
+      const legacyOfflineChoice = keys.some(
+        (key) =>
+          key.startsWith(CACHE_PREFIX)
+          && key.endsWith("-static")
+          && key !== STATIC_CACHE,
+      );
+      if (legacyOfflineChoice && !(await hasOfflinePreference())) {
+        const preference = await caches.open(OFFLINE_PREFERENCE_CACHE);
+        await preference.put(offlineMarkerRequest(), new Response("enabled"));
+      }
+      offlineModeEnabled = await hasOfflinePreference();
+      if (offlineModeEnabled) await enableOfflineMode();
+      await Promise.all(
         keys
           .filter(
             (key) =>
               key.startsWith(CACHE_PREFIX)
-              && ![STATIC_CACHE, RUNTIME_CACHE].includes(key),
+              && ![STATIC_CACHE, RUNTIME_CACHE, OFFLINE_PREFERENCE_CACHE].includes(key),
           )
           .map((key) => caches.delete(key)),
-      ),
-    ),
+      );
+      await self.clients.claim();
+    })(),
   );
-  self.clients.claim();
+});
+
+self.addEventListener("message", (event) => {
+  if (!["ENABLE_OFFLINE", "DISABLE_OFFLINE"].includes(event.data?.type)) return;
+  const operation = event.data.type === "ENABLE_OFFLINE"
+    ? enableOfflineMode()
+    : disableOfflineMode();
+  event.waitUntil(
+    operation
+      .then(() => event.ports[0]?.postMessage({ ok: true }))
+      .catch(() => event.ports[0]?.postMessage({ ok: false })),
+  );
 });
 
 self.addEventListener("fetch", (event) => {
+  if (!offlineModeEnabled) return;
   const request = event.request;
   const url = new URL(request.url);
   if (!isPublicRequest(request, url)) return;

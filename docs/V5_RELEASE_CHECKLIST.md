@@ -24,6 +24,11 @@ continuam a exigir autorizações separadas.
 - [x] README e documentação refletem a integração e publicação fail-closed da V5.10.
 - [x] V5.11 — plano operacional revisto e integrado antes de qualquer operação remota em staging.
 - [x] V5.12 — workflow segregado de staging revisto e integrado, ainda sem qualquer execução.
+- [x] V5.13 — propostas privadas de IA com arquivo atestado e abstenção integradas.
+- [x] V5.14 — revisão editorial privada de IA com MFA e histórico append-only integrada.
+- [x] V5.15 — publicação e retirada específicas de explicações de IA integradas.
+- [x] Capacidade pública de IA só é anunciada depois de a prontidão real do esquema ser provada.
+- [x] V5.16 — antiabuso, revogação push, cache allowlist, acessibilidade e E2E local integrados.
 - [x] Existe um [conjunto de issues de conclusão](https://github.com/DxMaxi/transparencia-total-open-source/issues/58) para todos os itens ainda abertos.
 
 ## B. Estabilização pública
@@ -131,17 +136,17 @@ continuam a exigir autorizações separadas.
 
 ## I. IA responsável
 
-- [ ] Endpoint de geração exige staff autenticado e MFA adequado.
-- [ ] Documento de entrada existe no arquivo atestado.
-- [ ] Geração persiste fonte, modelo, fornecedor, prompt, versões e hashes.
-- [ ] Proposta nasce com origem `AI`, `created_by_id` nulo e `PENDING`.
-- [ ] `requires_human_review` permanece obrigatório.
-- [ ] O modelo pode responder que não existem dados suficientes.
-- [ ] Citações e âncoras fora da entrada são rejeitadas.
+- [x] Endpoint de geração exige staff autenticado e MFA adequado.
+- [x] Documento de entrada existe no arquivo atestado.
+- [x] Geração persiste fonte, modelo, fornecedor, prompt, versões e hashes.
+- [x] Proposta nasce com origem `AI`, `created_by_id` nulo e `PENDING`.
+- [x] `requires_human_review` permanece obrigatório.
+- [x] O modelo pode responder que não existem dados suficientes.
+- [x] Citações e âncoras fora da entrada são rejeitadas.
 - [ ] Prompt injection no documento não altera instruções.
-- [ ] Revisão permite aprovar, rejeitar, corrigir ou regenerar.
-- [ ] Apenas a versão aprovada entra na projeção pública.
-- [ ] Conteúdo público mostra rótulo de IA, fontes, modelo e data.
+- [x] Revisão permite aprovar, rejeitar, corrigir ou regenerar.
+- [x] Apenas a versão aprovada entra na projeção pública.
+- [x] Conteúdo público mostra rótulo de IA, fontes, modelo e data.
 - [ ] Cenários usam factos e cálculos determinísticos, não previsão livre.
 - [ ] Limite de custo, tamanho, taxa e cache configurados.
 - [ ] Avaliação mede fidelidade, omissões, abstenção e diferenças entre grupos.
@@ -155,10 +160,11 @@ continuam a exigir autorizações separadas.
 - [ ] Auditoria de acessibilidade completa ou método público equivalente concluído.
 - [ ] Metas de desempenho definidas e medidas em rede móvel.
 - [x] Instalação PWA e ativação do modo offline são escolhas explícitas e reversíveis.
-- [ ] Pedido de notificações ocorre apenas após consentimento informado.
-- [ ] Preferências de alerta podem ser alteradas e apagadas.
-- [ ] Revogação desativa a subscrição no navegador e no backend.
-- [ ] Alertas usam apenas conteúdo aprovado.
+- [x] Pedido de notificações ocorre apenas após consentimento informado.
+- [x] Preferências de alerta podem ser alteradas e apagadas.
+- [x] Revogação desativa a subscrição no navegador e pede eliminação exata no backend; uma falha
+  remota fica visível e pode ser repetida.
+- [x] Alertas usam apenas conteúdo humano publicado, vigente e ligado a fonte atestada.
 
 ## K. Fontes e cobertura histórica
 
@@ -177,8 +183,9 @@ continuam a exigir autorizações separadas.
 
 - [ ] Backup cifrado válido obtido antes das migrações V5.
 - [ ] Migrações de produção autorizadas e executadas separadamente.
-- [ ] Backend V5 publicado sem promover dados automaticamente.
-- [ ] Frontend e backend anunciam versões compatíveis.
+- [x] Backend V5 publicado sem promover dados automaticamente.
+- [x] Frontend e backend anunciam capacidades compatíveis e falham fechados quando o esquema ainda
+  não suporta uma área.
 - [ ] CORS, CSP, rate limit, autenticação e logs revistos.
 - [ ] Email institucional configurado com SPF, DKIM e DMARC.
 - [ ] Políticas legais atualizadas após ativar IA, perfis sensíveis ou PWA.

@@ -61,6 +61,25 @@ test("public smoke runs after a successful Production deployment and on a daily 
   assert.match(workflow, /SMOKE_ATTEMPTS: "12"/);
 });
 
+test("CI verifies the built application locally in a real browser", async () => {
+  const [workflow, config, e2e] = await Promise.all([
+    readFile(new URL(".github/workflows/ci.yml", root), "utf8"),
+    readFile(new URL("playwright.config.mjs", root), "utf8"),
+    readFile(new URL("tests/e2e/public-site.spec.js", root), "utf8"),
+  ]);
+
+  assert.match(workflow, /PLAYWRIGHT_BASE_URL: http:\/\/127\.0\.0\.1:3000/);
+  assert.match(workflow, /PLAYWRIGHT_START_SERVER: "1"/);
+  assert.match(
+    workflow,
+    /npx playwright test tests\/e2e\/public-site\.spec\.js --workers=1/,
+  );
+  assert.match(workflow, /actions\/upload-artifact@v7/);
+  assert.match(config, /npm run start:next/);
+  assert.match(config, /trace: "retain-on-failure"/);
+  assert.match(e2e, /process\.env\.PLAYWRIGHT_BASE_URL/);
+});
+
 test("official indexes refresh before the freshness monitor without publishing", async () => {
   const refresh = await readFile(
     new URL(".github/workflows/official-index-sync.yml", root),

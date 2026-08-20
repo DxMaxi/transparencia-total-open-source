@@ -255,6 +255,65 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
             )
         return [dict(row) for row in rows]
 
+    async def get_publishable_push_alert(self, alert_id: str) -> dict[str, Any] | None:
+        """Obtém apenas um alerta humano, publicado e ligado a arquivo atestado."""
+
+        if self.pool is None:
+            raise RuntimeError("Base de dados não configurada")
+        async with self.pool.acquire() as connection:
+            row = await connection.fetchrow(
+                """
+                SELECT alert.id, alert.title, alert.body,
+                       municipality.name AS municipality
+                FROM citizen_alerts alert
+                JOIN source_documents source
+                  ON source.id = alert.source_document_id
+                LEFT JOIN municipalities municipality
+                  ON municipality.id = alert.municipality_id
+                JOIN LATERAL (
+                    SELECT review.publishable
+                    FROM data_publication_reviews review
+                    WHERE review.entity_type = 'CITIZEN_ALERT'
+                      AND review.entity_id = alert.id
+                      AND review.source_document_id = source.id
+                    ORDER BY review.reviewed_at DESC, review.id DESC
+                    LIMIT 1
+                ) publication_review ON publication_review.publishable = true
+                WHERE alert.id = $1
+                  AND alert.publication_status = 'PUBLISHED'
+                  AND alert.requires_human_review = true
+                  AND char_length(alert.title) BETWEEN 1 AND 80
+                  AND char_length(alert.body) BETWEEN 1 AND 220
+                  AND (alert.effective_at IS NULL OR alert.effective_at <= now())
+                  AND (alert.expires_at IS NULL OR alert.expires_at > now())
+                  AND EXISTS (
+                      SELECT 1
+                      FROM source_archive_attestations archive
+                      WHERE archive.source_document_id = source.id
+                        AND archive.content_sha256 = source.content_sha256
+                        AND archive.retrieval_url = source.url
+                  )
+                """,
+                alert_id,
+            )
+        return dict(row) if row is not None else None
+
+    async def remove_push_subscription(self, endpoint: str) -> None:
+        """Apaga a capacidade push a pedido do próprio navegador."""
+
+        if self.pool is None:
+            raise RuntimeError("Base de dados não configurada")
+        subscription_id = hashlib.sha256(endpoint.encode()).hexdigest()
+        async with self.pool.acquire() as connection:
+            await connection.execute(
+                """
+                DELETE FROM push_subscriptions
+                WHERE id = $1 AND endpoint = $2
+                """,
+                subscription_id,
+                endpoint,
+            )
+
     async def save_right_of_reply(
         self,
         payload: RightOfReplyRequest,

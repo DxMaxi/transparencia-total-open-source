@@ -29,6 +29,23 @@ jobs:
       - run: npm run db:generate
       - run: npm run build:next
       - run: npm run verify:next-artifact
+      - name: Instalar Chromium para E2E local
+        run: npx playwright install --with-deps chromium
+      - name: Verificar a interface construída num navegador real
+        run: npx playwright test tests/e2e/public-site.spec.js --workers=1
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+          PLAYWRIGHT_START_SERVER: "1"
+      - name: Guardar diagnóstico E2E apenas quando falhar
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-diagnostics
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7
 
   backend:
     runs-on: ubuntu-latest

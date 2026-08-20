@@ -69,7 +69,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
     allow_credentials=False,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Admin-Key"],
 )
 
@@ -106,6 +106,7 @@ async def add_security_headers(
         )
     private_or_sensitive_path = (
         request.url.path == f"{settings.api_prefix}/right-of-reply"
+        or request.url.path.startswith(f"{settings.api_prefix}/push")
         or request.url.path.startswith(f"{settings.api_prefix}/editorial")
         or request.url.path.startswith(f"{settings.api_prefix}/ai")
     )

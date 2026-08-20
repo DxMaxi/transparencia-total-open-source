@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import {
   ArrowRightIcon,
+  BellIcon,
   ChartIcon,
   LandmarkIcon,
   MapPinIcon,
@@ -9,6 +10,7 @@ import {
 } from "@/components/icons";
 import { DataModeBanner } from "@/components/data-mode-banner";
 import { DataStatusCard } from "@/components/data-status-card";
+import { PushSubscribe } from "@/components/push-subscribe";
 import { SourceLink } from "@/components/source-link";
 import { initialGovernmentCommitments } from "@/lib/government-programme";
 import { loadPublicDataStatus } from "@/lib/public-data";
@@ -156,6 +158,21 @@ export default async function Home() {
             <div><span>03</span><div><strong>Sem conclusões automáticas</strong><p>Sem factos suficientes, a plataforma mostra a lacuna e não atribui intenções ou responsabilidades.</p></div></div>
           </div>
         </div>
+      </section>
+
+      <section className="local-alert-section shell" aria-labelledby="local-alert-title">
+        <div className="local-alert-copy">
+          <BellIcon />
+          <div>
+            <span className="eyebrow">Escolha do cidadão</span>
+            <h2 id="local-alert-title">Acompanhe apenas o que decidiu seguir</h2>
+            <p>
+              Escolha uma região e ative notificações apenas se quiser. O pedido de permissão só
+              acontece depois do seu consentimento, e a subscrição pode ser alterada ou apagada.
+            </p>
+          </div>
+        </div>
+        <PushSubscribe />
       </section>
 
     </main>

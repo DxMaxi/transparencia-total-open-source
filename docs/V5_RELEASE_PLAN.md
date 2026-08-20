@@ -3,23 +3,24 @@
 ## Estado de referência
 
 Este plano fixa o âmbito necessário para concluir a `v0.5.0`. Foi preparado em 13 de agosto de
-2026 a partir do código integrado em `main`, da produção pública e dos princípios de governação do
-projeto. Não autoriza deploy, migração remota, criação de utilizadores, alteração de segredos,
-geração por IA, publicação, retirada ou tratamento de dados reais.
+2026 e atualizado em 20 de agosto de 2026 a partir do código integrado em `main`, da produção
+pública e dos princípios de governação do projeto. Não autoriza deploy, migração remota, criação de
+utilizadores, alteração de segredos, geração por IA, publicação, retirada ou tratamento de dados
+reais.
 
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.12 integradas; ativação remota de staging pendente |
-| Frontend público | V5.10 publicada em modo de compatibilidade fail-closed |
-| API pública | `0.4.0`, sem endpoints V5 ativos |
+| Código V5 | V5.1 a V5.15 integradas; V5.16 em endurecimento; staging remoto pendente |
+| Frontend público | V5.15 publicado; capacidades sem esquema pronto ficam fail-closed |
+| API pública | `0.5.0-alpha.0`; capacidades anunciadas apenas após prova read-only do esquema |
 | Painel editorial | implementado no código, não ativado em produção |
-| IA | fornecedor desativado; protótipos sem fila editorial persistente |
+| IA | geração, revisão, publicação e retirada implementadas; esquema remoto ainda não ativado |
 | Parlamento | legislatura XVII; API V5 e histórico editorial ainda inativos em produção |
 | Perfis | contrato V5.6 preparado; várias áreas sem dados individuais publicáveis |
 | Promessómetro | catálogo editorial inicial de 10 compromissos |
 | Investigador Cívico | zero contratos e zero relações na projeção pública |
-| PWA e alertas | infraestrutura presente, interface pública desativada |
+| PWA e alertas | consentimento e revogação em endurecimento; configuração remota pendente |
 | Repositório | privado e licenciado como código disponível para uso não comercial |
 
 ## O que significa concluir a V5

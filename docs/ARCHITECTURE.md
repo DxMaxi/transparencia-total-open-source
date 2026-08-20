@@ -21,8 +21,10 @@ sem converter ausência de dados em conclusões e sem permitir que um modelo de 
 ### Next.js
 
 O App Router renderiza as páginas públicas. Os componentes interativos limitam-se a navegação,
-filtros e formulários explícitos. O manifesto e a infraestrutura de notificações não estão ligados
-à interface pública. O frontend não conhece chaves privadas nem acede diretamente à base de dados.
+filtros e formulários explícitos. O manifesto não regista automaticamente o service worker. O modo
+offline e os alertas têm escolhas separadas; pedir alertas não ativa a cache pública, e nenhuma
+permissão é pedida sem consentimento. O frontend conhece apenas a chave VAPID pública, nunca a chave
+privada, e não acede diretamente à base de dados.
 As leituras seguem a política de timeout, cache e observabilidade sem dados pessoais descrita em
 [PUBLIC_API_RESILIENCE.md](PUBLIC_API_RESILIENCE.md), preservando indisponibilidade explícita.
 
