@@ -40,6 +40,8 @@ pytestmark = pytest.mark.skipif(
     reason="Teste de integração real: exige DATABASE_URL para PostgreSQL descartável",
 )
 
+_TEST_DIGIT_TO_LETTER = str.maketrans("0123456789", "ghijklmnop")
+
 
 class FakeSummarizer(Summarizer):
     def __init__(self) -> None:
@@ -62,6 +64,7 @@ class FakeSummarizer(Summarizer):
 
 
 def _document(suffix: str = "") -> LegalDocument:
+    safe_suffix = suffix.translate(_TEST_DIGIT_TO_LETTER)
     unique_marker = f" Referência técnica de teste {suffix}." if suffix else ""
     text = (
         "Artigo 1.º\nObjeto do diploma oficial para teste. "
@@ -81,7 +84,7 @@ def _document(suffix: str = "") -> LegalDocument:
         content=content,
     )
     return LegalDocument(
-        title="Lei n.º 2/2026",
+        title=f"Lei n.º 2/2026 — teste {safe_suffix}" if suffix else "Lei n.º 2/2026",
         source_url=raw.source_url,
         # O marcador aleatório já torna o documento, URL e hashes únicos. Mantê-lo fora do
         # identificador oficial evita fabricar sequências numéricas que se parecem com NIF/NIPC.
@@ -292,7 +295,7 @@ async def test_ai_review_lists_exact_evidence_and_regenerates_as_an_immutable_ve
         summarizer=fake,
     )
 
-    catalogue_before = await service.list_dre_snapshots(query=suffix, limit=10)
+    catalogue_before = await service.list_dre_snapshots(query=document.title, limit=10)
     assert catalogue_before["excluded_invalid_snapshots"] == 0
     items = catalogue_before["items"]
     assert isinstance(items, list)
@@ -383,7 +386,7 @@ async def test_ai_review_lists_exact_evidence_and_regenerates_as_an_immutable_ve
         )
     assert fake.calls == 2
 
-    catalogue_after = await service.list_dre_snapshots(query=suffix, limit=10)
+    catalogue_after = await service.list_dre_snapshots(query=document.title, limit=10)
     after_items = catalogue_after["items"]
     assert isinstance(after_items, list)
     assert after_items[0]["existing_case"]["version_number"] == 2
