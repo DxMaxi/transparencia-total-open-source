@@ -2,10 +2,12 @@ import Link from "next/link";
 import {
   approveEditorialCase,
   correctEditorialCase,
+  publishAiExplanation,
   publishParliamentCase,
   regenerateAiDreProposal,
   rejectEditorialCase,
   startEditorialReview,
+  withdrawAiExplanation,
   withdrawParliamentCase,
 } from "../actions";
 import { AiEditorialComparison } from "../ai-comparison";
@@ -15,6 +17,8 @@ import {
   PARLIAMENT_WITHDRAWAL_REASON_LABELS,
   STATE_LABELS,
   type AiDreSourceEvidence,
+  type AiEditorialPublicationPreview,
+  type AiEditorialWithdrawalPreview,
   type EditorialCaseDetail,
   type ParliamentEditorialPublicationPreview,
   type ParliamentEditorialWithdrawalPreview,
@@ -62,6 +66,12 @@ function successMessage(value: string | undefined): string {
   if (value === "ai-regenerated") {
     return "A nova proposta de IA foi acrescentada como versão imutável; a anterior permanece no histórico.";
   }
+  if (value === "ai-published") {
+    return "A explicação de IA foi publicada com fonte, rótulo, revisão humana e provas imutáveis.";
+  }
+  if (value === "ai-withdrawn") {
+    return "A explicação foi retirada da consulta ativa; a publicação e todo o histórico permanecem.";
+  }
   return "A decisão foi acrescentada ao histórico imutável.";
 }
 
@@ -91,7 +101,13 @@ export default async function EditorialCasePage({
     (item.kind === "PARLIAMENT_VOTE" && item.subject_type === "PARLIAMENT_VOTES_SNAPSHOT");
   const isAiDreCase =
     item.kind === "AI_EXPLANATION" && item.subject_type === "DRE_DOCUMENT_SNAPSHOT";
-  const [parliamentPublication, parliamentWithdrawal, aiSourceEvidence] = await Promise.all([
+  const [
+    parliamentPublication,
+    parliamentWithdrawal,
+    aiSourceEvidence,
+    aiPublication,
+    aiWithdrawal,
+  ] = await Promise.all([
     isParliamentPublicationCase && item.current_state === "APPROVED"
       ? editorialFetch<ParliamentEditorialPublicationPreview>(
           `/parliament/cases/${encodeURIComponent(caseId)}/publication`,
@@ -108,6 +124,16 @@ export default async function EditorialCasePage({
             offset: sourceOffset.toString(),
             limit: "40000",
           }).toString()}`,
+        )
+      : Promise.resolve(null),
+    isAiDreCase && item.current_state === "APPROVED"
+      ? editorialFetch<AiEditorialPublicationPreview>(
+          `/ai/cases/${encodeURIComponent(caseId)}/publication`,
+        )
+      : Promise.resolve(null),
+    isAiDreCase && item.current_state === "PUBLISHED"
+      ? editorialFetch<AiEditorialWithdrawalPreview>(
+          `/ai/cases/${encodeURIComponent(caseId)}/withdrawal`,
         )
       : Promise.resolve(null),
   ]);
@@ -218,7 +244,9 @@ export default async function EditorialCasePage({
 
       <EditorialActions
         item={item}
+        aiPublication={aiPublication}
         aiSourceEvidence={aiSourceEvidence}
+        aiWithdrawal={aiWithdrawal}
         normalizedData={currentVersion.normalized_data}
         parliamentPublication={parliamentPublication}
         parliamentWithdrawal={parliamentWithdrawal}
@@ -314,14 +342,18 @@ export default async function EditorialCasePage({
 
 function EditorialActions({
   item,
+  aiPublication,
   aiSourceEvidence,
+  aiWithdrawal,
   normalizedData,
   parliamentPublication,
   parliamentWithdrawal,
   staff,
 }: {
   item: EditorialCaseDetail;
+  aiPublication: AiEditorialPublicationPreview | null;
   aiSourceEvidence: AiDreSourceEvidence | null;
+  aiWithdrawal: AiEditorialWithdrawalPreview | null;
   normalizedData: Record<string, unknown>;
   parliamentPublication: ParliamentEditorialPublicationPreview | null;
   parliamentWithdrawal: ParliamentEditorialWithdrawalPreview | null;
@@ -402,7 +434,15 @@ function EditorialActions({
         <ParliamentWithdrawalAction preview={parliamentWithdrawal} staff={staff} />
       ) : null}
 
-      {aiSourceEvidence && ["IN_REVIEW", "APPROVED", "REJECTED"].includes(item.current_state) ? (
+      {item.current_state === "APPROVED" && aiPublication ? (
+        <AiPublicationAction preview={aiPublication} staff={staff} />
+      ) : null}
+
+      {item.current_state === "PUBLISHED" && aiWithdrawal ? (
+        <AiWithdrawalAction preview={aiWithdrawal} staff={staff} />
+      ) : null}
+
+      {aiSourceEvidence && ["IN_REVIEW", "APPROVED", "REJECTED", "WITHDRAWN"].includes(item.current_state) ? (
         <AiRegenerationAction item={item} evidence={aiSourceEvidence} />
       ) : null}
 
@@ -485,6 +525,305 @@ function AiRegenerationAction({
         </button>
       </form>
     </details>
+  );
+}
+
+function AiPublicationAction({
+  preview,
+  staff,
+}: {
+  preview: AiEditorialPublicationPreview;
+  staff: StaffSession;
+}) {
+  const source = preview.source;
+  const generation = preview.generation;
+  const evidenceAvailable = Boolean(source && generation);
+
+  return (
+    <section className="admin-publication-panel ai-publication-panel">
+      <div className="admin-publication-summary">
+        <div>
+          <p className="eyebrow">Porta pública responsável de IA</p>
+          <h2>Publicar esta explicação revista</h2>
+          <p>
+            A publicação não chama o modelo. Torna pública apenas esta versão, com o rótulo
+            “Explicação gerada por IA — revista por humano”, a fonte DRE e as provas técnicas.
+          </p>
+        </div>
+        <dl>
+          <div>
+            <dt>Documento</dt>
+            <dd>{source?.official_identifier ?? source?.title ?? "Dados indisponíveis"}</dd>
+          </div>
+          <div>
+            <dt>Modelo declarado</dt>
+            <dd>{generation ? `${generation.provider} · ${generation.model}` : "Dados indisponíveis"}</dd>
+          </div>
+          <div>
+            <dt>Identificador público</dt>
+            <dd><code>{preview.public_id}</code></dd>
+          </div>
+        </dl>
+        <p className="admin-publication-rule">{preview.publication_rule}</p>
+      </div>
+
+      {preview.blockers.length ? (
+        <div className="admin-publication-blockers" role="alert">
+          <strong>Publicação bloqueada</strong>
+          <ul>
+            {preview.blockers.map((blocker) => (
+              <li key={blocker.code}>{blocker.detail}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {staff.role === "ADMIN" && source && generation ? (
+        <form action={publishAiExplanation}>
+          <input type="hidden" name="case_id" value={preview.case_id} />
+          <input type="hidden" name="expected_revision" value={preview.revision} />
+          <input type="hidden" name="expected_public_id" value={preview.public_id} />
+          <input type="hidden" name="expected_source_sha256" value={source.content_sha256} />
+          <input
+            type="hidden"
+            name="expected_normalised_text_sha256"
+            value={source.normalised_text_sha256}
+          />
+          <input
+            type="hidden"
+            name="expected_editorial_sha256"
+            value={preview.editorial_version_sha256}
+          />
+          <input
+            type="hidden"
+            name="expected_output_sha256"
+            value={preview.output_sha256}
+          />
+          <input
+            type="hidden"
+            name="expected_publication_proof_sha256"
+            value={preview.publication_proof_sha256}
+          />
+          <div className="admin-publication-digests">
+            <span>SHA-256 da fonte DRE</span>
+            <code>{source.content_sha256}</code>
+            <span>SHA-256 do texto normalizado</span>
+            <code>{source.normalised_text_sha256}</code>
+            <span>SHA-256 da saída do modelo</span>
+            <code>{preview.output_sha256}</code>
+            <span>SHA-256 da versão editorial</span>
+            <code>{preview.editorial_version_sha256}</code>
+            <span>SHA-256 da projeção pública</span>
+            <code>{preview.publication_proof_sha256}</code>
+          </div>
+          <label>
+            Fundamentação editorial interna
+            <textarea name="rationale" minLength={20} maxLength={2000} required />
+            <small>Permanece privada no histórico editorial.</small>
+          </label>
+          <label>
+            Fundamentação pública resumida
+            <textarea name="public_rationale" minLength={20} maxLength={500} required />
+            <small>Será visível no histórico público. Não inclua dados pessoais.</small>
+          </label>
+          <label className="admin-confirmation">
+            <input name="confirm_source_reviewed" type="checkbox" required />
+            <span>Comparei integralmente o resumo e as âncoras com o texto oficial atestado.</span>
+          </label>
+          <label className="admin-confirmation">
+            <input name="confirm_ai_label_reviewed" type="checkbox" required />
+            <span>Confirmei que o conteúdo ficará sempre identificado como gerado por IA.</span>
+          </label>
+          <label className="admin-confirmation">
+            <input name="confirm_no_prediction_or_recommendation" type="checkbox" required />
+            <span>
+              Confirmei que não existe previsão, opinião, classificação ideológica nem recomendação
+              de partido ou sentido de voto.
+            </span>
+          </label>
+          <label className="admin-confirmation">
+            <input name="confirm_publication" type="checkbox" required />
+            <span>Confirmo a publicação desta versão e destes SHA-256 exatos.</span>
+          </label>
+          <button
+            className="button button--primary"
+            type="submit"
+            disabled={!preview.eligible || !evidenceAvailable}
+          >
+            Publicar explicação revista
+          </button>
+        </form>
+      ) : (
+        <p className="private-message">
+          {staff.role === "ADMIN"
+            ? "A prova pública está incompleta; a publicação permanece bloqueada."
+            : "A prova está visível para revisão, mas só um administrador com MFA pode publicar."}
+        </p>
+      )}
+    </section>
+  );
+}
+
+function AiWithdrawalAction({
+  preview,
+  staff,
+}: {
+  preview: AiEditorialWithdrawalPreview;
+  staff: StaffSession;
+}) {
+  const source = preview.source;
+  const evidenceAvailable = Boolean(source && preview.generation);
+
+  return (
+    <section className="admin-publication-panel admin-withdrawal-panel ai-publication-panel">
+      <div className="admin-publication-summary">
+        <div>
+          <p className="eyebrow">Retirada responsável e imutável</p>
+          <h2>Retirar a explicação da consulta ativa</h2>
+          <p>
+            O conteúdo deixa de aparecer na área pública, mas a versão, a publicação, a fonte e os
+            hashes anteriores não são apagados.
+          </p>
+        </div>
+        <dl>
+          <div>
+            <dt>Documento</dt>
+            <dd>{source?.official_identifier ?? source?.title ?? "Dados indisponíveis"}</dd>
+          </div>
+          <div>
+            <dt>Efeito público</dt>
+            <dd>Dados indisponíveis</dd>
+          </div>
+          <div>
+            <dt>Ligação pública atual</dt>
+            <dd><Link href={`/explicacoes/${preview.public_id}`}>Abrir explicação</Link></dd>
+          </div>
+        </dl>
+        <p className="admin-withdrawal-effect">
+          <strong>Dados indisponíveis.</strong> {preview.public_effect.message}
+        </p>
+        <p className="admin-publication-rule">{preview.withdrawal_rule}</p>
+      </div>
+
+      {preview.blockers.length ? (
+        <div className="admin-publication-blockers" role="alert">
+          <strong>Retirada bloqueada</strong>
+          <ul>
+            {preview.blockers.map((blocker) => (
+              <li key={blocker.code}>{blocker.detail}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {staff.role === "ADMIN" && source ? (
+        <form action={withdrawAiExplanation}>
+          <input type="hidden" name="case_id" value={preview.case_id} />
+          <input type="hidden" name="expected_revision" value={preview.revision} />
+          <input type="hidden" name="expected_public_id" value={preview.public_id} />
+          <input type="hidden" name="expected_source_sha256" value={source.content_sha256} />
+          <input
+            type="hidden"
+            name="expected_normalised_text_sha256"
+            value={source.normalised_text_sha256}
+          />
+          <input
+            type="hidden"
+            name="expected_editorial_sha256"
+            value={preview.editorial_version_sha256}
+          />
+          <input
+            type="hidden"
+            name="expected_output_sha256"
+            value={preview.output_sha256}
+          />
+          <input
+            type="hidden"
+            name="expected_publication_proof_sha256"
+            value={preview.publication_proof_sha256}
+          />
+          <input
+            type="hidden"
+            name="expected_public_review_id"
+            value={preview.public_review_id}
+          />
+          <input
+            type="hidden"
+            name="expected_publication_audit_event_id"
+            value={preview.publication_audit_event_id}
+          />
+          <input
+            type="hidden"
+            name="expected_publication_event_id"
+            value={preview.publication_event_id}
+          />
+          <input
+            type="hidden"
+            name="expected_publication_event_sha256"
+            value={preview.publication_event_sha256}
+          />
+          <input
+            type="hidden"
+            name="expected_public_effect_sha256"
+            value={preview.public_effect_sha256}
+          />
+          <div className="admin-publication-digests">
+            <span>SHA-256 da fonte publicada</span>
+            <code>{source.content_sha256}</code>
+            <span>SHA-256 da versão editorial</span>
+            <code>{preview.editorial_version_sha256}</code>
+            <span>SHA-256 do evento publicado</span>
+            <code>{preview.publication_event_sha256}</code>
+            <span>SHA-256 do efeito público</span>
+            <code>{preview.public_effect_sha256}</code>
+          </div>
+          <label>
+            Categoria permitida pela governação
+            <select name="reason_category" required defaultValue="">
+              <option value="" disabled>Selecione um fundamento</option>
+              {Object.entries(PARLIAMENT_WITHDRAWAL_REASON_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Fundamentação interna completa
+            <textarea name="rationale" minLength={20} maxLength={1850} required />
+            <small>Permanece privada no histórico editorial.</small>
+          </label>
+          <label>
+            Resumo público redigido
+            <textarea name="public_rationale" minLength={20} maxLength={500} required />
+            <small>Será mostrado no histórico público; não inclua dados pessoais.</small>
+          </label>
+          <label className="admin-confirmation">
+            <input name="confirm_no_selective_removal" type="checkbox" required />
+            <span>A retirada não resulta de conveniência política, pressão ou seleção editorial.</span>
+          </label>
+          <label className="admin-confirmation">
+            <input name="confirm_public_effect_reviewed" type="checkbox" required />
+            <span>Revi o efeito “dados indisponíveis” e o respetivo SHA-256.</span>
+          </label>
+          <label className="admin-confirmation">
+            <input name="confirm_withdrawal" type="checkbox" required />
+            <span>Confirmo a retirada sem apagar a publicação ou a versão anterior.</span>
+          </label>
+          <button
+            className="button button--danger"
+            type="submit"
+            disabled={!preview.eligible || !evidenceAvailable}
+          >
+            Retirar explicação
+          </button>
+        </form>
+      ) : (
+        <p className="private-message">
+          {staff.role === "ADMIN"
+            ? "A prova pública está incompleta; a retirada permanece bloqueada."
+            : "A prova está visível para revisão, mas só um administrador com MFA pode retirar."}
+        </p>
+      )}
+    </section>
   );
 }
 

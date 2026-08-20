@@ -14,6 +14,7 @@ def test_health_contract() -> None:
     assert response.json()["public_capabilities"] == [
         "parliament_explorer_v1",
         "parliament_publication_history_v1",
+        "ai_explanations_v1",
     ]
     assert response.headers["x-content-type-options"] == "nosniff"
     assert response.headers["x-frame-options"] == "DENY"

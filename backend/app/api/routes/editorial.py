@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from openai import APIError
 
 from app.api.dependencies import (
+    get_ai_editorial_publication_repository,
     get_ai_editorial_repository,
     get_editorial_repository,
     get_parliament_editorial_publication_repository,
@@ -18,6 +19,8 @@ from app.core.config import get_settings
 from app.models.editorial import (
     AiDreProposalRequest,
     AiDreRegenerationRequest,
+    AiEditorialPublicationRequest,
+    AiEditorialWithdrawalRequest,
     EditorialAction,
     EditorialApprovalRequest,
     EditorialCaseCreateRequest,
@@ -31,6 +34,7 @@ from app.models.editorial import (
     StaffSession,
 )
 from app.repositories.ai_editorial import AiEditorialRepository
+from app.repositories.ai_editorial_publication import AiEditorialPublicationRepository
 from app.repositories.editorial import (
     EditorialConflictError,
     EditorialNotFoundError,
@@ -220,6 +224,76 @@ async def regenerate_ai_dre_proposal(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Configuração do pipeline editorial de IA inválida",
         ) from exc
+
+
+@router.get("/ai/cases/{case_id}/publication")
+async def ai_publication_preview(
+    case_id: Annotated[str, Path(min_length=1, max_length=200)],
+    repository: Annotated[
+        AiEditorialPublicationRepository,
+        Depends(get_ai_editorial_publication_repository),
+    ],
+    _actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> dict[str, object]:
+    """Reconstrói a projeção pública exata, sem escrever nem chamar o modelo."""
+
+    try:
+        return await repository.inspect(case_id=case_id)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.post("/ai/cases/{case_id}/publication")
+async def publish_ai_case(
+    case_id: Annotated[str, Path(min_length=1, max_length=200)],
+    payload: AiEditorialPublicationRequest,
+    repository: Annotated[
+        AiEditorialPublicationRepository,
+        Depends(get_ai_editorial_publication_repository),
+    ],
+    actor: Annotated[StaffSession, Depends(require_editorial_admin)],
+) -> dict[str, object]:
+    """Publica uma versão DRE aprovada, rotulada como IA e revista por humano."""
+
+    try:
+        return await repository.publish(case_id=case_id, payload=payload, actor=actor)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.get("/ai/cases/{case_id}/withdrawal")
+async def ai_withdrawal_preview(
+    case_id: Annotated[str, Path(min_length=1, max_length=200)],
+    repository: Annotated[
+        AiEditorialPublicationRepository,
+        Depends(get_ai_editorial_publication_repository),
+    ],
+    _actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> dict[str, object]:
+    """Mostra a prova publicada e o efeito da retirada sem escrever."""
+
+    try:
+        return await repository.inspect_withdrawal(case_id=case_id)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.post("/ai/cases/{case_id}/withdrawal")
+async def withdraw_ai_case(
+    case_id: Annotated[str, Path(min_length=1, max_length=200)],
+    payload: AiEditorialWithdrawalRequest,
+    repository: Annotated[
+        AiEditorialPublicationRepository,
+        Depends(get_ai_editorial_publication_repository),
+    ],
+    actor: Annotated[StaffSession, Depends(require_editorial_admin)],
+) -> dict[str, object]:
+    """Retira a explicação ativa sem apagar a versão ou qualquer evento anterior."""
+
+    try:
+        return await repository.withdraw(case_id=case_id, payload=payload, actor=actor)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
 
 
 @router.get("/parliament/cases/{case_id}/publication")

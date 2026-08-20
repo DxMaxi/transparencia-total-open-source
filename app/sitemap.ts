@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { loadPublicPoliticians } from "@/lib/public-data";
+import { loadPublicAiExplanations, loadPublicPoliticians } from "@/lib/public-data";
 import { SITE_URL } from "@/lib/site";
 
 const publicRoutes = [
@@ -7,6 +7,7 @@ const publicRoutes = [
   "/politicos",
   "/atividade-parlamentar",
   "/promessas",
+  "/explicacoes",
   "/guia-cidadao",
   "/metodologia",
   "/direito-de-resposta",
@@ -27,7 +28,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: route === "" ? 1 : 0.7,
   }));
 
-  const politicians = await loadPublicPoliticians();
+  const [politicians, explanations] = await Promise.all([
+    loadPublicPoliticians(),
+    loadPublicAiExplanations({ pageSize: 100 }),
+  ]);
   const profilePaths = [...new Set(
     politicians.data
       .map((person) => person.slug.trim())
@@ -40,5 +44,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }));
 
-  return [...staticEntries, ...profileEntries];
+  const explanationEntries: MetadataRoute.Sitemap = explanations.data.items.map((item) => ({
+    url: `${SITE_URL}/explicacoes/${item.id}`,
+    lastModified: new Date(item.editorial.publishedAt),
+    changeFrequency: "weekly",
+    priority: 0.65,
+  }));
+
+  return [...staticEntries, ...profileEntries, ...explanationEntries];
 }

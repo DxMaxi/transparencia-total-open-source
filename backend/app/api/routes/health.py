@@ -37,6 +37,7 @@ async def health() -> HealthResponse:
         public_capabilities=[
             "parliament_explorer_v1",
             "parliament_publication_history_v1",
+            "ai_explanations_v1",
         ],
     )
 

@@ -9,6 +9,9 @@ const REQUIRED_CSS_MARKERS = [
   ".contact-channel--pending",
   ".profile-coverage-grid",
   ".profile-declaration-list",
+  ".ai-publication-panel",
+  ".ai-public-card-grid",
+  ".ai-public-detail__hero",
 ];
 
 async function cssFiles(directory) {

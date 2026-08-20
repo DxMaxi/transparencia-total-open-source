@@ -444,7 +444,12 @@ class AiEditorialService:
             raise EditorialConflictError(
                 "O processo foi alterado por outra decisão; atualize antes de continuar"
             )
-        if str(case["current_state"]) not in {"IN_REVIEW", "APPROVED", "REJECTED"}:
+        if str(case["current_state"]) not in {
+            "IN_REVIEW",
+            "APPROVED",
+            "REJECTED",
+            "WITHDRAWN",
+        }:
             raise EditorialConflictError(
                 "Inicie a revisão humana antes de pedir uma nova versão de IA"
             )

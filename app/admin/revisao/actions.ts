@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { EditorialApiError, editorialFetch } from "@/lib/editorial-api";
 import {
   type AiDreProposalResult,
+  type AiEditorialPublicationResult,
+  type AiEditorialWithdrawalResult,
   PARLIAMENT_WITHDRAWAL_REASON_LABELS,
   type EditorialCaseDetail,
   type ParliamentEditorialPublicationResult,
@@ -69,6 +71,12 @@ function sha256(formData: FormData, name: string): string {
 function evidenceId(formData: FormData, name: string): string {
   const value = requiredText(formData, name);
   if (!/^[A-Za-z0-9_-]{1,200}$/.test(value)) throw new Error("Prova relacional inválida");
+  return value;
+}
+
+function aiPublicId(formData: FormData): string {
+  const value = requiredText(formData, "expected_public_id");
+  if (!/^dre-[0-9a-f]{64}$/.test(value)) throw new Error("Identificador público de IA inválido");
   return value;
 }
 
@@ -209,6 +217,137 @@ export async function regenerateAiDreProposal(formData: FormData) {
   revalidatePath("/admin/revisao/ia");
   revalidatePath(`/admin/revisao/${id}`);
   redirect(`/admin/revisao/${id}?sucesso=ai-regenerated`);
+}
+
+export async function publishAiExplanation(formData: FormData) {
+  const id = caseId(formData);
+  const publicId = aiPublicId(formData);
+  let failure: string | null = null;
+  try {
+    for (const [field, message] of [
+      ["confirm_source_reviewed", "Confirme a revisão integral da fonte oficial"],
+      ["confirm_ai_label_reviewed", "Confirme o rótulo público de conteúdo gerado por IA"],
+      [
+        "confirm_no_prediction_or_recommendation",
+        "Confirme que não existe previsão nem recomendação eleitoral",
+      ],
+      ["confirm_publication", "Confirme a publicação desta versão exata"],
+    ] as const) {
+      if (formData.get(field) !== "on") throw new Error(message);
+    }
+    await editorialFetch<AiEditorialPublicationResult>(
+      `/ai/cases/${encodeURIComponent(id)}/publication`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          expected_revision: expectedRevision(formData),
+          rationale: requiredText(formData, "rationale"),
+          public_rationale: requiredText(formData, "public_rationale"),
+          expected_public_id: publicId,
+          expected_source_sha256: sha256(formData, "expected_source_sha256"),
+          expected_normalised_text_sha256: sha256(
+            formData,
+            "expected_normalised_text_sha256",
+          ),
+          expected_editorial_sha256: sha256(formData, "expected_editorial_sha256"),
+          expected_output_sha256: sha256(formData, "expected_output_sha256"),
+          expected_publication_proof_sha256: sha256(
+            formData,
+            "expected_publication_proof_sha256",
+          ),
+          confirm_source_reviewed: true,
+          confirm_ai_label_reviewed: true,
+          confirm_no_prediction_or_recommendation: true,
+          confirm_publication: true,
+        }),
+      },
+    );
+  } catch (error) {
+    failure = actionError(error);
+  }
+  if (failure) redirect(failureDestination(`/admin/revisao/${id}`, failure));
+  revalidatePath("/admin/revisao");
+  revalidatePath("/admin/revisao/ia");
+  revalidatePath(`/admin/revisao/${id}`);
+  revalidatePath("/explicacoes");
+  revalidatePath(`/explicacoes/${publicId}`);
+  revalidatePath("/sitemap.xml");
+  revalidatePath("/");
+  redirect(`/admin/revisao/${id}?sucesso=ai-published`);
+}
+
+export async function withdrawAiExplanation(formData: FormData) {
+  const id = caseId(formData);
+  const publicId = aiPublicId(formData);
+  let failure: string | null = null;
+  try {
+    for (const [field, message] of [
+      ["confirm_no_selective_removal", "Confirme que a retirada não é seletiva"],
+      ["confirm_public_effect_reviewed", "Confirme que reviu o efeito público"],
+      ["confirm_withdrawal", "Confirme a retirada integral desta explicação"],
+    ] as const) {
+      if (formData.get(field) !== "on") throw new Error(message);
+    }
+    const reasonCategory = requiredText(formData, "reason_category");
+    if (!(reasonCategory in PARLIAMENT_WITHDRAWAL_REASON_LABELS)) {
+      throw new Error("Categoria de retirada inválida");
+    }
+    await editorialFetch<AiEditorialWithdrawalResult>(
+      `/ai/cases/${encodeURIComponent(id)}/withdrawal`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          expected_revision: expectedRevision(formData),
+          rationale: requiredText(formData, "rationale"),
+          public_rationale: requiredText(formData, "public_rationale"),
+          reason_category: reasonCategory as ParliamentWithdrawalReason,
+          expected_public_id: publicId,
+          expected_source_sha256: sha256(formData, "expected_source_sha256"),
+          expected_normalised_text_sha256: sha256(
+            formData,
+            "expected_normalised_text_sha256",
+          ),
+          expected_editorial_sha256: sha256(formData, "expected_editorial_sha256"),
+          expected_output_sha256: sha256(formData, "expected_output_sha256"),
+          expected_publication_proof_sha256: sha256(
+            formData,
+            "expected_publication_proof_sha256",
+          ),
+          expected_public_review_id: evidenceId(formData, "expected_public_review_id"),
+          expected_publication_audit_event_id: evidenceId(
+            formData,
+            "expected_publication_audit_event_id",
+          ),
+          expected_publication_event_id: evidenceId(
+            formData,
+            "expected_publication_event_id",
+          ),
+          expected_publication_event_sha256: sha256(
+            formData,
+            "expected_publication_event_sha256",
+          ),
+          expected_public_effect_sha256: sha256(
+            formData,
+            "expected_public_effect_sha256",
+          ),
+          confirm_no_selective_removal: true,
+          confirm_public_effect_reviewed: true,
+          confirm_withdrawal: true,
+        }),
+      },
+    );
+  } catch (error) {
+    failure = actionError(error);
+  }
+  if (failure) redirect(failureDestination(`/admin/revisao/${id}`, failure));
+  revalidatePath("/admin/revisao");
+  revalidatePath("/admin/revisao/ia");
+  revalidatePath(`/admin/revisao/${id}`);
+  revalidatePath("/explicacoes");
+  revalidatePath(`/explicacoes/${publicId}`);
+  revalidatePath("/sitemap.xml");
+  revalidatePath("/");
+  redirect(`/admin/revisao/${id}?sucesso=ai-withdrawn`);
 }
 
 export async function startEditorialReview(formData: FormData) {

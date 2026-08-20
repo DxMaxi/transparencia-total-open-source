@@ -5,6 +5,7 @@ export const REQUIRED_PUBLIC_CAPABILITIES = [
   "parliament_explorer_v1",
   "parliament_publication_history_v1",
 ];
+export const AI_PUBLIC_CAPABILITY = "ai_explanations_v1";
 
 function normaliseApiBaseUrl(value) {
   if (!value?.trim()) {
@@ -63,6 +64,22 @@ function assertLegacyStatusShape(value) {
   }
 }
 
+function assertAiExplanationListShape(value) {
+  if (
+    !value
+    || typeof value !== "object"
+    || !Array.isArray(value.items)
+    || !Number.isInteger(value.total)
+    || value.total < 0
+    || !Number.isInteger(value.limit)
+    || !Number.isInteger(value.offset)
+    || value.total_is_exact !== true
+    || typeof value.publication_rule !== "string"
+  ) {
+    throw new Error("/api/v1/public/ai-explanations não cumpre o contrato V5.15");
+  }
+}
+
 export async function verifyPublicApiCompatibility(
   rawBaseUrl,
   { fetchImpl = fetch, timeoutMs = 8_000 } = {},
@@ -105,26 +122,50 @@ export async function verifyPublicApiCompatibility(
     };
   }
 
-  const explorer = await getJson(
-    baseUrl,
-    "/api/v1/public/parliament/explore?kind=votes&legislature=XVII&limit=1&offset=0",
-    { fetchImpl, timeoutMs },
-  );
+  const aiAvailable = capabilities.includes(AI_PUBLIC_CAPABILITY);
+  const [explorer, history, aiListing, aiHistory] = await Promise.all([
+    getJson(
+      baseUrl,
+      "/api/v1/public/parliament/explore?kind=votes&legislature=XVII&limit=1&offset=0",
+      { fetchImpl, timeoutMs },
+    ),
+    getJson(
+      baseUrl,
+      "/api/v1/public/parliament/publication-history?legislature=XVII&limit=1",
+      { fetchImpl, timeoutMs },
+    ),
+    aiAvailable
+      ? getJson(
+          baseUrl,
+          "/api/v1/public/ai-explanations?limit=1&offset=0",
+          { fetchImpl, timeoutMs },
+        )
+      : Promise.resolve(null),
+    aiAvailable
+      ? getJson(
+          baseUrl,
+          "/api/v1/public/ai-explanations/publication-history?limit=1",
+          { fetchImpl, timeoutMs },
+        )
+      : Promise.resolve(null),
+  ]);
   assertExplorerShape(explorer);
-
-  const history = await getJson(
-    baseUrl,
-    "/api/v1/public/parliament/publication-history?legislature=XVII&limit=1",
-    { fetchImpl, timeoutMs },
-  );
   if (!Array.isArray(history)) {
     throw new Error("/api/v1/public/parliament/publication-history não devolveu uma lista");
+  }
+  if (aiAvailable) {
+    assertAiExplanationListShape(aiListing);
+    if (!Array.isArray(aiHistory)) {
+      throw new Error("/api/v1/public/ai-explanations/publication-history não devolveu uma lista");
+    }
   }
 
   return {
     apiVersion: String(health.version ?? "não indicada"),
-    capabilities: REQUIRED_PUBLIC_CAPABILITIES,
-    mode: "CURRENT",
+    capabilities: aiAvailable
+      ? [...REQUIRED_PUBLIC_CAPABILITIES, AI_PUBLIC_CAPABILITY]
+      : REQUIRED_PUBLIC_CAPABILITIES,
+    mode: aiAvailable ? "CURRENT" : "CURRENT_AI_FAIL_CLOSED",
   };
 }
 

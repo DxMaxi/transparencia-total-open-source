@@ -9,6 +9,7 @@ from app.core.staff_auth import (
 )
 from app.models.editorial import StaffRole, StaffSession
 from app.repositories.ai_editorial import AiEditorialRepository
+from app.repositories.ai_editorial_publication import AiEditorialPublicationRepository
 from app.repositories.editorial import EditorialNotFoundError, EditorialRepository
 from app.repositories.parliament_editorial import ParliamentEditorialRepository
 from app.repositories.parliament_editorial_publication import (
@@ -41,6 +42,17 @@ def get_ai_editorial_repository(
             detail="Base de dados editorial de IA não configurada",
         )
     return AiEditorialRepository(repository.pool)
+
+
+def get_ai_editorial_publication_repository(
+    repository: Annotated[PostgresRepository, Depends(get_repository)],
+) -> AiEditorialPublicationRepository:
+    if repository.pool is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Base de dados editorial de IA não configurada",
+        )
+    return AiEditorialPublicationRepository(repository.pool)
 
 
 def get_parliament_editorial_repository(

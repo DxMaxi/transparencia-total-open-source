@@ -12,6 +12,7 @@ const htmlRoutes = [
   "/politicos",
   "/atividade-parlamentar",
   "/promessas",
+  "/explicacoes",
   "/guia-cidadao",
   "/metodologia",
   "/contacto",

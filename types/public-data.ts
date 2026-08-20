@@ -36,6 +36,95 @@ export type PublicDataStatus = {
   publicationRule: string;
 };
 
+export type PublicAiSummary = {
+  title: string;
+  summary2Minutes: string;
+  whatChanges: string[];
+  whoIsAffected: string[];
+  datesAndDeadlines: string[];
+  dutiesAndRights: string[];
+  uncertainties: string[];
+  glossary: Array<{ term: string; explanation: string }>;
+  sourceAnchors: Array<{ section: string; reason: string }>;
+};
+
+export type PublicAiExplanation = {
+  id: string;
+  contentKind: "AI_EXPLANATION";
+  label: "Explicação gerada por IA — revista por humano";
+  aiGenerated: true;
+  aiIsSource: false;
+  humanReviewRequired: true;
+  notPrediction: true;
+  noVotingRecommendation: true;
+  abstained: boolean;
+  summary: PublicAiSummary;
+  source: {
+    publisher: "DRE";
+    label: string;
+    title: string;
+    officialIdentifier?: string;
+    url: string;
+    retrievedAt: string;
+    publishedAt?: string;
+    contentSha256: string;
+    normalisedTextSha256: string;
+  };
+  generation: {
+    provider: string;
+    model: string;
+    promptVersion: string;
+    promptSha256: string;
+    inputSha256: string;
+    outputSha256: string;
+    generatedAt: string;
+    sourceCharacters: number;
+    processedCharacters: number;
+    sourceTruncated: boolean;
+    providerStore: false;
+  };
+  editorial: {
+    humanReviewed: true;
+    reviewedBy: string;
+    publishedAt: string;
+    editorialVersionSha256: string;
+    publicationProofSha256: string;
+    publicationEventReferenceSha256: string;
+  };
+  limitations: string[];
+};
+
+export type PublicAiExplanationList = {
+  items: PublicAiExplanation[];
+  total: number;
+  limit: number;
+  offset: number;
+  query?: string;
+  totalIsExact: true;
+  publicationRule: string;
+  available: boolean;
+};
+
+export type PublicAiPublicationHistoryItem = {
+  eventReferenceSha256: string;
+  action: "PUBLISHED" | "WITHDRAWN";
+  publicId: string;
+  title: string;
+  decidedAt: string;
+  actorAlias: string;
+  publicRationale: string;
+  reasonCategory?: string;
+  source: PublicAiExplanation["source"];
+  editorialVersionSha256: string;
+  publicationProofSha256: string;
+  publicEffect?: {
+    kind: "DATA_UNAVAILABLE";
+    publicId: string;
+    message: string;
+  };
+  publicEffectSha256?: string;
+};
+
 export type EvidenceSource = {
   label: string;
   url: string;

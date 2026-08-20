@@ -22,6 +22,9 @@ import type {
 } from "@/types/domain";
 import type {
   PublicDataStatus,
+  PublicAiExplanation,
+  PublicAiExplanationList,
+  PublicAiPublicationHistoryItem,
   PublicInvestigatorDataset,
   PublicParliamentActivity,
   PublicParliamentExplorer,
@@ -45,6 +48,92 @@ type RawSource = {
   url: string;
   retrieved_at?: string;
   content_sha256?: string | null;
+};
+
+type RawAiExplanation = {
+  id: string;
+  content_kind: "AI_EXPLANATION";
+  label: "Explicação gerada por IA — revista por humano";
+  ai_generated: true;
+  ai_is_source: false;
+  human_review_required: true;
+  not_prediction: true;
+  no_voting_recommendation: true;
+  abstained: boolean;
+  summary: {
+    title: string;
+    summary_2_minutes: string;
+    what_changes: string[];
+    who_is_affected: string[];
+    dates_and_deadlines: string[];
+    duties_and_rights: string[];
+    uncertainties: string[];
+    glossary: Array<{ term: string; explanation: string }>;
+    source_anchors: Array<{ section: string; reason: string }>;
+  };
+  source: {
+    publisher: "DRE";
+    label: string;
+    title: string;
+    official_identifier?: string | null;
+    url: string;
+    retrieved_at: string;
+    published_at?: string | null;
+    content_sha256: string;
+    normalised_text_sha256: string;
+  };
+  generation: {
+    provider: string;
+    model: string;
+    prompt_version: string;
+    prompt_sha256: string;
+    input_sha256: string;
+    output_sha256: string;
+    generated_at: string;
+    source_characters: number;
+    processed_characters: number;
+    source_truncated: boolean;
+    provider_store: false;
+  };
+  editorial: {
+    human_reviewed: true;
+    reviewed_by: string;
+    published_at: string;
+    editorial_version_sha256: string;
+    publication_proof_sha256: string;
+    publication_event_reference_sha256: string;
+  };
+  limitations: string[];
+};
+
+type RawAiExplanationList = {
+  items: RawAiExplanation[];
+  total: number;
+  limit: number;
+  offset: number;
+  query?: string | null;
+  total_is_exact: true;
+  publication_rule: string;
+};
+
+type RawAiPublicationHistoryItem = {
+  event_reference_sha256: string;
+  action: "PUBLISHED" | "WITHDRAWN";
+  public_id: string;
+  title: string;
+  decided_at: string;
+  actor_alias: string;
+  public_rationale: string;
+  reason_category?: string | null;
+  source: RawAiExplanation["source"];
+  editorial_version_sha256: string;
+  publication_proof_sha256: string;
+  public_effect?: null | {
+    kind: "DATA_UNAVAILABLE";
+    public_id: string;
+    message: string;
+  };
+  public_effect_sha256?: string | null;
 };
 
 type RawDataStatus = {
@@ -642,6 +731,97 @@ type RawParliamentExplorer = {
   explanation_rule: string;
 };
 
+function mapAiSource(
+  source: RawAiExplanation["source"],
+): PublicAiExplanation["source"] {
+  return {
+    publisher: source.publisher,
+    label: source.label,
+    title: source.title,
+    officialIdentifier: source.official_identifier ?? undefined,
+    url: source.url,
+    retrievedAt: source.retrieved_at,
+    publishedAt: source.published_at ?? undefined,
+    contentSha256: source.content_sha256,
+    normalisedTextSha256: source.normalised_text_sha256,
+  };
+}
+
+function mapAiExplanation(item: RawAiExplanation): PublicAiExplanation {
+  return {
+    id: item.id,
+    contentKind: item.content_kind,
+    label: item.label,
+    aiGenerated: item.ai_generated,
+    aiIsSource: item.ai_is_source,
+    humanReviewRequired: item.human_review_required,
+    notPrediction: item.not_prediction,
+    noVotingRecommendation: item.no_voting_recommendation,
+    abstained: item.abstained,
+    summary: {
+      title: item.summary.title,
+      summary2Minutes: item.summary.summary_2_minutes,
+      whatChanges: item.summary.what_changes,
+      whoIsAffected: item.summary.who_is_affected,
+      datesAndDeadlines: item.summary.dates_and_deadlines,
+      dutiesAndRights: item.summary.duties_and_rights,
+      uncertainties: item.summary.uncertainties,
+      glossary: item.summary.glossary,
+      sourceAnchors: item.summary.source_anchors,
+    },
+    source: mapAiSource(item.source),
+    generation: {
+      provider: item.generation.provider,
+      model: item.generation.model,
+      promptVersion: item.generation.prompt_version,
+      promptSha256: item.generation.prompt_sha256,
+      inputSha256: item.generation.input_sha256,
+      outputSha256: item.generation.output_sha256,
+      generatedAt: item.generation.generated_at,
+      sourceCharacters: item.generation.source_characters,
+      processedCharacters: item.generation.processed_characters,
+      sourceTruncated: item.generation.source_truncated,
+      providerStore: item.generation.provider_store,
+    },
+    editorial: {
+      humanReviewed: item.editorial.human_reviewed,
+      reviewedBy: item.editorial.reviewed_by,
+      publishedAt: item.editorial.published_at,
+      editorialVersionSha256: item.editorial.editorial_version_sha256,
+      publicationProofSha256: item.editorial.publication_proof_sha256,
+      publicationEventReferenceSha256:
+        item.editorial.publication_event_reference_sha256,
+    },
+    limitations: item.limitations,
+  };
+}
+
+function mapAiPublicationHistory(
+  item: RawAiPublicationHistoryItem,
+): PublicAiPublicationHistoryItem {
+  return {
+    eventReferenceSha256: item.event_reference_sha256,
+    action: item.action,
+    publicId: item.public_id,
+    title: item.title,
+    decidedAt: item.decided_at,
+    actorAlias: item.actor_alias,
+    publicRationale: item.public_rationale,
+    reasonCategory: item.reason_category ?? undefined,
+    source: mapAiSource(item.source),
+    editorialVersionSha256: item.editorial_version_sha256,
+    publicationProofSha256: item.publication_proof_sha256,
+    publicEffect: item.public_effect
+      ? {
+          kind: item.public_effect.kind,
+          publicId: item.public_effect.public_id,
+          message: item.public_effect.message,
+        }
+      : undefined,
+    publicEffectSha256: item.public_effect_sha256 ?? undefined,
+  };
+}
+
 function mapStatus(raw: RawDataStatus): PublicDataStatus {
   return {
     mode: raw.mode,
@@ -721,6 +901,88 @@ export const loadPublicDataStatus = cache(async (): Promise<PublicDataStatus> =>
   if (result.ok) return mapStatus(result.data);
   return fallbackStatus();
 });
+
+export type PublicAiExplanationFilters = {
+  query?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+export type LoadedPublicAiExplanations = {
+  data: PublicAiExplanationList;
+  history: PublicAiPublicationHistoryItem[];
+};
+
+export async function loadPublicAiExplanations(
+  filters: PublicAiExplanationFilters = {},
+): Promise<LoadedPublicAiExplanations> {
+  const limit = Math.min(100, Math.max(1, filters.pageSize ?? 12));
+  const page = Math.min(500, Math.max(1, filters.page ?? 1));
+  const offset = (page - 1) * limit;
+  const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  if (filters.query?.trim()) query.set("q", filters.query.trim().slice(0, 120));
+  const [listing, history] = await Promise.all([
+    apiFetch<RawAiExplanationList>(`/api/v1/public/ai-explanations?${query.toString()}`),
+    apiFetch<RawAiPublicationHistoryItem[]>(
+      "/api/v1/public/ai-explanations/publication-history?limit=30",
+    ),
+  ]);
+
+  if (
+    listing.ok
+    && Array.isArray(listing.data.items)
+    && Number.isSafeInteger(listing.data.total)
+    && listing.data.total >= 0
+    && listing.data.total_is_exact === true
+  ) {
+    return {
+      data: {
+        items: listing.data.items.map(mapAiExplanation),
+        total: listing.data.total,
+        limit: listing.data.limit,
+        offset: listing.data.offset,
+        query: listing.data.query ?? undefined,
+        totalIsExact: true,
+        publicationRule: listing.data.publication_rule,
+        available: true,
+      },
+      history: history.ok && Array.isArray(history.data)
+        ? history.data.map(mapAiPublicationHistory)
+        : [],
+    };
+  }
+
+  return {
+    data: {
+      items: [],
+      total: 0,
+      limit,
+      offset,
+      query: filters.query,
+      totalIsExact: true,
+      publicationRule: (
+        "A consulta não substitui explicações oficiais revistas por amostras, notícias ou "
+        +
+        "conteúdo gerado localmente."
+      ),
+      available: false,
+    },
+    history: history.ok && Array.isArray(history.data)
+      ? history.data.map(mapAiPublicationHistory)
+      : [],
+  };
+}
+
+export async function loadPublicAiExplanation(
+  publicId: string,
+): Promise<{ data: PublicAiExplanation | null; available: boolean }> {
+  if (!/^dre-[0-9a-f]{64}$/.test(publicId)) return { data: null, available: true };
+  const result = await apiFetch<RawAiExplanation>(
+    `/api/v1/public/ai-explanations/${encodeURIComponent(publicId)}`,
+  );
+  if (result.ok) return { data: mapAiExplanation(result.data), available: true };
+  return { data: null, available: result.status === 404 };
+}
 
 function mapPerson(raw: RawPerson): PublicPersonSummary {
   return {

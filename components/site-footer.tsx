@@ -23,6 +23,7 @@ export function SiteFooter() {
           <a href="/direito-de-resposta">Direito de resposta</a>
           <a href="/atividade-parlamentar">Atividade parlamentar</a>
           <a href="/promessas">Promessómetro</a>
+          <a href="/explicacoes">Explicações com IA</a>
           <a href="/contacto">Contacto</a>
         </div>
         <div>

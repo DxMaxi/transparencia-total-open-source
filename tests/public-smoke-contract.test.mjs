@@ -9,11 +9,16 @@ test("public smoke covers every public route and deployment guard", async () => 
     new URL("scripts/check-public-site.mjs", root),
     "utf8",
   );
+  const e2e = await readFile(
+    new URL("tests/e2e/public-site.spec.js", root),
+    "utf8",
+  );
 
   for (const pathname of [
     "/politicos",
     "/atividade-parlamentar",
     "/promessas",
+    "/explicacoes",
     "/guia-cidadao",
     "/metodologia",
     "/contacto",
@@ -24,6 +29,7 @@ test("public smoke covers every public route and deployment guard", async () => 
     "/acessibilidade",
   ]) {
     assert.match(script, new RegExp(`"${pathname}"`));
+    assert.match(e2e, new RegExp(`"${pathname}"`));
   }
   assert.match(script, /Dados oficiais publicados/);
   assert.match(script, /Ativar modo offline/);
