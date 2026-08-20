@@ -23,6 +23,8 @@ sem converter ausência de dados em conclusões e sem permitir que um modelo de 
 O App Router renderiza as páginas públicas. Os componentes interativos limitam-se a navegação,
 filtros e formulários explícitos. O manifesto e a infraestrutura de notificações não estão ligados
 à interface pública. O frontend não conhece chaves privadas nem acede diretamente à base de dados.
+As leituras seguem a política de timeout, cache e observabilidade sem dados pessoais descrita em
+[PUBLIC_API_RESILIENCE.md](PUBLIC_API_RESILIENCE.md), preservando indisponibilidade explícita.
 
 ### API FastAPI
 
