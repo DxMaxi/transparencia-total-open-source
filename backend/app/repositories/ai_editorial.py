@@ -105,8 +105,11 @@ class AiEditorialRepository:
                 JOIN source_documents source ON source.id = snapshot.source_document_id
                 JOIN sync_runs run ON run.id = snapshot.sync_run_id
                 JOIN LATERAL (
-                    SELECT candidate.id, candidate.content_sha256,
+                    SELECT candidate.id, candidate.storage_backend,
+                           candidate.storage_key, candidate.content_sha256,
+                           candidate.byte_size, candidate.mime_type,
                            candidate.retrieval_url, candidate.retrieved_at,
+                           candidate.archived_at, candidate.archived_by,
                            candidate.attestation_sha256
                     FROM source_archive_attestations candidate
                     WHERE candidate.source_document_id = source.id
