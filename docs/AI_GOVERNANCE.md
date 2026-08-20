@@ -3,16 +3,16 @@
 ## Estado de implementação
 
 `AI_PROVIDER=disabled` mantém a IA desligada por omissão e o website não apresenta resumos gerados
-por IA. Os endpoints de resumo e guia são contratos técnicos experimentais: exigem uma identidade
-editorial ativa com MFA, validam a saída estruturada e devolvem metadados do modelo e do prompt, mas
-ainda não persistem uma proposta `PENDING`, não criam uma fila de revisão e não publicam conteúdo
-aprovado. O script de resumo DRE apenas escreve o resultado no terminal.
+por IA. A V5 dispõe de um primeiro circuito privado para propostas de resumo DRE: só aceita snapshots
+previamente persistidos, concluídos e ligados ao arquivo oficial atestado; exige staff ativo com MFA;
+e cria uma versão editorial imutável `PENDING`. Ingestão, geração, revisão, aprovação e publicação
+continuam a ser operações diferentes.
 
-Ativar o fornecedor em produção antes de completar esse circuito não é uma forma válida de lançar a
-funcionalidade. A autenticação impede geração pública anónima, mas não transforma a resposta
-experimental em conteúdo publicável. A fase seguinte deve carregar os factos verificados no
-servidor, arquivar cada proposta de forma privada, limitar a geração, registar aprovação ou rejeição
-humana e publicar somente uma nova versão imutável aprovada com ligações às fontes oficiais.
+Não existe ainda projeção pública para `AI_EXPLANATION`. Mesmo que um revisor aprove a versão, nenhum
+endpoint desta fase a publica. As antigas rotas de geração direta e o script que imprimia resumos
+sem persistência devolvem uma recusa explícita. A fase de publicação só pode ser acrescentada com um
+adaptador específico, nova confirmação humana e prova de que a versão aprovada é exatamente a
+versão apresentada ao público.
 
 ## Papel permitido
 
@@ -26,8 +26,17 @@ constitucionalidade, mérito, intenção, impacto económico ou cumprimento do p
 O modelo é configurável por `OPENAI_MODEL`; a chave existe apenas no backend.
 
 O prompt versionado exige português de Portugal, proíbe conhecimento externo, distingue entrada em
-vigor de execução e pede âncoras internas. `PROMPT_SHA256` permite saber exatamente quais regras
-produziram cada proposta.
+vigor de execução e pede âncoras internas literais. `PROMPT_SHA256` permite saber exatamente quais
+regras produziram cada proposta. O servidor rejeita âncoras que não existam literalmente no snapshot,
+salvo quando a saída se abstém de forma explícita e não apresenta itens factuais.
+
+Cada proposta conserva no JSON normalizado imutável: contrato, fornecedor, modelo, versão e SHA-256
+do prompt, SHA-256 da entrada e saída estruturadas, referências SHA-256 do snapshot, documento-fonte
+e tentativa, hashes do conteúdo e texto normalizado, atestação de arquivo, datas, versão do extrator,
+tamanho processado e truncagem. Os identificadores técnicos exatos continuam ligados pelo processo
+editorial e pela fonte privada, sem serem duplicados no texto normalizado.
+A versão e o processo têm origem `AI` e `created_by_id` nulo. A decisão `SUBMIT` identifica a pessoa
+que pediu a geração, sem transformar essa pessoa em autora do texto do modelo.
 
 ## Saída estruturada
 
@@ -42,7 +51,7 @@ produziram cada proposta.
 
 Textos longos são divididos por parágrafos. Cada parte é resumida e uma chamada final consolida
 apenas essas saídas. O limite evita pedidos excessivos, mas não prova que o diploma foi totalmente
-coberto; o revisor vê o tamanho e as partes processadas.
+coberto; o revisor vê o tamanho processado e se houve truncagem.
 
 ## Revisão antes de publicação
 
@@ -66,8 +75,14 @@ avaliação de desempenho.
 ## Privacidade, segurança e custo
 
 - Enviar apenas texto de documentos públicos, nunca dados de utilizadores ou chaves.
-- Usar `OPENAI_STORE=false` salvo decisão de governação documentada.
-- Aplicar limite de tamanho, orçamento diário e cache por `contentSha256 + model + promptSha256`.
+- `OPENAI_STORE=false` é obrigatório e uma configuração `true` impede o arranque.
+- `store=false` não significa retenção zero. A política normal do fornecedor pode conservar registos
+  de monitorização de abuso por até 30 dias; só são enviados documentos públicos, nunca dados de
+  utilizadores, credenciais, NIF/NIPC ou texto editorial privado. Ver [controlos de dados da API
+  OpenAI](https://developers.openai.com/api/docs/guides/your-data#default-usage-policies-by-endpoint).
+- Aplicar limite de tamanho e limite diário antes da chamada. Um bloqueio PostgreSQL fail-closed
+  impede concorrência entre instâncias; cada tentativa fica num `AuditEvent` append-only.
+- Reutilizar por `snapshot + provider + model + promptSha256`, sem nova chamada externa.
 - Tratar o texto da fonte como dados não confiáveis; o prompt do documento não altera instruções.
 - Registar métricas e IDs técnicos sem guardar a chave nem cabeçalhos de autenticação.
 

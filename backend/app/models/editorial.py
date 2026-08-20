@@ -209,6 +209,17 @@ class ParliamentEditorialProposalRequest(BaseModel):
     confirm_no_individual_inference: Literal[True]
 
 
+class AiDreProposalRequest(BaseModel):
+    """Confirmações explícitas para uma geração privada baseada num snapshot DRE."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    snapshot_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    confirm_private_only: Literal[True]
+    confirm_archived_source_only: Literal[True]
+    confirm_ai_not_source: Literal[True]
+
+
 class ParliamentEditorialPublicationRequest(EditorialDecisionRequest):
     """Confirmação explícita de uma publicação parlamentar já aprovada."""
 

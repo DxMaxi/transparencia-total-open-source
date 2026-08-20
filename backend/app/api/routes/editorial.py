@@ -3,8 +3,10 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from openai import APIError
 
 from app.api.dependencies import (
+    get_ai_editorial_repository,
     get_editorial_repository,
     get_parliament_editorial_publication_repository,
     get_parliament_editorial_repository,
@@ -12,7 +14,9 @@ from app.api.dependencies import (
     require_editorial_admin,
     require_editorial_staff,
 )
+from app.core.config import get_settings
 from app.models.editorial import (
+    AiDreProposalRequest,
     EditorialAction,
     EditorialApprovalRequest,
     EditorialCaseCreateRequest,
@@ -25,6 +29,7 @@ from app.models.editorial import (
     ParliamentEditorialWithdrawalRequest,
     StaffSession,
 )
+from app.repositories.ai_editorial import AiEditorialRepository
 from app.repositories.editorial import (
     EditorialConflictError,
     EditorialNotFoundError,
@@ -35,6 +40,8 @@ from app.repositories.parliament_editorial import ParliamentEditorialRepository
 from app.repositories.parliament_editorial_publication import (
     ParliamentEditorialPublicationRepository,
 )
+from app.services.ai_editorial import AiEditorialService, AiGenerationError
+from app.services.ai_summarizer import get_summarizer
 
 router = APIRouter(prefix="/editorial", tags=["Painel editorial V5"])
 
@@ -94,6 +101,42 @@ async def create_parliament_proposal(
         return await repository.create_proposal(payload=payload, actor=actor)
     except (EditorialConflictError, EditorialSourceError) as exc:
         raise _translate_error(exc) from exc
+
+
+@router.post("/ai/dre-proposals", status_code=status.HTTP_201_CREATED)
+async def create_ai_dre_proposal(
+    payload: AiDreProposalRequest,
+    repository: Annotated[AiEditorialRepository, Depends(get_ai_editorial_repository)],
+    actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> dict[str, object]:
+    """Gera e persiste uma proposta privada; nunca publica o resumo."""
+
+    settings = get_settings()
+    if settings.ai_provider == "disabled":
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Pipeline editorial de IA desativado",
+        )
+    try:
+        service = AiEditorialService(
+            repository=repository,
+            editorial=EditorialRepository(repository.pool),
+            settings=settings,
+            summarizer=get_summarizer(settings),
+        )
+        return await service.create_dre_proposal(payload=payload, actor=actor)
+    except (EditorialConflictError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+    except (APIError, AiGenerationError, TimeoutError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Falha temporária no fornecedor de IA; nenhuma proposta foi criada",
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Configuração do pipeline editorial de IA inválida",
+        ) from exc
 
 
 @router.get("/parliament/cases/{case_id}/publication")

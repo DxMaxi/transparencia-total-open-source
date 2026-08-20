@@ -62,7 +62,11 @@ class OpenAICivicGuide(CivicGuide):
         if settings.openai_api_key is None:
             raise ValueError("OPENAI_API_KEY é obrigatória quando AI_PROVIDER=openai")
         self.settings = settings
-        self.client = AsyncOpenAI(api_key=settings.openai_api_key.get_secret_value())
+        self.client = AsyncOpenAI(
+            api_key=settings.openai_api_key.get_secret_value(),
+            timeout=settings.ai_request_timeout_seconds,
+            max_retries=1,
+        )
 
     async def explain(
         self,
@@ -87,7 +91,7 @@ class OpenAICivicGuide(CivicGuide):
                 {"role": "user", "content": trusted_input},
             ],
             text_format=CitizenGuideExplanation,
-            store=self.settings.openai_store,
+            store=False,
         )
         parsed = response.output_parsed
         if parsed is None:
