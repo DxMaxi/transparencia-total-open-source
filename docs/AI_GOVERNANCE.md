@@ -8,6 +8,14 @@ previamente persistidos, concluídos e ligados ao arquivo oficial atestado; exig
 e cria uma versão editorial imutável `PENDING`. Ingestão, geração, revisão, aprovação e publicação
 continuam a ser operações diferentes.
 
+O painel privado permite pesquisar snapshots DRE que voltaram a passar a verificação do texto,
+hashes e atestação, pedir a proposta com confirmações explícitas e comparar lado a lado o texto
+oficial arquivado com a saída estruturada. O catálogo não devolve o texto jurídico; o texto integral
+só é entregue, em excertos navegáveis e limitados, no detalhe MFA do processo exato. Uma regeneração
+exige que o revisor já tenha iniciado a revisão, fica ligada à revisão e ao SHA-256 da versão que viu
+e acrescenta uma versão `AI` seguida de uma decisão humana `CORRECT`. Nunca altera nem apaga a versão
+anterior.
+
 Não existe ainda projeção pública para `AI_EXPLANATION`. Mesmo que um revisor aprove a versão, nenhum
 endpoint desta fase a publica. As antigas rotas de geração direta e o script que imprimia resumos
 sem persistência devolvem uma recusa explícita. A fase de publicação só pode ser acrescentada com um
@@ -61,6 +69,9 @@ coberto; o revisor vê o tamanho processado e se houve truncagem.
 4. Remover inferências e assinalar conteúdo não extraído.
 5. Aprovar, rejeitar ou pedir nova geração.
 6. Registar revisor, data, modelo, prompt e decisão.
+
+Pedir nova geração conta para o limite diário e faz o processo regressar a `PENDING`. Não é uma
+aprovação implícita: a nova versão tem de percorrer novamente todo o circuito humano.
 
 Conteúdo `PENDING` não entra em boletins públicos. Uma nova versão do diploma torna o resumo anterior
 obsoleto, sem o apagar.

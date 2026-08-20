@@ -17,6 +17,7 @@ from app.api.dependencies import (
 from app.core.config import get_settings
 from app.models.editorial import (
     AiDreProposalRequest,
+    AiDreRegenerationRequest,
     EditorialAction,
     EditorialApprovalRequest,
     EditorialCaseCreateRequest,
@@ -103,6 +104,47 @@ async def create_parliament_proposal(
         raise _translate_error(exc) from exc
 
 
+@router.get("/ai/dre-snapshots")
+async def ai_dre_snapshots(
+    repository: Annotated[AiEditorialRepository, Depends(get_ai_editorial_repository)],
+    _actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+    q: Annotated[str | None, Query(min_length=2, max_length=100)] = None,
+    limit: Annotated[int, Query(ge=1, le=50)] = 20,
+) -> dict[str, object]:
+    """Lista prova DRE novamente verificada, sem devolver o texto jurídico."""
+
+    settings = get_settings()
+    service = AiEditorialService(
+        repository=repository,
+        editorial=EditorialRepository(repository.pool),
+        settings=settings,
+        summarizer=None,
+    )
+    return await service.list_dre_snapshots(query=q, limit=limit)
+
+
+@router.get("/ai/cases/{case_id}/source")
+async def ai_dre_case_source(
+    case_id: Annotated[str, Path(min_length=1, max_length=200)],
+    repository: Annotated[AiEditorialRepository, Depends(get_ai_editorial_repository)],
+    _actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=50_000)] = 40_000,
+) -> dict[str, object]:
+    """Devolve a fonte arquivada exata apenas para comparação editorial privada."""
+
+    service = AiEditorialService(
+        repository=repository,
+        editorial=EditorialRepository(repository.pool),
+        settings=get_settings(),
+        summarizer=None,
+    )
+    try:
+        return await service.case_source(case_id=case_id, offset=offset, limit=limit)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
 @router.post("/ai/dre-proposals", status_code=status.HTTP_201_CREATED)
 async def create_ai_dre_proposal(
     payload: AiDreProposalRequest,
@@ -131,6 +173,47 @@ async def create_ai_dre_proposal(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Falha temporária no fornecedor de IA; nenhuma proposta foi criada",
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Configuração do pipeline editorial de IA inválida",
+        ) from exc
+
+
+@router.post("/ai/cases/{case_id}/regenerate")
+async def regenerate_ai_dre_proposal(
+    case_id: Annotated[str, Path(min_length=1, max_length=200)],
+    payload: AiDreRegenerationRequest,
+    repository: Annotated[AiEditorialRepository, Depends(get_ai_editorial_repository)],
+    actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> dict[str, object]:
+    """Acrescenta uma nova versão AI privada; nunca substitui nem publica a anterior."""
+
+    settings = get_settings()
+    if settings.ai_provider == "disabled":
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Pipeline editorial de IA desativado",
+        )
+    try:
+        service = AiEditorialService(
+            repository=repository,
+            editorial=EditorialRepository(repository.pool),
+            settings=settings,
+            summarizer=get_summarizer(settings),
+        )
+        return await service.regenerate_dre_proposal(
+            case_id=case_id,
+            payload=payload,
+            actor=actor,
+        )
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+    except (APIError, AiGenerationError, TimeoutError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Falha temporária no fornecedor de IA; nenhuma versão foi criada",
         ) from exc
     except ValueError as exc:
         raise HTTPException(

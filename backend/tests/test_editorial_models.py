@@ -2,6 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.models.editorial import (
+    AiDreRegenerationRequest,
     EditorialCaseCreateRequest,
     EditorialCorrectionRequest,
     EditorialDecisionRequest,
@@ -140,3 +141,32 @@ def test_parliament_publication_requires_exact_proofs_and_three_confirmations() 
     invalid_hash["expected_source_sha256"] = "não-é-um-hash"
     with pytest.raises(ValidationError):
         ParliamentEditorialPublicationRequest.model_validate(invalid_hash)
+
+
+def test_ai_regeneration_binds_the_reviewed_version_and_all_private_confirmations() -> None:
+    payload = {
+        "expected_revision": 2,
+        "expected_current_version_sha256": "a" * 64,
+        "rationale": "Nova proposta necessária para clarificar uma incerteza documentada.",
+        "confirm_private_only": True,
+        "confirm_archived_source_only": True,
+        "confirm_ai_not_source": True,
+        "confirm_new_immutable_version": True,
+    }
+    request = AiDreRegenerationRequest.model_validate(payload)
+    assert request.expected_current_version_sha256 == "a" * 64
+
+    for field in (
+        "confirm_private_only",
+        "confirm_archived_source_only",
+        "confirm_ai_not_source",
+        "confirm_new_immutable_version",
+    ):
+        invalid = {**payload, field: False}
+        with pytest.raises(ValidationError):
+            AiDreRegenerationRequest.model_validate(invalid)
+
+    with pytest.raises(ValidationError):
+        AiDreRegenerationRequest.model_validate(
+            {**payload, "expected_current_version_sha256": "not-a-digest"}
+        )
