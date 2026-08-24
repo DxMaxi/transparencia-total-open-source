@@ -23,6 +23,9 @@ from app.repositories.official_index_staging import OfficialIndexStagingReposito
 from app.repositories.politician_profile_editorial import (
     PoliticianProfileEditorialRepository,
 )
+from app.repositories.politician_profile_publication import (
+    PoliticianProfilePublicationReadinessRepository,
+)
 
 pytestmark = pytest.mark.skipif(
     not os.environ.get("DATABASE_URL"),
@@ -225,6 +228,17 @@ async def test_exact_deputy_observation_creates_only_an_idempotent_private_case(
     assert normalized["identity_rule"] == "EXACT_AR_DEP_ID_ONLY"
     assert normalized["mandate_inference_allowed"] is False
 
+    readiness = PoliticianProfilePublicationReadinessRepository(repository.pool)
+    pending_readiness = await readiness.inspect(snapshot_id=snapshot_id)
+    assert pending_readiness["eligible"] is False
+    assert pending_readiness["readiness_proof_sha256"] is None
+    assert any(
+        blocker["code"] == "EDITORIAL_STATE_NOT_APPROVED"
+        for blocker in pending_readiness["blockers"]
+    )
+    assert pending_readiness["publication_performed"] is False
+    assert pending_readiness["public_write_performed"] is False
+
     editorial = EditorialRepository(repository.pool)
     await editorial.transition(
         case_id=case_id,
@@ -242,6 +256,20 @@ async def test_exact_deputy_observation_creates_only_an_idempotent_private_case(
         source_confirmed=True,
         actor=actor,
     )
+
+    approved_readiness = await readiness.inspect(snapshot_id=snapshot_id)
+    assert approved_readiness["eligible"] is True
+    assert approved_readiness["blockers"] == []
+    assert approved_readiness["editorial_counts"]["APPROVED"] == 1
+    assert approved_readiness["editorial_counts"]["MISSING"] == 0
+    assert approved_readiness["identity_projection"] == {
+        "exact_existing_people": 0,
+        "new_people_required": 1,
+        "existing_memberships": 0,
+        "legacy_positive_reviews": 0,
+    }
+    assert len(approved_readiness["readiness_proof_sha256"]) == 64
+    assert approved_readiness["mandate_inference_allowed"] is False
 
     async with repository.pool.acquire() as connection:
         people_after = int(await connection.fetchval("SELECT COUNT(*) FROM people"))

@@ -12,6 +12,7 @@ from app.api.dependencies import (
     get_parliament_editorial_publication_repository,
     get_parliament_editorial_repository,
     get_politician_profile_editorial_repository,
+    get_politician_profile_publication_readiness_repository,
     get_staff_session,
     require_editorial_admin,
     require_editorial_staff,
@@ -49,6 +50,9 @@ from app.repositories.parliament_editorial_publication import (
 )
 from app.repositories.politician_profile_editorial import (
     PoliticianProfileEditorialRepository,
+)
+from app.repositories.politician_profile_publication import (
+    PoliticianProfilePublicationReadinessRepository,
 )
 from app.services.ai_editorial import AiEditorialService, AiGenerationError
 from app.services.ai_summarizer import get_summarizer
@@ -149,6 +153,38 @@ async def create_parliament_deputy_proposal(
     try:
         return await repository.create_proposal(payload=payload, actor=actor)
     except (EditorialConflictError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.get("/parliament/deputy-snapshots/publication-readiness")
+async def parliament_deputy_snapshot_readiness_list(
+    repository: Annotated[
+        PoliticianProfilePublicationReadinessRepository,
+        Depends(get_politician_profile_publication_readiness_repository),
+    ],
+    _actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+    legislature: Annotated[str | None, Query(min_length=1, max_length=20)] = None,
+    limit: Annotated[int, Query(ge=1, le=20)] = 10,
+) -> dict[str, object]:
+    """Inspeciona fotografias inteiras sem criar qualquer efeito público."""
+
+    return await repository.list_snapshots(legislature=legislature, limit=limit)
+
+
+@router.get("/parliament/deputy-snapshots/{snapshot_id}/publication-readiness")
+async def parliament_deputy_snapshot_readiness(
+    snapshot_id: Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,200}$")],
+    repository: Annotated[
+        PoliticianProfilePublicationReadinessRepository,
+        Depends(get_politician_profile_publication_readiness_repository),
+    ],
+    _actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> dict[str, object]:
+    """Reconstrói a prova de cada perfil aprovado; nunca publica a fotografia."""
+
+    try:
+        return await repository.inspect(snapshot_id=snapshot_id)
+    except (EditorialNotFoundError, EditorialSourceError) as exc:
         raise _translate_error(exc) from exc
 
 

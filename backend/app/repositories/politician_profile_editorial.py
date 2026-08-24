@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any
 
@@ -109,7 +110,7 @@ def _periods(
     return normalised, inverted, missing_identifiers
 
 
-def _case_reference(row: asyncpg.Record) -> dict[str, object] | None:
+def _case_reference(row: Mapping[str, Any]) -> dict[str, object] | None:
     if row["case_id"] is None:
         return None
     return {
@@ -166,6 +167,23 @@ class PoliticianProfileEditorialRepository:
             ),
         }
 
+    async def snapshot_candidates(self, *, snapshot_id: str) -> list[dict[str, object]]:
+        """Reconstrói uma fotografia inteira para uma inspeção privada de publicação."""
+
+        items, total = await self._load_candidates(
+            legislature=None,
+            query=None,
+            observation_id=None,
+            limit=500,
+            offset=0,
+            snapshot_id=snapshot_id,
+        )
+        if total > 500 or len(items) != total:
+            raise EditorialSourceError(
+                "A fotografia de deputados excede o limite seguro ou não foi lida por inteiro"
+            )
+        return items
+
     async def create_proposal(
         self,
         *,
@@ -219,6 +237,7 @@ class PoliticianProfileEditorialRepository:
         observation_id: str | None,
         limit: int,
         offset: int,
+        snapshot_id: str | None = None,
     ) -> tuple[list[dict[str, object]], int]:
         conditions = [
             "source.publisher = 'PARLIAMENT'",
@@ -242,6 +261,9 @@ class PoliticianProfileEditorialRepository:
         if observation_id:
             arguments.append(observation_id)
             conditions.append(f"observation.id = ${len(arguments)}")
+        if snapshot_id:
+            arguments.append(snapshot_id)
+            conditions.append(f"snapshot.id = ${len(arguments)}")
         arguments.extend([limit, offset])
         limit_arg = len(arguments) - 1
         offset_arg = len(arguments)
@@ -336,7 +358,7 @@ class PoliticianProfileEditorialRepository:
         return [self._candidate(row) for row in rows], int(rows[0]["total_count"])
 
     @staticmethod
-    def _candidate(row: asyncpg.Record) -> dict[str, object]:
+    def _candidate(row: Mapping[str, Any]) -> dict[str, object]:
         warnings: list[str] = []
         structure_valid = True
         try:

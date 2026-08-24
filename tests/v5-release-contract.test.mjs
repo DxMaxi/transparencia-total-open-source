@@ -122,7 +122,7 @@ test("the V5 release gate covers product, editorial, legal and recovery evidence
   assert.match(checklist, /Backup pós-migração cifrado/);
   assert.match(checklist, /Restauro pós-migração aprovado/);
   assert.match(checklist, /História Git integral pesquisada por segredos/);
-  assert.match(readme, /V5\.1 a V5\.28 integradas/);
+  assert.match(readme, /V5\.1 a V5\.29 integradas/);
   assert.match(readme, /V5\.17 aplica CSP com `nonce` por pedido/);
   assert.match(readme, /ativação remota de staging pendente/);
   assert.match(checklist, /\[x\] V5\.12 — workflow segregado de staging revisto e integrado/);
@@ -140,6 +140,7 @@ test("the V5 release gate covers product, editorial, legal and recovery evidence
   assert.match(readme, /V5_PARLIAMENT_RESOURCE_NORMALIZATION\.md/);
   assert.match(readme, /V5_PARLIAMENT_VOTE_NORMALIZATION\.md/);
   assert.match(readme, /V5_PARLIAMENT_DEPUTY_OBSERVATIONS\.md/);
+  assert.match(readme, /V5_POLITICIAN_PROFILE_PUBLICATION_READINESS\.md/);
   assert.match(plan, /V5_PARLIAMENT_SOURCE_CATALOGUE\.md/);
   assert.match(plan, /V5_PARLIAMENT_RESOURCE_MANIFEST\.md/);
   assert.match(plan, /V5_PARLIAMENT_RESOURCE_ARCHIVE\.md/);
