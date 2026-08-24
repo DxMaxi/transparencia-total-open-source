@@ -432,6 +432,51 @@ model ParliamentActivitySnapshot {
   @@map("parliament_activity_snapshots")
 }
 
+/// Fotografia privada e versionada das fichas biográficas publicadas pela
+/// Assembleia da República. Não constitui revisão, mandato ou publicação.
+model ParliamentDeputySnapshot {
+  id                   String                         @id @default(cuid())
+  sourceDocumentId     String                         @map("source_document_id")
+  legislature          String
+  parserVersion        String                         @map("parser_version")
+  normalisedSha256     String                         @map("normalised_sha256") @db.Char(64)
+  collectedAt          DateTime                       @map("collected_at")
+  deputyCount          Int                            @map("deputy_count")
+  groupPeriodCount     Int                            @map("group_period_count")
+  situationPeriodCount Int                            @map("situation_period_count")
+  officePeriodCount    Int                            @map("office_period_count")
+  createdAt            DateTime                       @default(now()) @map("created_at")
+  sourceDocument       SourceDocument                 @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
+  observations         ParliamentDeputyObservation[]
+
+  @@unique([sourceDocumentId, legislature, parserVersion])
+  @@index([legislature, collectedAt])
+  @@map("parliament_deputy_snapshots")
+}
+
+/// Observação privada ligada apenas ao DepId explícito da fonte. Os intervalos
+/// JSON conservam a semântica oficial e não são convertidos em mandatos.
+model ParliamentDeputyObservation {
+  id                    String                   @id @default(cuid())
+  snapshotId            String                   @map("snapshot_id")
+  sourceId              String                   @map("source_id")
+  candidateSourceId     String?                  @map("candidate_source_id")
+  parliamentaryName     String                   @map("parliamentary_name")
+  fullName              String?                  @map("full_name")
+  constituencySourceId  String?                  @map("constituency_source_id")
+  constituencyLabel     String?                  @map("constituency_label")
+  parliamentaryGroups   Json                     @default("[]") @map("parliamentary_groups")
+  mandateSituations     Json                     @default("[]") @map("mandate_situations")
+  offices                Json                     @default("[]")
+  createdAt              DateTime                 @default(now()) @map("created_at")
+  snapshot               ParliamentDeputySnapshot @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
+
+  @@unique([sourceId, snapshotId])
+  @@index([snapshotId])
+  @@index([constituencySourceId])
+  @@map("parliament_deputy_observations")
+}
+
 model ParliamentarySession {
   id                String                      @id @default(cuid())
   sourceId          String                      @map("source_id")
@@ -1374,6 +1419,7 @@ model SourceDocument {
   mandates              Mandate[]
   membershipSnapshots   ParliamentaryMembershipSnapshot[]
   parliamentSnapshots   ParliamentActivitySnapshot[]
+  parliamentDeputySnapshots ParliamentDeputySnapshot[]
   sessions              ParliamentarySession[]
   attendanceRecords     AttendanceRecord[]
   initiatives           ParliamentaryInitiative[]
