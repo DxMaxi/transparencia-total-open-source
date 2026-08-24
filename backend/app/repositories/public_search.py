@@ -94,10 +94,10 @@ _PUBLISHER_LABELS = {
 }
 _PROMISE_STATUS_LABELS = {
     "UNVERIFIED": "Por verificar",
-    "FULFILLED": "Cumprida",
+    "NOT_STARTED": "Não iniciada",
     "IN_PROGRESS": "Em curso",
-    "BROKEN": "Não cumprida",
-    "ABANDONED": "Abandonada",
+    "PARTIAL": "Parcialmente cumprida",
+    "FULFILLED": "Cumprida",
 }
 
 
@@ -414,8 +414,8 @@ class PublicGlobalSearchRepository:
                       ON programme.id = promise.programme_id
                     JOIN source_documents source
                       ON source.id = programme.source_document_id
-                    WHERE promise.status IN (
-                        'UNVERIFIED', 'FULFILLED', 'IN_PROGRESS', 'BROKEN', 'ABANDONED'
+                    WHERE promise.status::text IN (
+                        'UNVERIFIED', 'NOT_STARTED', 'IN_PROGRESS', 'PARTIAL', 'FULFILLED'
                     )
                       AND (
                         promise.title ILIKE $1 ESCAPE '!'

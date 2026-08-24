@@ -30,9 +30,9 @@ export default async function PromisesPage({
         <span className="eyebrow">Fiscalização do programa</span>
         <h1>Promessómetro</h1>
         <p>
-          Cobertura editorial inicial do Programa do XXV Governo Constitucional.
-          Cada compromisso aponta para o documento oficial; sem prova suficiente de
-          execução, o estado permanece “por verificar”.
+          Compromissos identificáveis do Programa do XXV Governo Constitucional, explicados com
+          critérios públicos. Cada estado aponta para a prova oficial e para a revisão que o
+          fundamenta; sem prova suficiente, permanece “por verificar”.
         </p>
       </header>
       <DataModeBanner status={loaded.status} showingFallback={loaded.showingFallback} />

@@ -66,9 +66,13 @@ enum VoteActorType {
 
 enum PromiseStatus {
   UNVERIFIED
-  FULFILLED
+  NOT_STARTED
   IN_PROGRESS
+  PARTIAL
+  FULFILLED
+  /// Valor legado conservado apenas para compatibilidade de migração; não é publicável na V5.
   BROKEN
+  /// Valor legado conservado apenas para compatibilidade de migração; não é publicável na V5.
   ABANDONED
 }
 
