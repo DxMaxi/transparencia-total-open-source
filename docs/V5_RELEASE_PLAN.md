@@ -11,12 +11,12 @@ reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.22 integradas; staging remoto pendente |
+| Código V5 | V5.1 a V5.23 integradas; staging remoto pendente |
 | Frontend público | V5.21 preparado; capacidades sem backend ou esquema pronto ficam fail-closed |
 | API pública | `0.5.0-alpha.0`; capacidades anunciadas apenas após prova read-only do esquema |
 | Painel editorial | implementado no código, não ativado em produção |
 | IA | geração, revisão, publicação e retirada implementadas; esquema remoto ainda não ativado |
-| Parlamento | matriz V5.21 e catálogo privado V5.22 preparados; recursos históricos e ativação editorial ainda pendentes |
+| Parlamento | matriz V5.21, catálogo V5.22 e manifesto V5.23 preparados; descarga histórica e ativação editorial pendentes |
 | Perfis | contrato V5.6 preparado; várias áreas sem dados individuais publicáveis |
 | Promessómetro | catálogo editorial inicial de 10 compromissos; vocabulário V5.20 protegido |
 | Investigador Cívico | zero contratos e zero relações na projeção pública |
@@ -128,6 +128,12 @@ O primeiro gate desse plano está implementado em
 [V5.22 — catálogo privado de fontes parlamentares históricas](V5_PARLIAMENT_SOURCE_CATALOGUE.md).
 Ele arquiva apenas a página de catálogo e inventaria pastas com etiquetas exatas; não descarrega os
 recursos candidatos, não cria propostas editoriais e não afirma cobertura.
+
+O segundo gate está implementado em
+[V5.23 — manifesto privado de recursos parlamentares](V5_PARLIAMENT_RESOURCE_MANIFEST.md). Uma
+pasta só é aberta depois de provar o catálogo pai exato e atestado; o respetivo HTML é arquivado e
+apenas ligações XML/JSON inequívocas são inventariadas. Os ficheiros não são descarregados por esta
+entrega.
 
 Critérios de saída:
 

@@ -73,9 +73,10 @@ Supabase de staging inequivocamente isolado e autorizado.
 - não associa políticos, partidos ou votações;
 - não usa IA.
 
-O passo seguinte deverá selecionar uma única pasta candidata, arquivar a respetiva página, validar
-o recurso por anfitrião e formato exatos e preparar um manifesto privado. Cada legislatura e cada
-tipo de recurso mantém uma execução independente.
+Esse passo seguinte está implementado em
+[V5.23 — manifesto privado de recursos parlamentares](V5_PARLIAMENT_RESOURCE_MANIFEST.md): seleciona
+uma única pasta candidata, volta a provar o catálogo pai e arquiva a respetiva página antes de
+inventariar XML/JSON. Cada legislatura e cada tipo de recurso mantém uma execução independente.
 
 ## Critérios de aceitação
 

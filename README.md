@@ -23,7 +23,7 @@ definição da Open Source Initiative.
 > commit final desse fecho. A V5 começa pela governação de licença e pelo circuito editorial
 > privado; esta branch não altera os dados aprovados da V4.
 
-> **V5.1 a V5.22 integradas; ativação remota de staging pendente:** o painel privado usa
+> **V5.1 a V5.23 integradas; ativação remota de staging pendente:** o painel privado usa
 > login por convite,
 > MFA obrigatório, funções de administrador/revisor, comparação entre fonte atestada e JSON
 > normalizado, versões e decisões append-only. A V5.2 acrescentou propostas parlamentares privadas,
@@ -60,7 +60,9 @@ definição da Open Source Initiative.
 > fonte-candidata não conta como cobertura antes de arquivo, revisão e publicação próprios. A V5.22
 > acrescenta o inventário privado e versionado das pastas parlamentares por legislatura, apenas por
 > etiqueta e URL oficiais exatas, sem descarregar conjuntos históricos, criar casos editoriais ou
-> publicar. O plano e a checklist de fecho estão em
+> publicar. A V5.23 exige esse catálogo pai exato e atestado antes de arquivar uma pasta e criar um
+> manifesto privado apenas de ligações XML/JSON inequívocas; os ficheiros continuam por descarregar
+> e não entram no circuito editorial. O plano e a checklist de fecho estão em
 > [Plano de conclusão da V5](docs/V5_RELEASE_PLAN.md) e
 > [Checklist de conclusão da V5](docs/V5_RELEASE_CHECKLIST.md). Consulte também
 > [Painel privado e fundação editorial V5.1](docs/V5_EDITORIAL_FOUNDATION.md),
@@ -77,6 +79,7 @@ definição da Open Source Initiative.
 > [Vocabulário editorial do Promessómetro V5.20](docs/V5_PROMESSOMETRO_VOCABULARY.md),
 > [Matriz e preenchimento histórico parlamentar V5.21](docs/V5_PARLIAMENT_COVERAGE_AND_BACKFILL.md),
 > [Catálogo privado de fontes parlamentares V5.22](docs/V5_PARLIAMENT_SOURCE_CATALOGUE.md),
+> [Manifesto privado de recursos parlamentares V5.23](docs/V5_PARLIAMENT_RESOURCE_MANIFEST.md),
 > [Adaptador parlamentar V5.2](docs/V5_PARLIAMENT_EDITORIAL_ADAPTER.md) e
 > [Publicação parlamentar por âmbito V5.3](docs/V5_PARLIAMENT_SCOPE_PUBLICATION.md),
 > [Retirada parlamentar imutável V5.4](docs/V5_PARLIAMENT_WITHDRAWAL.md) e

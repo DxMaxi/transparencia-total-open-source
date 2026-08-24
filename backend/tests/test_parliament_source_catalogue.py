@@ -12,6 +12,7 @@ from app.services.parliament_source_catalogue import (
     ParliamentCatalogueKind,
     ParliamentSourceCatalogueCollector,
     ParliamentSourceCatalogueStager,
+    require_parliament_url,
 )
 from scripts.sync_parliament_source_catalogue import validate_private_staging_operation
 
@@ -89,6 +90,19 @@ async def test_catalogue_rejects_an_effective_url_outside_parliament() -> None:
         await ParliamentSourceCatalogueCollector(http).collect(
             ParliamentCatalogueKind.DEPUTY_ACTIVITY
         )
+
+
+@pytest.mark.parametrize(
+    "url",
+    (
+        "http://www.parlamento.pt/Cidadania/Paginas/DAIniciativas.aspx",
+        "https://www.parlamento.pt:8443/Cidadania/Paginas/DAIniciativas.aspx",
+        "https://utilizador@www.parlamento.pt/Cidadania/Paginas/DAIniciativas.aspx",
+    ),
+)
+def test_parliament_url_rejects_non_https_port_and_userinfo(url: str) -> None:
+    with pytest.raises(ValueError, match="URL parlamentar não autorizada"):
+        require_parliament_url(url)
 
 
 @pytest.mark.asyncio

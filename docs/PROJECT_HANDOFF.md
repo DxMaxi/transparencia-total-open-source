@@ -85,7 +85,9 @@ catálogo oficial continua a ser apenas candidato até arquivo, revisão e publi
 não equivalem à execução dos gates de staging ou produção ainda abertos. A V5.22 acrescenta um
 coletor versionado para arquivar os três catálogos parlamentares por legislatura e inventariar
 apenas etiquetas e URLs oficiais exatas como `PENDING_INSPECTION`, sem descarregar os recursos,
-criar casos editoriais ou publicar.
+criar casos editoriais ou publicar. A V5.23 acrescenta o manifesto privado de uma única pasta:
+revalida a fotografia V5.22 e a respetiva atestação, arquiva o HTML e aceita apenas XML/JSON
+inequívocos como `PENDING_DOWNLOAD`, ainda sem descarregar os ficheiros ou criar revisão.
 
 A melhoria de UX iniciada em agosto de 2026 faz parte da estabilização/conclusão da **V5**. Não deve ser tratada como início de uma V6 nem como autorização para reescrever o projeto.
 

@@ -97,14 +97,9 @@ class ParliamentSourceCandidate:
 
     @property
     def private_category(self) -> str:
-        return ":".join(
-            (
-                "PARLIAMENT_SOURCE_CANDIDATE",
-                self.catalogue_kind.value,
-                self.legislature,
-                self.status,
-                self.historical_completeness,
-            )
+        return parliament_source_candidate_category(
+            self.catalogue_kind,
+            self.legislature,
         )
 
 
@@ -125,9 +120,10 @@ def _normalise_space(value: str) -> str:
     return re.sub(r"\s+", " ", value).strip()
 
 
-def _parliament_url(value: str) -> str:
+def require_parliament_url(value: str) -> str:
     try:
         parsed = urlparse(value)
+        port = parsed.port
     except ValueError as exc:
         raise ValueError(f"URL parlamentar inválido: {value}") from exc
     host = (parsed.hostname or "").strip().rstrip(".").casefold()
@@ -136,9 +132,36 @@ def _parliament_url(value: str) -> str:
         or host not in PARLIAMENT_CATALOGUE_HOSTS
         or parsed.username is not None
         or parsed.password is not None
+        or port not in {None, 443}
     ):
         raise ValueError(f"URL parlamentar não autorizada: {value}")
     return value
+
+
+def require_supported_parliament_legislature(value: str) -> str:
+    if value == "CONSTITUINTE" or value in _SUPPORTED_ROMAN_LEGISLATURES:
+        return value
+    raise ValueError(f"Legislatura parlamentar não suportada: {value}")
+
+
+def parliament_legislature_label(value: str) -> str:
+    legislature = require_supported_parliament_legislature(value)
+    return "Constituinte" if legislature == "CONSTITUINTE" else f"{legislature} Legislatura"
+
+
+def parliament_source_candidate_category(
+    catalogue_kind: ParliamentCatalogueKind,
+    legislature: str,
+) -> str:
+    return ":".join(
+        (
+            "PARLIAMENT_SOURCE_CANDIDATE",
+            catalogue_kind.value,
+            require_supported_parliament_legislature(legislature),
+            PARLIAMENT_CANDIDATE_STATUS,
+            PARLIAMENT_HISTORICAL_COMPLETENESS,
+        )
+    )
 
 
 def _exact_legislature(label: str) -> str | None:
@@ -163,9 +186,9 @@ class ParliamentSourceCatalogueCollector:
         catalogue_kind: ParliamentCatalogueKind,
     ) -> CollectedParliamentCatalogue:
         config = PARLIAMENT_CATALOGUES[catalogue_kind]
-        requested_url = _parliament_url(config.url)
+        requested_url = require_parliament_url(config.url)
         response = await self.http.get(requested_url)
-        effective_url = _parliament_url(str(response.url))
+        effective_url = require_parliament_url(str(response.url))
         content = response.content
         mime_type = response.headers.get("content-type")
         if not mime_type or mime_type.split(";", 1)[0].strip().casefold() != "text/html":
@@ -189,7 +212,7 @@ class ParliamentSourceCatalogueCollector:
                 continue
             candidate_url = urljoin(effective_url, str(anchor["href"]))
             try:
-                _parliament_url(candidate_url)
+                require_parliament_url(candidate_url)
             except ValueError:
                 continue
             candidates_by_url.setdefault(
@@ -261,7 +284,7 @@ class ParliamentSourceCatalogueStager:
                 or candidate.publishable
             ):
                 raise ValueError("Um candidato parlamentar diverge do contrato privado")
-            _parliament_url(str(candidate.url))
+            require_parliament_url(str(candidate.url))
 
         result = await self.repository.store_index(
             source_name=collection.source_name,
