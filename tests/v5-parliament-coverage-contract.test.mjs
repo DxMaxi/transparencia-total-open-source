@@ -73,6 +73,10 @@ test("the public matrix is fail-closed and explains the exact scope of every cou
   assert.match(page, /data de recolha e SHA-256/);
   assert.match(page, /publicar cada âmbito apenas depois de revisão humana explícita/);
   assert.match(styles, /\.parliament-coverage-table-wrap[^}]*overflow-x: auto/);
+  assert.match(
+    styles,
+    /\.parliament-coverage-table td > \.coverage-chip[^}]*color: #805000/,
+  );
   assert.match(styles, /\.parliament-backfill-plan[^}]*grid-template-columns/);
   assert.match(artifactGuard, /"\.parliament-coverage-matrix"/);
 });
