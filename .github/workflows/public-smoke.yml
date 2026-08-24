@@ -9,16 +9,15 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: transparencia-total-public-smoke
-  cancel-in-progress: true
-
 jobs:
   public-smoke:
     if: >-
       github.event_name != 'deployment_status' ||
       (github.event.deployment_status.state == 'success' &&
        github.event.deployment.environment == 'Production')
+    concurrency:
+      group: transparencia-total-public-smoke
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
