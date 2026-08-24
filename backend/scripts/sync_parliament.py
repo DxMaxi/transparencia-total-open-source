@@ -68,18 +68,38 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Guardar em staging PostgreSQL; não publica registos automaticamente",
     )
+    parser.add_argument(
+        "--summary-only",
+        action="store_true",
+        help="Omitir o conteúdo integral da recolha da saída de consola",
+    )
     return parser.parse_args()
 
 
-def main() -> None:
-    args = parse_args()
-    result, persistence = asyncio.run(collect(args.kind, args.legislature, persist=args.persist))
-    if args.output:
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        temporary = args.output.with_suffix(f"{args.output.suffix}.tmp")
+def emit_collection_result(
+    result: str,
+    persistence: dict[str, int] | None,
+    *,
+    kind: str,
+    legislature: str,
+    output: Path | None,
+    persist: bool,
+    summary_only: bool,
+) -> None:
+    """Emite apenas metadados operacionais quando a execução pode chegar a logs."""
+
+    if output:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        temporary = output.with_suffix(f"{output.suffix}.tmp")
         temporary.write_text(result, encoding="utf-8")
-        temporary.replace(args.output)
-        print(f"Snapshot guardado em {args.output}")
+        temporary.replace(output)
+        print(f"Snapshot guardado em {output}")
+    elif summary_only or persist:
+        print(
+            "Recolha parlamentar concluída: "
+            f"tipo={kind}; legislatura={legislature}; "
+            "conteúdo integral omitido dos logs."
+        )
     else:
         print(result)
     if persistence is not None:
@@ -90,6 +110,20 @@ def main() -> None:
             f"{persistence['archive_attestations_written']} atestações de arquivo acrescentadas; "
             "publicação continua pendente."
         )
+
+
+def main() -> None:
+    args = parse_args()
+    result, persistence = asyncio.run(collect(args.kind, args.legislature, persist=args.persist))
+    emit_collection_result(
+        result,
+        persistence,
+        kind=args.kind,
+        legislature=args.legislature,
+        output=args.output,
+        persist=args.persist,
+        summary_only=args.summary_only,
+    )
 
 
 if __name__ == "__main__":

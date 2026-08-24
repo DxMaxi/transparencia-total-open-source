@@ -285,6 +285,53 @@ def test_legacy_vote_persistence_redirects_to_versioned_pipeline_before_network(
         asyncio.run(sync_parliament.collect("votes", "XVII", persist=True))
 
 
+def test_persisted_parliament_collection_omits_full_dataset_from_logs(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    private_marker = "deputado@example.invalid"
+
+    sync_parliament.emit_collection_result(
+        f'{{"deputies":[{{"email":"{private_marker}"}}]}}',
+        {
+            "records_written": 1,
+            "records_read": 1,
+            "archive_attestations_written": 1,
+        },
+        kind="deputies",
+        legislature="XVII",
+        output=None,
+        persist=True,
+        summary_only=False,
+    )
+
+    output = capsys.readouterr().out
+    assert private_marker not in output
+    assert "conteúdo integral omitido dos logs" in output
+    assert "1 escritas / 1 lidas" in output
+    assert "publicação continua pendente" in output
+
+
+def test_summary_only_omits_full_dataset_without_persistence(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    private_marker = "deputado@example.invalid"
+
+    sync_parliament.emit_collection_result(
+        f'{{"deputies":[{{"email":"{private_marker}"}}]}}',
+        None,
+        kind="deputies",
+        legislature="XVII",
+        output=None,
+        persist=False,
+        summary_only=True,
+    )
+
+    output = capsys.readouterr().out
+    assert private_marker not in output
+    assert "tipo=deputies" in output
+    assert "legislatura=XVII" in output
+
+
 def test_migration_enforces_append_only_archive_attestations() -> None:
     migration = (
         Path(__file__).parents[2]
