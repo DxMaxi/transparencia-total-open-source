@@ -49,6 +49,11 @@ test("public smoke runs after a successful Production deployment and on a daily 
   assert.match(workflow, /deployment_status:/);
   assert.match(workflow, /github\.event\.deployment_status\.state == 'success'/);
   assert.match(workflow, /github\.event\.deployment\.environment == 'Production'/);
+  assert.doesNotMatch(workflow, /^concurrency:/m);
+  assert.match(
+    workflow,
+    /public-smoke:\r?\n[\s\S]*?if: >-[\s\S]*?concurrency:\r?\n\s+group: transparencia-total-public-smoke\r?\n\s+cancel-in-progress: true/,
+  );
   assert.doesNotMatch(workflow, /push:\r?\n\s+branches:\r?\n\s+- main/);
   assert.match(workflow, /schedule:/);
   assert.match(workflow, /npm run smoke:public/);
