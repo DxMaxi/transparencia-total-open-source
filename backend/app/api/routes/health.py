@@ -11,6 +11,7 @@ router = APIRouter(tags=["Sistema"])
 
 _CORE_PUBLIC_CAPABILITIES = [
     "global_search_v1",
+    "parliament_coverage_v1",
     "parliament_explorer_v1",
     "parliament_publication_history_v1",
 ]

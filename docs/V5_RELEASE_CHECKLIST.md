@@ -33,6 +33,7 @@ continuam a exigir autorizações separadas.
 - [x] V5.18 — pesquisa global publicada e orçamento móvel repetível integrados.
 - [x] V5.19 — auditoria sanitizada de dados, segredos e privacidade da história integrada.
 - [x] V5.20 — vocabulário editorial seguro do Promessómetro integrado.
+- [x] V5.21 — matriz de cobertura parlamentar e plano de preenchimento histórico integrados.
 - [x] Existe um [conjunto de issues de conclusão](https://github.com/DxMaxi/transparencia-total-open-source/issues/58) para todos os itens ainda abertos.
 
 ## B. Estabilização pública
@@ -93,8 +94,10 @@ continuam a exigir autorizações separadas.
 - [ ] Correção e republicação de nova versão comprovadas em staging.
 - [ ] Explorador V5 devolve total exato e filtros parametrizados.
 - [ ] Histórico público não divulga notas privadas nem IDs internos.
-- [ ] Plano de backfill define legislaturas e fontes disponíveis.
-- [ ] Matriz pública de cobertura parlamentar concluída.
+- [x] Plano de backfill versionado define a ordem das legislaturas, fontes-candidatas e portas de
+  arquivo, revisão e publicação sem confundir disponibilidade na fonte com cobertura pública.
+- [x] Matriz pública de cobertura parlamentar concluída, com período observado, recolha, revisão,
+  fonte, hashes e completude histórica não afirmada.
 
 ## F. Perfis políticos
 

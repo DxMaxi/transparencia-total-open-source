@@ -513,6 +513,21 @@ async def test_parliament_editorial_cycle_preserves_scope_from_proposal_to_publi
     )
     assert published_votes["state"] == "PUBLISHED"
     assert len(await public.list_votes(legislature=legislature, limit=10, offset=0)) == 2
+    coverage = await public.list_coverage(limit=10)
+    fixture_coverage = [row for row in coverage if row["legislature"] == legislature]
+    assert {
+        (row["scope"], row["record_kind"], row["published_count"]) for row in fixture_coverage
+    } == {
+        ("activity", "sessions", 2),
+        ("activity", "initiatives", 1),
+        ("votes", "votes", 2),
+        ("votes", "vote_records", 2),
+    }
+    assert all(row["count_is_exact"] is True for row in fixture_coverage)
+    assert all(row["historical_completeness"] == "NOT_ASSERTED" for row in fixture_coverage)
+    assert all(
+        row["snapshot_sha256"] == str(votes_preview["snapshot_sha256"]) for row in fixture_coverage
+    )
     explored_votes = await public.explore(
         kind="votes",
         legislature=legislature,
@@ -628,6 +643,14 @@ async def test_parliament_editorial_cycle_preserves_scope_from_proposal_to_publi
     assert await public.list_sessions(legislature=legislature, limit=10, offset=0) == []
     assert await public.list_initiatives(legislature=legislature, limit=10, offset=0) == []
     assert len(await public.list_votes(legislature=legislature, limit=10, offset=0)) == 2
+    coverage_after_withdrawal = await public.list_coverage(limit=10)
+    fixture_coverage_after_withdrawal = [
+        row for row in coverage_after_withdrawal if row["legislature"] == legislature
+    ]
+    assert {row["record_kind"] for row in fixture_coverage_after_withdrawal} == {
+        "votes",
+        "vote_records",
+    }
 
     public_history = await public.list_publication_history(legislature=legislature, limit=10)
     assert [row["action"] for row in public_history[:3]] == [

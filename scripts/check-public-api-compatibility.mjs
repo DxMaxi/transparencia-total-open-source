@@ -6,6 +6,7 @@ export const REQUIRED_PUBLIC_CAPABILITIES = [
   "parliament_explorer_v1",
   "parliament_publication_history_v1",
 ];
+export const PARLIAMENT_COVERAGE_CAPABILITY = "parliament_coverage_v1";
 export const AI_PUBLIC_CAPABILITY = "ai_explanations_v1";
 
 function normaliseApiBaseUrl(value) {
@@ -78,6 +79,37 @@ function assertAiExplanationListShape(value) {
     || typeof value.publication_rule !== "string"
   ) {
     throw new Error("/api/v1/public/ai-explanations não cumpre o contrato V5.15");
+  }
+}
+
+function assertParliamentCoverageShape(value) {
+  const scopes = new Set(["activity", "votes"]);
+  const recordKinds = new Set(["sessions", "initiatives", "votes", "vote_records"]);
+  if (
+    !Array.isArray(value)
+    || value.some(
+      (row) =>
+        !row
+        || typeof row !== "object"
+        || typeof row.legislature !== "string"
+        || !scopes.has(row.scope)
+        || !recordKinds.has(row.record_kind)
+        || !Number.isInteger(row.published_count)
+        || row.published_count < 0
+        || row.count_is_exact !== true
+        || row.historical_completeness !== "NOT_ASSERTED"
+        || typeof row.collected_at !== "string"
+        || typeof row.verified_at !== "string"
+        || !row.source
+        || typeof row.source !== "object"
+        || row.source.publisher !== "AR"
+        || typeof row.source.url !== "string"
+        || typeof row.source.retrieved_at !== "string"
+        || !/^[0-9a-f]{64}$/.test(row.source.content_sha256 ?? "")
+        || !/^[0-9a-f]{64}$/.test(row.snapshot_sha256 ?? ""),
+    )
+  ) {
+    throw new Error("/api/v1/public/parliament/coverage não cumpre o contrato V5.21");
   }
 }
 
@@ -183,8 +215,9 @@ export async function verifyPublicApiCompatibility(
     };
   }
 
+  const coverageAvailable = capabilities.includes(PARLIAMENT_COVERAGE_CAPABILITY);
   const aiAvailable = capabilities.includes(AI_PUBLIC_CAPABILITY);
-  const [globalSearch, explorer, history, aiListing, aiHistory] = await Promise.all([
+  const [globalSearch, explorer, history, coverage, aiListing, aiHistory] = await Promise.all([
     requireGlobalSearch
       ? getJson(
           baseUrl,
@@ -202,6 +235,13 @@ export async function verifyPublicApiCompatibility(
       "/api/v1/public/parliament/publication-history?legislature=XVII&limit=1",
       { fetchImpl, timeoutMs },
     ),
+    coverageAvailable
+      ? getJson(
+          baseUrl,
+          "/api/v1/public/parliament/coverage?limit=1",
+          { fetchImpl, timeoutMs },
+        )
+      : Promise.resolve(null),
     aiAvailable
       ? getJson(
           baseUrl,
@@ -222,6 +262,7 @@ export async function verifyPublicApiCompatibility(
   if (!Array.isArray(history)) {
     throw new Error("/api/v1/public/parliament/publication-history não devolveu uma lista");
   }
+  if (coverageAvailable) assertParliamentCoverageShape(coverage);
   if (aiAvailable) {
     assertAiExplanationListShape(aiListing);
     if (!Array.isArray(aiHistory)) {
@@ -231,9 +272,11 @@ export async function verifyPublicApiCompatibility(
 
   return {
     apiVersion: String(health.version ?? "não indicada"),
-    capabilities: aiAvailable
-      ? [...requiredCapabilities, AI_PUBLIC_CAPABILITY]
-      : requiredCapabilities,
+    capabilities: [
+      ...requiredCapabilities,
+      ...(coverageAvailable ? [PARLIAMENT_COVERAGE_CAPABILITY] : []),
+      ...(aiAvailable ? [AI_PUBLIC_CAPABILITY] : []),
+    ],
     mode: aiAvailable ? "CURRENT" : "CURRENT_AI_FAIL_CLOSED",
   };
 }

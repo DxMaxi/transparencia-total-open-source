@@ -9,6 +9,7 @@ from app.models.public_parliament import (
     PublishedParliamentaryInitiative,
     PublishedParliamentarySession,
     PublishedParliamentaryVote,
+    PublishedParliamentCoverageRow,
     PublishedParliamentExplorer,
     PublishedParliamentPublicationHistoryItem,
     PublishedVoteRecord,
@@ -297,6 +298,74 @@ async def test_all_public_lists_are_bound_to_one_reviewed_snapshot() -> None:
         assert "attestation.content_sha256 = source.content_sha256" in query
         assert "published.id =" in query
     assert "HAVING COUNT(*) = 1" in connection.queries[-1]
+
+
+@pytest.mark.asyncio
+async def test_coverage_matrix_uses_only_latest_attested_publications() -> None:
+    common = {
+        "id": "snapshot-1",
+        "source_document_id": "source-1",
+        "legislature": "XVII",
+        "collected_at": datetime(2026, 8, 20, 9, 0, tzinfo=UTC),
+        "normalised_sha256": "b" * 64,
+        "session_count": 237,
+        "initiative_count": 2100,
+        "vote_count": 2473,
+        "vote_record_count": 19998,
+        "verified_at": datetime(2026, 8, 21, 10, 0, tzinfo=UTC),
+        "source_url": "https://www.parlamento.pt/dados.json",
+        "source_retrieved_at": datetime(2026, 8, 20, 8, 30, tzinfo=UTC),
+        "source_sha256": "a" * 64,
+        "sessions_from": date(2025, 6, 3),
+        "sessions_through": date(2026, 8, 20),
+        "initiatives_from": date(2025, 6, 4),
+        "initiatives_through": date(2026, 8, 19),
+        "votes_from": date(2025, 6, 5),
+        "votes_through": date(2026, 8, 18),
+    }
+    connection = QueryConnection(
+        [
+            {**common, "scope": "activity"},
+            {**common, "id": "snapshot-2", "scope": "votes"},
+        ]
+    )
+    repository = PublicParliamentRepository(Pool(connection))  # type: ignore[arg-type]
+
+    coverage = await repository.list_coverage(limit=10)
+
+    assert connection.arguments == [(10,)]
+    assert len(coverage) == 4
+    assert [row["record_kind"] for row in coverage] == [
+        "sessions",
+        "initiatives",
+        "votes",
+        "vote_records",
+    ]
+    assert [row["published_count"] for row in coverage] == [237, 2100, 2473, 19998]
+    for row in coverage:
+        parsed = PublishedParliamentCoverageRow.model_validate(row)
+        assert parsed.count_is_exact is True
+        assert parsed.historical_completeness == "NOT_ASSERTED"
+        assert parsed.source.content_sha256 == "a" * 64
+        assert parsed.snapshot_sha256 == "b" * 64
+
+    query = connection.queries[0]
+    assert "WITH latest_reviews AS" in query
+    assert "review.publishable = TRUE" in query
+    assert "attestation.content_sha256 = source.content_sha256" in query
+    assert "attestation.retrieval_url = source.url" in query
+    assert "PARTITION BY snapshot.legislature, review.entity_type" in query
+    assert "session.source_document_id = published.source_document_id" in query
+    assert "initiative.source_document_id = published.source_document_id" in query
+    assert "event.source_document_id = published.source_document_id" in query
+    assert query.count("COUNT(*) AS actual_count") == 3
+    assert "actual_record_count" in query
+    assert "session_period.actual_count = published.session_count" in query
+    assert "initiative_period.actual_count = published.initiative_count" in query
+    assert "vote_period.actual_count = published.vote_count" in query
+    assert "vote_period.actual_record_count = published.vote_record_count" in query
+    assert "similarity(" not in query
+    assert "levenshtein" not in query
 
 
 @pytest.mark.asyncio

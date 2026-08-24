@@ -1,6 +1,6 @@
 # PROJECT HANDOFF — Transparência Total / Fator Cívico
 
-Atualizado em: **2026-08-20**
+Atualizado em: **2026-08-24**
 
 Este documento existe para permitir continuidade segura entre sessões de trabalho, colaboradores e chats sem depender de memória externa ao repositório.
 
@@ -78,8 +78,11 @@ escritas públicas, consentimento e revogação push, cache PWA, acessibilidade,
 global e desempenho móvel. A V5.19 acrescentou a auditoria sanitizada de dados e história Git; um
 contacto pessoal permanece apenas em diffs históricos e bloqueia a visibilidade pública até haver
 decisão própria. A V5.20 substitui os estados públicos antigos do Promessómetro pelo vocabulário
-aprovado e mantém qualquer valor legado fora da projeção até nova revisão humana. Estes avanços não
-equivalem à execução dos gates de staging ou produção ainda abertos.
+aprovado e mantém qualquer valor legado fora da projeção até nova revisão humana. A V5.21 expõe a
+última cobertura parlamentar publicada por legislatura, âmbito, período e fotografia, sempre com
+fonte e hashes, e fixa o preenchimento histórico como uma fila editorial separada. Um recurso num
+catálogo oficial continua a ser apenas candidato até arquivo, revisão e publicação. Estes avanços
+não equivalem à execução dos gates de staging ou produção ainda abertos.
 
 A melhoria de UX iniciada em agosto de 2026 faz parte da estabilização/conclusão da **V5**. Não deve ser tratada como início de uma V6 nem como autorização para reescrever o projeto.
 

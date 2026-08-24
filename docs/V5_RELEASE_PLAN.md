@@ -11,12 +11,12 @@ reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.20 integradas; staging remoto pendente |
-| Frontend público | V5.20 preparado; capacidades sem backend ou esquema pronto ficam fail-closed |
+| Código V5 | V5.1 a V5.21 integradas; staging remoto pendente |
+| Frontend público | V5.21 preparado; capacidades sem backend ou esquema pronto ficam fail-closed |
 | API pública | `0.5.0-alpha.0`; capacidades anunciadas apenas após prova read-only do esquema |
 | Painel editorial | implementado no código, não ativado em produção |
 | IA | geração, revisão, publicação e retirada implementadas; esquema remoto ainda não ativado |
-| Parlamento | legislatura XVII; API V5 e histórico editorial ainda inativos em produção |
+| Parlamento | matriz de cobertura V5.21 preparada; preenchimento histórico e ativação editorial ainda pendentes |
 | Perfis | contrato V5.6 preparado; várias áreas sem dados individuais publicáveis |
 | Promessómetro | catálogo editorial inicial de 10 compromissos; vocabulário V5.20 protegido |
 | Investigador Cívico | zero contratos e zero relações na projeção pública |
@@ -118,6 +118,11 @@ Critérios de saída:
 ### 4. Parlamento completo dentro da cobertura declarada
 
 Objetivo: usar o novo circuito editorial e alargar o arquivo histórico sem inventar cobertura.
+
+A separação entre fotografias publicadas e recursos apenas candidatos, o contrato da matriz e a
+ordem segura de recolha estão definidos em
+[V5.21 — matriz de cobertura parlamentar e plano de preenchimento histórico](V5_PARLIAMENT_COVERAGE_AND_BACKFILL.md).
+Integrar esse código não executa o preenchimento histórico.
 
 Critérios de saída:
 
