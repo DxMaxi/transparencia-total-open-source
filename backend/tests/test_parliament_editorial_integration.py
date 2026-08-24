@@ -514,7 +514,10 @@ async def test_parliament_editorial_cycle_preserves_scope_from_proposal_to_publi
     assert published_votes["state"] == "PUBLISHED"
     assert len(await public.list_votes(legislature=legislature, limit=10, offset=0)) == 2
     coverage = await public.list_coverage(limit=10)
-    assert {(row["scope"], row["record_kind"], row["published_count"]) for row in coverage} == {
+    fixture_coverage = [row for row in coverage if row["legislature"] == legislature]
+    assert {
+        (row["scope"], row["record_kind"], row["published_count"]) for row in fixture_coverage
+    } == {
         ("activity", "sessions", 2),
         ("activity", "initiatives", 1),
         ("votes", "votes", 2),
@@ -639,7 +642,10 @@ async def test_parliament_editorial_cycle_preserves_scope_from_proposal_to_publi
     assert await public.list_initiatives(legislature=legislature, limit=10, offset=0) == []
     assert len(await public.list_votes(legislature=legislature, limit=10, offset=0)) == 2
     coverage_after_withdrawal = await public.list_coverage(limit=10)
-    assert {row["record_kind"] for row in coverage_after_withdrawal} == {
+    fixture_coverage_after_withdrawal = [
+        row for row in coverage_after_withdrawal if row["legislature"] == legislature
+    ]
+    assert {row["record_kind"] for row in fixture_coverage_after_withdrawal} == {
         "votes",
         "vote_records",
     }
