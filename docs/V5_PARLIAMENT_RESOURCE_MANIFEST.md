@@ -81,8 +81,10 @@ para outra legislatura ou seleção implícita do catálogo mais recente.
 - não afirma que a pasta ou o ficheiro cobre toda uma legislatura;
 - não usa IA.
 
-O gate seguinte deverá escolher um único ficheiro do manifesto, voltar a verificar o pai e arquivar
-os seus bytes com limites de tamanho, sem normalizar automaticamente outros recursos.
+Esse gate seguinte está implementado em
+[V5.24 — arquivo privado de um recurso parlamentar](V5_PARLIAMENT_RESOURCE_ARCHIVE.md): escolhe um
+único ficheiro do manifesto, volta a verificar toda a cadeia e arquiva os seus bytes com limite de
+tamanho, sem normalizar automaticamente outros recursos.
 
 ## Critérios de aceitação
 
