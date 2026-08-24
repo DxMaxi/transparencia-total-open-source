@@ -11,7 +11,7 @@ reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.18 integradas; staging remoto pendente |
+| Código V5 | V5.1 a V5.19 integradas; staging remoto pendente |
 | Frontend público | V5.18 preparado; capacidades sem backend ou esquema pronto ficam fail-closed |
 | API pública | `0.5.0-alpha.0`; capacidades anunciadas apenas após prova read-only do esquema |
 | Painel editorial | implementado no código, não ativado em produção |
