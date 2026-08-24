@@ -62,7 +62,7 @@
     "lighthouse": "13.4.1",
     "prisma": "^7.0.0",
     "react-server-dom-webpack": "19.2.8",
-    "tailwindcss": "4.2.1",
+    "tailwindcss": "4.3.3",
     "tsx": "^4.20.0",
     "typescript": "5.9.3",
     "vinext": "0.0.45",
