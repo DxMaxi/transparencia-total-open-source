@@ -684,7 +684,7 @@ a.feature-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
 .parliament-coverage-table td > code { display: block; }
 .parliament-coverage-table td > strong { margin-bottom: 5px; color: var(--navy); font-size: 12px; }
 .parliament-coverage-table td > span { margin-top: 4px; color: var(--muted); }
-.parliament-coverage-table td > .coverage-chip { width: fit-content; margin-top: 9px; padding: 5px 8px; font-size: 8px; }
+.parliament-coverage-table td > .coverage-chip { width: fit-content; margin-top: 9px; padding: 5px 8px; color: #805000; font-size: 8px; }
 .parliament-coverage-table .source-link { margin-bottom: 8px; }
 .parliament-coverage-table code { max-width: 280px; overflow-wrap: anywhere; color: var(--muted); font-size: 7px; }
 .parliament-coverage-matrix__unavailable { display: grid; gap: 5px; margin-top: 22px; padding: 15px; border: 1px solid #f3d39a; border-radius: 11px; background: #fff8e9; color: #6f4710; }
