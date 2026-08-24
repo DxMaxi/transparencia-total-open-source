@@ -67,7 +67,7 @@ async def test_complete_snapshot_publication_is_atomic_exact_and_public(
     repository: OfficialIndexStagingRepository,
 ) -> None:
     assert repository.pool is not None
-    suffix = uuid.uuid4().hex[:12]
+    suffix = uuid.uuid4().hex[:12].translate(str.maketrans("0123456789", "ghijklmnop"))
     now = datetime.now(UTC).replace(microsecond=0)
     parliamentary_name = f"Pessoa V530 {suffix}"
     official_deputy_id = f"dep-v530-{suffix}"

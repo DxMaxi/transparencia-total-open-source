@@ -64,7 +64,7 @@ async def test_exact_deputy_observation_creates_only_an_idempotent_private_case(
     repository: OfficialIndexStagingRepository,
 ) -> None:
     assert repository.pool is not None
-    suffix = uuid.uuid4().hex[:12]
+    suffix = uuid.uuid4().hex[:12].translate(str.maketrans("0123456789", "ghijklmnop"))
     now = datetime.now(UTC).replace(microsecond=0)
     source_url = HttpUrl(
         "https://app.parlamento.pt/webutils/docs/doc.txt"
