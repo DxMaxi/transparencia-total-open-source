@@ -185,7 +185,9 @@ def test_script_requires_explicit_staging_confirmation_and_database() -> None:
     with pytest.raises(RuntimeError, match="ENVIRONMENT tem de ser staging"):
         validate_private_staging_operation(Settings(environment="test"), confirmed=True)
     with pytest.raises(RuntimeError, match="DATABASE_URL de staging"):
-        validate_private_staging_operation(Settings(environment="staging"), confirmed=True)
+        validate_private_staging_operation(
+            Settings(environment="staging", database_url=None), confirmed=True
+        )
 
     validate_private_staging_operation(
         Settings(
