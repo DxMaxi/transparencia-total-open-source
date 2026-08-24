@@ -2,10 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SourceLink } from "@/components/source-link";
 import {
+  loadPublicParliamentCoverage,
   loadPublicParliamentExplorer,
   type PublicParliamentExplorerFilters,
 } from "@/lib/public-data";
-import type { PublicParliamentaryVote } from "@/types/public-data";
+import type {
+  PublicParliamentCoverageRow,
+  PublicParliamentaryVote,
+} from "@/types/public-data";
 import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
@@ -121,6 +125,20 @@ function formatDateTime(value?: string): string | null {
   return dateFormatter.format(date);
 }
 
+function formatCoveragePeriod(row: PublicParliamentCoverageRow): string {
+  const observedFrom = formatDateTime(row.observedFrom);
+  const observedThrough = formatDateTime(row.observedThrough);
+
+  if (observedFrom && observedThrough) {
+    return observedFrom === observedThrough
+      ? observedFrom
+      : `${observedFrom} a ${observedThrough}`;
+  }
+  if (observedFrom) return `Desde ${observedFrom}`;
+  if (observedThrough) return `Até ${observedThrough}`;
+  return "Período não indicado na fotografia";
+}
+
 export default async function ParliamentActivityPage({
   searchParams,
 }: {
@@ -162,7 +180,10 @@ export default async function ParliamentActivityPage({
     page,
     pageSize: PAGE_SIZE,
   };
-  const loaded = await loadPublicParliamentExplorer(filters);
+  const [loaded, coverage] = await Promise.all([
+    loadPublicParliamentExplorer(filters),
+    loadPublicParliamentCoverage(),
+  ]);
   const explorer = loaded.data;
   const urlState: UrlState = {
     tipo: toUrlKind(kind),
@@ -288,6 +309,114 @@ export default async function ParliamentActivityPage({
           revisão humana. Se uma legislatura ou período não aparecer, significa dados
           indisponíveis nesta cobertura — não ausência de atividade nem incumprimento.
         </p>
+      </section>
+
+      <section
+        className="parliament-coverage-matrix card"
+        aria-labelledby="coverage-matrix-title"
+      >
+        <div className="section-heading-row">
+          <div>
+            <span className="eyebrow">Cobertura publicada e verificável</span>
+            <h2 id="coverage-matrix-title">O que existe no portal, legislatura a legislatura</h2>
+          </div>
+          <p>{coverage.message}</p>
+        </div>
+
+        {coverage.available && coverage.rows.length ? (
+          <div className="parliament-coverage-table-wrap">
+            <table className="parliament-coverage-table">
+              <caption>
+                Última fotografia publicada em cada âmbito. Uma fonte com outros ficheiros não
+                aumenta esta cobertura sem recolha, arquivo, revisão e publicação próprios.
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Legislatura</th>
+                  <th scope="col">Conjunto publicado</th>
+                  <th scope="col">Registos</th>
+                  <th scope="col">Período observado</th>
+                  <th scope="col">Recolha e revisão</th>
+                  <th scope="col">Prova</th>
+                </tr>
+              </thead>
+              <tbody>
+                {coverage.rows.map((row) => (
+                  <tr key={`${row.legislature}-${row.scope}-${row.recordKind}`}>
+                    <th scope="row">{row.legislature}</th>
+                    <td>
+                      <strong>{row.recordLabel}</strong>
+                      <span>{row.limitation}</span>
+                      <span className="coverage-chip">Histórico total não afirmado</span>
+                    </td>
+                    <td>
+                      <strong>{formatNumber(row.publishedCount)}</strong>
+                      <span>Exatos nesta fotografia</span>
+                    </td>
+                    <td>{formatCoveragePeriod(row)}</td>
+                    <td>
+                      <span>Recolhida: {formatDateTime(row.collectedAt) ?? "data indisponível"}</span>
+                      <span>Revista: {formatDateTime(row.verifiedAt) ?? "data indisponível"}</span>
+                    </td>
+                    <td>
+                      <SourceLink source={row.source} compact />
+                      <span>
+                        Fonte obtida: {formatDateTime(row.source.retrievedAt) ?? "data indisponível"}
+                      </span>
+                      <code title={`SHA-256 da fonte ${row.source.sha256}`}>
+                        Fonte {row.source.sha256}
+                      </code>
+                      <code title={`SHA-256 ${row.snapshotSha256}`}>
+                        Fotografia {row.snapshotSha256}
+                      </code>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <aside className="parliament-coverage-matrix__unavailable" role="status">
+            <strong>Matriz detalhada temporariamente indisponível.</strong>
+            <span>
+              Não apresentamos zero nem uma lista antiga como substituição. Isto não significa
+              ausência de atividade parlamentar.
+            </span>
+          </aside>
+        )}
+
+        <div className="parliament-backfill-plan">
+          <div>
+            <span className="eyebrow">Preencher o histórico com prova</span>
+            <h3>Como entram as legislaturas anteriores</h3>
+            <p>
+              Os catálogos da Assembleia da República são pontos de partida oficiais, não prova de
+              que um período já esteja coberto por este portal.
+            </p>
+            <div className="parliament-backfill-plan__sources">
+              <a
+                href="https://www.parlamento.pt/Cidadania/Paginas/DAIniciativas.aspx"
+                target="_blank"
+                rel="noreferrer noopener"
+              >
+                Catálogo oficial de iniciativas
+              </a>
+              <a
+                href="https://www.parlamento.pt/Cidadania/Paginas/DAatividades.aspx"
+                target="_blank"
+                rel="noreferrer noopener"
+              >
+                Catálogo oficial de atividades
+              </a>
+            </div>
+          </div>
+          <ol>
+            <li><b>1</b><span>Manter atualizada a legislatura em curso, sempre sem publicação automática.</span></li>
+            <li><b>2</b><span>Inventariar legislaturas anteriores da mais recente para a mais antiga, fonte a fonte.</span></li>
+            <li><b>3</b><span>Arquivar os bytes, URL, data de recolha e SHA-256 antes de normalizar IDs oficiais exatos.</span></li>
+            <li><b>4</b><span>Criar uma proposta privada e publicar cada âmbito apenas depois de revisão humana explícita.</span></li>
+          </ol>
+        </div>
       </section>
 
       {invalidDateRange ? (

@@ -28,6 +28,7 @@ import type {
   PublicAiPublicationHistoryItem,
   PublicInvestigatorDataset,
   PublicParliamentActivity,
+  PublicParliamentCoverage,
   PublicParliamentExplorer,
   PublicParliamentPublicationHistoryItem,
   PublicParliamentaryInitiative,
@@ -939,6 +940,23 @@ type RawParliamentExplorer = {
   explanation_rule: string;
 };
 
+type RawParliamentCoverageRow = {
+  legislature: string;
+  scope: "activity" | "votes";
+  record_kind: "sessions" | "initiatives" | "votes" | "vote_records";
+  record_label: string;
+  published_count: number;
+  count_is_exact: true;
+  observed_from?: string | null;
+  observed_through?: string | null;
+  collected_at: string;
+  verified_at: string;
+  source: RawSource;
+  snapshot_sha256: string;
+  historical_completeness: "NOT_ASSERTED";
+  limitation: string;
+};
+
 function mapAiSource(
   source: RawAiExplanation["source"],
 ): PublicAiExplanation["source"] {
@@ -1656,6 +1674,106 @@ export async function loadPublicParliamentExplorer(
         compatibilityMode,
       },
     },
+  };
+}
+
+export async function loadPublicParliamentCoverage(): Promise<PublicParliamentCoverage> {
+  const result = await apiFetch<RawParliamentCoverageRow[]>(
+    "/api/v1/public/parliament/coverage?limit=100",
+  );
+  if (!result.ok) {
+    return {
+      available: false,
+      rows: [],
+      message:
+        "A matriz detalhada está temporariamente indisponível; isto não significa ausência de atividade parlamentar.",
+    };
+  }
+  if (!Array.isArray(result.data)) {
+    return {
+      available: false,
+      rows: [],
+      message: "A matriz recebida não cumpre o contrato público e foi recusada.",
+    };
+  }
+  const validScopes = new Set(["activity", "votes"]);
+  const validKinds = new Set(["sessions", "initiatives", "votes", "vote_records"]);
+  const validDate = (value: string | null | undefined) =>
+    value == null || /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const validDateTime = (value: string) =>
+    typeof value === "string" && !Number.isNaN(Date.parse(value));
+  if (
+    result.data.some(
+      (row) =>
+        row == null
+        || typeof row !== "object"
+        || !validScopes.has(row.scope)
+        || !validKinds.has(row.record_kind)
+        || typeof row.legislature !== "string"
+        || !row.legislature.trim()
+        || typeof row.record_label !== "string"
+        || !row.record_label.trim()
+        || !Number.isSafeInteger(row.published_count)
+        || row.published_count < 0
+        || row.count_is_exact !== true
+        || !validDate(row.observed_from)
+        || !validDate(row.observed_through)
+        || Boolean(
+          row.observed_from
+            && row.observed_through
+            && row.observed_from > row.observed_through,
+        )
+        || !validDateTime(row.collected_at)
+        || !validDateTime(row.verified_at)
+        || row.source?.publisher !== "AR"
+        || typeof row.source.label !== "string"
+        || !row.source.label.trim()
+        || typeof row.source?.url !== "string"
+        || !/^https:\/\//.test(row.source.url)
+        || !validDateTime(row.source.retrieved_at ?? "")
+        || !/^[0-9a-f]{64}$/.test(row.source.content_sha256 ?? "")
+        || row.historical_completeness !== "NOT_ASSERTED"
+        || !/^[0-9a-f]{64}$/.test(row.snapshot_sha256)
+        || typeof row.limitation !== "string"
+        || !row.limitation.trim(),
+    )
+  ) {
+    return {
+      available: false,
+      rows: [],
+      message: "A matriz recebida não cumpre o contrato público e foi recusada.",
+    };
+  }
+  const rowKeys = result.data.map(
+    (row) => `${row.legislature}\u0000${row.scope}\u0000${row.record_kind}`,
+  );
+  if (new Set(rowKeys).size !== rowKeys.length) {
+    return {
+      available: false,
+      rows: [],
+      message: "A matriz recebida contém linhas duplicadas e foi recusada.",
+    };
+  }
+  return {
+    available: true,
+    message:
+      "Cada contagem é exata apenas dentro da fotografia indicada; a completude histórica não é afirmada.",
+    rows: result.data.map((row) => ({
+      legislature: row.legislature,
+      scope: row.scope,
+      recordKind: row.record_kind,
+      recordLabel: row.record_label,
+      publishedCount: row.published_count,
+      countIsExact: true,
+      observedFrom: row.observed_from ?? undefined,
+      observedThrough: row.observed_through ?? undefined,
+      collectedAt: row.collected_at,
+      verifiedAt: row.verified_at,
+      source: toOfficialSource(row.source),
+      snapshotSha256: row.snapshot_sha256,
+      historicalCompleteness: "NOT_ASSERTED",
+      limitation: row.limitation,
+    })),
   };
 }
 

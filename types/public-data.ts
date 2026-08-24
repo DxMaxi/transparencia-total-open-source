@@ -419,3 +419,26 @@ export type PublicParliamentExplorer = {
       | "UNAVAILABLE";
   };
 };
+
+export type PublicParliamentCoverageRow = {
+  legislature: string;
+  scope: "activity" | "votes";
+  recordKind: "sessions" | "initiatives" | "votes" | "vote_records";
+  recordLabel: string;
+  publishedCount: number;
+  countIsExact: true;
+  observedFrom?: string;
+  observedThrough?: string;
+  collectedAt: string;
+  verifiedAt: string;
+  source: OfficialSource;
+  snapshotSha256: string;
+  historicalCompleteness: "NOT_ASSERTED";
+  limitation: string;
+};
+
+export type PublicParliamentCoverage = {
+  available: boolean;
+  rows: PublicParliamentCoverageRow[];
+  message: string;
+};

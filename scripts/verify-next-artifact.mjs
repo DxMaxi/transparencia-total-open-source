@@ -6,6 +6,7 @@ const REQUIRED_CSS_MARKERS = [
   ".parliament-page--v551",
   ".parliament-search-form__primary",
   ".parliament-coverage__facts",
+  ".parliament-coverage-matrix",
   ".contact-channel--pending",
   ".profile-coverage-grid",
   ".profile-declaration-list",

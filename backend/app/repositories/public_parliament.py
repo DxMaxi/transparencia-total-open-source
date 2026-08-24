@@ -447,6 +447,193 @@ class PublicParliamentRepository:
             "votes": {"items": votes, "total": vote_total},
         }
 
+    async def list_coverage(self, *, limit: int) -> list[dict[str, Any]]:
+        """Matriz da última fotografia publicada por legislatura e âmbito."""
+
+        pool = self._require_pool()
+        async with pool.acquire() as connection:
+            snapshots = await connection.fetch(
+                """
+                WITH latest_reviews AS (
+                    SELECT DISTINCT ON (
+                               review.entity_type, review.entity_id, review.source_document_id
+                           )
+                           review.entity_type, review.entity_id, review.source_document_id,
+                           review.publishable, review.reviewed_at
+                    FROM data_publication_reviews review
+                    WHERE review.entity_type IN (
+                              'PARLIAMENT_ACTIVITY_SNAPSHOT',
+                              'PARLIAMENT_VOTES_SNAPSHOT'
+                          )
+                    ORDER BY review.entity_type, review.entity_id,
+                             review.source_document_id,
+                             review.reviewed_at DESC, review.id DESC
+                ), ranked_snapshots AS (
+                    SELECT snapshot.id, snapshot.source_document_id,
+                           snapshot.legislature, snapshot.collected_at,
+                           snapshot.normalised_sha256,
+                           snapshot.session_count, snapshot.initiative_count,
+                           snapshot.vote_count, snapshot.vote_record_count,
+                           review.reviewed_at AS verified_at,
+                           CASE review.entity_type
+                             WHEN 'PARLIAMENT_ACTIVITY_SNAPSHOT' THEN 'activity'
+                             ELSE 'votes'
+                           END AS scope,
+                           source.url AS source_url,
+                           source.retrieved_at AS source_retrieved_at,
+                           source.content_sha256 AS source_sha256,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY snapshot.legislature, review.entity_type
+                               ORDER BY review.reviewed_at DESC,
+                                        snapshot.collected_at DESC,
+                                        snapshot.created_at DESC, snapshot.id DESC
+                           ) AS publication_rank
+                    FROM parliament_activity_snapshots snapshot
+                    JOIN source_documents source
+                      ON source.id = snapshot.source_document_id
+                    JOIN latest_reviews review
+                      ON review.entity_id = snapshot.id
+                     AND review.source_document_id = source.id
+                     AND review.publishable = TRUE
+                    WHERE source.publisher = 'PARLIAMENT'
+                      AND EXISTS (
+                          SELECT 1 FROM source_archive_attestations attestation
+                          WHERE attestation.source_document_id = source.id
+                            AND attestation.content_sha256 = source.content_sha256
+                            AND attestation.retrieval_url = source.url
+                      )
+                )
+                SELECT published.*,
+                       session_period.observed_from AS sessions_from,
+                       session_period.observed_through AS sessions_through,
+                       initiative_period.observed_from AS initiatives_from,
+                       initiative_period.observed_through AS initiatives_through,
+                       vote_period.observed_from AS votes_from,
+                       vote_period.observed_through AS votes_through
+                FROM ranked_snapshots published
+                LEFT JOIN LATERAL (
+                    SELECT COUNT(*) AS actual_count,
+                           MIN(session.starts_at)::date AS observed_from,
+                           MAX(session.starts_at)::date AS observed_through
+                    FROM parliamentary_sessions session
+                    WHERE session.snapshot_id = published.id
+                      AND session.source_document_id = published.source_document_id
+                ) session_period ON TRUE
+                LEFT JOIN LATERAL (
+                    SELECT COUNT(*) AS actual_count,
+                           MIN(initiative.introduced_at)::date AS observed_from,
+                           MAX(initiative.introduced_at)::date AS observed_through
+                    FROM parliamentary_initiatives initiative
+                    WHERE initiative.snapshot_id = published.id
+                      AND initiative.source_document_id = published.source_document_id
+                ) initiative_period ON TRUE
+                LEFT JOIN LATERAL (
+                    SELECT COUNT(*) AS actual_count,
+                           MIN(event.voted_at)::date AS observed_from,
+                           MAX(event.voted_at)::date AS observed_through,
+                           (
+                               SELECT COUNT(*)
+                               FROM vote_records record
+                               JOIN vote_events record_event
+                                 ON record_event.id = record.vote_event_id
+                               WHERE record_event.snapshot_id = published.id
+                                 AND record_event.source_document_id =
+                                     published.source_document_id
+                                 AND record.source_document_id =
+                                     published.source_document_id
+                           ) AS actual_record_count
+                    FROM vote_events event
+                    WHERE event.snapshot_id = published.id
+                      AND event.source_document_id = published.source_document_id
+                ) vote_period ON TRUE
+                WHERE published.publication_rank = 1
+                  AND (
+                      (
+                          published.scope = 'activity'
+                          AND session_period.actual_count = published.session_count
+                          AND initiative_period.actual_count = published.initiative_count
+                      )
+                      OR (
+                          published.scope = 'votes'
+                          AND vote_period.actual_count = published.vote_count
+                          AND vote_period.actual_record_count = published.vote_record_count
+                      )
+                  )
+                ORDER BY published.collected_at DESC, published.legislature DESC,
+                         published.scope
+                LIMIT $1
+                """,
+                limit,
+            )
+
+        rows: list[dict[str, Any]] = []
+        for snapshot in snapshots:
+            common = {
+                "legislature": snapshot["legislature"],
+                "scope": snapshot["scope"],
+                "count_is_exact": True,
+                "collected_at": snapshot["collected_at"],
+                "verified_at": snapshot["verified_at"],
+                "source": _source(snapshot),
+                "snapshot_sha256": str(snapshot["normalised_sha256"]),
+                "historical_completeness": "NOT_ASSERTED",
+            }
+            if snapshot["scope"] == "activity":
+                specs = (
+                    (
+                        "sessions",
+                        "Reuniões observadas",
+                        "session_count",
+                        "sessions_from",
+                        "sessions_through",
+                        "A fonte contém observações de reuniões; não equivale à agenda "
+                        "integral da Assembleia da República.",
+                    ),
+                    (
+                        "initiatives",
+                        "Iniciativas",
+                        "initiative_count",
+                        "initiatives_from",
+                        "initiatives_through",
+                        "A contagem é exata dentro desta fotografia; a completude histórica "
+                        "fora do período observado não é afirmada.",
+                    ),
+                )
+            else:
+                specs = (
+                    (
+                        "votes",
+                        "Votações",
+                        "vote_count",
+                        "votes_from",
+                        "votes_through",
+                        "A contagem é exata dentro desta fotografia; resultado não prova "
+                        "entrada em vigor ou impacto material.",
+                    ),
+                    (
+                        "vote_records",
+                        "Posições registadas",
+                        "vote_record_count",
+                        "votes_from",
+                        "votes_through",
+                        "Inclui posições normalizadas, inclusive UNKNOWN; identidades só são "
+                        "associadas por identificador oficial exato.",
+                    ),
+                )
+            for kind, label, count_key, from_key, through_key, limitation in specs:
+                rows.append(
+                    {
+                        **common,
+                        "record_kind": kind,
+                        "record_label": label,
+                        "published_count": int(snapshot[count_key]),
+                        "observed_from": snapshot[from_key],
+                        "observed_through": snapshot[through_key],
+                        "limitation": limitation,
+                    }
+                )
+        return rows[:limit]
+
     async def _explore_sessions(
         self,
         connection: Any,

@@ -25,6 +25,7 @@ def test_health_contract() -> None:
     assert response.json()["version"] == "0.5.0-alpha.0"
     assert response.json()["public_capabilities"] == [
         "global_search_v1",
+        "parliament_coverage_v1",
         "parliament_explorer_v1",
         "parliament_publication_history_v1",
     ]
@@ -92,6 +93,7 @@ def test_health_advertises_ai_only_after_schema_and_migrations_are_ready() -> No
     assert response.status_code == 200
     assert response.json()["public_capabilities"] == [
         "global_search_v1",
+        "parliament_coverage_v1",
         "parliament_explorer_v1",
         "parliament_publication_history_v1",
         "ai_explanations_v1",
@@ -125,6 +127,7 @@ def test_health_hides_ai_when_schema_readiness_is_not_proven(
     assert response.status_code == 200
     assert response.json()["public_capabilities"] == [
         "global_search_v1",
+        "parliament_coverage_v1",
         "parliament_explorer_v1",
         "parliament_publication_history_v1",
     ]

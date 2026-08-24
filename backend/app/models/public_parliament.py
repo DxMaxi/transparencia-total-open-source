@@ -103,6 +103,23 @@ class PublishedParliamentExplorer(BaseModel):
     )
 
 
+class PublishedParliamentCoverageRow(BaseModel):
+    legislature: str
+    scope: Literal["activity", "votes"]
+    record_kind: Literal["sessions", "initiatives", "votes", "vote_records"]
+    record_label: str
+    published_count: int = Field(ge=0)
+    count_is_exact: Literal[True] = True
+    observed_from: date | None = None
+    observed_through: date | None = None
+    collected_at: datetime
+    verified_at: datetime
+    source: OfficialSource
+    snapshot_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    historical_completeness: Literal["NOT_ASSERTED"] = "NOT_ASSERTED"
+    limitation: str
+
+
 class PublishedParliamentPublicationCounts(BaseModel):
     sessions: int = Field(ge=0)
     initiatives: int = Field(ge=0)

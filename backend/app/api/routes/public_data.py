@@ -21,6 +21,7 @@ from app.models.public_parliament import (
     PublishedParliamentaryInitiative,
     PublishedParliamentarySession,
     PublishedParliamentaryVote,
+    PublishedParliamentCoverageRow,
     PublishedParliamentExplorer,
     PublishedParliamentPublicationHistoryItem,
 )
@@ -340,6 +341,25 @@ async def public_parliament_explorer(
     except RuntimeError as exc:
         raise _unavailable(exc) from exc
     return PublishedParliamentExplorer.model_validate(result)
+
+
+@router.get(
+    "/parliament/coverage",
+    response_model=list[PublishedParliamentCoverageRow],
+)
+async def public_parliament_coverage(
+    response: Response,
+    repository: Annotated[PostgresRepository, Depends(get_repository)],
+    limit: int = Query(default=100, ge=1, le=200),
+) -> list[PublishedParliamentCoverageRow]:
+    """Expõe só a cobertura das fotografias revistas, sem afirmar completude histórica."""
+
+    _cache(response)
+    try:
+        rows = await PublicParliamentRepository(repository.pool).list_coverage(limit=limit)
+    except RuntimeError as exc:
+        raise _unavailable(exc) from exc
+    return [PublishedParliamentCoverageRow.model_validate(row) for row in rows]
 
 
 @router.get(

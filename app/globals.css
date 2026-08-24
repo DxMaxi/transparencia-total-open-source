@@ -662,6 +662,45 @@ a.feature-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
 .parliament-coverage__facts dt { color: var(--muted); font-size: 9px; font-weight: 780; letter-spacing: .055em; text-transform: uppercase; }
 .parliament-coverage__facts dd { margin: 6px 0 0; color: var(--ink-soft); font-size: 12px; font-weight: 720; line-height: 1.4; }
 .parliament-coverage__note { grid-column: 1 / -1; margin: 0; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; line-height: 1.65; }
+.parliament-coverage-matrix { min-width: 0; padding: clamp(24px, 4vw, 34px); }
+.parliament-coverage-matrix .section-heading-row { align-items: end; }
+.parliament-coverage-matrix .section-heading-row h2 { max-width: 720px; margin: 8px 0 0; font-size: clamp(24px, 3vw, 31px); letter-spacing: -.03em; }
+.parliament-coverage-matrix .section-heading-row > p { max-width: 430px; margin: 0; color: var(--muted); font-size: 11px; line-height: 1.65; text-align: right; }
+.parliament-coverage-table-wrap { max-width: 100%; margin-top: 23px; overflow-x: auto; border: 1px solid var(--line); border-radius: 13px; background: white; }
+.parliament-coverage-table { width: 100%; min-width: 1080px; border-collapse: collapse; }
+.parliament-coverage-table caption { padding: 13px 15px; border-bottom: 1px solid var(--line); background: var(--canvas); color: var(--muted); font-size: 10px; line-height: 1.6; text-align: left; }
+.parliament-coverage-table th,
+.parliament-coverage-table td { padding: 15px 13px; border-bottom: 1px solid var(--line); color: var(--ink-soft); font-size: 10px; line-height: 1.5; text-align: left; vertical-align: top; }
+.parliament-coverage-table thead th { background: #fbfcfc; color: var(--muted); font-size: 8px; font-weight: 780; letter-spacing: .055em; text-transform: uppercase; }
+.parliament-coverage-table tbody tr:last-child th,
+.parliament-coverage-table tbody tr:last-child td { border-bottom: 0; }
+.parliament-coverage-table tbody th { color: var(--navy); font-size: 15px; }
+.parliament-coverage-table td:nth-child(2) { min-width: 290px; }
+.parliament-coverage-table td:nth-child(4) { min-width: 185px; }
+.parliament-coverage-table td:nth-child(5) { min-width: 195px; }
+.parliament-coverage-table td:nth-child(6) { min-width: 250px; }
+.parliament-coverage-table td > strong,
+.parliament-coverage-table td > span,
+.parliament-coverage-table td > code { display: block; }
+.parliament-coverage-table td > strong { margin-bottom: 5px; color: var(--navy); font-size: 12px; }
+.parliament-coverage-table td > span { margin-top: 4px; color: var(--muted); }
+.parliament-coverage-table td > .coverage-chip { width: fit-content; margin-top: 9px; padding: 5px 8px; font-size: 8px; }
+.parliament-coverage-table .source-link { margin-bottom: 8px; }
+.parliament-coverage-table code { max-width: 280px; overflow-wrap: anywhere; color: var(--muted); font-size: 7px; }
+.parliament-coverage-matrix__unavailable { display: grid; gap: 5px; margin-top: 22px; padding: 15px; border: 1px solid #f3d39a; border-radius: 11px; background: #fff8e9; color: #6f4710; }
+.parliament-coverage-matrix__unavailable strong { font-size: 11px; }
+.parliament-coverage-matrix__unavailable span { color: #805f2d; font-size: 10px; line-height: 1.6; }
+.parliament-backfill-plan { display: grid; grid-template-columns: minmax(250px, .75fr) minmax(0, 1.25fr); gap: 28px; margin-top: 25px; padding: 22px; border-radius: 13px; background: var(--navy); color: white; }
+.parliament-backfill-plan .eyebrow { color: #70ded0; }
+.parliament-backfill-plan h3 { margin: 8px 0 9px; font-size: 20px; }
+.parliament-backfill-plan p { margin: 0; color: #a8bdca; font-size: 10px; line-height: 1.65; }
+.parliament-backfill-plan__sources { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 14px; }
+.parliament-backfill-plan__sources a { color: #70ded0; font-size: 10px; font-weight: 740; text-decoration: underline; text-underline-offset: 3px; }
+.parliament-backfill-plan ol { display: grid; gap: 1px; margin: 0; padding: 0; list-style: none; }
+.parliament-backfill-plan li { display: grid; grid-template-columns: 28px 1fr; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.1); }
+.parliament-backfill-plan li:last-child { border-bottom: 0; }
+.parliament-backfill-plan li b { color: #61d8ca; font-size: 10px; }
+.parliament-backfill-plan li span { color: #d7e3e9; font-size: 10px; line-height: 1.55; }
 .parliament-jump-nav { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .parliament-jump-nav a { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 12px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 14px; background: white; }
 .parliament-jump-nav a:hover { border-color: #9abbb6; color: var(--teal); }
@@ -1106,6 +1145,8 @@ body:has(.private-route-frame) #conteudo { min-height: 100vh; }
   .parliament-proof__source { min-width: 0; justify-items: start; }
   .parliament-proof__source-item { justify-items: start; }
   .parliament-coverage__facts { grid-template-columns: 1fr; }
+  .parliament-coverage-matrix .section-heading-row > p { text-align: left; }
+  .parliament-backfill-plan { grid-template-columns: 1fr; }
   .parliament-jump-nav, .parliament-session-grid { grid-template-columns: 1fr; }
   .parliament-explorer .section-heading-row > p { text-align: left; }
   .parliament-filter-evidence { flex-direction: column; gap: 14px; }
