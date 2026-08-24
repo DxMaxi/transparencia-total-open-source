@@ -209,6 +209,17 @@ class ParliamentEditorialProposalRequest(BaseModel):
     confirm_no_individual_inference: Literal[True]
 
 
+class PoliticianProfileEditorialProposalRequest(BaseModel):
+    """Confirmações para importar uma observação oficial para revisão privada."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    observation_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    confirm_private_only: Literal[True]
+    confirm_exact_official_id_only: Literal[True]
+    confirm_no_mandate_inference: Literal[True]
+
+
 class AiDreProposalRequest(BaseModel):
     """Confirmações explícitas para uma geração privada baseada num snapshot DRE."""
 

@@ -49,6 +49,9 @@ export default async function EditorialQueuePage({
           <Link className="button button--primary" href="/admin/revisao/parlamento">
             Importar fotografia parlamentar
           </Link>
+          <Link className="button" href="/admin/revisao/parlamento/deputados">
+            Rever observações de deputados
+          </Link>
           <Link className="button" href="/admin/revisao/novo">
             Criar processo manual
           </Link>

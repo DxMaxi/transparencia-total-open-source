@@ -14,6 +14,7 @@ import {
   type ParliamentEditorialScope,
   type ParliamentEditorialWithdrawalResult,
   type ParliamentWithdrawalReason,
+  type PoliticianProfileEditorialProposalResult,
 } from "@/lib/editorial-types";
 
 function requiredText(formData: FormData, name: string): string {
@@ -144,6 +145,45 @@ export async function createParliamentProposal(formData: FormData) {
   revalidatePath("/admin/revisao/parlamento");
   redirect(
     `/admin/revisao/${created!.case.id}?sucesso=${created!.created ? "importado" : "existente"}`,
+  );
+}
+
+export async function createPoliticianProfileProposal(formData: FormData) {
+  const observationId = evidenceId(formData, "observation_id");
+  const legislature = requiredText(formData, "legislature").slice(0, 20);
+  let created: PoliticianProfileEditorialProposalResult | null = null;
+  let failure: string | null = null;
+  try {
+    for (const [field, message] of [
+      ["confirm_private_only", "Confirme que a proposta permanece privada"],
+      ["confirm_exact_official_id_only", "Confirme o uso exclusivo do DepId oficial"],
+      ["confirm_no_mandate_inference", "Confirme que a observação não prova um mandato"],
+    ] as const) {
+      if (formData.get(field) !== "on") throw new Error(message);
+    }
+    created = await editorialFetch<PoliticianProfileEditorialProposalResult>(
+      "/parliament/deputy-proposals",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          observation_id: observationId,
+          confirm_private_only: true,
+          confirm_exact_official_id_only: true,
+          confirm_no_mandate_inference: true,
+        }),
+      },
+    );
+  } catch (error) {
+    failure = actionError(error);
+  }
+  if (failure) {
+    const params = new URLSearchParams({ legislature, erro: failure });
+    redirect(`/admin/revisao/parlamento/deputados?${params.toString()}`);
+  }
+  revalidatePath("/admin/revisao");
+  revalidatePath("/admin/revisao/parlamento/deputados");
+  redirect(
+    `/admin/revisao/${created!.case.id}?sucesso=${created!.created ? "perfil-importado" : "perfil-existente"}`,
   );
 }
 

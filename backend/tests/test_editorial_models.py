@@ -8,6 +8,7 @@ from app.models.editorial import (
     EditorialDecisionRequest,
     ParliamentEditorialProposalRequest,
     ParliamentEditorialPublicationRequest,
+    PoliticianProfileEditorialProposalRequest,
 )
 
 
@@ -106,6 +107,33 @@ def test_parliament_proposal_accepts_only_scope_and_explicit_safety_confirmation
                 **payload.model_dump(),
                 "normalized_data": {"ator": "valor fornecido pelo browser"},
             }
+        )
+
+
+def test_politician_profile_proposal_accepts_only_an_observation_and_three_confirmations() -> None:
+    payload = PoliticianProfileEditorialProposalRequest.model_validate(
+        {
+            "observation_id": "parliament_deputy_observation_123abc",
+            "confirm_private_only": True,
+            "confirm_exact_official_id_only": True,
+            "confirm_no_mandate_inference": True,
+        }
+    )
+    assert payload.observation_id == "parliament_deputy_observation_123abc"
+
+    for field in (
+        "confirm_private_only",
+        "confirm_exact_official_id_only",
+        "confirm_no_mandate_inference",
+    ):
+        invalid = payload.model_dump()
+        invalid[field] = False
+        with pytest.raises(ValidationError):
+            PoliticianProfileEditorialProposalRequest.model_validate(invalid)
+
+    with pytest.raises(ValidationError):
+        PoliticianProfileEditorialProposalRequest.model_validate(
+            {**payload.model_dump(), "normalized_data": {"name": "browser-controlled"}}
         )
 
 
