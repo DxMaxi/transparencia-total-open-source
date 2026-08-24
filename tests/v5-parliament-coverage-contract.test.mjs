@@ -82,12 +82,13 @@ test("the public matrix is fail-closed and explains the exact scope of every cou
 });
 
 test("the historical backfill remains a versioned editorial plan, not a publication shortcut", async () => {
-  const [documentation, catalogue, manifest, archive, normalization, checklist, plan, readme] = await Promise.all([
+  const [documentation, catalogue, manifest, archive, normalization, voteNormalization, checklist, plan, readme] = await Promise.all([
     read("../docs/V5_PARLIAMENT_COVERAGE_AND_BACKFILL.md"),
     read("../docs/V5_PARLIAMENT_SOURCE_CATALOGUE.md"),
     read("../docs/V5_PARLIAMENT_RESOURCE_MANIFEST.md"),
     read("../docs/V5_PARLIAMENT_RESOURCE_ARCHIVE.md"),
     read("../docs/V5_PARLIAMENT_RESOURCE_NORMALIZATION.md"),
+    read("../docs/V5_PARLIAMENT_VOTE_NORMALIZATION.md"),
     read("../docs/V5_RELEASE_CHECKLIST.md"),
     read("../docs/V5_RELEASE_PLAN.md"),
     read("../README.md"),
@@ -117,23 +118,30 @@ test("the historical backfill remains a versioned editorial plan, not a publicat
   assert.match(normalization, /source_id` aparecer com normalizações divergentes/);
   assert.match(normalization, /fotografia é recalculada antes da escrita/);
   assert.match(normalization, /zero casos editoriais/);
+  assert.match(voteNormalization, /parliament-historical-votes-v1/);
+  assert.match(voteNormalization, /sem identificador ficam como `UNKNOWN`/);
+  assert.match(voteNormalization, /zero casos editoriais/);
+  assert.match(voteNormalization, /zero eventos de publicação/);
   assert.match(checklist, /\[x\] V5\.21 — matriz de cobertura parlamentar/);
   assert.match(checklist, /\[x\] V5\.22 — catálogo privado e versionado/);
   assert.match(checklist, /\[x\] V5\.23 — manifesto privado de XML\/JSON/);
   assert.match(checklist, /\[x\] V5\.24 — arquivo limitado de um recurso exato/);
   assert.match(checklist, /\[x\] V5\.25 — primeira normalização histórica privada/);
+  assert.match(checklist, /\[x\] V5\.26 — normalização histórica privada de votações/);
   assert.match(checklist, /\[x\] Plano de backfill versionado/);
   assert.match(checklist, /\[x\] Matriz pública de cobertura parlamentar concluída/);
-  assert.match(plan, /V5\.1 a V5\.25 integradas/);
+  assert.match(plan, /V5\.1 a V5\.26 integradas/);
   assert.match(plan, /V5_PARLIAMENT_COVERAGE_AND_BACKFILL\.md/);
   assert.match(plan, /V5_PARLIAMENT_SOURCE_CATALOGUE\.md/);
   assert.match(plan, /V5_PARLIAMENT_RESOURCE_MANIFEST\.md/);
   assert.match(plan, /V5_PARLIAMENT_RESOURCE_ARCHIVE\.md/);
   assert.match(plan, /V5_PARLIAMENT_RESOURCE_NORMALIZATION\.md/);
-  assert.match(readme, /V5\.1 a V5\.25 integradas/);
+  assert.match(plan, /V5_PARLIAMENT_VOTE_NORMALIZATION\.md/);
+  assert.match(readme, /V5\.1 a V5\.26 integradas/);
   assert.match(readme, /V5_PARLIAMENT_COVERAGE_AND_BACKFILL\.md/);
   assert.match(readme, /V5_PARLIAMENT_SOURCE_CATALOGUE\.md/);
   assert.match(readme, /V5_PARLIAMENT_RESOURCE_MANIFEST\.md/);
   assert.match(readme, /V5_PARLIAMENT_RESOURCE_ARCHIVE\.md/);
   assert.match(readme, /V5_PARLIAMENT_RESOURCE_NORMALIZATION\.md/);
+  assert.match(readme, /V5_PARLIAMENT_VOTE_NORMALIZATION\.md/);
 });

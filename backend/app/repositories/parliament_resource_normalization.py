@@ -22,6 +22,8 @@ from app.services.parliament_source_catalogue import (
 
 PARLIAMENT_HISTORICAL_INITIATIVES_PARSER_VERSION = "parliament-historical-initiatives-v1"
 PARLIAMENT_HISTORICAL_INITIATIVES_SOURCE_NAME = "PARLIAMENT_HISTORICAL_INITIATIVES"
+PARLIAMENT_HISTORICAL_VOTES_PARSER_VERSION = "parliament-historical-votes-v1"
+PARLIAMENT_HISTORICAL_VOTES_SOURCE_NAME = "PARLIAMENT_HISTORICAL_VOTES"
 
 
 @dataclass(frozen=True, slots=True)
@@ -232,6 +234,61 @@ class ParliamentResourceNormalizationRepository(ParliamentResourceArchiveReposit
             "snapshot_created": result.snapshot_created,
             "initiative_count": len(dataset.initiatives),
             "initiatives_written": result.initiatives_written,
+            "sync_status": "PARTIAL",
+            "publishable": False,
+        }
+
+    async def persist_private_votes(
+        self,
+        dataset: ParliamentActivityDataset,
+    ) -> dict[str, object]:
+        if self.pool is None:
+            raise RuntimeError("Base de dados não configurada")
+        if dataset.parser_version != PARLIAMENT_HISTORICAL_VOTES_PARSER_VERSION:
+            raise ValueError("Versão do normalizador histórico de votações inválida")
+        if dataset.sessions or dataset.initiatives or not dataset.votes:
+            raise ValueError("O lote histórico privado só pode conter votações")
+
+        vote_record_count = sum(len(event.records) for event in dataset.votes)
+        records_read = len(dataset.votes) + vote_record_count
+        sync_id = await self._start_sync_run(
+            source_name=PARLIAMENT_HISTORICAL_VOTES_SOURCE_NAME,
+            dataset_url=str(dataset.dataset_url),
+            code_version=dataset.parser_version,
+        )
+        try:
+            result = await ParliamentActivityRepository(self.pool).persist(
+                dataset,
+                archived_by=dataset.parser_version,
+            )
+            records_written = result.vote_events_written + result.vote_records_written
+            await self._finish_sync_run(
+                sync_id,
+                status_value="PARTIAL",
+                records_read=records_read,
+                records_written=records_written,
+                warnings=list(dataset.warnings),
+            )
+        except Exception as exc:
+            await self._finish_sync_run(
+                sync_id,
+                status_value="FAILED",
+                records_read=records_read,
+                records_written=0,
+                warnings=list(dataset.warnings),
+                error_message=str(exc),
+            )
+            raise
+
+        return {
+            "sync_run_id": sync_id,
+            "source_document_id": result.source_document_id,
+            "normalised_snapshot_id": result.snapshot_id,
+            "snapshot_created": result.snapshot_created,
+            "vote_count": len(dataset.votes),
+            "vote_record_count": vote_record_count,
+            "votes_written": result.vote_events_written,
+            "vote_records_written": result.vote_records_written,
             "sync_status": "PARTIAL",
             "publishable": False,
         }

@@ -101,6 +101,12 @@ O primeiro gate de descoberta foi implementado em
 Essa entrega arquiva as páginas de catálogo e cria apenas candidatos `PENDING_INSPECTION`; não
 descarrega os ficheiros históricos nem altera a matriz pública.
 
+As primeiras interpretações privadas estão separadas em
+[V5.25 — iniciativas](V5_PARLIAMENT_RESOURCE_NORMALIZATION.md) e
+[V5.26 — votações](V5_PARLIAMENT_VOTE_NORMALIZATION.md). Ambas exigem a mesma cadeia arquivada e
+atestada, recalculam o resultado antes da escrita e permanecem `NOT_ASSERTED`, sem proposta
+editorial ou publicação.
+
 ## Critérios de aceitação da V5.21
 
 - a API e a interface só mostram fotografias atualmente publicáveis e atestadas;
