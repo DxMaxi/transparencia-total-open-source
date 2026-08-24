@@ -11,13 +11,13 @@ reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.29 integradas; staging remoto pendente |
+| Código V5 | V5.1 a V5.30 integradas; staging remoto pendente |
 | Frontend público | V5.21 preparado; capacidades sem backend ou esquema pronto ficam fail-closed |
 | API pública | `0.5.0-alpha.0`; capacidades anunciadas apenas após prova read-only do esquema |
 | Painel editorial | implementado no código, não ativado em produção |
 | IA | geração, revisão, publicação e retirada implementadas; esquema remoto ainda não ativado |
-| Parlamento | matriz V5.21 e gates V5.22–V5.29 preparados; atividades gerais e ativação editorial pendentes |
-| Perfis | contrato V5.6, entrada editorial V5.28 e prontidão V5.29 preparados; publicação individual ainda pendente |
+| Parlamento | matriz V5.21 e gates V5.22–V5.30 preparados; atividades gerais e ativação editorial pendentes |
+| Perfis | entrada, prontidão e publicação integral por fotografia preparadas; retirada e domínios individuais pendentes |
 | Promessómetro | catálogo editorial inicial de 10 compromissos; vocabulário V5.20 protegido |
 | Investigador Cívico | zero contratos e zero relações na projeção pública |
 | PWA e alertas | consentimento, revogação e cache opt-in integrados; configuração remota pendente |
@@ -172,6 +172,12 @@ O oitavo gate está implementado em
 Uma inspeção privada e read-only exige a fotografia inteira, reconstrói cada versão aprovada a
 partir da observação oficial e bloqueia hashes, decisões, arquivo, manifesto ou reconciliação V4
 divergentes. Um resultado pronto continua sem criar pessoa, mandato, revisão ou publicação.
+
+O nono gate está implementado em
+[V5.30 — publicação transacional da fotografia completa](V5_POLITICIAN_PROFILE_SNAPSHOT_PUBLICATION.md).
+Uma ação `ADMIN` com MFA repete as provas e acrescenta identidades, observações, revisões,
+auditorias, decisões e eventos numa só transação. A ligação usa apenas `DepId` oficial exato; não
+cria mandatos nem filiações. Esta capacidade ainda não foi ativada ou executada num ambiente real.
 
 Critérios de saída:
 

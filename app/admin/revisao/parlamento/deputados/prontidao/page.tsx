@@ -1,8 +1,10 @@
 import Link from "next/link";
-import { editorialFetch } from "@/lib/editorial-api";
+import { publishPoliticianProfileSnapshot } from "../../../actions";
+import { editorialFetch, getEditorialContext } from "@/lib/editorial-api";
 import type {
   PoliticianProfilePublicationReadiness,
   PoliticianProfilePublicationReadinessList,
+  PoliticianProfileSnapshotPublicationPreview,
 } from "@/lib/editorial-types";
 
 const dateFormatter = new Intl.DateTimeFormat("pt-PT", {
@@ -23,7 +25,7 @@ function safeOfficialSourceUrl(value: string): string | null {
 export default async function PoliticianProfilePublicationReadinessPage({
   searchParams,
 }: {
-  searchParams: Promise<{ legislature?: string }>;
+  searchParams: Promise<{ legislature?: string; erro?: string; sucesso?: string }>;
 }) {
   const input = await searchParams;
   const legislature = (input.legislature?.trim() || "XVII").slice(0, 20);
@@ -31,20 +33,43 @@ export default async function PoliticianProfilePublicationReadinessPage({
   const catalogue = await editorialFetch<PoliticianProfilePublicationReadinessList>(
     `/parliament/deputy-snapshots/publication-readiness?${params.toString()}`,
   );
+  const { staff } = await getEditorialContext();
+  const publicationPreviews = new Map<string, PoliticianProfileSnapshotPublicationPreview>();
+  await Promise.all(
+    catalogue.items.map(async (snapshot) => {
+      if (!snapshot.eligible) return;
+      const preview = await editorialFetch<PoliticianProfileSnapshotPublicationPreview>(
+        `/parliament/deputy-snapshots/${encodeURIComponent(snapshot.snapshot_id)}/publication`,
+      );
+      publicationPreviews.set(snapshot.snapshot_id, preview);
+    }),
+  );
 
   return (
     <div className="admin-page parliament-editorial-page">
       <header className="admin-page-heading">
         <div>
-          <p className="eyebrow">V5.29 · porta de fotografia completa</p>
+          <p className="eyebrow">V5.29–V5.30 · fotografia completa</p>
           <h1>Prontidão privada dos perfis políticos</h1>
           <p>
-            Esta página volta a provar a fonte, o arquivo, o manifesto e todas as aprovações da
-            mesma fotografia. Não cria pessoas, mandatos, revisões públicas ou publicações.
+            A inspeção inicial volta a provar a fonte, o arquivo, o manifesto e todas as aprovações
+            da mesma fotografia sem escrever dados. Uma publicação só pode começar numa ação ADMIN
+            separada, explícita e protegida por MFA.
           </p>
         </div>
         <Link href="/admin/revisao/parlamento/deputados">Rever observações</Link>
       </header>
+
+      {input.erro ? (
+        <p className="private-message private-message--error" role="alert">
+          {input.erro}
+        </p>
+      ) : null}
+      {input.sucesso === "fotografia-publicada" ? (
+        <p className="private-message" role="status">
+          A fotografia foi publicada numa única transação e o histórico foi preservado.
+        </p>
+      ) : null}
 
       <aside className="admin-private-warning">
         <strong>Uma fotografia parcial nunca aparece como uma lista completa</strong>
@@ -70,7 +95,12 @@ export default async function PoliticianProfilePublicationReadinessPage({
       {catalogue.items.length ? (
         <section className="parliament-snapshot-list" aria-label="Prontidão das fotografias">
           {catalogue.items.map((snapshot) => (
-            <ReadinessCard key={snapshot.snapshot_id} snapshot={snapshot} />
+            <ReadinessCard
+              isAdmin={staff.role === "ADMIN"}
+              key={snapshot.snapshot_id}
+              preview={publicationPreviews.get(snapshot.snapshot_id) ?? null}
+              snapshot={snapshot}
+            />
           ))}
         </section>
       ) : (
@@ -83,7 +113,15 @@ export default async function PoliticianProfilePublicationReadinessPage({
   );
 }
 
-function ReadinessCard({ snapshot }: { snapshot: PoliticianProfilePublicationReadiness }) {
+function ReadinessCard({
+  snapshot,
+  preview,
+  isAdmin,
+}: {
+  snapshot: PoliticianProfilePublicationReadiness;
+  preview: PoliticianProfileSnapshotPublicationPreview | null;
+  isAdmin: boolean;
+}) {
   const officialUrl = safeOfficialSourceUrl(snapshot.source.url);
   const reviewed = snapshot.editorial_counts.APPROVED;
   const total = snapshot.manifest_counts.deputies;
@@ -175,20 +213,142 @@ function ReadinessCard({ snapshot }: { snapshot: PoliticianProfilePublicationRea
           </ul>
         </section>
       ) : (
-        <section className="parliament-proposal-card parliament-proposal-card--existing">
-          <p className="eyebrow">Prova de prontidão</p>
-          <h3>Todos os perfis coincidem com a fotografia oficial</h3>
-          <p>
-            <code>{snapshot.readiness_proof_sha256}</code>
-          </p>
-          <p>
-            Ainda não existe aqui uma ação de publicação. A próxima porta terá de repetir esta
-            prova numa transação ADMIN com MFA e conservar revisão e auditoria imutáveis.
-          </p>
-        </section>
+        <PublicationAction
+          isAdmin={isAdmin}
+          legislature={snapshot.legislature}
+          preview={preview}
+        />
       )}
 
       <p className="admin-form-help">{snapshot.publication_rule}</p>
     </article>
+  );
+}
+
+function PublicationAction({
+  preview,
+  legislature,
+  isAdmin,
+}: {
+  preview: PoliticianProfileSnapshotPublicationPreview | null;
+  legislature: string;
+  isAdmin: boolean;
+}) {
+  if (!preview) {
+    return (
+      <section className="parliament-proposal-card">
+        <strong>Prova de publicação indisponível.</strong>
+        <p>A fotografia permanece privada e nenhuma ação é apresentada.</p>
+      </section>
+    );
+  }
+  return (
+    <section className="admin-publication-panel">
+      <div className="admin-publication-summary">
+        <div>
+          <p className="eyebrow">V5.30 · publicação integral</p>
+          <h3>Todos os perfis coincidem com a fotografia oficial</h3>
+          <p>
+            A transação reutiliza apenas identidades com o mesmo DepId, cria as restantes e
+            acrescenta observações, revisões e histórico. Não cria mandatos nem filiações.
+          </p>
+        </div>
+        <dl>
+          <div>
+            <dt>Pessoas novas</dt>
+            <dd>{preview.public_effect.people_to_create.toLocaleString("pt-PT")}</dd>
+          </div>
+          <div>
+            <dt>Pessoas exatas reutilizadas</dt>
+            <dd>
+              {preview.public_effect.people_to_reuse_by_exact_depid.toLocaleString("pt-PT")}
+            </dd>
+          </div>
+          <div>
+            <dt>Mandatos ou filiações criados</dt>
+            <dd>0</dd>
+          </div>
+        </dl>
+        <div className="admin-publication-digests">
+          <span>SHA-256 da prontidão</span>
+          <code>{preview.readiness_proof_sha256}</code>
+          <span>SHA-256 da prova de publicação</span>
+          <code>{preview.publication_proof_sha256}</code>
+        </div>
+      </div>
+
+      {isAdmin && preview.eligible && preview.readiness_proof_sha256 && preview.publication_proof_sha256 ? (
+        <form action={publishPoliticianProfileSnapshot}>
+          <input type="hidden" name="legislature" value={legislature} />
+          <input type="hidden" name="expected_snapshot_id" value={preview.snapshot_id} />
+          <input
+            type="hidden"
+            name="expected_source_sha256"
+            value={preview.source.content_sha256}
+          />
+          <input
+            type="hidden"
+            name="expected_snapshot_sha256"
+            value={preview.normalised_sha256}
+          />
+          <input
+            type="hidden"
+            name="expected_readiness_proof_sha256"
+            value={preview.readiness_proof_sha256}
+          />
+          <input
+            type="hidden"
+            name="expected_publication_proof_sha256"
+            value={preview.publication_proof_sha256}
+          />
+          <input
+            type="hidden"
+            name="expected_deputy_count"
+            value={preview.manifest_counts.deputies}
+          />
+          <label>
+            Fundamentação interna completa
+            <textarea name="rationale" minLength={20} maxLength={1850} required />
+            <small>Fica no histórico editorial privado.</small>
+          </label>
+          <label>
+            Fundamentação pública resumida
+            <textarea name="public_rationale" minLength={20} maxLength={500} required />
+          </label>
+          <label className="admin-confirmation">
+            <input name="confirm_source_reviewed" type="checkbox" required />
+            <span>Voltei a comparar URL, data, arquivo e SHA-256 da fonte oficial.</span>
+          </label>
+          <label className="admin-confirmation">
+            <input name="confirm_complete_snapshot" type="checkbox" required />
+            <span>Confirmo a fotografia inteira, não uma seleção de perfis.</span>
+          </label>
+          <label className="admin-confirmation">
+            <input name="confirm_exact_official_id_only" type="checkbox" required />
+            <span>As identidades são ligadas apenas pelo DepId oficial exato.</span>
+          </label>
+          <label className="admin-confirmation">
+            <input name="confirm_no_mandate_inference" type="checkbox" required />
+            <span>Nenhuma observação será convertida em início, fim ou continuidade de mandato.</span>
+          </label>
+          <label className="admin-confirmation">
+            <input name="confirm_no_party_inference" type="checkbox" required />
+            <span>Nenhuma sigla ou nome de grupo será convertido automaticamente em filiação.</span>
+          </label>
+          <label className="admin-confirmation">
+            <input name="confirm_publication" type="checkbox" required />
+            <span>Confirmo a publicação transacional de todos os perfis desta fotografia.</span>
+          </label>
+          <button className="button button--primary" type="submit">
+            Publicar a fotografia completa
+          </button>
+        </form>
+      ) : (
+        <p className="private-message">
+          A prova está visível, mas apenas um administrador com MFA pode publicar a fotografia.
+        </p>
+      )}
+      <p className="admin-publication-rule">{preview.publication_rule}</p>
+    </section>
   );
 }

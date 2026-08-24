@@ -105,6 +105,11 @@ A V5.29 acrescenta a inspeção read-only da fotografia inteira: todas as versõ
 aprovadas, coincidir com a reconstrução determinística e conservar a decisão e a fonte exatas. Uma
 revisão pública V4 exige reconciliação explícita. O hash de prontidão não publica nem autoriza uma
 ação de escrita.
+A V5.30 acrescenta a operação de publicação integral, separada e exclusivamente `ADMIN` com MFA.
+Depois de repetir hashes, manifesto e aprovações, liga identidades apenas por `DepId` exato e
+acrescenta pessoas, observações, revisões, auditorias, decisões e eventos numa única transação. Não
+cria mandatos ou filiações e não foi executada sobre staging ou produção. A retirada e republicação
+não seletivas desta fotografia são o gate seguinte.
 
 A melhoria de UX iniciada em agosto de 2026 faz parte da estabilização/conclusão da **V5**. Não deve ser tratada como início de uma V6 nem como autorização para reescrever o projeto.
 

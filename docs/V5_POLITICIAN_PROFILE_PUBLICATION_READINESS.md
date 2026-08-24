@@ -22,9 +22,12 @@ está perante a composição completa. Por isso, a prontidão fica bloqueada qua
 - uma versão que diverge da reconstrução determinística da observação oficial;
 - um arquivo que não coincide simultaneamente em URL, data de recolha e SHA-256;
 - um `DepId` vazio ou repetido;
-- uma publicação editorial inesperada ou uma revisão pública antiga ainda por reconciliar.
+- uma publicação editorial inesperada ou uma decisão pública antiga ainda por reconciliar;
+- uma identidade inativa ou uma ligação partidária antiga sem identificador oficial verificável.
 
-O painel mostra contagens, bloqueios e progresso. Não apresenta um botão de publicação.
+Na entrega V5.29, o painel mostrava apenas contagens, bloqueios e progresso. A V5.30 conserva esta
+inspeção read-only e acrescenta, numa secção separada, a ação explícita que só aparece quando a
+fotografia inteira está pronta e a sessão pertence a um administrador com MFA.
 
 ## Identidade exata e ausência de inferências
 
@@ -56,23 +59,26 @@ publicação.
 
 ## Reconciliação com a V4
 
-O projeto conserva pessoas, pertenças e revisões criadas pelo circuito anterior. Uma revisão
-`PERSON` positiva ligada à mesma fonte bloqueia esta porta com
+O projeto conserva pessoas, pertenças e revisões criadas pelo circuito anterior. Qualquer decisão
+`PERSON` ligada à mesma fonte bloqueia esta porta com
 `LEGACY_PUBLICATION_REQUIRES_RECONCILIATION`. A V5 não apaga nem ignora esse histórico. Uma futura
 adaptação terá de o reconciliar explicitamente, sem duplicar identidades e sem fabricar um evento
 editorial retroativo.
 
-## Próxima porta
+## Porta seguinte implementada na V5.30
 
-A publicação efetiva continuará a exigir uma operação separada que:
+A publicação efetiva foi implementada numa operação separada que:
 
 1. aceite apenas um administrador autenticado com MFA;
-2. volte a calcular o `readiness_proof_sha256` dentro da transação;
+2. volte a calcular o `readiness_proof_sha256` antes das escritas da transação;
 3. trabalhe sobre a fotografia inteira e por `DepId` oficial exato;
 4. não crie mandatos, filiações jurídicas ou relações individuais não provadas;
 5. acrescente `DataPublicationReview`, `AuditEvent` e `EditorialPublicationEvent` imutáveis;
 6. recue integralmente se qualquer perfil, hash, contagem ou decisão mudar;
 7. nunca seja acionada por ingestão, aprovação, migração ou deployment.
+
+O desenho, os efeitos mínimos e os limites dessa operação estão documentados em
+[V5.30 — publicação transacional da fotografia completa](V5_POLITICIAN_PROFILE_SNAPSHOT_PUBLICATION.md).
 
 Esta entrega não executa migrações, não configura Supabase ou segredos, não recolhe dados reais e
 não publica nem retira qualquer registo.

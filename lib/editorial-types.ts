@@ -532,6 +532,8 @@ export type PoliticianProfilePublicationReadiness = {
     exact_existing_people: number;
     new_people_required: number;
     existing_memberships: number;
+    existing_party_links: number;
+    legacy_review_decisions: number;
     legacy_positive_reviews: number;
   };
   readiness_proof_sha256: string | null;
@@ -549,6 +551,61 @@ export type PoliticianProfilePublicationReadinessList = {
   limit: number;
   publication_performed: false;
   readiness_rule: string;
+};
+
+export type PoliticianProfileSnapshotPublicationPreview = {
+  snapshot_id: string;
+  legislature: string;
+  parser_version: string;
+  normalised_sha256: string;
+  collected_at: string;
+  source: PoliticianProfilePublicationReadiness["source"];
+  archive: PoliticianProfilePublicationReadiness["archive"];
+  manifest_counts: PoliticianProfilePublicationReadiness["manifest_counts"];
+  materialised_counts: PoliticianProfilePublicationReadiness["materialised_counts"];
+  editorial_counts: PoliticianProfilePublicationReadiness["editorial_counts"];
+  identity_projection: PoliticianProfilePublicationReadiness["identity_projection"];
+  readiness_proof_sha256: string | null;
+  publication_proof_sha256: string | null;
+  public_effect: {
+    people_to_create: number;
+    people_to_reuse_by_exact_depid: number;
+    memberships_to_create: number;
+    memberships_to_reuse: number;
+    person_reviews_to_append: number;
+    cases_to_publish: number;
+    mandates_to_create: 0;
+    party_links_to_create: 0;
+  };
+  eligible: boolean;
+  blockers: Array<{ code: string; detail: string; count: number }>;
+  automatic_publication: false;
+  mandate_inference_allowed: false;
+  party_inference_allowed: false;
+  publication_rule: string;
+};
+
+export type PoliticianProfileSnapshotPublicationResult = {
+  created: true;
+  snapshot_id: string;
+  legislature: string;
+  state: "PUBLISHED";
+  deputy_count: number;
+  people_created: number;
+  people_reused: number;
+  memberships_created: number;
+  memberships_reused: number;
+  person_reviews_created: number;
+  person_audits_created: number;
+  editorial_decisions_created: number;
+  publication_events_created: number;
+  snapshot_review_id: string;
+  snapshot_audit_id: string;
+  readiness_proof_sha256: string;
+  publication_proof_sha256: string;
+  mandates_created: 0;
+  party_links_created: 0;
+  publication_rule: string;
 };
 
 export type ParliamentEditorialPublicationPreview = {

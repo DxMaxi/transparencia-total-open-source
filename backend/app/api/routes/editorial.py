@@ -13,6 +13,7 @@ from app.api.dependencies import (
     get_parliament_editorial_repository,
     get_politician_profile_editorial_repository,
     get_politician_profile_publication_readiness_repository,
+    get_politician_profile_snapshot_publication_repository,
     get_staff_session,
     require_editorial_admin,
     require_editorial_staff,
@@ -34,6 +35,7 @@ from app.models.editorial import (
     ParliamentEditorialPublicationRequest,
     ParliamentEditorialWithdrawalRequest,
     PoliticianProfileEditorialProposalRequest,
+    PoliticianProfileSnapshotPublicationRequest,
     StaffSession,
 )
 from app.repositories.ai_editorial import AiEditorialRepository
@@ -53,6 +55,9 @@ from app.repositories.politician_profile_editorial import (
 )
 from app.repositories.politician_profile_publication import (
     PoliticianProfilePublicationReadinessRepository,
+)
+from app.repositories.politician_profile_snapshot_publication import (
+    PoliticianProfileSnapshotPublicationRepository,
 )
 from app.services.ai_editorial import AiEditorialService, AiGenerationError
 from app.services.ai_summarizer import get_summarizer
@@ -185,6 +190,45 @@ async def parliament_deputy_snapshot_readiness(
     try:
         return await repository.inspect(snapshot_id=snapshot_id)
     except (EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.get("/parliament/deputy-snapshots/{snapshot_id}/publication")
+async def parliament_deputy_snapshot_publication_preview(
+    snapshot_id: Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,200}$")],
+    repository: Annotated[
+        PoliticianProfileSnapshotPublicationRepository,
+        Depends(get_politician_profile_snapshot_publication_repository),
+    ],
+    _actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> dict[str, object]:
+    """Reconstrói o efeito integral sem escrever em qualquer projeção pública."""
+
+    try:
+        return await repository.inspect(snapshot_id=snapshot_id)
+    except (EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.post("/parliament/deputy-snapshots/{snapshot_id}/publication")
+async def publish_parliament_deputy_snapshot(
+    snapshot_id: Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,200}$")],
+    payload: PoliticianProfileSnapshotPublicationRequest,
+    repository: Annotated[
+        PoliticianProfileSnapshotPublicationRepository,
+        Depends(get_politician_profile_snapshot_publication_repository),
+    ],
+    actor: Annotated[StaffSession, Depends(require_editorial_admin)],
+) -> dict[str, object]:
+    """Publica a fotografia inteira; nunca cria mandatos ou filiações inferidas."""
+
+    try:
+        return await repository.publish(
+            snapshot_id=snapshot_id,
+            payload=payload,
+            actor=actor,
+        )
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
         raise _translate_error(exc) from exc
 
 

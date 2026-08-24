@@ -266,6 +266,8 @@ async def test_exact_deputy_observation_creates_only_an_idempotent_private_case(
         "exact_existing_people": 0,
         "new_people_required": 1,
         "existing_memberships": 0,
+        "existing_party_links": 0,
+        "legacy_review_decisions": 0,
         "legacy_positive_reviews": 0,
     }
     assert len(approved_readiness["readiness_proof_sha256"]) == 64

@@ -9,6 +9,7 @@ from app.models.editorial import (
     ParliamentEditorialProposalRequest,
     ParliamentEditorialPublicationRequest,
     PoliticianProfileEditorialProposalRequest,
+    PoliticianProfileSnapshotPublicationRequest,
 )
 
 
@@ -169,6 +170,38 @@ def test_parliament_publication_requires_exact_proofs_and_three_confirmations() 
     invalid_hash["expected_source_sha256"] = "não-é-um-hash"
     with pytest.raises(ValidationError):
         ParliamentEditorialPublicationRequest.model_validate(invalid_hash)
+
+
+def test_profile_snapshot_publication_requires_all_exact_proofs_and_confirmations() -> None:
+    payload = {
+        "expected_snapshot_id": "parliament_deputy_snapshot_123abc",
+        "expected_source_sha256": "a" * 64,
+        "expected_snapshot_sha256": "b" * 64,
+        "expected_readiness_proof_sha256": "c" * 64,
+        "expected_publication_proof_sha256": "d" * 64,
+        "expected_deputy_count": 230,
+        "rationale": "Fonte, fotografia e todas as decisões foram confirmadas novamente.",
+        "public_rationale": "Fotografia parlamentar integral revista e publicada com prova.",
+        "confirm_source_reviewed": True,
+        "confirm_complete_snapshot": True,
+        "confirm_exact_official_id_only": True,
+        "confirm_no_mandate_inference": True,
+        "confirm_no_party_inference": True,
+        "confirm_publication": True,
+    }
+    request = PoliticianProfileSnapshotPublicationRequest.model_validate(payload)
+    assert request.expected_deputy_count == 230
+
+    for field in (
+        "confirm_source_reviewed",
+        "confirm_complete_snapshot",
+        "confirm_exact_official_id_only",
+        "confirm_no_mandate_inference",
+        "confirm_no_party_inference",
+        "confirm_publication",
+    ):
+        with pytest.raises(ValidationError):
+            PoliticianProfileSnapshotPublicationRequest.model_validate({**payload, field: False})
 
 
 def test_ai_regeneration_binds_the_reviewed_version_and_all_private_confirmations() -> None:
