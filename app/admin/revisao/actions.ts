@@ -15,6 +15,7 @@ import {
   type ParliamentEditorialWithdrawalResult,
   type ParliamentWithdrawalReason,
   type PoliticianProfileEditorialProposalResult,
+  type PoliticianProfileSnapshotPublicationResult,
 } from "@/lib/editorial-types";
 
 function requiredText(formData: FormData, name: string): string {
@@ -185,6 +186,73 @@ export async function createPoliticianProfileProposal(formData: FormData) {
   redirect(
     `/admin/revisao/${created!.case.id}?sucesso=${created!.created ? "perfil-importado" : "perfil-existente"}`,
   );
+}
+
+export async function publishPoliticianProfileSnapshot(formData: FormData) {
+  const snapshotId = evidenceId(formData, "expected_snapshot_id");
+  const legislature = requiredText(formData, "legislature").slice(0, 20);
+  let failure: string | null = null;
+  try {
+    for (const [field, message] of [
+      ["confirm_source_reviewed", "Confirme a nova revisão da fonte oficial"],
+      ["confirm_complete_snapshot", "Confirme a fotografia completa"],
+      ["confirm_exact_official_id_only", "Confirme o uso exclusivo do DepId oficial"],
+      ["confirm_no_mandate_inference", "Confirme que não será criado qualquer mandato"],
+      ["confirm_no_party_inference", "Confirme que nenhuma sigla será convertida em filiação"],
+      ["confirm_publication", "Confirme a publicação integral dos perfis"],
+    ] as const) {
+      if (formData.get(field) !== "on") throw new Error(message);
+    }
+    const expectedDeputyCount = Number.parseInt(
+      requiredText(formData, "expected_deputy_count"),
+      10,
+    );
+    if (!Number.isSafeInteger(expectedDeputyCount) || expectedDeputyCount < 1 || expectedDeputyCount > 500) {
+      throw new Error("Contagem de deputados inválida");
+    }
+    await editorialFetch<PoliticianProfileSnapshotPublicationResult>(
+      `/parliament/deputy-snapshots/${encodeURIComponent(snapshotId)}/publication`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          expected_snapshot_id: snapshotId,
+          expected_source_sha256: sha256(formData, "expected_source_sha256"),
+          expected_snapshot_sha256: sha256(formData, "expected_snapshot_sha256"),
+          expected_readiness_proof_sha256: sha256(
+            formData,
+            "expected_readiness_proof_sha256",
+          ),
+          expected_publication_proof_sha256: sha256(
+            formData,
+            "expected_publication_proof_sha256",
+          ),
+          expected_deputy_count: expectedDeputyCount,
+          rationale: requiredText(formData, "rationale"),
+          public_rationale: requiredText(formData, "public_rationale"),
+          confirm_source_reviewed: true,
+          confirm_complete_snapshot: true,
+          confirm_exact_official_id_only: true,
+          confirm_no_mandate_inference: true,
+          confirm_no_party_inference: true,
+          confirm_publication: true,
+        }),
+      },
+    );
+  } catch (error) {
+    failure = actionError(error);
+  }
+  const destination = "/admin/revisao/parlamento/deputados/prontidao";
+  if (failure) {
+    const params = new URLSearchParams({ legislature, erro: failure });
+    redirect(`${destination}?${params.toString()}`);
+  }
+  revalidatePath("/admin/revisao");
+  revalidatePath("/admin/revisao/parlamento/deputados");
+  revalidatePath(destination);
+  revalidatePath("/politicos");
+  revalidatePath("/");
+  const params = new URLSearchParams({ legislature, sucesso: "fotografia-publicada" });
+  redirect(`${destination}?${params.toString()}`);
 }
 
 export async function createAiDreProposal(formData: FormData) {

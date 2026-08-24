@@ -6,6 +6,8 @@ import hashlib
 import json
 import re
 from collections import Counter
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -18,7 +20,7 @@ from app.repositories.politician_profile_editorial import (
     _reference_sha256,
 )
 
-_READINESS_SCHEMA_VERSION = "politician-profile-publication-readiness-v1"
+_READINESS_SCHEMA_VERSION = "politician-profile-publication-readiness-v2"
 _SUBJECT_TYPE = "PARLIAMENT_DEPUTY_OBSERVATION"
 _PROFILE_SCHEMA_VERSION = "politician-profile-editorial-v1"
 _EDITORIAL_STATES = (
@@ -30,6 +32,18 @@ _EDITORIAL_STATES = (
     "PUBLISHED",
     "WITHDRAWN",
 )
+
+
+@asynccontextmanager
+async def _read_connection(
+    pool: asyncpg.Pool,
+    connection: asyncpg.Connection | None,
+) -> AsyncIterator[asyncpg.Connection]:
+    if connection is not None:
+        yield connection
+        return
+    async with pool.acquire() as acquired:
+        yield acquired
 
 
 def _json_object(value: object) -> dict[str, Any]:
@@ -98,9 +112,14 @@ class PoliticianProfilePublicationReadinessRepository:
             ),
         }
 
-    async def inspect(self, *, snapshot_id: str) -> dict[str, object]:
-        async with self.pool.acquire() as connection:
-            snapshot = await connection.fetchrow(
+    async def inspect(
+        self,
+        *,
+        snapshot_id: str,
+        connection: asyncpg.Connection | None = None,
+    ) -> dict[str, object]:
+        async with _read_connection(self.pool, connection) as read_connection:
+            snapshot = await read_connection.fetchrow(
                 """
                 SELECT
                     snapshot.id,
@@ -164,14 +183,16 @@ class PoliticianProfilePublicationReadinessRepository:
             if snapshot is None:
                 raise EditorialNotFoundError("Fotografia privada de deputados não encontrada")
 
-            rows = await connection.fetch(
+            rows = await read_connection.fetch(
                 """
                 SELECT
                     observation.id AS observation_id,
                     observation.source_id,
                     person.id AS person_id,
                     person.role::text AS person_role,
+                    person.active AS person_active,
                     membership.id AS membership_id,
+                    membership.party_id AS membership_party_id,
                     latest_person_review.publishable AS latest_person_publishable,
                     editorial_case.id AS case_id,
                     editorial_case.current_state::text AS case_state,
@@ -294,7 +315,8 @@ class PoliticianProfilePublicationReadinessRepository:
         if archive_attested and manifest_matches:
             try:
                 candidates = await self.profile_editorial.snapshot_candidates(
-                    snapshot_id=snapshot_id
+                    snapshot_id=snapshot_id,
+                    connection=connection,
                 )
             except EditorialSourceError:
                 block(
@@ -315,6 +337,8 @@ class PoliticianProfilePublicationReadinessRepository:
         exact_people = 0
         new_people = 0
         existing_memberships = 0
+        existing_party_links = 0
+        legacy_review_decisions = 0
         legacy_positive_reviews = 0
 
         for row in rows:
@@ -332,8 +356,21 @@ class PoliticianProfilePublicationReadinessRepository:
                         "EXACT_PERSON_ROLE_CONFLICT",
                         "Um DepId exato já está ligado a uma pessoa com função incompatível.",
                     )
+                if row["person_active"] is not True:
+                    block(
+                        "EXACT_PERSON_INACTIVE",
+                        "Um DepId exato já está ligado a uma identidade inativa.",
+                    )
             if row["membership_id"] is not None:
                 existing_memberships += 1
+            if row["membership_party_id"] is not None:
+                existing_party_links += 1
+                block(
+                    "UNVERIFIED_EXISTING_PARTY_LINK",
+                    "Uma pertença antiga contém uma ligação partidária sem GpId verificável.",
+                )
+            if row["latest_person_publishable"] is not None:
+                legacy_review_decisions += 1
             if row["latest_person_publishable"] is True:
                 legacy_positive_reviews += 1
 
@@ -433,11 +470,11 @@ class PoliticianProfilePublicationReadinessRepository:
                 }
             )
 
-        if legacy_positive_reviews:
+        if legacy_review_decisions:
             block(
                 "LEGACY_PUBLICATION_REQUIRES_RECONCILIATION",
-                "Existem aprovações públicas antigas que exigem reconciliação explícita.",
-                legacy_positive_reviews,
+                "Existem decisões públicas antigas que exigem reconciliação explícita.",
+                legacy_review_decisions,
             )
 
         blockers = list(blocker_counts.values())
@@ -454,6 +491,8 @@ class PoliticianProfilePublicationReadinessRepository:
                 "exact_existing_people": exact_people,
                 "new_people_required": new_people,
                 "existing_memberships": existing_memberships,
+                "existing_party_links": existing_party_links,
+                "legacy_review_decisions": legacy_review_decisions,
                 "legacy_positive_reviews": legacy_positive_reviews,
             },
         }

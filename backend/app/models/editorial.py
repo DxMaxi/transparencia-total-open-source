@@ -220,6 +220,35 @@ class PoliticianProfileEditorialProposalRequest(BaseModel):
     confirm_no_mandate_inference: Literal[True]
 
 
+class PoliticianProfileSnapshotPublicationRequest(BaseModel):
+    """Confirma a publicação integral de uma fotografia já pronta e novamente provada."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    expected_snapshot_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    expected_source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_snapshot_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_readiness_proof_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_publication_proof_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_deputy_count: int = Field(ge=1, le=500)
+    rationale: str = Field(min_length=20, max_length=1850)
+    public_rationale: str = Field(min_length=20, max_length=500)
+    confirm_source_reviewed: Literal[True]
+    confirm_complete_snapshot: Literal[True]
+    confirm_exact_official_id_only: Literal[True]
+    confirm_no_mandate_inference: Literal[True]
+    confirm_no_party_inference: Literal[True]
+    confirm_publication: Literal[True]
+
+    @field_validator("rationale", "public_rationale")
+    @classmethod
+    def strip_profile_publication_rationale(cls, value: str) -> str:
+        stripped = value.strip()
+        if len(stripped) < 20:
+            raise ValueError("A fundamentação deve ter pelo menos 20 caracteres úteis")
+        return stripped
+
+
 class AiDreProposalRequest(BaseModel):
     """Confirmações explícitas para uma geração privada baseada num snapshot DRE."""
 

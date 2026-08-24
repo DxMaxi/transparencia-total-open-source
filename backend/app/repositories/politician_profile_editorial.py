@@ -167,7 +167,12 @@ class PoliticianProfileEditorialRepository:
             ),
         }
 
-    async def snapshot_candidates(self, *, snapshot_id: str) -> list[dict[str, object]]:
+    async def snapshot_candidates(
+        self,
+        *,
+        snapshot_id: str,
+        connection: asyncpg.Connection | None = None,
+    ) -> list[dict[str, object]]:
         """Reconstrói uma fotografia inteira para uma inspeção privada de publicação."""
 
         items, total = await self._load_candidates(
@@ -177,6 +182,7 @@ class PoliticianProfileEditorialRepository:
             limit=500,
             offset=0,
             snapshot_id=snapshot_id,
+            connection=connection,
         )
         if total > 500 or len(items) != total:
             raise EditorialSourceError(
@@ -238,6 +244,7 @@ class PoliticianProfileEditorialRepository:
         limit: int,
         offset: int,
         snapshot_id: str | None = None,
+        connection: asyncpg.Connection | None = None,
     ) -> tuple[list[dict[str, object]], int]:
         conditions = [
             "source.publisher = 'PARLIAMENT'",
@@ -268,7 +275,8 @@ class PoliticianProfileEditorialRepository:
         limit_arg = len(arguments) - 1
         offset_arg = len(arguments)
 
-        rows = await self.pool.fetch(
+        executor = connection if connection is not None else self.pool
+        rows = await executor.fetch(
             f"""
             WITH materialised AS (
                 SELECT

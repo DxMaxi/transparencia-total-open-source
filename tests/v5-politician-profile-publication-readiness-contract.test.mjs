@@ -24,7 +24,10 @@ test("V5.29 only inspects complete politician profile snapshots behind MFA", asy
     /@router\.get\("\/parliament\/deputy-snapshots\/\{snapshot_id\}\/publication-readiness"\)/,
   );
   assert.match(routes, /Depends\(require_editorial_staff\)/);
-  assert.doesNotMatch(routes, /@router\.post\("\/parliament\/deputy-snapshots/);
+  assert.doesNotMatch(
+    routes,
+    /@router\.post\("\/parliament\/deputy-snapshots\/\{snapshot_id\}\/publication-readiness"\)/,
+  );
   assert.match(dependencies, /PoliticianProfilePublicationReadinessRepository/);
 
   assert.match(repository, /attestation\.content_sha256 = source\.content_sha256/);
@@ -40,9 +43,8 @@ test("V5.29 only inspects complete politician profile snapshots behind MFA", asy
 
   assert.match(types, /PoliticianProfilePublicationReadiness/);
   assert.match(page, /Uma fotografia parcial nunca aparece como uma lista completa/);
-  assert.match(page, /Ainda não existe aqui uma ação de publicação/);
+  assert.match(page, /A inspeção inicial volta a provar/);
   assert.match(page, /não prova omissão nem incumprimento/i);
-  assert.doesNotMatch(page, /type="submit"[\s\S]{0,120}public/i);
 
   assert.match(integration, /pending_readiness\["eligible"\] is False/);
   assert.match(integration, /approved_readiness\["eligible"\] is True/);

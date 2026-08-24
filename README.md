@@ -23,7 +23,7 @@ definição da Open Source Initiative.
 > commit final desse fecho. A V5 começa pela governação de licença e pelo circuito editorial
 > privado; esta branch não altera os dados aprovados da V4.
 
-> **V5.1 a V5.29 integradas; ativação remota de staging pendente:** o painel privado usa
+> **V5.1 a V5.30 integradas; ativação remota de staging pendente:** o painel privado usa
 > login por convite,
 > MFA obrigatório, funções de administrador/revisor, comparação entre fonte atestada e JSON
 > normalizado, versões e decisões append-only. A V5.2 acrescentou propostas parlamentares privadas,
@@ -79,8 +79,12 @@ definição da Open Source Initiative.
 > mandato e não existe adaptador de publicação de perfis nessa entrega. A V5.29 acrescenta uma
 > inspeção read-only por fotografia completa: todas as observações têm de coincidir com o
 > manifesto, o arquivo e a versão aprovada reconstruída; uma revisão pública antiga bloqueia até
-> existir reconciliação explícita. Mesmo uma fotografia pronta continua privada e não existe botão
-> ou endpoint de publicação nesta entrega. O plano e a checklist
+> existir reconciliação explícita. Mesmo uma fotografia pronta continua privada na V5.29. A V5.30
+> acrescenta uma ação `ADMIN` com MFA que publica apenas a fotografia inteira numa única transação:
+> liga identidades exclusivamente por `DepId` exato, acrescenta revisões, auditoria, decisões e
+> eventos imutáveis e recua tudo perante qualquer divergência. Não cria mandatos nem transforma
+> siglas de grupos em filiações partidárias. O código e os testes não executam esta operação sobre
+> staging ou produção. O plano e a checklist
 > de fecho estão em
 > [Plano de conclusão da V5](docs/V5_RELEASE_PLAN.md) e
 > [Checklist de conclusão da V5](docs/V5_RELEASE_CHECKLIST.md). Consulte também
@@ -105,6 +109,7 @@ definição da Open Source Initiative.
 > [Observações privadas de deputados V5.27](docs/V5_PARLIAMENT_DEPUTY_OBSERVATIONS.md),
 > [Observações de deputados no circuito editorial V5.28](docs/V5_POLITICIAN_PROFILE_EDITORIAL.md),
 > [Prontidão de publicação dos perfis V5.29](docs/V5_POLITICIAN_PROFILE_PUBLICATION_READINESS.md),
+> [Publicação transacional da fotografia de perfis V5.30](docs/V5_POLITICIAN_PROFILE_SNAPSHOT_PUBLICATION.md),
 > [Adaptador parlamentar V5.2](docs/V5_PARLIAMENT_EDITORIAL_ADAPTER.md) e
 > [Publicação parlamentar por âmbito V5.3](docs/V5_PARLIAMENT_SCOPE_PUBLICATION.md),
 > [Retirada parlamentar imutável V5.4](docs/V5_PARLIAMENT_WITHDRAWAL.md) e

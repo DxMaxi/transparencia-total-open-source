@@ -46,6 +46,8 @@ continuam a exigir autorizações separadas.
   `PENDING`, sem criar pessoa, mandato, revisão pública ou publicação.
 - [x] V5.29 — porta read-only exige a fotografia inteira, todas as versões `APPROVED`, prova
   reconstruída e reconciliação explícita de revisões V4 antes de uma futura publicação de perfis.
+- [x] V5.30 — publicação transacional da fotografia completa exige `ADMIN` com MFA, repete hashes e
+  contagens, liga apenas por `DepId` exato e acrescenta todo o histórico ou recua tudo.
 - [x] Existe um [conjunto de issues de conclusão](https://github.com/DxMaxi/transparencia-total-open-source/issues/58) para todos os itens ainda abertos.
 
 ## B. Estabilização pública
@@ -125,13 +127,15 @@ continuam a exigir autorizações separadas.
   `DepCPId`, excluem contactos e permanecem numa fotografia privada sem criar pessoas ou mandatos.
 - [x] O comparador privado de deputados volta a provar manifesto, fonte e arquivo e reconstrói a
   proposta no servidor; intervalos contraditórios ficam visíveis e nunca originam mandatos.
-- [x] A prontidão de perfis é calculada por fotografia completa, bloqueia qualquer processo em
-  falta ou divergente e não disponibiliza operação de escrita ou publicação.
+- [x] A prontidão V5.29 é calculada por fotografia completa e permanece read-only; qualquer processo
+  em falta ou divergente bloqueia a prova usada pela operação V5.30 separada.
+- [x] A publicação V5.30 cria a projeção mínima da fotografia inteira numa única transação e prova
+  zero mandatos e zero filiações inferidas num PostgreSQL descartável.
 
 ## F. Perfis políticos
 
-- [ ] Identidade publicada depende de revisão positiva e fonte atestada.
-- [ ] Observação parlamentar não é apresentada como início de mandato.
+- [x] Identidade publicada depende de revisão positiva e fonte atestada.
+- [x] Observação parlamentar não é apresentada como início de mandato.
 - [ ] Mandatos têm datas oficiais e revisão `MANDATE` própria.
 - [ ] Cargos e círculo têm fonte e período explícitos.
 - [ ] Presenças dependem de mandato revisto e fotografia publicada.
