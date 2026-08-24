@@ -8,21 +8,33 @@ import type { GovernmentPromise, PromiseStatus } from "@/types/domain";
 const statusMeta: Record<PromiseStatus, { label: string; description: string }> = {
   UNVERIFIED: {
     label: "Por verificar",
-    description: "Compromisso oficial catalogado; execução ainda sem avaliação",
+    description: "Compromisso catalogado; execução ainda sem decisão editorial",
   },
-  FULFILLED: { label: "Cumprido", description: "Prova oficial confirma execução integral" },
-  IN_PROGRESS: { label: "Em execução", description: "Há atos oficiais, mas a medida não terminou" },
-  BROKEN: { label: "Incumprido", description: "Prazo ou objetivo verificável não foi alcançado" },
-  ABANDONED: { label: "Abandonado", description: "O Governo declarou cessação ou substituição" },
+  NOT_STARTED: {
+    label: "Não iniciada",
+    description: "Revisão humana fundamentada; nunca inferida apenas por falta de dados",
+  },
+  IN_PROGRESS: {
+    label: "Em curso",
+    description: "Há atos oficiais verificáveis, mas a execução ainda decorre",
+  },
+  PARTIAL: {
+    label: "Parcialmente cumprida",
+    description: "Só uma parte verificável dos critérios está documentada",
+  },
+  FULFILLED: {
+    label: "Cumprida",
+    description: "As provas revistas satisfazem integralmente os critérios publicados",
+  },
 };
 
 const filters: Array<{ value: "ALL" | PromiseStatus; label: string }> = [
   { value: "ALL", label: "Todas" },
   { value: "UNVERIFIED", label: "Por verificar" },
+  { value: "NOT_STARTED", label: "Não iniciadas" },
+  { value: "IN_PROGRESS", label: "Em curso" },
+  { value: "PARTIAL", label: "Parcialmente cumpridas" },
   { value: "FULFILLED", label: "Cumpridas" },
-  { value: "IN_PROGRESS", label: "Em execução" },
-  { value: "BROKEN", label: "Incumpridas" },
-  { value: "ABANDONED", label: "Abandonadas" },
 ];
 
 export function Promessometro({
@@ -57,11 +69,19 @@ export function Promessometro({
       accumulator[promise.status] += 1;
       return accumulator;
     },
-    { UNVERIFIED: 0, FULFILLED: 0, IN_PROGRESS: 0, BROKEN: 0, ABANDONED: 0 },
+    { UNVERIFIED: 0, NOT_STARTED: 0, IN_PROGRESS: 0, PARTIAL: 0, FULFILLED: 0 },
   );
 
   return (
     <section className="promessometro">
+      <aside className="promise-methodology card" role="note">
+        <strong>Como ler estes estados</strong>
+        <span>
+          Não são previsões, pontuações automáticas nem opiniões da IA. Cada mudança exige prova
+          oficial e revisão humana. “Não iniciada” nunca resulta apenas da ausência de dados; uma
+          lei ou anúncio, por si só, também não prova execução material.
+        </span>
+      </aside>
       <div className="promise-summary-grid">
         {(Object.keys(statusMeta) as PromiseStatus[]).map((status) => (
           <article className={`summary-status summary-status--${status.toLowerCase()}`} key={status}>
@@ -121,7 +141,7 @@ export function Promessometro({
               </div>
               <span className={`status-badge status-badge--${promise.status.toLowerCase()}`}>
                 {promise.status === "FULFILLED" && <CheckIcon />}
-                {promise.status === "IN_PROGRESS" && <ClockIcon />}
+                {(promise.status === "IN_PROGRESS" || promise.status === "PARTIAL") && <ClockIcon />}
                 {statusMeta[promise.status].label}
               </span>
             </div>
@@ -130,10 +150,15 @@ export function Promessometro({
               <div className="promise-review-pending" role="note">
                 A execução ainda não foi classificada: o compromisso aguarda prova oficial e revisão.
               </div>
+            ) : promise.status === "NOT_STARTED" ? (
+              <div className="promise-review-pending" role="note">
+                A classificação “não iniciada” foi tomada por revisão humana dentro do período e
+                das fontes indicadas; não é uma conclusão automática tirada de uma lacuna.
+              </div>
             ) : (
               <div className="promise-progress-row">
                 <div className="promise-progress-heading">
-                  <span>Execução documentada</span>
+                  <span>Execução documentada pela revisão</span>
                   <strong>{promise.progress}%</strong>
                 </div>
                 <div className="progress-track progress-track--large">

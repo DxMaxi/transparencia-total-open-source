@@ -2,10 +2,10 @@ export type VoteChoice = "FAVOR" | "AGAINST" | "ABSTENTION" | "ABSENT";
 
 export type PromiseStatus =
   | "UNVERIFIED"
-  | "FULFILLED"
+  | "NOT_STARTED"
   | "IN_PROGRESS"
-  | "BROKEN"
-  | "ABANDONED";
+  | "PARTIAL"
+  | "FULFILLED";
 
 export interface OfficialSource {
   label: string;

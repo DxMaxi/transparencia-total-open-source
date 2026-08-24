@@ -511,8 +511,8 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                   ) AS parliament_votes,
                   (
                     SELECT COUNT(*) FROM promises p
-                    WHERE p.status IN (
-                      'UNVERIFIED', 'FULFILLED', 'IN_PROGRESS', 'BROKEN', 'ABANDONED'
+                    WHERE p.status::text IN (
+                      'UNVERIFIED', 'NOT_STARTED', 'IN_PROGRESS', 'PARTIAL', 'FULFILLED'
                     )
                       AND EXISTS (
                         SELECT 1
@@ -1444,8 +1444,8 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                       ON selected_programme.id = p.programme_id
                     JOIN source_documents selected_programme_source
                       ON selected_programme_source.id = selected_programme.source_document_id
-                    WHERE p.status IN (
-                        'UNVERIFIED', 'FULFILLED', 'IN_PROGRESS', 'BROKEN', 'ABANDONED'
+                    WHERE p.status::text IN (
+                        'UNVERIFIED', 'NOT_STARTED', 'IN_PROGRESS', 'PARTIAL', 'FULFILLED'
                     )
                       AND EXISTS (
                         SELECT 1

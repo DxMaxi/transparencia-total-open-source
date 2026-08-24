@@ -77,8 +77,9 @@ sem essa prova, API e frontend apresentam indisponibilidade controlada. A V5.16�
 escritas públicas, consentimento e revogação push, cache PWA, acessibilidade, E2E, CSP, pesquisa
 global e desempenho móvel. A V5.19 acrescentou a auditoria sanitizada de dados e história Git; um
 contacto pessoal permanece apenas em diffs históricos e bloqueia a visibilidade pública até haver
-decisão própria. Estes avanços não equivalem à execução dos gates de staging ou produção ainda
-abertos.
+decisão própria. A V5.20 substitui os estados públicos antigos do Promessómetro pelo vocabulário
+aprovado e mantém qualquer valor legado fora da projeção até nova revisão humana. Estes avanços não
+equivalem à execução dos gates de staging ou produção ainda abertos.
 
 A melhoria de UX iniciada em agosto de 2026 faz parte da estabilização/conclusão da **V5**. Não deve ser tratada como início de uma V6 nem como autorização para reescrever o projeto.
 

@@ -758,7 +758,7 @@ class PublishedPromise(BaseModel):
     id: str
     title: str
     area: str
-    status: Literal["UNVERIFIED", "FULFILLED", "IN_PROGRESS", "BROKEN", "ABANDONED"]
+    status: Literal["UNVERIFIED", "NOT_STARTED", "IN_PROGRESS", "PARTIAL", "FULFILLED"]
     progress: int = Field(ge=0, le=100)
     programme_page: str
     programme_source: OfficialSource

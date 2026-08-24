@@ -1842,18 +1842,30 @@ export async function loadPublicPromises(): Promise<LoadedData<GovernmentPromise
     loadPublicDataStatus(),
     apiFetch<RawPromise[]>("/api/v1/public/promises?limit=1000"),
   ]);
+  const allowedStatuses = new Set([
+    "UNVERIFIED",
+    "NOT_STARTED",
+    "IN_PROGRESS",
+    "PARTIAL",
+    "FULFILLED",
+  ]);
+  if (result.ok && result.data.some((item) => !allowedStatuses.has(item.status))) {
+    return {
+      data: initialGovernmentCommitments,
+      status: {
+        ...status,
+        mode: "UNAVAILABLE",
+        message:
+          "O Promessómetro recebeu um estado editorial incompatível; a projeção publicada foi recusada.",
+      },
+      showingFallback: true,
+    };
+  }
   if (result.ok && result.data.length) {
-    const allowedStatuses = new Set([
-      "UNVERIFIED",
-      "FULFILLED",
-      "IN_PROGRESS",
-      "BROKEN",
-      "ABANDONED",
-    ]);
     return {
       status,
       showingFallback: false,
-      data: result.data.filter((item) => allowedStatuses.has(item.status)).map((item) => ({
+      data: result.data.map((item) => ({
         id: item.id,
         title: item.title,
         area: item.area,

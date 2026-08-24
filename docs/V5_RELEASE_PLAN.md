@@ -11,14 +11,14 @@ reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.19 integradas; staging remoto pendente |
-| Frontend público | V5.18 preparado; capacidades sem backend ou esquema pronto ficam fail-closed |
+| Código V5 | V5.1 a V5.20 integradas; staging remoto pendente |
+| Frontend público | V5.20 preparado; capacidades sem backend ou esquema pronto ficam fail-closed |
 | API pública | `0.5.0-alpha.0`; capacidades anunciadas apenas após prova read-only do esquema |
 | Painel editorial | implementado no código, não ativado em produção |
 | IA | geração, revisão, publicação e retirada implementadas; esquema remoto ainda não ativado |
 | Parlamento | legislatura XVII; API V5 e histórico editorial ainda inativos em produção |
 | Perfis | contrato V5.6 preparado; várias áreas sem dados individuais publicáveis |
-| Promessómetro | catálogo editorial inicial de 10 compromissos |
+| Promessómetro | catálogo editorial inicial de 10 compromissos; vocabulário V5.20 protegido |
 | Investigador Cívico | zero contratos e zero relações na projeção pública |
 | PWA e alertas | consentimento, revogação e cache opt-in integrados; configuração remota pendente |
 | Repositório | privado e licenciado como código disponível para uso não comercial |

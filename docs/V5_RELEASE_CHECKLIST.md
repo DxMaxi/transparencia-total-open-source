@@ -32,6 +32,7 @@ continuam a exigir autorizações separadas.
 - [x] V5.17 — CSP privada por pedido e gate automático WCAG A/AA integrados.
 - [x] V5.18 — pesquisa global publicada e orçamento móvel repetível integrados.
 - [x] V5.19 — auditoria sanitizada de dados, segredos e privacidade da história integrada.
+- [x] V5.20 — vocabulário editorial seguro do Promessómetro integrado.
 - [x] Existe um [conjunto de issues de conclusão](https://github.com/DxMaxi/transparencia-total-open-source/issues/58) para todos os itens ainda abertos.
 
 ## B. Estabilização pública
@@ -116,7 +117,8 @@ continuam a exigir autorizações separadas.
 - [ ] Todos os compromissos individualizáveis catalogados.
 - [ ] Página ou âncora oficial preservada por compromisso.
 - [ ] Provas de diploma, orçamento, regulamentação e execução separadas.
-- [ ] Estados limitados ao vocabulário editorial aprovado.
+- [x] Estados públicos limitados ao vocabulário editorial aprovado, com
+  [compatibilidade histórica fail-closed](V5_PROMESSOMETRO_VOCABULARY.md).
 - [ ] Revisão e fundamento obrigatórios para qualquer mudança de estado.
 - [ ] Linha temporal pública preserva todos os estados anteriores.
 - [ ] Filtros por ministério, área, estado e data testados.

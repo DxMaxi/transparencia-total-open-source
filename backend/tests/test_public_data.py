@@ -4,10 +4,12 @@ from typing import Any
 import asyncpg
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 
 from app.api.dependencies import get_repository
 from app.api.routes import public_data
 from app.main import app
+from app.models.api import PublishedPromise
 
 
 class FakePublicRepository:
@@ -276,3 +278,39 @@ def test_ai_public_routes_fail_closed_when_editorial_schema_is_missing(
             "As explica\u00e7\u00f5es p\u00fablicas est\u00e3o temporariamente indispon\u00edveis."
         )
         assert internal_error not in response.text
+
+
+def _published_promise_payload(status: str) -> dict[str, Any]:
+    return {
+        "id": "promise-reviewed",
+        "title": "Compromisso revisto",
+        "area": "Administração Pública",
+        "status": status,
+        "progress": 0,
+        "programme_page": "p. 17",
+        "programme_source": {
+            "publisher": "OFICIAL",
+            "label": "Programa do XXV Governo Constitucional",
+            "url": "https://www.portugal.gov.pt/documento-oficial.pdf",
+            "retrieved_at": datetime(2026, 8, 24, tzinfo=UTC),
+            "content_sha256": "a" * 64,
+        },
+        "rationale": "Classificação decidida por revisão humana.",
+        "last_reviewed_at": datetime(2026, 8, 24, tzinfo=UTC),
+        "evidence": [],
+    }
+
+
+@pytest.mark.parametrize(
+    "status",
+    ["UNVERIFIED", "NOT_STARTED", "IN_PROGRESS", "PARTIAL", "FULFILLED"],
+)
+def test_public_promise_accepts_only_the_v5_editorial_vocabulary(status: str) -> None:
+    promise = PublishedPromise.model_validate(_published_promise_payload(status))
+    assert promise.status == status
+
+
+@pytest.mark.parametrize("status", ["BROKEN", "ABANDONED"])
+def test_public_promise_rejects_legacy_accusatory_states(status: str) -> None:
+    with pytest.raises(ValidationError):
+        PublishedPromise.model_validate(_published_promise_payload(status))

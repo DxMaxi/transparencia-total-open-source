@@ -23,7 +23,7 @@ definição da Open Source Initiative.
 > commit final desse fecho. A V5 começa pela governação de licença e pelo circuito editorial
 > privado; esta branch não altera os dados aprovados da V4.
 
-> **V5.1 a V5.19 integradas; ativação remota de staging pendente:** o painel privado usa
+> **V5.1 a V5.20 integradas; ativação remota de staging pendente:** o painel privado usa
 > login por convite,
 > MFA obrigatório, funções de administrador/revisor, comparação entre fonte atestada e JSON
 > normalizado, versões e decisões append-only. A V5.2 acrescentou propostas parlamentares privadas,
@@ -53,7 +53,9 @@ definição da Open Source Initiative.
 > publicadas, fonte, data, hash e cobertura em cada resultado, e um orçamento móvel Lighthouse
 > baseado na mediana de três execuções. A V5.19 acrescenta a auditoria sanitizada de dados,
 > segredos e privacidade da história e mantém a publicação pública bloqueada até existir uma
-> decisão sobre o contacto pessoal histórico. O plano e
+> decisão sobre o contacto pessoal histórico. A V5.20 limita o Promessómetro ao vocabulário
+> editorial aprovado, recusa estados legados na projeção pública e explica que nenhum estado é
+> uma previsão automática ou uma conclusão baseada apenas em ausência de dados. O plano e
 > a checklist de fecho estão em [Plano de conclusão da V5](docs/V5_RELEASE_PLAN.md) e
 > [Checklist de conclusão da V5](docs/V5_RELEASE_CHECKLIST.md). Consulte também
 > [Painel privado e fundação editorial V5.1](docs/V5_EDITORIAL_FOUNDATION.md),
@@ -67,6 +69,7 @@ definição da Open Source Initiative.
 > [Gate público de segurança e acessibilidade V5.17](docs/V5_PUBLIC_QUALITY_GATE.md),
 > [Pesquisa global e desempenho móvel V5.18](docs/V5_GLOBAL_SEARCH_AND_PERFORMANCE.md),
 > [Auditoria de privacidade e segredos V5.19](docs/V5_RELEASE_PRIVACY_AUDIT.md),
+> [Vocabulário editorial do Promessómetro V5.20](docs/V5_PROMESSOMETRO_VOCABULARY.md),
 > [Adaptador parlamentar V5.2](docs/V5_PARLIAMENT_EDITORIAL_ADAPTER.md) e
 > [Publicação parlamentar por âmbito V5.3](docs/V5_PARLIAMENT_SCOPE_PUBLICATION.md),
 > [Retirada parlamentar imutável V5.4](docs/V5_PARLIAMENT_WITHDRAWAL.md) e

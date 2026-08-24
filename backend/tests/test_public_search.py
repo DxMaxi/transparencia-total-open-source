@@ -238,6 +238,10 @@ def test_promise_search_keeps_review_archive_and_bound_query_gates() -> None:
     assert result["items"][0]["source"]["content_sha256"] == "b" * 64  # type: ignore[index]
     assert "latest_review.decision = 'ACCEPT'" in connection.query
     assert connection.query.count("source_archive_attestations") == 2
+    assert "'NOT_STARTED'" in connection.query
+    assert "'PARTIAL'" in connection.query
+    assert "'BROKEN'" not in connection.query
+    assert "'ABANDONED'" not in connection.query
     assert "similarity" not in connection.query.casefold()
     assert connection.arguments == ("%100!%!_!!%", 5)
 
