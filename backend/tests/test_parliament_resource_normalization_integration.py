@@ -1,4 +1,4 @@
-"""Integração do primeiro lote histórico normalizado num PostgreSQL descartável."""
+"""Integração dos primeiros lotes históricos num PostgreSQL descartável."""
 
 import json
 import os
@@ -25,6 +25,10 @@ from app.services.parliament_resource_normalization import (
     ParliamentResourceNormalizationStager,
     ParliamentResourceNormalizer,
 )
+from app.services.parliament_resource_vote_normalization import (
+    ParliamentResourceVoteNormalizationStager,
+    ParliamentResourceVoteNormalizer,
+)
 from app.services.parliament_source_catalogue import (
     ParliamentCatalogueKind,
     ParliamentSourceCatalogueCollector,
@@ -48,7 +52,7 @@ async def repository() -> ParliamentResourceNormalizationRepository:
 
 
 @pytest.mark.asyncio
-async def test_normalization_reuses_attested_bytes_and_remains_outside_editorial_cycle(
+async def test_normalizations_reuse_attested_bytes_and_remain_outside_editorial_cycle(
     repository: ParliamentResourceNormalizationRepository,
 ) -> None:
     suffix = uuid.uuid4().hex[:12]
@@ -117,6 +121,19 @@ async def test_normalization_reuses_attested_bytes_and_remains_outside_editorial
                     ),
                     "IniDataEntrada": "2026-08-01",
                     "IniSituacao": "Entrada",
+                    "IniEventos": [
+                        {
+                            "Votacao": [
+                                {
+                                    "id": f"vote-{suffix}",
+                                    "data": "2026-08-12",
+                                    "detalhe": "A Favor: PSD, PS<BR>Contra: CH",
+                                    "reuniao": "42",
+                                    "resultado": "Aprovado",
+                                }
+                            ]
+                        }
+                    ],
                 }
             ]
         },
@@ -173,6 +190,23 @@ async def test_normalization_reuses_attested_bytes_and_remains_outside_editorial
     assert result["editorial_cases_created"] == 0
     assert result["publication_performed"] is False
     assert result["publishable"] is False
+
+    vote_collection = ParliamentResourceVoteNormalizer().normalise(archive_proof)
+    vote_result = await ParliamentResourceVoteNormalizationStager(
+        Settings(environment="test"),
+        repository,
+    ).store(vote_collection)
+
+    assert vote_result["parent_catalogue_snapshot_id"] == catalogue["snapshot_id"]
+    assert vote_result["parent_manifest_snapshot_id"] == manifest["snapshot_id"]
+    assert vote_result["parent_archive_snapshot_id"] == archive["snapshot_id"]
+    assert vote_result["records_normalised"] == 4
+    assert vote_result["historical_completeness"] == "NOT_ASSERTED"
+    assert vote_result["sync_status"] == "PARTIAL"
+    assert vote_result["editorial_cases_created"] == 0
+    assert vote_result["publication_performed"] is False
+    assert vote_result["publishable"] is False
+
     assert repository.pool is not None
     async with repository.pool.acquire() as connection:
         snapshot = await connection.fetchrow(
@@ -200,6 +234,42 @@ async def test_normalization_reuses_attested_bytes_and_remains_outside_editorial
             """,
             result["sync_run_id"],
         )
+        vote_snapshot = await connection.fetchrow(
+            """
+            SELECT source_document_id, legislature, parser_version,
+                   session_count, initiative_count, vote_count, vote_record_count
+            FROM parliament_activity_snapshots
+            WHERE id = $1
+            """,
+            vote_result["normalised_snapshot_id"],
+        )
+        vote_event = await connection.fetchrow(
+            """
+            SELECT id, source_id, legislature, initiative_id, initiative_number,
+                   title, result, is_nominal, source_document_id
+            FROM vote_events
+            WHERE snapshot_id = $1
+            """,
+            vote_result["normalised_snapshot_id"],
+        )
+        vote_records = await connection.fetch(
+            """
+            SELECT actor_type::text AS actor_type, actor_label, person_id, party_id,
+                   choice::text AS choice, source_document_id
+            FROM vote_records
+            WHERE vote_event_id = $1
+            ORDER BY actor_label
+            """,
+            vote_event["id"] if vote_event is not None else "missing",
+        )
+        vote_sync_run = await connection.fetchrow(
+            """
+            SELECT status::text AS status, records_read, records_written, warnings
+            FROM sync_runs
+            WHERE id = $1
+            """,
+            vote_result["sync_run_id"],
+        )
         editorial_case_count = await connection.fetchval(
             """
             SELECT COUNT(*) FROM editorial_cases
@@ -213,6 +283,13 @@ async def test_normalization_reuses_attested_bytes_and_remains_outside_editorial
             WHERE target_id = $1
             """,
             result["normalised_snapshot_id"],
+        )
+        vote_publication_count = await connection.fetchval(
+            """
+            SELECT COUNT(*) FROM editorial_publication_events
+            WHERE target_id = $1
+            """,
+            vote_result["normalised_snapshot_id"],
         )
 
     assert snapshot is not None
@@ -243,5 +320,42 @@ async def test_normalization_reuses_attested_bytes_and_remains_outside_editorial
         "Cobertura histórica não afirmada: esta fotografia contém apenas "
         "iniciativas observadas num único recurso oficial arquivado."
     ]
+
+    assert vote_snapshot is not None
+    assert vote_snapshot["source_document_id"] == archive["source_document_id"]
+    assert vote_snapshot["legislature"] == "XVII"
+    assert vote_snapshot["parser_version"] == "parliament-historical-votes-v1"
+    assert vote_snapshot["session_count"] == 0
+    assert vote_snapshot["initiative_count"] == 0
+    assert vote_snapshot["vote_count"] == 1
+    assert vote_snapshot["vote_record_count"] == 3
+    assert vote_event is not None
+    assert vote_event["source_id"] == f"vote-{suffix}"
+    assert vote_event["legislature"] == "XVII"
+    assert vote_event["initiative_id"] is None
+    assert vote_event["initiative_number"] == f"1/XVII/{suffix}"
+    assert vote_event["title"].startswith("Projeto de Lei")
+    assert vote_event["result"] == "Aprovado"
+    assert vote_event["is_nominal"] is False
+    assert vote_event["source_document_id"] == archive["source_document_id"]
+    assert {row["actor_label"] for row in vote_records} == {"PSD", "PS", "CH"}
+    assert {row["actor_type"] for row in vote_records} == {"UNKNOWN"}
+    assert all(row["person_id"] is None and row["party_id"] is None for row in vote_records)
+    assert all(row["source_document_id"] == archive["source_document_id"] for row in vote_records)
+    assert vote_sync_run is not None
+    assert vote_sync_run["status"] == "PARTIAL"
+    assert vote_sync_run["records_read"] == 4
+    assert vote_sync_run["records_written"] == 4
+    vote_warnings = (
+        json.loads(vote_sync_run["warnings"])
+        if isinstance(vote_sync_run["warnings"], str)
+        else vote_sync_run["warnings"]
+    )
+    assert vote_warnings == [
+        "Cobertura histórica não afirmada: esta fotografia contém apenas "
+        "votações observadas num único recurso oficial arquivado.",
+        "3 posições conservam ator UNKNOWN e não foram atribuídas a pessoas ou partidos.",
+    ]
     assert editorial_case_count == 0
     assert publication_count == 0
+    assert vote_publication_count == 0

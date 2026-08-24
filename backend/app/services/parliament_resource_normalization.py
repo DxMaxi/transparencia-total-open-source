@@ -34,7 +34,7 @@ class CollectedParliamentResourceNormalization:
     editorial_cases_created: int = 0
 
 
-def _strict_json(content: bytes) -> Any:
+def strict_parliament_json(content: bytes) -> Any:
     try:
         text = content.decode("utf-8-sig", errors="strict")
     except UnicodeDecodeError as exc:
@@ -134,7 +134,7 @@ class ParliamentResourceNormalizer:
         ):
             raise ValueError("Os bytes privados divergem da prova do recurso arquivado")
 
-        payload = _strict_json(proof.raw_document.content)
+        payload = strict_parliament_json(proof.raw_document.content)
         initiatives = _normalise_initiatives_strict(
             payload,
             legislature=proof.legislature,

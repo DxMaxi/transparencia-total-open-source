@@ -11,12 +11,12 @@ reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.25 integradas; staging remoto pendente |
+| Código V5 | V5.1 a V5.26 integradas; staging remoto pendente |
 | Frontend público | V5.21 preparado; capacidades sem backend ou esquema pronto ficam fail-closed |
 | API pública | `0.5.0-alpha.0`; capacidades anunciadas apenas após prova read-only do esquema |
 | Painel editorial | implementado no código, não ativado em produção |
 | IA | geração, revisão, publicação e retirada implementadas; esquema remoto ainda não ativado |
-| Parlamento | matriz V5.21 e gates V5.22–V5.25 preparados; restantes âmbitos históricos e ativação editorial pendentes |
+| Parlamento | matriz V5.21 e gates V5.22–V5.26 preparados; atividades gerais, deputados e ativação editorial pendentes |
 | Perfis | contrato V5.6 preparado; várias áreas sem dados individuais publicáveis |
 | Promessómetro | catálogo editorial inicial de 10 compromissos; vocabulário V5.20 protegido |
 | Investigador Cívico | zero contratos e zero relações na projeção pública |
@@ -146,6 +146,13 @@ O quarto gate está implementado em
 Lê apenas bytes V5.24 já atestados, exige JSON UTF-8, identificadores oficiais e URLs parlamentares,
 recusa duplicados divergentes e recalcula a fotografia antes da persistência. A fotografia continua
 `NOT_ASSERTED`, privada e sem caso editorial.
+
+O quinto gate está implementado em
+[V5.26 — normalização privada de votações parlamentares](V5_PARLIAMENT_VOTE_NORMALIZATION.md).
+Deriva uma fotografia separada dos mesmos bytes de iniciativas, exige IDs oficiais, recusa
+contradições factuais e conserva posições sem identificador como `UNKNOWN`. Não transforma o
+catálogo heterogéneo de atividades em reuniões, não cria relações por nome e não entra no circuito
+editorial.
 
 Critérios de saída:
 

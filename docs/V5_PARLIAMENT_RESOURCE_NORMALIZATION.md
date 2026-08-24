@@ -78,9 +78,12 @@ iteração entre ficheiros ou continuação implícita para outra legislatura.
 - não afirma que o recurso contém todas as iniciativas da legislatura;
 - não usa IA.
 
-O gate seguinte deverá produzir o mesmo contrato seguro para os restantes recursos parlamentares,
-mantendo cada tipo e legislatura em lotes independentes. Só depois de comparar manifestos e rever a
-cobertura poderá ser criada uma proposta editorial privada.
+O gate seguinte está definido em
+[V5.26 — normalização privada de votações parlamentares](V5_PARLIAMENT_VOTE_NORMALIZATION.md).
+Ele deriva uma fotografia de votações separada dos mesmos bytes, mantendo cada tipo e legislatura
+em lotes independentes. Atividades gerais e atividade individual dos deputados continuam por
+modelar; não são forçadas para este esquema. Só depois de comparar manifestos e rever a cobertura
+poderá ser criada uma proposta editorial privada.
 
 ## Critérios de aceitação
 

@@ -38,6 +38,8 @@ continuam a exigir autorizações separadas.
 - [x] V5.23 — manifesto privado de XML/JSON ligado a catálogo pai exato e atestado integrado.
 - [x] V5.24 — arquivo limitado de um recurso exato, ainda não interpretado nem publicável, integrado.
 - [x] V5.25 — primeira normalização histórica privada de iniciativas, derivável dos bytes, integrada.
+- [x] V5.26 — normalização histórica privada de votações, com IDs exatos e atores desconhecidos
+  preservados, integrada.
 - [x] Existe um [conjunto de issues de conclusão](https://github.com/DxMaxi/transparencia-total-open-source/issues/58) para todos os itens ainda abertos.
 
 ## B. Estabilização pública
@@ -110,6 +112,9 @@ continuam a exigir autorizações separadas.
   `ARCHIVED_UNPARSED`, sem normalização, caso editorial ou publicação.
 - [x] O JSON histórico de iniciativas só é normalizado a partir do arquivo atestado, com IDs e URLs
   oficiais exatos, recálculo antes da escrita e cobertura `NOT_ASSERTED`.
+- [x] As votações históricas derivadas do JSON de iniciativas exigem ID oficial, recusam factos
+  contraditórios, preservam posições sem identificador como `UNKNOWN` e continuam fora do circuito
+  editorial.
 
 ## F. Perfis políticos
 

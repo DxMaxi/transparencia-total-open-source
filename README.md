@@ -23,7 +23,7 @@ definição da Open Source Initiative.
 > commit final desse fecho. A V5 começa pela governação de licença e pelo circuito editorial
 > privado; esta branch não altera os dados aprovados da V4.
 
-> **V5.1 a V5.25 integradas; ativação remota de staging pendente:** o painel privado usa
+> **V5.1 a V5.26 integradas; ativação remota de staging pendente:** o painel privado usa
 > login por convite,
 > MFA obrigatório, funções de administrador/revisor, comparação entre fonte atestada e JSON
 > normalizado, versões e decisões append-only. A V5.2 acrescentou propostas parlamentares privadas,
@@ -68,7 +68,10 @@ definição da Open Source Initiative.
 > exclusivamente esses bytes arquivados e inicia o backfill com uma
 > fotografia privada de iniciativas por `source_id` oficial exato; duplicados divergentes, URLs
 > externos ou conteúdo que não possa ser novamente derivado dos bytes são recusados, e nenhum caso
-> editorial é criado. O plano e a checklist de fecho estão em
+> editorial é criado. A V5.26 deriva dos mesmos bytes uma fotografia privada separada de votações:
+> exige ID oficial, recusa datas, resultados ou posições contraditórias para o mesmo ID e mantém
+> texto livre como `UNKNOWN`, sem associar pessoas ou partidos e sem publicar. O plano e a checklist
+> de fecho estão em
 > [Plano de conclusão da V5](docs/V5_RELEASE_PLAN.md) e
 > [Checklist de conclusão da V5](docs/V5_RELEASE_CHECKLIST.md). Consulte também
 > [Painel privado e fundação editorial V5.1](docs/V5_EDITORIAL_FOUNDATION.md),
@@ -88,6 +91,7 @@ definição da Open Source Initiative.
 > [Manifesto privado de recursos parlamentares V5.23](docs/V5_PARLIAMENT_RESOURCE_MANIFEST.md),
 > [Arquivo privado de um recurso parlamentar V5.24](docs/V5_PARLIAMENT_RESOURCE_ARCHIVE.md),
 > [Normalização privada de iniciativas parlamentares V5.25](docs/V5_PARLIAMENT_RESOURCE_NORMALIZATION.md),
+> [Normalização privada de votações parlamentares V5.26](docs/V5_PARLIAMENT_VOTE_NORMALIZATION.md),
 > [Adaptador parlamentar V5.2](docs/V5_PARLIAMENT_EDITORIAL_ADAPTER.md) e
 > [Publicação parlamentar por âmbito V5.3](docs/V5_PARLIAMENT_SCOPE_PUBLICATION.md),
 > [Retirada parlamentar imutável V5.4](docs/V5_PARLIAMENT_WITHDRAWAL.md) e

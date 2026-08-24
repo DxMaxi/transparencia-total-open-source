@@ -3,6 +3,8 @@ import hashlib
 import json
 from pathlib import Path
 
+import pytest
+
 from app.core.config import Settings
 from app.services.parlamento import ParlamentoCollector
 
@@ -312,6 +314,54 @@ def test_free_text_party_positions_are_not_attributed_to_people() -> None:
     )
     assert events[0].is_nominal is False
     assert {item.actor_type.value for item in events[0].records} == {"UNKNOWN"}
+
+
+def test_historical_vote_mode_rejects_conflicting_facts_for_the_same_official_id() -> None:
+    payload = [
+        {
+            "VotacaoId": "V-duplicada",
+            "VotacaoData": "2026-06-02",
+            "VotacaoResultado": "Aprovado",
+        },
+        {
+            "VotacaoId": "V-duplicada",
+            "VotacaoData": "2026-06-02",
+            "VotacaoResultado": "Rejeitado",
+        },
+    ]
+
+    with pytest.raises(ValueError, match="identificador oficial.*factos divergentes"):
+        collector().normalise_votes(
+            payload,
+            source_url="https://app.parlamento.pt/teste-votos.json",
+            document_sha256="c" * 64,
+            reject_conflicting_duplicates=True,
+        )
+
+
+def test_historical_vote_mode_rejects_conflicting_position_for_the_same_actor() -> None:
+    payload = [
+        {
+            "VotacaoId": "V-posicao-duplicada",
+            "VotacaoData": "2026-06-02",
+            "VotacaoResultado": "Aprovado",
+            "VotacaoDetalhe": "A Favor: PSD",
+        },
+        {
+            "VotacaoId": "V-posicao-duplicada",
+            "VotacaoData": "2026-06-02",
+            "VotacaoResultado": "Aprovado",
+            "VotacaoDetalhe": "Contra: PSD",
+        },
+    ]
+
+    with pytest.raises(ValueError, match="identificador oficial.*factos divergentes"):
+        collector().normalise_votes(
+            payload,
+            source_url="https://app.parlamento.pt/teste-votos.json",
+            document_sha256="d" * 64,
+            reject_conflicting_duplicates=True,
+        )
 
 
 def test_normalises_official_nested_vote_shape_and_all_position_choices() -> None:

@@ -70,6 +70,37 @@ def _normalise_space(value: str) -> str:
     return re.sub(r"\s+", " ", value).strip()
 
 
+def _vote_candidates_conflict(previous: VoteEvent, candidate: VoteEvent) -> bool:
+    """Deteta apenas contradições factuais, sem confundir detalhe adicional com conflito."""
+
+    if (
+        previous.voted_at is not None
+        and candidate.voted_at is not None
+        and previous.voted_at != candidate.voted_at
+    ):
+        return True
+    if (
+        previous.result is not None
+        and candidate.result is not None
+        and _normalise_space(previous.result).casefold()
+        != _normalise_space(candidate.result).casefold()
+    ):
+        return True
+
+    previous_positions = {
+        _normalise_space(record.actor_label).casefold(): record.choice
+        for record in previous.records
+    }
+    candidate_positions = {
+        _normalise_space(record.actor_label).casefold(): record.choice
+        for record in candidate.records
+    }
+    return any(
+        previous_positions[label] is not candidate_positions[label]
+        for label in previous_positions.keys() & candidate_positions.keys()
+    )
+
+
 def _walk(value: Any) -> Iterator[dict[str, Any]]:
     if isinstance(value, dict):
         yield value
@@ -397,13 +428,14 @@ class ParlamentoCollector:
             )
         return warnings
 
+    @staticmethod
     def normalise_votes(
-        self,
         payload: Any,
         *,
         source_url: str,
         document_sha256: str,
         retrieved_at: datetime | None = None,
+        reject_conflicting_duplicates: bool = False,
     ) -> list[VoteEvent]:
         source = OfficialSource(
             publisher=SourcePublisher.PARLIAMENT,
@@ -433,7 +465,7 @@ class ParlamentoCollector:
             if not vote_id or not (result or details or date_value):
                 continue
 
-            records = self._normalise_vote_records(details)
+            records = ParlamentoCollector._normalise_vote_records(details)
             is_nominal = bool(records) and all(
                 item.actor_type is VoteActorType.PERSON for item in records
             )
@@ -465,6 +497,14 @@ class ParlamentoCollector:
             )
 
             previous = events.get(vote_id)
+            if (
+                previous is not None
+                and reject_conflicting_duplicates
+                and _vote_candidates_conflict(previous, candidate)
+            ):
+                raise ValueError(
+                    "O mesmo identificador oficial de votação contém factos divergentes"
+                )
             if previous is None or (
                 len(candidate.records),
                 candidate.voted_at is not None,
@@ -477,6 +517,13 @@ class ParlamentoCollector:
                 previous.title != f"Votação {vote_id}",
             ):
                 events[vote_id] = candidate
+
+        if reject_conflicting_duplicates:
+            for titles in descriptive_titles.values():
+                if len({title.casefold() for title in titles}) > 1:
+                    raise ValueError(
+                        "O mesmo identificador oficial de votação contém descrições divergentes"
+                    )
 
         for vote_id, event in list(events.items()):
             observed_contexts = initiative_contexts.get(vote_id, set())
@@ -511,7 +558,8 @@ class ParlamentoCollector:
             reverse=True,
         )
 
-    def _normalise_vote_records(self, details: Any) -> list[VoteRecord]:
+    @staticmethod
+    def _normalise_vote_records(details: Any) -> list[VoteRecord]:
         if isinstance(details, list):
             records: list[VoteRecord] = []
             for item in details:
@@ -527,7 +575,7 @@ class ParlamentoCollector:
                         actor_label=actor,
                         actor_source_id=actor_id,
                         actor_type=VoteActorType.PERSON if actor_id else VoteActorType.UNKNOWN,
-                        choice=self._choice(choice),
+                        choice=ParlamentoCollector._choice(choice),
                     )
                 )
             return records
@@ -540,7 +588,7 @@ class ParlamentoCollector:
         records_by_actor: dict[str, VoteRecord] = {}
         for position, section in enumerate(sections):
             end = sections[position + 1].start() if position + 1 < len(sections) else len(text)
-            choice = self._choice(section.group("choice"))
+            choice = ParlamentoCollector._choice(section.group("choice"))
             for actor_value in re.split(r"\s*[,;]\s*", text[section.end() : end]):
                 actor = _normalise_space(actor_value)
                 if not actor:
