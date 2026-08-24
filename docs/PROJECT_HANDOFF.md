@@ -82,7 +82,10 @@ aprovado e mantém qualquer valor legado fora da projeção até nova revisão h
 última cobertura parlamentar publicada por legislatura, âmbito, período e fotografia, sempre com
 fonte e hashes, e fixa o preenchimento histórico como uma fila editorial separada. Um recurso num
 catálogo oficial continua a ser apenas candidato até arquivo, revisão e publicação. Estes avanços
-não equivalem à execução dos gates de staging ou produção ainda abertos.
+não equivalem à execução dos gates de staging ou produção ainda abertos. A V5.22 acrescenta um
+coletor versionado para arquivar os três catálogos parlamentares por legislatura e inventariar
+apenas etiquetas e URLs oficiais exatas como `PENDING_INSPECTION`, sem descarregar os recursos,
+criar casos editoriais ou publicar.
 
 A melhoria de UX iniciada em agosto de 2026 faz parte da estabilização/conclusão da **V5**. Não deve ser tratada como início de uma V6 nem como autorização para reescrever o projeto.
 
