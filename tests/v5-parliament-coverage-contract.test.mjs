@@ -82,8 +82,9 @@ test("the public matrix is fail-closed and explains the exact scope of every cou
 });
 
 test("the historical backfill remains a versioned editorial plan, not a publication shortcut", async () => {
-  const [documentation, checklist, plan, readme] = await Promise.all([
+  const [documentation, catalogue, checklist, plan, readme] = await Promise.all([
     read("../docs/V5_PARLIAMENT_COVERAGE_AND_BACKFILL.md"),
+    read("../docs/V5_PARLIAMENT_SOURCE_CATALOGUE.md"),
     read("../docs/V5_RELEASE_CHECKLIST.md"),
     read("../docs/V5_RELEASE_PLAN.md"),
     read("../README.md"),
@@ -96,11 +97,19 @@ test("the historical backfill remains a versioned editorial plan, not a publicat
   assert.match(documentation, /propostas privadas `PENDING` separadas/);
   assert.match(documentation, /Não existe continuação automática/);
   assert.match(documentation, /nenhum dado real, migração remota, utilizador ou segredo/i);
+  assert.match(catalogue, /PENDING_INSPECTION/);
+  assert.match(catalogue, /historical_completeness=NOT_ASSERTED/);
+  assert.match(catalogue, /não descarrega os ficheiros XML ou JSON/);
+  assert.match(catalogue, /não cria casos editoriais `PENDING`/);
+  assert.match(catalogue, /produção é recusada pela própria camada de serviço/);
   assert.match(checklist, /\[x\] V5\.21 — matriz de cobertura parlamentar/);
+  assert.match(checklist, /\[x\] V5\.22 — catálogo privado e versionado/);
   assert.match(checklist, /\[x\] Plano de backfill versionado/);
   assert.match(checklist, /\[x\] Matriz pública de cobertura parlamentar concluída/);
-  assert.match(plan, /V5\.1 a V5\.21 integradas/);
+  assert.match(plan, /V5\.1 a V5\.22 integradas/);
   assert.match(plan, /V5_PARLIAMENT_COVERAGE_AND_BACKFILL\.md/);
-  assert.match(readme, /V5\.1 a V5\.21 integradas/);
+  assert.match(plan, /V5_PARLIAMENT_SOURCE_CATALOGUE\.md/);
+  assert.match(readme, /V5\.1 a V5\.22 integradas/);
   assert.match(readme, /V5_PARLIAMENT_COVERAGE_AND_BACKFILL\.md/);
+  assert.match(readme, /V5_PARLIAMENT_SOURCE_CATALOGUE\.md/);
 });

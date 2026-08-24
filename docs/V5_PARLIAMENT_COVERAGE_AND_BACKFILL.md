@@ -96,6 +96,11 @@ Cada legislatura e tipo de fonte percorre isoladamente estes gates:
 Uma falha termina o lote em estado privado e auditável. Não existe continuação automática para a
 legislatura seguinte nem publicação automática depois de uma migração ou deployment.
 
+O primeiro gate de descoberta foi implementado em
+[V5.22 — catálogo privado de fontes parlamentares históricas](V5_PARLIAMENT_SOURCE_CATALOGUE.md).
+Essa entrega arquiva as páginas de catálogo e cria apenas candidatos `PENDING_INSPECTION`; não
+descarrega os ficheiros históricos nem altera a matriz pública.
+
 ## Critérios de aceitação da V5.21
 
 - a API e a interface só mostram fotografias atualmente publicáveis e atestadas;

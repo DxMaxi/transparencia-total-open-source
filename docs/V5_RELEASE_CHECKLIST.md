@@ -34,6 +34,7 @@ continuam a exigir autorizações separadas.
 - [x] V5.19 — auditoria sanitizada de dados, segredos e privacidade da história integrada.
 - [x] V5.20 — vocabulário editorial seguro do Promessómetro integrado.
 - [x] V5.21 — matriz de cobertura parlamentar e plano de preenchimento histórico integrados.
+- [x] V5.22 — catálogo privado e versionado de fontes parlamentares por legislatura integrado.
 - [x] Existe um [conjunto de issues de conclusão](https://github.com/DxMaxi/transparencia-total-open-source/issues/58) para todos os itens ainda abertos.
 
 ## B. Estabilização pública
@@ -98,6 +99,8 @@ continuam a exigir autorizações separadas.
   arquivo, revisão e publicação sem confundir disponibilidade na fonte com cobertura pública.
 - [x] Matriz pública de cobertura parlamentar concluída, com período observado, recolha, revisão,
   fonte, hashes e completude histórica não afirmada.
+- [x] Catálogos de iniciativas, atividades e atividade dos deputados têm inventário privado por
+  etiqueta e URL exatas, sem descarga automática, proposta editorial ou publicação.
 
 ## F. Perfis políticos
 
