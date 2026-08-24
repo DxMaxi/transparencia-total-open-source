@@ -31,6 +31,7 @@ continuam a exigir autorizações separadas.
 - [x] V5.16 — antiabuso, revogação push, cache allowlist, acessibilidade e E2E local integrados.
 - [x] V5.17 — CSP privada por pedido e gate automático WCAG A/AA integrados.
 - [x] V5.18 — pesquisa global publicada e orçamento móvel repetível integrados.
+- [x] V5.19 — auditoria sanitizada de dados, segredos e privacidade da história integrada.
 - [x] Existe um [conjunto de issues de conclusão](https://github.com/DxMaxi/transparencia-total-open-source/issues/58) para todos os itens ainda abertos.
 
 ## B. Estabilização pública
@@ -199,7 +200,9 @@ continuam a exigir autorizações separadas.
 
 ## M. Publicação do código e release
 
-- [ ] História Git integral pesquisada por segredos, dumps e identificadores protegidos.
+- [x] História Git integral pesquisada por segredos, dumps e identificadores protegidos; a
+  [auditoria sanitizada](V5_RELEASE_PRIVACY_AUDIT.md) mantém a publicação pública bloqueada por um
+  contacto pessoal ainda presente em diffs históricos.
 - [ ] Todas as credenciais anteriormente expostas confirmadas como revogadas.
 - [ ] Licenças do software, conteúdo e fontes verificadas.
 - [ ] Comunicação pública usa `source-available` enquanto vigorar PolyForm Noncommercial.

@@ -73,9 +73,12 @@ Frentes ainda pertencentes à V5:
 
 Desde esse checkpoint, a V5.13–V5.15 fechou o circuito privado, a revisão e a publicação específica
 de explicações DRE com IA. A capacidade pública é anunciada apenas quando o esquema real a suporta;
-sem essa prova, API e frontend apresentam indisponibilidade controlada. A V5.16 endurece as
-escritas públicas, o consentimento e revogação push, a cache PWA, a acessibilidade e o E2E local no
-CI. Estes avanços não equivalem à execução dos gates de staging ou produção ainda abertos.
+sem essa prova, API e frontend apresentam indisponibilidade controlada. A V5.16–V5.18 endureceu as
+escritas públicas, consentimento e revogação push, cache PWA, acessibilidade, E2E, CSP, pesquisa
+global e desempenho móvel. A V5.19 acrescentou a auditoria sanitizada de dados e história Git; um
+contacto pessoal permanece apenas em diffs históricos e bloqueia a visibilidade pública até haver
+decisão própria. Estes avanços não equivalem à execução dos gates de staging ou produção ainda
+abertos.
 
 A melhoria de UX iniciada em agosto de 2026 faz parte da estabilização/conclusão da **V5**. Não deve ser tratada como início de uma V6 nem como autorização para reescrever o projeto.
 
@@ -89,6 +92,9 @@ Checkpoint histórico validado antes da auditoria profunda:
 - deployment Vercel desse commit confirmado com sucesso
 - `npm audit --omit=dev` tinha devolvido **0 vulnerabilidades** na auditoria anterior
 - pesquisa de segredos não encontrou credenciais reais conhecidas; repetir antes do release final
+- auditoria V5.19 no commit `9f46c2f`: 89 contratos frontend e 355 testes backend aprovados; cinco
+  alertas de história revistos como falsos positivos e um bloqueio de privacidade histórico
+  documentado em `docs/V5_RELEASE_PRIVACY_AUDIT.md`
 
 Este baseline não substitui a verificação do `HEAD` atual.
 
