@@ -234,6 +234,14 @@ async def test_normalization_reuses_attested_bytes_and_remains_outside_editorial
     assert sync_run["status"] == "PARTIAL"
     assert sync_run["records_read"] == 1
     assert sync_run["records_written"] == 1
-    assert len(sync_run["warnings"]) == 1
+    warnings = (
+        json.loads(sync_run["warnings"])
+        if isinstance(sync_run["warnings"], str)
+        else sync_run["warnings"]
+    )
+    assert warnings == [
+        "Cobertura histórica não afirmada: esta fotografia contém apenas "
+        "iniciativas observadas num único recurso oficial arquivado."
+    ]
     assert editorial_case_count == 0
     assert publication_count == 0
