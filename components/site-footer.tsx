@@ -19,6 +19,7 @@ export function SiteFooter() {
         </div>
         <div>
           <strong>Projeto</strong>
+          <a href="/pesquisa">Pesquisa global</a>
           <a href="/metodologia">Metodologia</a>
           <a href="/direito-de-resposta">Direito de resposta</a>
           <a href="/atividade-parlamentar">Atividade parlamentar</a>

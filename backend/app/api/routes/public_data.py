@@ -25,6 +25,7 @@ from app.models.public_parliament import (
     PublishedParliamentPublicationHistoryItem,
 )
 from app.models.public_politicians import PublishedPoliticianDirectory
+from app.models.public_search import PublishedGlobalSearch
 from app.repositories.ai_editorial_publication import PublicAiExplanationRepository
 from app.repositories.postgres import PostgresRepository
 from app.repositories.public_parliament import PublicParliamentRepository
@@ -32,6 +33,7 @@ from app.repositories.public_politicians import (
     PublicPoliticianCursorError,
     PublicPoliticianRepository,
 )
+from app.repositories.public_search import PublicGlobalSearchRepository
 
 router = APIRouter(prefix="/public", tags=["Leitura pública"])
 
@@ -98,6 +100,36 @@ async def public_politicians(
     except RuntimeError as exc:
         raise _unavailable(exc) from exc
     return [PublishedPersonSummary.model_validate(row) for row in rows]
+
+
+@router.get("/search", response_model=PublishedGlobalSearch)
+async def public_global_search(
+    response: Response,
+    repository: Annotated[PostgresRepository, Depends(get_repository)],
+    q: str = Query(min_length=2, max_length=120),
+    legislature: str = Query(default="XVII", pattern=r"^[A-Z0-9.ª ]{1,20}$"),
+    section_limit: int = Query(default=5, ge=1, le=20),
+) -> PublishedGlobalSearch:
+    """Pesquisa projeções publicadas; nunca abre acesso ao staging editorial."""
+
+    query = q.strip()
+    if len(query) < 2:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="A pesquisa deve conter pelo menos dois caracteres",
+        )
+    _cache(response)
+    result = await PublicGlobalSearchRepository(repository.pool).search(
+        query=query,
+        legislature=legislature,
+        section_limit=section_limit,
+    )
+    if result["available_sections"] == 0:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="A pesquisa pública está temporariamente indisponível.",
+        )
+    return PublishedGlobalSearch.model_validate(result)
 
 
 @router.get("/politicians/explore", response_model=PublishedPoliticianDirectory)

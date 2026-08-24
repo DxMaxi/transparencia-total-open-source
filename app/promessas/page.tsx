@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { DataModeBanner } from "@/components/data-mode-banner";
 import { Promessometro } from "@/components/promessometro";
-import { initialGovernmentCommitments } from "@/lib/government-programme";
 import { loadPublicPromises } from "@/lib/public-data";
 
 export const metadata: Metadata = {
@@ -13,7 +12,17 @@ export const metadata: Metadata = {
 
 export const revalidate = 60;
 
-export default async function PromisesPage() {
+type SearchParams = Record<string, string | string[] | undefined>;
+
+export default async function PromisesPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const parameters = await searchParams;
+  const query = ((Array.isArray(parameters.q) ? parameters.q[0] : parameters.q) ?? "")
+    .trim()
+    .slice(0, 120);
   const loaded = await loadPublicPromises();
   return (
     <main className="page-shell shell">
@@ -28,13 +37,16 @@ export default async function PromisesPage() {
       </header>
       <DataModeBanner status={loaded.status} showingFallback={loaded.showingFallback} />
       <aside className="catalogue-scope card" role="note">
-        <strong>Cobertura inicial: {initialGovernmentCommitments.length} compromissos explícitos</strong>
+        <strong>
+          {loaded.showingFallback ? "Cobertura editorial inicial" : "Catálogo publicado"}: {loaded.data.length} compromissos explícitos
+        </strong>
         <span>
-          É uma seleção editorial identificada, não a contagem integral de todas as medidas do
-          programa. O catálogo será alargado por versões sem alterar avaliações anteriores.
+          {loaded.showingFallback
+            ? "É uma seleção editorial identificada, não a contagem integral de todas as medidas do programa."
+            : "A contagem corresponde aos compromissos que cumprem a porta pública; não inclui recolhas por rever."}
         </span>
       </aside>
-      <Promessometro promises={loaded.data} />
+      <Promessometro promises={loaded.data} initialQuery={query} />
     </main>
   );
 }

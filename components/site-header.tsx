@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { LandmarkIcon, MenuIcon } from "@/components/icons";
+import { LandmarkIcon, MenuIcon, SearchIcon } from "@/components/icons";
 
 const navItems = [
   { href: "/politicos", label: "Políticos" },
@@ -41,6 +41,9 @@ export function SiteHeader() {
           </nav>
 
           <div className="header-actions">
+            <a className="icon-button header-search-button" href="/pesquisa" aria-label="Pesquisa global">
+              <SearchIcon />
+            </a>
             <button
               className="icon-button mobile-menu-button"
               type="button"
@@ -59,6 +62,9 @@ export function SiteHeader() {
           aria-label="Navegação móvel"
           hidden={!open}
         >
+          <a href="/pesquisa" onClick={() => setOpen(false)}>
+            Pesquisar em todo o site
+          </a>
           {navItems.map((item) => (
             <a key={item.href} href={item.href} onClick={() => setOpen(false)}>
               {item.label}
