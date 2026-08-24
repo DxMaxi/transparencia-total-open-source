@@ -33,7 +33,7 @@ dev = [
   "pytest>=8.4,<9",
   "pytest-asyncio>=1.1,<2",
   "respx>=0.22,<1",
-  "ruff==0.12.12"
+  "ruff==0.16.4"
 ]
 
 [tool.hatch.build.targets.wheel]
