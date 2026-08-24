@@ -98,6 +98,9 @@ cadeia antes da escrita; continua sem criar revisão, publicação ou relações
 A V5.27 interpreta separadamente o recurso de atividade dos deputados já arquivado: exige `DepId`,
 preserva `GpId`, `DepCPId` e intervalos oficiais de situação, grupo e cargo numa fotografia
 append-only própria, não normaliza contactos e não cria pessoas, mandatos, revisão ou publicação.
+A V5.28 liga cada observação a um caso privado `POLITICIAN_PROFILE` por `DepId` exato. O painel
+reprova fonte, arquivo e manifesto, recebe do browser apenas o identificador e confirmações, conserva
+anomalias de datas e não cria pessoa, mandato, revisão pública ou publicação mesmo após aprovação.
 
 A melhoria de UX iniciada em agosto de 2026 faz parte da estabilização/conclusão da **V5**. Não deve ser tratada como início de uma V6 nem como autorização para reescrever o projeto.
 

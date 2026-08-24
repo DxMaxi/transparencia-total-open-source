@@ -435,6 +435,82 @@ export type ParliamentEditorialProposalResult = {
   case: EditorialCaseDetail;
 };
 
+export type PoliticianProfilePeriod = {
+  source_id: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
+};
+
+export type PoliticianProfileEditorialCandidate = {
+  observation_id: string;
+  source_document_id: string;
+  snapshot_id: string;
+  official_deputy_id: string;
+  official_candidate_id: string | null;
+  parliamentary_name: string;
+  full_name: string | null;
+  legislature: string;
+  constituency: { source_id: string | null; label: string | null };
+  parliamentary_groups: Array<
+    PoliticianProfilePeriod & { short_name: string }
+  >;
+  mandate_situations: Array<
+    Omit<PoliticianProfilePeriod, "source_id"> & { description: string }
+  >;
+  offices: Array<PoliticianProfilePeriod & { title: string }>;
+  observation_sha256: string;
+  snapshot: {
+    parser_version: string;
+    normalised_sha256: string;
+    collected_at: string;
+  };
+  source: ParliamentEditorialSnapshot["source"];
+  archive: ParliamentEditorialSnapshot["archive"];
+  manifest_counts: {
+    deputies: number;
+    group_periods: number;
+    situation_periods: number;
+    office_periods: number;
+  };
+  materialised_counts: {
+    deputies: number;
+    group_periods: number;
+    situation_periods: number;
+    office_periods: number;
+  };
+  manifest_matches: boolean;
+  structure_valid: boolean;
+  warnings: string[];
+  editorial_case: null | {
+    id: string;
+    state: EditorialState;
+    revision: number;
+    origin: "HUMAN" | "INGESTION" | "AI";
+  };
+  proposal_eligible: boolean;
+  mandate_inference_allowed: false;
+  publication_state: "PRIVATE_ONLY";
+};
+
+export type PoliticianProfileEditorialCandidateList = {
+  items: PoliticianProfileEditorialCandidate[];
+  total: number;
+  limit: number;
+  offset: number;
+  next_offset: number | null;
+  publication_performed: false;
+  search_rule: string;
+};
+
+export type PoliticianProfileEditorialProposalResult = {
+  created: boolean;
+  case: EditorialCaseDetail;
+  state: "PRIVATE_PENDING_REVIEW";
+  publication_performed: false;
+  person_created: false;
+  mandate_created: false;
+};
+
 export type ParliamentEditorialPublicationPreview = {
   case_id: string;
   case_state: EditorialState;

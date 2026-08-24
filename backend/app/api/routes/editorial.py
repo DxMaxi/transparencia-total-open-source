@@ -11,6 +11,7 @@ from app.api.dependencies import (
     get_editorial_repository,
     get_parliament_editorial_publication_repository,
     get_parliament_editorial_repository,
+    get_politician_profile_editorial_repository,
     get_staff_session,
     require_editorial_admin,
     require_editorial_staff,
@@ -31,6 +32,7 @@ from app.models.editorial import (
     ParliamentEditorialProposalRequest,
     ParliamentEditorialPublicationRequest,
     ParliamentEditorialWithdrawalRequest,
+    PoliticianProfileEditorialProposalRequest,
     StaffSession,
 )
 from app.repositories.ai_editorial import AiEditorialRepository
@@ -44,6 +46,9 @@ from app.repositories.editorial import (
 from app.repositories.parliament_editorial import ParliamentEditorialRepository
 from app.repositories.parliament_editorial_publication import (
     ParliamentEditorialPublicationRepository,
+)
+from app.repositories.politician_profile_editorial import (
+    PoliticianProfileEditorialRepository,
 )
 from app.services.ai_editorial import AiEditorialService, AiGenerationError
 from app.services.ai_summarizer import get_summarizer
@@ -101,6 +106,45 @@ async def create_parliament_proposal(
     actor: Annotated[StaffSession, Depends(require_editorial_staff)],
 ) -> dict[str, object]:
     """Cria uma proposta PENDING por âmbito; nunca publica o snapshot."""
+
+    try:
+        return await repository.create_proposal(payload=payload, actor=actor)
+    except (EditorialConflictError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.get("/parliament/deputies")
+async def parliament_deputy_candidates(
+    repository: Annotated[
+        PoliticianProfileEditorialRepository,
+        Depends(get_politician_profile_editorial_repository),
+    ],
+    _actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+    legislature: Annotated[str | None, Query(min_length=1, max_length=20)] = None,
+    q: Annotated[str | None, Query(min_length=2, max_length=100)] = None,
+    limit: Annotated[int, Query(ge=1, le=50)] = 20,
+    offset: Annotated[int, Query(ge=0, le=10_000)] = 0,
+) -> dict[str, object]:
+    """Compara observações separadas por DepId sem criar identidades ou revisões."""
+
+    return await repository.list_candidates(
+        legislature=legislature,
+        query=q,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.post("/parliament/deputy-proposals", status_code=status.HTTP_201_CREATED)
+async def create_parliament_deputy_proposal(
+    payload: PoliticianProfileEditorialProposalRequest,
+    repository: Annotated[
+        PoliticianProfileEditorialRepository,
+        Depends(get_politician_profile_editorial_repository),
+    ],
+    actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> dict[str, object]:
+    """Cria um perfil PENDING a partir de uma observação; nunca publica nem infere mandato."""
 
     try:
         return await repository.create_proposal(payload=payload, actor=actor)

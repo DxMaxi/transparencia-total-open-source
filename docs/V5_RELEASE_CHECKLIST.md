@@ -42,6 +42,8 @@ continuam a exigir autorizações separadas.
   preservados, integrada.
 - [x] V5.27 — observações privadas e versionadas de deputados por `DepId`, com contactos excluídos
   e datas oficiais não convertidas automaticamente em mandatos, integrada.
+- [x] V5.28 — observações por `DepId` entram apenas em casos privados `POLITICIAN_PROFILE` em
+  `PENDING`, sem criar pessoa, mandato, revisão pública ou publicação.
 - [x] Existe um [conjunto de issues de conclusão](https://github.com/DxMaxi/transparencia-total-open-source/issues/58) para todos os itens ainda abertos.
 
 ## B. Estabilização pública
@@ -119,6 +121,8 @@ continuam a exigir autorizações separadas.
   editorial.
 - [x] As fichas históricas de deputados usam apenas o bloco principal e `DepId`, conservam `GpId` e
   `DepCPId`, excluem contactos e permanecem numa fotografia privada sem criar pessoas ou mandatos.
+- [x] O comparador privado de deputados volta a provar manifesto, fonte e arquivo e reconstrói a
+  proposta no servidor; intervalos contraditórios ficam visíveis e nunca originam mandatos.
 
 ## F. Perfis políticos
 
