@@ -74,6 +74,8 @@ def test_directory_uses_bound_keyset_cursor_and_exact_published_total() -> None:
     assert first["parties"] == [{"value": "PT", "label": "Partido de Teste", "count": 7}]
     query, arguments = pool.calls[0]
     assert "source_archive_attestations" in query
+    assert "archive.retrieved_at = source.retrieved_at" in query
+    assert "profile_archive.retrieved_at = source.retrieved_at" in query
     assert "(sort_name, slug)" in query
     assert "OFFSET" not in query.upper()
     assert "similarity" not in query.casefold()

@@ -249,6 +249,36 @@ class PoliticianProfileSnapshotPublicationRequest(BaseModel):
         return stripped
 
 
+class PoliticianProfileSnapshotWithdrawalRequest(BaseModel):
+    """Retirada integral ligada à prova exata da fotografia publicada."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    expected_snapshot_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    expected_source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_snapshot_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_publication_proof_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_withdrawal_proof_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_public_effect_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_deputy_count: int = Field(ge=1, le=500)
+    rationale: str = Field(min_length=20, max_length=1850)
+    public_rationale: str = Field(min_length=20, max_length=500)
+    reason_category: ParliamentWithdrawalReason
+    confirm_complete_snapshot: Literal[True]
+    confirm_no_selective_removal: Literal[True]
+    confirm_public_effect_reviewed: Literal[True]
+    confirm_people_and_history_preserved: Literal[True]
+    confirm_withdrawal: Literal[True]
+
+    @field_validator("rationale", "public_rationale")
+    @classmethod
+    def strip_profile_withdrawal_rationale(cls, value: str) -> str:
+        stripped = value.strip()
+        if len(stripped) < 20:
+            raise ValueError("A fundamentação deve ter pelo menos 20 caracteres úteis")
+        return stripped
+
+
 class AiDreProposalRequest(BaseModel):
     """Confirmações explícitas para uma geração privada baseada num snapshot DRE."""
 

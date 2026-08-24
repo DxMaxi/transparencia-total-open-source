@@ -61,9 +61,11 @@ def _publication_event_sha256(
     event_id: str,
     case_id: str,
     version_id: str,
+    action: str,
     target_id: str,
     rationale: str,
-    actor: StaffSession,
+    actor_id: str,
+    actor_alias: str,
     created_at: datetime,
 ) -> str:
     return _sha256_json(
@@ -71,12 +73,12 @@ def _publication_event_sha256(
             "id": event_id,
             "case_id": case_id,
             "version_id": version_id,
-            "action": "PUBLISH",
+            "action": action,
             "target_type": "PERSON",
             "target_id": target_id,
             "rationale": rationale,
-            "actor_id": actor.staff_id,
-            "actor_alias": actor.public_alias,
+            "actor_id": actor_id,
+            "actor_alias": actor_alias,
             "created_at": _iso_timestamp(created_at),
         }
     )
@@ -528,9 +530,11 @@ class PoliticianProfileSnapshotPublicationRepository:
                         event_id=event_id,
                         case_id=case_id,
                         version_id=version_id,
+                        action="PUBLISH",
                         target_id=person_id,
                         rationale=payload.public_rationale,
-                        actor=actor,
+                        actor_id=actor.staff_id,
+                        actor_alias=actor.public_alias,
                         created_at=created_at,
                     )
                     await connection.execute(

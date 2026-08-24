@@ -16,6 +16,7 @@ import {
   type ParliamentWithdrawalReason,
   type PoliticianProfileEditorialProposalResult,
   type PoliticianProfileSnapshotPublicationResult,
+  type PoliticianProfileSnapshotWithdrawalResult,
 } from "@/lib/editorial-types";
 
 function requiredText(formData: FormData, name: string): string {
@@ -252,6 +253,81 @@ export async function publishPoliticianProfileSnapshot(formData: FormData) {
   revalidatePath("/politicos");
   revalidatePath("/");
   const params = new URLSearchParams({ legislature, sucesso: "fotografia-publicada" });
+  redirect(`${destination}?${params.toString()}`);
+}
+
+export async function withdrawPoliticianProfileSnapshot(formData: FormData) {
+  const snapshotId = evidenceId(formData, "expected_snapshot_id");
+  const legislature = requiredText(formData, "legislature").slice(0, 20);
+  let failure: string | null = null;
+  try {
+    for (const [field, message] of [
+      ["confirm_complete_snapshot", "Confirme a fotografia completa"],
+      ["confirm_no_selective_removal", "Confirme que a retirada não é seletiva"],
+      ["confirm_public_effect_reviewed", "Confirme que reviu o efeito público"],
+      ["confirm_people_and_history_preserved", "Confirme a preservação das pessoas e do histórico"],
+      ["confirm_withdrawal", "Confirme a retirada integral dos perfis"],
+    ] as const) {
+      if (formData.get(field) !== "on") throw new Error(message);
+    }
+    const reasonCategory = requiredText(formData, "reason_category");
+    if (!(reasonCategory in PARLIAMENT_WITHDRAWAL_REASON_LABELS)) {
+      throw new Error("Categoria de retirada inválida");
+    }
+    const expectedDeputyCount = Number.parseInt(
+      requiredText(formData, "expected_deputy_count"),
+      10,
+    );
+    if (!Number.isSafeInteger(expectedDeputyCount) || expectedDeputyCount < 1 || expectedDeputyCount > 500) {
+      throw new Error("Contagem de deputados inválida");
+    }
+    await editorialFetch<PoliticianProfileSnapshotWithdrawalResult>(
+      `/parliament/deputy-snapshots/${encodeURIComponent(snapshotId)}/withdrawal`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          expected_snapshot_id: snapshotId,
+          expected_source_sha256: sha256(formData, "expected_source_sha256"),
+          expected_snapshot_sha256: sha256(formData, "expected_snapshot_sha256"),
+          expected_publication_proof_sha256: sha256(
+            formData,
+            "expected_publication_proof_sha256",
+          ),
+          expected_withdrawal_proof_sha256: sha256(
+            formData,
+            "expected_withdrawal_proof_sha256",
+          ),
+          expected_public_effect_sha256: sha256(
+            formData,
+            "expected_public_effect_sha256",
+          ),
+          expected_deputy_count: expectedDeputyCount,
+          rationale: requiredText(formData, "rationale"),
+          public_rationale: requiredText(formData, "public_rationale"),
+          reason_category: reasonCategory as ParliamentWithdrawalReason,
+          confirm_complete_snapshot: true,
+          confirm_no_selective_removal: true,
+          confirm_public_effect_reviewed: true,
+          confirm_people_and_history_preserved: true,
+          confirm_withdrawal: true,
+        }),
+      },
+    );
+  } catch (error) {
+    failure = actionError(error);
+  }
+  const destination = "/admin/revisao/parlamento/deputados/prontidao";
+  if (failure) {
+    const params = new URLSearchParams({ legislature, erro: failure });
+    redirect(`${destination}?${params.toString()}`);
+  }
+  revalidatePath("/admin/revisao");
+  revalidatePath("/admin/revisao/parlamento/deputados");
+  revalidatePath(destination);
+  revalidatePath("/politicos");
+  revalidatePath("/sitemap.xml");
+  revalidatePath("/");
+  const params = new URLSearchParams({ legislature, sucesso: "fotografia-retirada" });
   redirect(`${destination}?${params.toString()}`);
 }
 
