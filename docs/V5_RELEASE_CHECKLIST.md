@@ -40,6 +40,8 @@ continuam a exigir autorizações separadas.
 - [x] V5.25 — primeira normalização histórica privada de iniciativas, derivável dos bytes, integrada.
 - [x] V5.26 — normalização histórica privada de votações, com IDs exatos e atores desconhecidos
   preservados, integrada.
+- [x] V5.27 — observações privadas e versionadas de deputados por `DepId`, com contactos excluídos
+  e datas oficiais não convertidas automaticamente em mandatos, integrada.
 - [x] Existe um [conjunto de issues de conclusão](https://github.com/DxMaxi/transparencia-total-open-source/issues/58) para todos os itens ainda abertos.
 
 ## B. Estabilização pública
@@ -115,6 +117,8 @@ continuam a exigir autorizações separadas.
 - [x] As votações históricas derivadas do JSON de iniciativas exigem ID oficial, recusam factos
   contraditórios, preservam posições sem identificador como `UNKNOWN` e continuam fora do circuito
   editorial.
+- [x] As fichas históricas de deputados usam apenas o bloco principal e `DepId`, conservam `GpId` e
+  `DepCPId`, excluem contactos e permanecem numa fotografia privada sem criar pessoas ou mandatos.
 
 ## F. Perfis políticos
 

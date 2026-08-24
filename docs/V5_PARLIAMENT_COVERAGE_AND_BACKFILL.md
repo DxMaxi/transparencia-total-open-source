@@ -107,6 +107,10 @@ As primeiras interpretações privadas estão separadas em
 atestada, recalculam o resultado antes da escrita e permanecem `NOT_ASSERTED`, sem proposta
 editorial ou publicação.
 
+A [V5.27 — observações de deputados](V5_PARLIAMENT_DEPUTY_OBSERVATIONS.md) aplica a mesma cadeia ao
+catálogo `DEPUTY_ACTIVITY`. A fotografia usa apenas `DepId` e IDs oficiais explícitos, conserva os
+intervalos da fonte sem os promover a mandatos e exclui contactos do modelo normalizado.
+
 ## Critérios de aceitação da V5.21
 
 - a API e a interface só mostram fotografias atualmente publicáveis e atestadas;

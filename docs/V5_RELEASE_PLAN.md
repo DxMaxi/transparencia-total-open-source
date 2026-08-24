@@ -11,12 +11,12 @@ reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.26 integradas; staging remoto pendente |
+| Código V5 | V5.1 a V5.27 integradas; staging remoto pendente |
 | Frontend público | V5.21 preparado; capacidades sem backend ou esquema pronto ficam fail-closed |
 | API pública | `0.5.0-alpha.0`; capacidades anunciadas apenas após prova read-only do esquema |
 | Painel editorial | implementado no código, não ativado em produção |
 | IA | geração, revisão, publicação e retirada implementadas; esquema remoto ainda não ativado |
-| Parlamento | matriz V5.21 e gates V5.22–V5.26 preparados; atividades gerais, deputados e ativação editorial pendentes |
+| Parlamento | matriz V5.21 e gates V5.22–V5.27 preparados; atividades gerais e ativação editorial pendentes |
 | Perfis | contrato V5.6 preparado; várias áreas sem dados individuais publicáveis |
 | Promessómetro | catálogo editorial inicial de 10 compromissos; vocabulário V5.20 protegido |
 | Investigador Cívico | zero contratos e zero relações na projeção pública |
@@ -153,6 +153,12 @@ Deriva uma fotografia separada dos mesmos bytes de iniciativas, exige IDs oficia
 contradições factuais e conserva posições sem identificador como `UNKNOWN`. Não transforma o
 catálogo heterogéneo de atividades em reuniões, não cria relações por nome e não entra no circuito
 editorial.
+
+O sexto gate está implementado em
+[V5.27 — observações privadas e auditáveis de deputados](V5_PARLIAMENT_DEPUTY_OBSERVATIONS.md).
+Lê apenas o JSON de atividade dos deputados previamente arquivado, exige `DepId`, conserva IDs
+oficiais de grupo e círculo e guarda situações, grupos e cargos numa fotografia própria versionada.
+Não normaliza contactos, não cria pessoas ou mandatos e não entra no circuito editorial ou público.
 
 Critérios de saída:
 

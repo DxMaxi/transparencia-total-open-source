@@ -95,6 +95,9 @@ recalcula o resultado antes de persistir e conserva `NOT_ASSERTED`, sem criar re
 A V5.26 deriva dos mesmos bytes uma fotografia privada separada de votações, recusa factos
 contraditórios para o mesmo ID, mantém posições textuais como `UNKNOWN` e volta a provar toda a
 cadeia antes da escrita; continua sem criar revisão, publicação ou relações por nome.
+A V5.27 interpreta separadamente o recurso de atividade dos deputados já arquivado: exige `DepId`,
+preserva `GpId`, `DepCPId` e intervalos oficiais de situação, grupo e cargo numa fotografia
+append-only própria, não normaliza contactos e não cria pessoas, mandatos, revisão ou publicação.
 
 A melhoria de UX iniciada em agosto de 2026 faz parte da estabilização/conclusão da **V5**. Não deve ser tratada como início de uma V6 nem como autorização para reescrever o projeto.
 
