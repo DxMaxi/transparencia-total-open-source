@@ -150,7 +150,9 @@ jobs:
       - name: Recolher deputados em staging
         if: ${{ inputs.operation == 'sync-parliament-deputies' }}
         working-directory: backend
-        run: python -m scripts.sync_parliament deputies --legislature XVII --persist
+        run: >-
+          python -m scripts.sync_parliament deputies --legislature XVII
+          --persist --summary-only
 
       - name: Recolher atividade parlamentar em staging
         if: ${{ inputs.operation == 'sync-parliament-activity' }}

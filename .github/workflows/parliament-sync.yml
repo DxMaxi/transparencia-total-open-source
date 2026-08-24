@@ -38,7 +38,9 @@ jobs:
           python -m pip install -e './backend'
       - name: Recolher deputados sem publicar
         working-directory: backend
-        run: python -m scripts.sync_parliament deputies --legislature XVII --persist
+        run: >-
+          python -m scripts.sync_parliament deputies --legislature XVII
+          --persist --summary-only
       - name: Recolher sessões, iniciativas e votações sem publicar
         working-directory: backend
         run: python -m scripts.sync_parliament_activity --legislature XVII

@@ -82,3 +82,18 @@ test("the release records the sanitized history audit and keeps public visibilit
   assert.match(checklist, /V5_RELEASE_PRIVACY_AUDIT\.md/);
   assert.match(technicalAudit, /V5_RELEASE_PRIVACY_AUDIT\.md/);
 });
+
+test("parliament staging logs omit the full deputy dataset", async () => {
+  const [scheduledWorkflow, operationsWorkflow, script] = await Promise.all([
+    read(".github/workflows/parliament-sync.yml"),
+    read(".github/workflows/production-operations.yml"),
+    read("backend/scripts/sync_parliament.py"),
+  ]);
+  const protectedCommand =
+    /sync_parliament deputies --legislature XVII[\s\S]{0,80}--persist --summary-only/;
+
+  assert.match(scheduledWorkflow, protectedCommand);
+  assert.match(operationsWorkflow, protectedCommand);
+  assert.match(script, /elif summary_only or persist:/);
+  assert.match(script, /conteúdo integral omitido dos logs/);
+});
