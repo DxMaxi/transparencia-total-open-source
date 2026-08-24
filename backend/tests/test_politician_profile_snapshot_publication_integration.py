@@ -1,4 +1,4 @@
-"""V5.30: publicação integral de perfis numa base PostgreSQL descartável."""
+"""V5.30–V5.31: publicação e retirada integrais numa base PostgreSQL descartável."""
 
 import hashlib
 import json
@@ -17,16 +17,24 @@ from app.models.editorial import (
     EditorialAction,
     PoliticianProfileEditorialProposalRequest,
     PoliticianProfileSnapshotPublicationRequest,
+    PoliticianProfileSnapshotWithdrawalRequest,
     StaffRole,
     StaffSession,
 )
-from app.repositories.editorial import EditorialConflictError, EditorialRepository
+from app.repositories.editorial import (
+    EditorialConflictError,
+    EditorialRepository,
+    EditorialSourceError,
+)
 from app.repositories.official_index_staging import OfficialIndexStagingRepository
 from app.repositories.politician_profile_editorial import (
     PoliticianProfileEditorialRepository,
 )
 from app.repositories.politician_profile_snapshot_publication import (
     PoliticianProfileSnapshotPublicationRepository,
+)
+from app.repositories.politician_profile_snapshot_withdrawal import (
+    PoliticianProfileSnapshotWithdrawalRepository,
 )
 from app.repositories.public_politicians import PublicPoliticianRepository
 
@@ -63,19 +71,20 @@ async def repository() -> OfficialIndexStagingRepository:
 
 
 @pytest.mark.asyncio
-async def test_complete_snapshot_publication_is_atomic_exact_and_public(
+async def test_complete_snapshot_publication_and_withdrawal_are_atomic_exact_and_public(
     repository: OfficialIndexStagingRepository,
 ) -> None:
     assert repository.pool is not None
     suffix = uuid.uuid4().hex[:12].translate(str.maketrans("0123456789", "ghijklmnop"))
     now = datetime.now(UTC).replace(microsecond=0)
+    legislature = f"V530-{suffix}"
     parliamentary_name = f"Pessoa V530 {suffix}"
     official_deputy_id = f"dep-v530-{suffix}"
     source_url = HttpUrl(
         "https://app.parlamento.pt/webutils/docs/doc.txt"
         f"?fich=AtividadeDeputadoV530_{suffix}_json.txt&Inline=true"
     )
-    content = json.dumps({"fixture": suffix, "legislature": "XVII"}).encode()
+    content = json.dumps({"fixture": suffix, "legislature": legislature}).encode()
     content_sha256 = hashlib.sha256(content).hexdigest()
     stored = await repository.store_index(
         source_name=f"PARLIAMENT_DEPUTY_PUBLICATION_{suffix}",
@@ -103,11 +112,12 @@ async def test_complete_snapshot_publication_is_atomic_exact_and_public(
                  normalised_sha256, collected_at, deputy_count,
                  group_period_count, situation_period_count, office_period_count,
                  created_at)
-            VALUES ($1, $2, 'XVII', 'parliament-historical-deputies-v1',
-                    $3, $4, 1, 1, 1, 0, NOW())
+            VALUES ($1, $2, $3, 'parliament-historical-deputies-v1',
+                    $4, $5, 1, 1, 1, 0, NOW())
             """,
             snapshot_id,
             source_document_id,
+            legislature,
             "b" * 64,
             now.replace(tzinfo=None),
         )
@@ -390,5 +400,172 @@ async def test_complete_snapshot_publication_is_atomic_exact_and_public(
         await publication.publish(
             snapshot_id=snapshot_id,
             payload=PoliticianProfileSnapshotPublicationRequest.model_validate(request_data),
+            actor=actor,
+        )
+
+    withdrawal = PoliticianProfileSnapshotWithdrawalRepository(repository.pool)
+    withdrawal_preview = await withdrawal.inspect(snapshot_id=snapshot_id)
+    assert withdrawal_preview["eligible"] is True
+    assert withdrawal_preview["published_profile_count"] == 1
+    assert withdrawal_preview["public_effect"]["kind"] == "DATA_UNAVAILABLE"
+    assert len(str(withdrawal_preview["withdrawal_proof_sha256"])) == 64
+    assert len(str(withdrawal_preview["public_effect_sha256"])) == 64
+
+    withdrawal_data = {
+        "expected_snapshot_id": snapshot_id,
+        "expected_source_sha256": content_sha256,
+        "expected_snapshot_sha256": "b" * 64,
+        "expected_publication_proof_sha256": withdrawal_preview["publication_proof_sha256"],
+        "expected_withdrawal_proof_sha256": withdrawal_preview["withdrawal_proof_sha256"],
+        "expected_public_effect_sha256": withdrawal_preview["public_effect_sha256"],
+        "expected_deputy_count": 1,
+        "rationale": "A fonte publicada diverge de forma reproduzível da fotografia revista.",
+        "public_rationale": "Fotografia retirada por divergência factual documentada.",
+        "reason_category": "SOURCE_DIVERGENCE",
+        "confirm_complete_snapshot": True,
+        "confirm_no_selective_removal": True,
+        "confirm_public_effect_reviewed": True,
+        "confirm_people_and_history_preserved": True,
+        "confirm_withdrawal": True,
+    }
+    async with repository.pool.acquire() as connection:
+        counts_before_failed_withdrawal = await connection.fetchrow(
+            """
+            SELECT
+                (SELECT COUNT(*) FROM editorial_decisions WHERE case_id = $1) AS decisions,
+                (SELECT COUNT(*) FROM editorial_publication_events WHERE case_id = $1) AS events,
+                (
+                    SELECT COUNT(*) FROM data_publication_reviews
+                    WHERE source_document_id = $2
+                      AND entity_type IN ('PERSON', 'PARLIAMENT_DEPUTY_SNAPSHOT')
+                ) AS reviews,
+                (
+                    SELECT COUNT(*) FROM audit_events
+                    WHERE entity_type IN ('PERSON', 'PARLIAMENT_DEPUTY_SNAPSHOT')
+                      AND entity_id IN ($3, $4)
+                ) AS audits
+            """,
+            case_id,
+            source_document_id,
+            str(row["id"]),
+            snapshot_id,
+        )
+        assert counts_before_failed_withdrawal is not None
+    wrong_withdrawal = PoliticianProfileSnapshotWithdrawalRequest.model_validate(
+        {**withdrawal_data, "expected_public_effect_sha256": "e" * 64}
+    )
+    with pytest.raises(EditorialConflictError):
+        await withdrawal.withdraw(
+            snapshot_id=snapshot_id,
+            payload=wrong_withdrawal,
+            actor=actor,
+        )
+    async with repository.pool.acquire() as connection:
+        counts_after_failed_withdrawal = await connection.fetchrow(
+            """
+            SELECT
+                (SELECT COUNT(*) FROM editorial_decisions WHERE case_id = $1) AS decisions,
+                (SELECT COUNT(*) FROM editorial_publication_events WHERE case_id = $1) AS events,
+                (
+                    SELECT COUNT(*) FROM data_publication_reviews
+                    WHERE source_document_id = $2
+                      AND entity_type IN ('PERSON', 'PARLIAMENT_DEPUTY_SNAPSHOT')
+                ) AS reviews,
+                (
+                    SELECT COUNT(*) FROM audit_events
+                    WHERE entity_type IN ('PERSON', 'PARLIAMENT_DEPUTY_SNAPSHOT')
+                      AND entity_id IN ($3, $4)
+                ) AS audits
+            """,
+            case_id,
+            source_document_id,
+            str(row["id"]),
+            snapshot_id,
+        )
+        assert counts_after_failed_withdrawal == counts_before_failed_withdrawal
+
+    withdrawn = await withdrawal.withdraw(
+        snapshot_id=snapshot_id,
+        payload=PoliticianProfileSnapshotWithdrawalRequest.model_validate(withdrawal_data),
+        actor=actor,
+    )
+    assert withdrawn["state"] == "WITHDRAWN"
+    assert withdrawn["person_reviews_created"] == 1
+    assert withdrawn["person_audits_created"] == 1
+    assert withdrawn["editorial_decisions_created"] == 1
+    assert withdrawn["withdrawal_events_created"] == 1
+    assert withdrawn["people_deleted"] == 0
+    assert withdrawn["memberships_deleted"] == 0
+    assert withdrawn["versions_deleted"] == 0
+
+    async with repository.pool.acquire() as connection:
+        preserved = await connection.fetchrow(
+            """
+            SELECT person.id,
+                   editorial_case.current_state::text AS case_state,
+                   editorial_case.revision,
+                   (
+                       SELECT review.publishable
+                       FROM data_publication_reviews AS review
+                       WHERE review.entity_type = 'PERSON'
+                         AND review.entity_id = person.id
+                         AND review.source_document_id = $3
+                       ORDER BY review.reviewed_at DESC, review.id DESC
+                       LIMIT 1
+                   ) AS person_publishable,
+                   (
+                       SELECT review.publishable
+                       FROM data_publication_reviews AS review
+                       WHERE review.entity_type = 'PARLIAMENT_DEPUTY_SNAPSHOT'
+                         AND review.entity_id = $4
+                         AND review.source_document_id = $3
+                       ORDER BY review.reviewed_at DESC, review.id DESC
+                       LIMIT 1
+                   ) AS snapshot_publishable
+            FROM people AS person
+            JOIN parliamentary_membership_snapshots AS membership
+              ON membership.person_id = person.id
+             AND membership.source_document_id = $3
+            JOIN editorial_cases AS editorial_case ON editorial_case.id = $2
+            WHERE person.source_id = $1
+            """,
+            official_deputy_id,
+            case_id,
+            source_document_id,
+            snapshot_id,
+        )
+        assert preserved is not None
+        assert preserved["case_state"] == "WITHDRAWN"
+        assert preserved["revision"] == 5
+        assert preserved["person_publishable"] is False
+        assert preserved["snapshot_publishable"] is False
+        assert int(await connection.fetchval("SELECT COUNT(*) FROM mandates")) == mandates_before
+        actions = await connection.fetch(
+            """
+            SELECT action::text, event_sha256
+            FROM editorial_publication_events
+            WHERE case_id = $1
+            ORDER BY created_at, id
+            """,
+            case_id,
+        )
+        assert [str(item["action"]) for item in actions] == ["PUBLISH", "WITHDRAW"]
+        assert all(re.fullmatch(r"[0-9a-f]{64}", str(item["event_sha256"])) for item in actions)
+
+    no_longer_public = await PublicPoliticianRepository(repository.pool).explore(
+        query=parliamentary_name,
+        party_short=None,
+        limit=10,
+        cursor=None,
+    )
+    assert no_longer_public["total"] == 0
+    assert await repository.pool.fetchval(
+        "SELECT EXISTS (SELECT 1 FROM people WHERE source_id = $1)", official_deputy_id
+    )
+
+    with pytest.raises((EditorialConflictError, EditorialSourceError)):
+        await withdrawal.withdraw(
+            snapshot_id=snapshot_id,
+            payload=PoliticianProfileSnapshotWithdrawalRequest.model_validate(withdrawal_data),
             actor=actor,
         )

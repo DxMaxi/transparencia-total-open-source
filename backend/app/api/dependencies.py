@@ -24,6 +24,9 @@ from app.repositories.politician_profile_publication import (
 from app.repositories.politician_profile_snapshot_publication import (
     PoliticianProfileSnapshotPublicationRepository,
 )
+from app.repositories.politician_profile_snapshot_withdrawal import (
+    PoliticianProfileSnapshotWithdrawalRepository,
+)
 from app.repositories.postgres import PostgresRepository
 
 
@@ -117,6 +120,17 @@ def get_politician_profile_snapshot_publication_repository(
             detail="Base de dados editorial não configurada",
         )
     return PoliticianProfileSnapshotPublicationRepository(repository.pool)
+
+
+def get_politician_profile_snapshot_withdrawal_repository(
+    repository: Annotated[PostgresRepository, Depends(get_repository)],
+) -> PoliticianProfileSnapshotWithdrawalRepository:
+    if repository.pool is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Base de dados editorial não configurada",
+        )
+    return PoliticianProfileSnapshotWithdrawalRepository(repository.pool)
 
 
 async def get_staff_session(

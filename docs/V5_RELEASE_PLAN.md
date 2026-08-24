@@ -11,13 +11,13 @@ reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.30 integradas; staging remoto pendente |
+| Código V5 | V5.1 a V5.31 integradas; staging remoto pendente |
 | Frontend público | V5.21 preparado; capacidades sem backend ou esquema pronto ficam fail-closed |
 | API pública | `0.5.0-alpha.0`; capacidades anunciadas apenas após prova read-only do esquema |
 | Painel editorial | implementado no código, não ativado em produção |
 | IA | geração, revisão, publicação e retirada implementadas; esquema remoto ainda não ativado |
-| Parlamento | matriz V5.21 e gates V5.22–V5.30 preparados; atividades gerais e ativação editorial pendentes |
-| Perfis | entrada, prontidão e publicação integral por fotografia preparadas; retirada e domínios individuais pendentes |
+| Parlamento | matriz V5.21 e gates V5.22–V5.31 preparados; atividades gerais e ativação editorial pendentes |
+| Perfis | entrada, prontidão, publicação e retirada integral preparadas; republicação e domínios individuais pendentes |
 | Promessómetro | catálogo editorial inicial de 10 compromissos; vocabulário V5.20 protegido |
 | Investigador Cívico | zero contratos e zero relações na projeção pública |
 | PWA e alertas | consentimento, revogação e cache opt-in integrados; configuração remota pendente |
@@ -175,6 +175,8 @@ divergentes. Um resultado pronto continua sem criar pessoa, mandato, revisão ou
 
 O nono gate está implementado em
 [V5.30 — publicação transacional da fotografia completa](V5_POLITICIAN_PROFILE_SNAPSHOT_PUBLICATION.md).
+A retirada integral, o efeito público calculado e a preservação de pessoas e versões estão definidos
+em [V5.31 — retirada imutável da fotografia completa](V5_POLITICIAN_PROFILE_SNAPSHOT_WITHDRAWAL.md).
 Uma ação `ADMIN` com MFA repete as provas e acrescenta identidades, observações, revisões,
 auditorias, decisões e eventos numa só transação. A ligação usa apenas `DepId` oficial exato; não
 cria mandatos nem filiações. Esta capacidade ainda não foi ativada ou executada num ambiente real.

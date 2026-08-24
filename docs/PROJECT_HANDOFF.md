@@ -108,8 +108,11 @@ ação de escrita.
 A V5.30 acrescenta a operação de publicação integral, separada e exclusivamente `ADMIN` com MFA.
 Depois de repetir hashes, manifesto e aprovações, liga identidades apenas por `DepId` exato e
 acrescenta pessoas, observações, revisões, auditorias, decisões e eventos numa única transação. Não
-cria mandatos ou filiações e não foi executada sobre staging ou produção. A retirada e republicação
-não seletivas desta fotografia são o gate seguinte.
+cria mandatos ou filiações e não foi executada sobre staging ou produção. A V5.31 acrescenta a
+retirada não seletiva da fotografia completa: recalcula a prova de cada perfil e da publicação,
+simula o recuo público, acrescenta revisões, auditorias, decisões e eventos negativos numa única
+transação e preserva pessoas, fontes, observações e versões. Não foi executada sobre staging ou
+produção. A republicação comprovada a partir de uma nova fotografia imutável é o gate seguinte.
 
 A melhoria de UX iniciada em agosto de 2026 faz parte da estabilização/conclusão da **V5**. Não deve ser tratada como início de uma V6 nem como autorização para reescrever o projeto.
 

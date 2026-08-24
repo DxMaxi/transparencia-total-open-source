@@ -14,6 +14,7 @@ from app.api.dependencies import (
     get_politician_profile_editorial_repository,
     get_politician_profile_publication_readiness_repository,
     get_politician_profile_snapshot_publication_repository,
+    get_politician_profile_snapshot_withdrawal_repository,
     get_staff_session,
     require_editorial_admin,
     require_editorial_staff,
@@ -36,6 +37,7 @@ from app.models.editorial import (
     ParliamentEditorialWithdrawalRequest,
     PoliticianProfileEditorialProposalRequest,
     PoliticianProfileSnapshotPublicationRequest,
+    PoliticianProfileSnapshotWithdrawalRequest,
     StaffSession,
 )
 from app.repositories.ai_editorial import AiEditorialRepository
@@ -58,6 +60,9 @@ from app.repositories.politician_profile_publication import (
 )
 from app.repositories.politician_profile_snapshot_publication import (
     PoliticianProfileSnapshotPublicationRepository,
+)
+from app.repositories.politician_profile_snapshot_withdrawal import (
+    PoliticianProfileSnapshotWithdrawalRepository,
 )
 from app.services.ai_editorial import AiEditorialService, AiGenerationError
 from app.services.ai_summarizer import get_summarizer
@@ -224,6 +229,45 @@ async def publish_parliament_deputy_snapshot(
 
     try:
         return await repository.publish(
+            snapshot_id=snapshot_id,
+            payload=payload,
+            actor=actor,
+        )
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.get("/parliament/deputy-snapshots/{snapshot_id}/withdrawal")
+async def parliament_deputy_snapshot_withdrawal_preview(
+    snapshot_id: Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,200}$")],
+    repository: Annotated[
+        PoliticianProfileSnapshotWithdrawalRepository,
+        Depends(get_politician_profile_snapshot_withdrawal_repository),
+    ],
+    _actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> dict[str, object]:
+    """Reconstrói a publicação integral e o efeito da retirada sem escrever."""
+
+    try:
+        return await repository.inspect(snapshot_id=snapshot_id)
+    except (EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.post("/parliament/deputy-snapshots/{snapshot_id}/withdrawal")
+async def withdraw_parliament_deputy_snapshot(
+    snapshot_id: Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,200}$")],
+    payload: PoliticianProfileSnapshotWithdrawalRequest,
+    repository: Annotated[
+        PoliticianProfileSnapshotWithdrawalRepository,
+        Depends(get_politician_profile_snapshot_withdrawal_repository),
+    ],
+    actor: Annotated[StaffSession, Depends(require_editorial_admin)],
+) -> dict[str, object]:
+    """Retira todos os perfis da fotografia sem apagar qualquer registo histórico."""
+
+    try:
+        return await repository.withdraw(
             snapshot_id=snapshot_id,
             payload=payload,
             actor=actor,

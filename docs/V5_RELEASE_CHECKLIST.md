@@ -48,6 +48,8 @@ continuam a exigir autorizações separadas.
   reconstruída e reconciliação explícita de revisões V4 antes de uma futura publicação de perfis.
 - [x] V5.30 — publicação transacional da fotografia completa exige `ADMIN` com MFA, repete hashes e
   contagens, liga apenas por `DepId` exato e acrescenta todo o histórico ou recua tudo.
+- [x] V5.31 — retirada não seletiva da fotografia de perfis acrescenta revisões, auditorias,
+  decisões e eventos em bloco, calcula o efeito público e não apaga pessoas nem histórico.
 - [x] Existe um [conjunto de issues de conclusão](https://github.com/DxMaxi/transparencia-total-open-source/issues/58) para todos os itens ainda abertos.
 
 ## B. Estabilização pública
@@ -131,6 +133,10 @@ continuam a exigir autorizações separadas.
   em falta ou divergente bloqueia a prova usada pela operação V5.30 separada.
 - [x] A publicação V5.30 cria a projeção mínima da fotografia inteira numa única transação e prova
   zero mandatos e zero filiações inferidas num PostgreSQL descartável.
+- [x] A retirada V5.31 volta a provar todos os perfis e a publicação original, acrescenta a decisão
+  negativa numa única transação e faz recuar a consulta ou mostrar dados indisponíveis.
+- [ ] A republicação de perfis a partir de uma nova fotografia imutável está comprovada sem reativar
+  a versão retirada.
 
 ## F. Perfis políticos
 

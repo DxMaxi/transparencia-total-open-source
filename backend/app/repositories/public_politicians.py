@@ -210,6 +210,7 @@ class PublicPoliticianRepository:
                       WHERE archive.source_document_id = source.id
                         AND archive.content_sha256 = source.content_sha256
                         AND archive.retrieval_url = source.url
+                        AND archive.retrieved_at = source.retrieved_at
                   )
                 GROUP BY membership.source_document_id, membership.legislature,
                          source.retrieved_at
@@ -278,6 +279,7 @@ class PublicPoliticianRepository:
                     WHERE profile_archive.source_document_id = source.id
                       AND profile_archive.content_sha256 = source.content_sha256
                       AND profile_archive.retrieval_url = source.url
+                      AND profile_archive.retrieved_at = source.retrieved_at
                 )
             ),
             searched_people AS (

@@ -608,6 +608,72 @@ export type PoliticianProfileSnapshotPublicationResult = {
   publication_rule: string;
 };
 
+export type PoliticianProfileSnapshotPublicEffect =
+  | {
+      kind: "DATA_UNAVAILABLE";
+      legislature: string;
+      message: string;
+    }
+  | {
+      kind: "FALLBACK_TO_PREVIOUS_SNAPSHOT";
+      legislature: string;
+      source_document_reference_sha256: string;
+      profile_count: number;
+      source_url: string;
+      source_retrieved_at: string;
+      source_sha256: string;
+      verified_at: string;
+      message: string;
+    };
+
+export type PoliticianProfileSnapshotWithdrawalPreview = {
+  snapshot_id: string;
+  legislature: string;
+  source: {
+    url: string;
+    retrieved_at: string;
+    content_sha256: string;
+  };
+  normalised_sha256: string;
+  collected_at: string;
+  manifest_counts: PoliticianProfilePublicationReadiness["manifest_counts"];
+  materialised_counts: PoliticianProfilePublicationReadiness["materialised_counts"];
+  publication_proof_sha256: string;
+  withdrawal_proof_sha256: string | null;
+  public_effect: PoliticianProfileSnapshotPublicEffect;
+  public_effect_sha256: string;
+  published_profile_count: number;
+  eligible: boolean;
+  blockers: Array<{ code: string; detail: string; count: number }>;
+  automatic_withdrawal: false;
+  people_to_delete: 0;
+  memberships_to_delete: 0;
+  versions_to_delete: 0;
+  withdrawal_rule: string;
+};
+
+export type PoliticianProfileSnapshotWithdrawalResult = {
+  created: true;
+  snapshot_id: string;
+  legislature: string;
+  state: "WITHDRAWN";
+  reason_category: ParliamentWithdrawalReason;
+  deputy_count: number;
+  person_reviews_created: number;
+  person_audits_created: number;
+  editorial_decisions_created: number;
+  withdrawal_events_created: number;
+  snapshot_review_id: string;
+  snapshot_audit_id: string;
+  withdrawal_proof_sha256: string;
+  public_effect: PoliticianProfileSnapshotPublicEffect;
+  public_effect_sha256: string;
+  people_deleted: 0;
+  memberships_deleted: 0;
+  versions_deleted: 0;
+  withdrawal_rule: string;
+};
+
 export type ParliamentEditorialPublicationPreview = {
   case_id: string;
   case_state: EditorialState;
