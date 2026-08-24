@@ -82,10 +82,11 @@ test("the public matrix is fail-closed and explains the exact scope of every cou
 });
 
 test("the historical backfill remains a versioned editorial plan, not a publication shortcut", async () => {
-  const [documentation, catalogue, manifest, checklist, plan, readme] = await Promise.all([
+  const [documentation, catalogue, manifest, archive, checklist, plan, readme] = await Promise.all([
     read("../docs/V5_PARLIAMENT_COVERAGE_AND_BACKFILL.md"),
     read("../docs/V5_PARLIAMENT_SOURCE_CATALOGUE.md"),
     read("../docs/V5_PARLIAMENT_RESOURCE_MANIFEST.md"),
+    read("../docs/V5_PARLIAMENT_RESOURCE_ARCHIVE.md"),
     read("../docs/V5_RELEASE_CHECKLIST.md"),
     read("../docs/V5_RELEASE_PLAN.md"),
     read("../README.md"),
@@ -107,17 +108,24 @@ test("the historical backfill remains a versioned editorial plan, not a publicat
   assert.match(manifest, /PENDING_DOWNLOAD/);
   assert.match(manifest, /não descarrega os bytes dos ficheiros XML\/JSON/);
   assert.match(manifest, /zero casos editoriais são criados/);
+  assert.match(archive, /ARCHIVED_UNPARSED/);
+  assert.match(archive, /zero registos normalizados/);
+  assert.match(archive, /produção é recusada pela camada de serviço/i);
+  assert.match(archive, /não interpreta XML ou JSON/);
   assert.match(checklist, /\[x\] V5\.21 — matriz de cobertura parlamentar/);
   assert.match(checklist, /\[x\] V5\.22 — catálogo privado e versionado/);
   assert.match(checklist, /\[x\] V5\.23 — manifesto privado de XML\/JSON/);
+  assert.match(checklist, /\[x\] V5\.24 — arquivo limitado de um recurso exato/);
   assert.match(checklist, /\[x\] Plano de backfill versionado/);
   assert.match(checklist, /\[x\] Matriz pública de cobertura parlamentar concluída/);
-  assert.match(plan, /V5\.1 a V5\.23 integradas/);
+  assert.match(plan, /V5\.1 a V5\.24 integradas/);
   assert.match(plan, /V5_PARLIAMENT_COVERAGE_AND_BACKFILL\.md/);
   assert.match(plan, /V5_PARLIAMENT_SOURCE_CATALOGUE\.md/);
   assert.match(plan, /V5_PARLIAMENT_RESOURCE_MANIFEST\.md/);
-  assert.match(readme, /V5\.1 a V5\.23 integradas/);
+  assert.match(plan, /V5_PARLIAMENT_RESOURCE_ARCHIVE\.md/);
+  assert.match(readme, /V5\.1 a V5\.24 integradas/);
   assert.match(readme, /V5_PARLIAMENT_COVERAGE_AND_BACKFILL\.md/);
   assert.match(readme, /V5_PARLIAMENT_SOURCE_CATALOGUE\.md/);
   assert.match(readme, /V5_PARLIAMENT_RESOURCE_MANIFEST\.md/);
+  assert.match(readme, /V5_PARLIAMENT_RESOURCE_ARCHIVE\.md/);
 });

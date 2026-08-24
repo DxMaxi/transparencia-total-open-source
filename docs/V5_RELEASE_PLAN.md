@@ -11,12 +11,12 @@ reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.23 integradas; staging remoto pendente |
+| Código V5 | V5.1 a V5.24 integradas; staging remoto pendente |
 | Frontend público | V5.21 preparado; capacidades sem backend ou esquema pronto ficam fail-closed |
 | API pública | `0.5.0-alpha.0`; capacidades anunciadas apenas após prova read-only do esquema |
 | Painel editorial | implementado no código, não ativado em produção |
 | IA | geração, revisão, publicação e retirada implementadas; esquema remoto ainda não ativado |
-| Parlamento | matriz V5.21, catálogo V5.22 e manifesto V5.23 preparados; descarga histórica e ativação editorial pendentes |
+| Parlamento | matriz V5.21, catálogo V5.22, manifesto V5.23 e arquivo unitário V5.24 preparados; normalização histórica e ativação editorial pendentes |
 | Perfis | contrato V5.6 preparado; várias áreas sem dados individuais publicáveis |
 | Promessómetro | catálogo editorial inicial de 10 compromissos; vocabulário V5.20 protegido |
 | Investigador Cívico | zero contratos e zero relações na projeção pública |
@@ -134,6 +134,12 @@ O segundo gate está implementado em
 pasta só é aberta depois de provar o catálogo pai exato e atestado; o respetivo HTML é arquivado e
 apenas ligações XML/JSON inequívocas são inventariadas. Os ficheiros não são descarregados por esta
 entrega.
+
+O terceiro gate está implementado em
+[V5.24 — arquivo privado de um recurso parlamentar](V5_PARLIAMENT_RESOURCE_ARCHIVE.md). Exige os
+identificadores exatos do catálogo e do manifesto, revalida ambas as atestações e descarrega apenas
+o URL escolhido dentro do limite parlamentar configurado. Os bytes ficam content-addressed e
+`ARCHIVED_UNPARSED`; nenhum registo é normalizado ou enviado para revisão.
 
 Critérios de saída:
 

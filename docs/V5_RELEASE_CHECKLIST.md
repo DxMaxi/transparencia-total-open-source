@@ -36,6 +36,7 @@ continuam a exigir autorizações separadas.
 - [x] V5.21 — matriz de cobertura parlamentar e plano de preenchimento histórico integrados.
 - [x] V5.22 — catálogo privado e versionado de fontes parlamentares por legislatura integrado.
 - [x] V5.23 — manifesto privado de XML/JSON ligado a catálogo pai exato e atestado integrado.
+- [x] V5.24 — arquivo limitado de um recurso exato, ainda não interpretado nem publicável, integrado.
 - [x] Existe um [conjunto de issues de conclusão](https://github.com/DxMaxi/transparencia-total-open-source/issues/58) para todos os itens ainda abertos.
 
 ## B. Estabilização pública
@@ -104,6 +105,8 @@ continuam a exigir autorizações separadas.
   etiqueta e URL exatas, sem descarga automática, proposta editorial ou publicação.
 - [x] Uma pasta candidata só produz manifesto privado depois de revalidar o catálogo pai; formatos
   ambíguos ou externos são recusados e os ficheiros permanecem por descarregar.
+- [x] Um recurso só é arquivado depois de provar catálogo e manifesto exatos; permanece
+  `ARCHIVED_UNPARSED`, sem normalização, caso editorial ou publicação.
 
 ## F. Perfis políticos
 

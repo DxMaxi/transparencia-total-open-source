@@ -124,7 +124,10 @@ def _format_from_name(value: str) -> ParliamentResourceFormat | None:
     return None
 
 
-def _exact_resource_format(label: str, href: str) -> ParliamentResourceFormat | None:
+def exact_parliament_resource_format(
+    label: str,
+    href: str,
+) -> ParliamentResourceFormat | None:
     parsed = urlparse(href)
     href_names = [unquote(parsed.path.rsplit("/", 1)[-1])]
     for key, values in parse_qs(parsed.query).items():
@@ -179,7 +182,7 @@ class ParliamentResourceManifestCollector:
         for anchor in soup.find_all("a", href=True):
             official_label = re.sub(r"\s+", " ", anchor.get_text(" ", strip=True)).strip()
             resource_url = urljoin(effective_url, str(anchor["href"]))
-            resource_format = _exact_resource_format(official_label, resource_url)
+            resource_format = exact_parliament_resource_format(official_label, resource_url)
             if not official_label or resource_format is None:
                 continue
             try:
