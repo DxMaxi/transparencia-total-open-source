@@ -101,6 +101,10 @@ append-only própria, não normaliza contactos e não cria pessoas, mandatos, re
 A V5.28 liga cada observação a um caso privado `POLITICIAN_PROFILE` por `DepId` exato. O painel
 reprova fonte, arquivo e manifesto, recebe do browser apenas o identificador e confirmações, conserva
 anomalias de datas e não cria pessoa, mandato, revisão pública ou publicação mesmo após aprovação.
+A V5.29 acrescenta a inspeção read-only da fotografia inteira: todas as versões atuais têm de estar
+aprovadas, coincidir com a reconstrução determinística e conservar a decisão e a fonte exatas. Uma
+revisão pública V4 exige reconciliação explícita. O hash de prontidão não publica nem autoriza uma
+ação de escrita.
 
 A melhoria de UX iniciada em agosto de 2026 faz parte da estabilização/conclusão da **V5**. Não deve ser tratada como início de uma V6 nem como autorização para reescrever o projeto.
 

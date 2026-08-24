@@ -511,6 +511,46 @@ export type PoliticianProfileEditorialProposalResult = {
   mandate_created: false;
 };
 
+export type PoliticianProfilePublicationReadiness = {
+  snapshot_id: string;
+  source_document_id: string;
+  legislature: string;
+  parser_version: string;
+  normalised_sha256: string;
+  collected_at: string;
+  source: ParliamentEditorialSnapshot["source"] & {
+    publisher: string;
+    kind: string;
+  };
+  archive: ParliamentEditorialSnapshot["archive"] | null;
+  archive_attested: boolean;
+  manifest_counts: PoliticianProfileEditorialCandidate["manifest_counts"];
+  materialised_counts: PoliticianProfileEditorialCandidate["materialised_counts"];
+  manifest_matches: boolean;
+  editorial_counts: Record<EditorialState | "MISSING", number>;
+  identity_projection: {
+    exact_existing_people: number;
+    new_people_required: number;
+    existing_memberships: number;
+    legacy_positive_reviews: number;
+  };
+  readiness_proof_sha256: string | null;
+  eligible: boolean;
+  blockers: Array<{ code: string; detail: string; count: number }>;
+  publication_performed: false;
+  public_write_performed: false;
+  mandate_inference_allowed: false;
+  publication_state: "PRIVATE_READINESS_ONLY";
+  publication_rule: string;
+};
+
+export type PoliticianProfilePublicationReadinessList = {
+  items: PoliticianProfilePublicationReadiness[];
+  limit: number;
+  publication_performed: false;
+  readiness_rule: string;
+};
+
 export type ParliamentEditorialPublicationPreview = {
   case_id: string;
   case_state: EditorialState;

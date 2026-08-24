@@ -27,6 +27,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Link href="/admin/revisao">Revisão</Link>
           <Link href="/admin/revisao/parlamento">Parlamento</Link>
           <Link href="/admin/revisao/parlamento/deputados">Deputados</Link>
+          <Link href="/admin/revisao/parlamento/deputados/prontidao">Prontidão</Link>
           <Link href="/admin/revisao/novo">Novo processo</Link>
           <Link href="/auth/mfa?next=/admin/revisao">Segurança</Link>
         </nav>

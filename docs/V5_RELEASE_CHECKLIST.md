@@ -44,6 +44,8 @@ continuam a exigir autorizações separadas.
   e datas oficiais não convertidas automaticamente em mandatos, integrada.
 - [x] V5.28 — observações por `DepId` entram apenas em casos privados `POLITICIAN_PROFILE` em
   `PENDING`, sem criar pessoa, mandato, revisão pública ou publicação.
+- [x] V5.29 — porta read-only exige a fotografia inteira, todas as versões `APPROVED`, prova
+  reconstruída e reconciliação explícita de revisões V4 antes de uma futura publicação de perfis.
 - [x] Existe um [conjunto de issues de conclusão](https://github.com/DxMaxi/transparencia-total-open-source/issues/58) para todos os itens ainda abertos.
 
 ## B. Estabilização pública
@@ -123,6 +125,8 @@ continuam a exigir autorizações separadas.
   `DepCPId`, excluem contactos e permanecem numa fotografia privada sem criar pessoas ou mandatos.
 - [x] O comparador privado de deputados volta a provar manifesto, fonte e arquivo e reconstrói a
   proposta no servidor; intervalos contraditórios ficam visíveis e nunca originam mandatos.
+- [x] A prontidão de perfis é calculada por fotografia completa, bloqueia qualquer processo em
+  falta ou divergente e não disponibiliza operação de escrita ou publicação.
 
 ## F. Perfis políticos
 

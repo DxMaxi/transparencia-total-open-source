@@ -135,9 +135,10 @@ test("the historical backfill remains a versioned editorial plan, not a publicat
   assert.match(checklist, /\[x\] V5\.26 — normalização histórica privada de votações/);
   assert.match(checklist, /\[x\] V5\.27 — observações privadas e versionadas de deputados/);
   assert.match(checklist, /\[x\] V5\.28 — observações por `DepId`/);
+  assert.match(checklist, /\[x\] V5\.29 — porta read-only/);
   assert.match(checklist, /\[x\] Plano de backfill versionado/);
   assert.match(checklist, /\[x\] Matriz pública de cobertura parlamentar concluída/);
-  assert.match(plan, /V5\.1 a V5\.28 integradas/);
+  assert.match(plan, /V5_POLITICIAN_PROFILE_PUBLICATION_READINESS\.md/);
   assert.match(plan, /V5_PARLIAMENT_COVERAGE_AND_BACKFILL\.md/);
   assert.match(plan, /V5_PARLIAMENT_SOURCE_CATALOGUE\.md/);
   assert.match(plan, /V5_PARLIAMENT_RESOURCE_MANIFEST\.md/);
@@ -146,7 +147,7 @@ test("the historical backfill remains a versioned editorial plan, not a publicat
   assert.match(plan, /V5_PARLIAMENT_VOTE_NORMALIZATION\.md/);
   assert.match(plan, /V5_PARLIAMENT_DEPUTY_OBSERVATIONS\.md/);
   assert.match(plan, /V5_POLITICIAN_PROFILE_EDITORIAL\.md/);
-  assert.match(readme, /V5\.1 a V5\.28 integradas/);
+  assert.match(readme, /V5\.1 a V5\.29 integradas/);
   assert.match(readme, /V5_PARLIAMENT_COVERAGE_AND_BACKFILL\.md/);
   assert.match(readme, /V5_PARLIAMENT_SOURCE_CATALOGUE\.md/);
   assert.match(readme, /V5_PARLIAMENT_RESOURCE_MANIFEST\.md/);
@@ -155,4 +156,5 @@ test("the historical backfill remains a versioned editorial plan, not a publicat
   assert.match(readme, /V5_PARLIAMENT_VOTE_NORMALIZATION\.md/);
   assert.match(readme, /V5_PARLIAMENT_DEPUTY_OBSERVATIONS\.md/);
   assert.match(readme, /V5_POLITICIAN_PROFILE_EDITORIAL\.md/);
+  assert.match(readme, /V5_POLITICIAN_PROFILE_PUBLICATION_READINESS\.md/);
 });

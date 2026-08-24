@@ -77,7 +77,12 @@ export default async function PoliticianProfileEditorialPage({
             para a fila privada. Aprovar não cria nem publica uma pessoa ou um mandato.
           </p>
         </div>
-        <Link href="/admin/revisao/parlamento">Voltar às fotografias</Link>
+        <div className="admin-heading-actions">
+          <Link href="/admin/revisao/parlamento/deputados/prontidao">
+            Ver prontidão da fotografia
+          </Link>
+          <Link href="/admin/revisao/parlamento">Voltar às fotografias</Link>
+        </div>
       </header>
 
       {input.erro ? (
