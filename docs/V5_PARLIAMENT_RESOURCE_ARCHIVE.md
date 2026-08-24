@@ -73,9 +73,11 @@ recente ou continuação silenciosa para outro recurso.
 - não afirma completude histórica;
 - não usa IA.
 
-O gate seguinte deverá validar o esquema de um único recurso arquivado e produzir uma fotografia
-normalizada privada e rejeitável. Qualquer associação a entidades exige identificadores oficiais
-inequívocos; campos sem prova permanecem como dados indisponíveis.
+Esse gate seguinte está implementado em
+[V5.25 — normalização privada de iniciativas parlamentares](V5_PARLIAMENT_RESOURCE_NORMALIZATION.md):
+valida o JSON de um único recurso arquivado e produz uma fotografia privada e rejeitável. Qualquer
+associação a entidades continua a exigir identificadores oficiais inequívocos; campos sem prova
+permanecem como dados indisponíveis.
 
 ## Critérios de aceitação
 

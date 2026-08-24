@@ -37,6 +37,7 @@ continuam a exigir autorizações separadas.
 - [x] V5.22 — catálogo privado e versionado de fontes parlamentares por legislatura integrado.
 - [x] V5.23 — manifesto privado de XML/JSON ligado a catálogo pai exato e atestado integrado.
 - [x] V5.24 — arquivo limitado de um recurso exato, ainda não interpretado nem publicável, integrado.
+- [x] V5.25 — primeira normalização histórica privada de iniciativas, derivável dos bytes, integrada.
 - [x] Existe um [conjunto de issues de conclusão](https://github.com/DxMaxi/transparencia-total-open-source/issues/58) para todos os itens ainda abertos.
 
 ## B. Estabilização pública
@@ -107,6 +108,8 @@ continuam a exigir autorizações separadas.
   ambíguos ou externos são recusados e os ficheiros permanecem por descarregar.
 - [x] Um recurso só é arquivado depois de provar catálogo e manifesto exatos; permanece
   `ARCHIVED_UNPARSED`, sem normalização, caso editorial ou publicação.
+- [x] O JSON histórico de iniciativas só é normalizado a partir do arquivo atestado, com IDs e URLs
+  oficiais exatos, recálculo antes da escrita e cobertura `NOT_ASSERTED`.
 
 ## F. Perfis políticos
 

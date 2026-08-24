@@ -89,7 +89,9 @@ criar casos editoriais ou publicar. A V5.23 acrescenta o manifesto privado de um
 revalida a fotografia V5.22 e a respetiva atestação, arquiva o HTML e aceita apenas XML/JSON
 inequívocos como `PENDING_DOWNLOAD`, ainda sem descarregar os ficheiros ou criar revisão. A V5.24
 seleciona exatamente um desses recursos, repete a prova completa e arquiva os bytes com limite de
-tamanho como `ARCHIVED_UNPARSED`, sem normalizar registos nem entrar no circuito editorial.
+tamanho como `ARCHIVED_UNPARSED`, sem normalizar registos nem entrar no circuito editorial. A V5.25
+normaliza apenas o JSON de iniciativas já arquivado, exige `source_id` oficial e URL parlamentar,
+recalcula o resultado antes de persistir e conserva `NOT_ASSERTED`, sem criar revisão ou publicação.
 
 A melhoria de UX iniciada em agosto de 2026 faz parte da estabilização/conclusão da **V5**. Não deve ser tratada como início de uma V6 nem como autorização para reescrever o projeto.
 

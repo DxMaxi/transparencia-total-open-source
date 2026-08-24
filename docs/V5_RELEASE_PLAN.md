@@ -11,12 +11,12 @@ reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.24 integradas; staging remoto pendente |
+| Código V5 | V5.1 a V5.25 integradas; staging remoto pendente |
 | Frontend público | V5.21 preparado; capacidades sem backend ou esquema pronto ficam fail-closed |
 | API pública | `0.5.0-alpha.0`; capacidades anunciadas apenas após prova read-only do esquema |
 | Painel editorial | implementado no código, não ativado em produção |
 | IA | geração, revisão, publicação e retirada implementadas; esquema remoto ainda não ativado |
-| Parlamento | matriz V5.21, catálogo V5.22, manifesto V5.23 e arquivo unitário V5.24 preparados; normalização histórica e ativação editorial pendentes |
+| Parlamento | matriz V5.21 e gates V5.22–V5.25 preparados; restantes âmbitos históricos e ativação editorial pendentes |
 | Perfis | contrato V5.6 preparado; várias áreas sem dados individuais publicáveis |
 | Promessómetro | catálogo editorial inicial de 10 compromissos; vocabulário V5.20 protegido |
 | Investigador Cívico | zero contratos e zero relações na projeção pública |
@@ -140,6 +140,12 @@ O terceiro gate está implementado em
 identificadores exatos do catálogo e do manifesto, revalida ambas as atestações e descarrega apenas
 o URL escolhido dentro do limite parlamentar configurado. Os bytes ficam content-addressed e
 `ARCHIVED_UNPARSED`; nenhum registo é normalizado ou enviado para revisão.
+
+O quarto gate está implementado em
+[V5.25 — normalização privada de iniciativas parlamentares](V5_PARLIAMENT_RESOURCE_NORMALIZATION.md).
+Lê apenas bytes V5.24 já atestados, exige JSON UTF-8, identificadores oficiais e URLs parlamentares,
+recusa duplicados divergentes e recalcula a fotografia antes da persistência. A fotografia continua
+`NOT_ASSERTED`, privada e sem caso editorial.
 
 Critérios de saída:
 
