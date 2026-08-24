@@ -266,10 +266,25 @@ async def test_deputy_normalization_remains_private_and_derived_from_attested_by
     assert observation["source_id"].startswith(f"deputy-{suffix}-")
     assert observation["candidate_source_id"].startswith(f"candidate-{suffix}-")
     assert observation["constituency_source_id"].startswith("constituency-")
-    assert len(observation["parliamentary_groups"]) == 1
-    assert observation["parliamentary_groups"][0]["source_id"].startswith("group-")
-    assert len(observation["mandate_situations"]) == 1
-    assert len(observation["offices"]) == 1
+    groups = (
+        json.loads(observation["parliamentary_groups"])
+        if isinstance(observation["parliamentary_groups"], str)
+        else observation["parliamentary_groups"]
+    )
+    situations = (
+        json.loads(observation["mandate_situations"])
+        if isinstance(observation["mandate_situations"], str)
+        else observation["mandate_situations"]
+    )
+    offices = (
+        json.loads(observation["offices"])
+        if isinstance(observation["offices"], str)
+        else observation["offices"]
+    )
+    assert len(groups) == 1
+    assert groups[0]["source_id"].startswith("group-")
+    assert len(situations) == 1
+    assert len(offices) == 1
     assert sync_run is not None
     assert sync_run["status"] == "PARTIAL"
     assert sync_run["records_read"] == 400
