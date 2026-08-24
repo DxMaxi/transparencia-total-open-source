@@ -12,6 +12,7 @@ from app.models.parliamentary import (
     ParliamentaryInitiativeRecord,
     ParliamentarySessionRecord,
 )
+from app.services.parliament_source_catalogue import require_parliament_url
 
 
 def _normalise_key(value: str) -> str:
@@ -207,7 +208,9 @@ def normalise_initiatives(
         official_path = _text(
             _field(record, "IniLinkTexto", "IniUrl", "officialUrl", "urlIniciativa")
         )
-        official_url = urljoin(parliament_base_url, official_path) if official_path else source_url
+        official_url = require_parliament_url(
+            urljoin(parliament_base_url, official_path) if official_path else source_url
+        )
         event_introduced_at, latest_phase = _initiative_timeline(record)
         initiatives[source_id] = ParliamentaryInitiativeRecord(
             source_id=source_id,
