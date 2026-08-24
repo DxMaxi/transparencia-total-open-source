@@ -523,9 +523,11 @@ async def test_parliament_editorial_cycle_preserves_scope_from_proposal_to_publi
         ("votes", "votes", 2),
         ("votes", "vote_records", 2),
     }
-    assert all(row["count_is_exact"] is True for row in coverage)
-    assert all(row["historical_completeness"] == "NOT_ASSERTED" for row in coverage)
-    assert all(row["snapshot_sha256"] == str(votes_preview["snapshot_sha256"]) for row in coverage)
+    assert all(row["count_is_exact"] is True for row in fixture_coverage)
+    assert all(row["historical_completeness"] == "NOT_ASSERTED" for row in fixture_coverage)
+    assert all(
+        row["snapshot_sha256"] == str(votes_preview["snapshot_sha256"]) for row in fixture_coverage
+    )
     explored_votes = await public.explore(
         kind="votes",
         legislature=legislature,
