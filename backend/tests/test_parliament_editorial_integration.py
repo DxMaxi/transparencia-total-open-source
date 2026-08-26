@@ -193,7 +193,7 @@ async def test_parliament_editorial_cycle_preserves_scope_from_proposal_to_publi
     repository: OfficialIndexStagingRepository,
 ) -> None:
     assert repository.pool is not None
-    suffix = uuid.uuid4().hex[:12]
+    suffix = uuid.uuid4().hex[:12].translate(str.maketrans("0123456789", "ghijklmnop"))
     legislature = f"TEST-{suffix}"
     first_at = datetime.now(UTC).replace(microsecond=0) - timedelta(minutes=2)
     second_at = first_at + timedelta(minutes=1)
