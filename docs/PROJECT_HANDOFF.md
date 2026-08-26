@@ -1,6 +1,6 @@
 # PROJECT HANDOFF — Transparência Total / Fator Cívico
 
-Atualizado em: **2026-08-24**
+Atualizado em: **2026-08-26**
 
 Este documento existe para permitir continuidade segura entre sessões de trabalho, colaboradores e chats sem depender de memória externa ao repositório.
 
@@ -119,6 +119,12 @@ fotografia, cria outra fonte, fotografia, observação, processo e versão; reut
 pelo mesmo `DepId` exato e publica a nova fotografia. A versão antiga permanece `WITHDRAWN`, os seus
 eventos `PUBLISH` e `WITHDRAW` permanecem e a consulta passa para o novo SHA-256. Nenhuma operação
 foi executada sobre staging ou produção.
+
+A V5.33 inicia a porta independente dos mandatos. O painel privado lista cada `DepSituacao` por
+hash canónico e só admite proposta quando a identidade já está publicada pelo mesmo `DepId`, o
+círculo tem identificador oficial, as datas são coerentes e fonte, arquivo e manifesto coincidem.
+O caso fica `PENDING`; mesmo depois de aprovação são criados zero `Mandate`, zero revisões públicas
+e zero eventos de publicação. A publicação e a retirada imutável são o gate seguinte.
 
 A melhoria de UX iniciada em agosto de 2026 faz parte da estabilização/conclusão da **V5**. Não deve ser tratada como início de uma V6 nem como autorização para reescrever o projeto.
 

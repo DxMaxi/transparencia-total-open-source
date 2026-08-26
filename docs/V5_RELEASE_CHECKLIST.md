@@ -52,6 +52,8 @@ continuam a exigir autorizações separadas.
   decisões e eventos em bloco, calcula o efeito público e não apaga pessoas nem histórico.
 - [x] V5.32 — republicação exige uma nova fonte e fotografia imutáveis, reutiliza a pessoa apenas por
   `DepId` exato e mantém a versão retirada definitivamente inativa.
+- [x] V5.33 — intervalos oficiais entram numa fila privada própria por hash, identidade publicada e
+  `DepId` exato; aprovação continua sem criar mandato, revisão pública ou evento de publicação.
 - [x] Existe um [conjunto de issues de conclusão](https://github.com/DxMaxi/transparencia-total-open-source/issues/58) para todos os itens ainda abertos.
 
 ## B. Estabilização pública
@@ -145,6 +147,8 @@ continuam a exigir autorizações separadas.
 - [x] Identidade publicada depende de revisão positiva e fonte atestada.
 - [x] Observação parlamentar não é apresentada como início de mandato.
 - [ ] Mandatos têm datas oficiais e revisão `MANDATE` própria.
+  - [x] Proposta privada por intervalo oficial exato, com semântica sujeita a revisão humana.
+  - [ ] Publicação e retirada append-only com revisão `MANDATE` própria.
 - [ ] Cargos e círculo têm fonte e período explícitos.
 - [ ] Presenças dependem de mandato revisto e fotografia publicada.
 - [ ] Autoria de iniciativas usa relação oficial individual.
