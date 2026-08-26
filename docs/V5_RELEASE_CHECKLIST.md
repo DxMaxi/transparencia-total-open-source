@@ -63,6 +63,9 @@ continuam a exigir autorizações separadas.
 - [x] V5.37 — publicação transacional ADMIN+MFA acrescenta um cargo numa estrutura própria,
   revisão `PARLIAMENT_OFFICE`, auditoria, decisão e evento append-only; cria zero mandatos e zero
   filiações e a ficha pública mantém os dois conceitos separados.
+- [x] V5.38 — retirada transacional e imutável do cargo acrescenta revisão negativa, auditoria,
+  decisão e evento, preserva cargo, identidade, mandatos, fonte e publicação e recua tudo perante
+  qualquer divergência.
 - [x] Existe um [conjunto de issues de conclusão](https://github.com/DxMaxi/transparencia-total-open-source/issues/58) para todos os itens ainda abertos.
 
 ## B. Estabilização pública

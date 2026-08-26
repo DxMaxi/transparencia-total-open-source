@@ -11,12 +11,12 @@ reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.37 preparadas; staging remoto pendente |
+| Código V5 | V5.1 a V5.38 preparadas; staging remoto pendente |
 | Frontend público | V5.21 preparado; capacidades sem backend ou esquema pronto ficam fail-closed |
 | API pública | `0.5.0-alpha.0`; capacidades anunciadas apenas após prova read-only do esquema |
 | Painel editorial | implementado no código, não ativado em produção |
 | IA | geração, revisão, publicação e retirada implementadas; esquema remoto ainda não ativado |
-| Parlamento | matriz V5.21 e gates V5.22–V5.37 preparados; retirada de cargos, atividades gerais e ativação editorial pendentes |
+| Parlamento | matriz V5.21 e gates V5.22–V5.38 preparados; atividades gerais e ativação editorial pendentes |
 | Perfis | ciclo integral de entrada, publicação, retirada e republicação provado; domínios individuais pendentes |
 | Promessómetro | catálogo editorial inicial de 10 compromissos; vocabulário V5.20 protegido |
 | Investigador Cívico | zero contratos e zero relações na projeção pública |
@@ -218,8 +218,15 @@ O décimo quarto gate de perfis está preparado em
 Uma ação `ADMIN` com MFA reconstrói DepId, CarId, período, círculo, versão, fonte e arquivo e
 acrescenta o cargo, revisão `PARLIAMENT_OFFICE`, auditoria, decisão e evento numa única transação.
 A projeção é distinta de `Mandate`, cria zero pessoas, mandatos ou filiações e aparece numa secção
-própria da ficha pública. A capacidade não foi executada em staging ou produção; a retirada
-append-only permanece o gate V5.38 antes de qualquer ativação real.
+própria da ficha pública. A capacidade não foi executada em staging ou produção.
+
+O décimo quinto gate de perfis está preparado em
+[V5.38 — retirada transacional e imutável de um cargo parlamentar](V5_POLITICIAN_OFFICE_WITHDRAWAL.md).
+A ação `ADMIN` com MFA repete a fonte, a versão, o `DepId`, o `CarId`, o período, a revisão ativa,
+a auditoria e o evento da publicação. Acrescenta revisão negativa, auditoria, decisão e evento
+`WITHDRAW`, confirma que a linha permanece e que deixa de integrar a consulta ativa. Não foi
+executada em staging ou produção; qualquer ativação depende dos gates operacionais e nunca acompanha
+automaticamente um deploy ou uma migração.
 
 Critérios de saída:
 

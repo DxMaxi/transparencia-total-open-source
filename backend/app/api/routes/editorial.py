@@ -16,6 +16,7 @@ from app.api.dependencies import (
     get_politician_mandate_withdrawal_repository,
     get_politician_office_editorial_repository,
     get_politician_office_publication_repository,
+    get_politician_office_withdrawal_repository,
     get_politician_profile_editorial_repository,
     get_politician_profile_publication_readiness_repository,
     get_politician_profile_snapshot_publication_repository,
@@ -45,6 +46,7 @@ from app.models.editorial import (
     PoliticianMandateWithdrawalRequest,
     PoliticianOfficeEditorialProposalRequest,
     PoliticianOfficePublicationRequest,
+    PoliticianOfficeWithdrawalRequest,
     PoliticianProfileEditorialProposalRequest,
     PoliticianProfileSnapshotPublicationRequest,
     PoliticianProfileSnapshotWithdrawalRequest,
@@ -76,6 +78,9 @@ from app.repositories.politician_office_editorial import (
 )
 from app.repositories.politician_office_publication import (
     PoliticianOfficePublicationRepository,
+)
+from app.repositories.politician_office_withdrawal import (
+    PoliticianOfficeWithdrawalRepository,
 )
 from app.repositories.politician_profile_editorial import (
     PoliticianProfileEditorialRepository,
@@ -303,6 +308,44 @@ async def publish_parliament_office(
 
     try:
         return await repository.publish(case_id=case_id, payload=payload, actor=actor)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.get("/parliament/office-cases/{case_id}/withdrawal")
+async def parliament_office_withdrawal_preview(
+    case_id: Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,200}$")],
+    repository: Annotated[
+        PoliticianOfficeWithdrawalRepository,
+        Depends(get_politician_office_withdrawal_repository),
+    ],
+    _actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> dict[str, object]:
+    """Reconstrói a publicação original e o efeito da retirada sem escrever."""
+
+    try:
+        return await repository.inspect(case_id=case_id)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.post(
+    "/parliament/office-cases/{case_id}/withdrawal",
+    status_code=status.HTTP_201_CREATED,
+)
+async def withdraw_parliament_office(
+    case_id: Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,200}$")],
+    payload: PoliticianOfficeWithdrawalRequest,
+    repository: Annotated[
+        PoliticianOfficeWithdrawalRepository,
+        Depends(get_politician_office_withdrawal_repository),
+    ],
+    actor: Annotated[StaffSession, Depends(require_editorial_admin)],
+) -> dict[str, object]:
+    """Retira um cargo da projeção ativa sem apagar qualquer prova histórica."""
+
+    try:
+        return await repository.withdraw(case_id=case_id, payload=payload, actor=actor)
     except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
         raise _translate_error(exc) from exc
 

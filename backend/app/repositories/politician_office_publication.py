@@ -8,7 +8,7 @@ import re
 import uuid
 from collections.abc import Mapping
 from datetime import UTC, datetime
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import asyncpg
 
@@ -113,6 +113,7 @@ def _publication_event_sha256(
     event_id: str,
     case_id: str,
     version_id: str,
+    action: Literal["PUBLISH", "WITHDRAW"],
     target_id: str,
     rationale: str,
     actor_id: str,
@@ -124,7 +125,7 @@ def _publication_event_sha256(
             "id": event_id,
             "case_id": case_id,
             "version_id": version_id,
-            "action": "PUBLISH",
+            "action": action,
             "target_type": _TARGET_TYPE,
             "target_id": target_id,
             "rationale": rationale,
@@ -696,6 +697,7 @@ class PoliticianOfficePublicationRepository:
                     event_id=event_id,
                     case_id=case_id,
                     version_id=version_id,
+                    action="PUBLISH",
                     target_id=office_id,
                     rationale=payload.public_rationale,
                     actor_id=actor.staff_id,

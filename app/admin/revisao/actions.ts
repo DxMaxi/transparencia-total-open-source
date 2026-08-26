@@ -16,6 +16,7 @@ import {
   type ParliamentWithdrawalReason,
   type PoliticianOfficeEditorialProposalResult,
   type PoliticianOfficePublicationResult,
+  type PoliticianOfficeWithdrawalResult,
   type PoliticianMandateEditorialProposalResult,
   type PoliticianMandatePublicationResult,
   type PoliticianMandateWithdrawalResult,
@@ -348,6 +349,100 @@ export async function publishPoliticianOffice(formData: FormData) {
   revalidatePath("/politicos");
   revalidatePath("/");
   const params = new URLSearchParams({ legislature, sucesso: "cargo-publicado" });
+  redirect(`${destination}?${params.toString()}`);
+}
+
+export async function withdrawPoliticianOffice(formData: FormData) {
+  const caseReference = evidenceId(formData, "expected_case_id");
+  const legislature = requiredText(formData, "legislature").slice(0, 20);
+  let failure: string | null = null;
+  try {
+    for (const [field, message] of [
+      [
+        "confirm_source_and_publication_reviewed",
+        "Confirme a revisão da fonte e da publicação original",
+      ],
+      ["confirm_exact_office", "Confirme o cargo exato a retirar"],
+      ["confirm_public_effect_reviewed", "Confirme que reviu o efeito público"],
+      [
+        "confirm_office_and_history_preserved",
+        "Confirme que o cargo e o histórico permanecem",
+      ],
+      [
+        "confirm_no_selective_identity_or_mandate_change",
+        "Confirme que identidades, mandatos e outros cargos não serão alterados",
+      ],
+      ["confirm_withdrawal", "Confirme a retirada deste cargo da consulta ativa"],
+    ] as const) {
+      if (formData.get(field) !== "on") throw new Error(message);
+    }
+    const reasonCategory = requiredText(formData, "reason_category");
+    if (!(reasonCategory in PARLIAMENT_WITHDRAWAL_REASON_LABELS)) {
+      throw new Error("Categoria de retirada inválida");
+    }
+    await editorialFetch<PoliticianOfficeWithdrawalResult>(
+      `/parliament/office-cases/${encodeURIComponent(caseReference)}/withdrawal`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          expected_case_id: caseReference,
+          expected_revision: expectedRevision(formData),
+          expected_version_id: evidenceId(formData, "expected_version_id"),
+          expected_version_sha256: sha256(formData, "expected_version_sha256"),
+          expected_office_id: evidenceId(formData, "expected_office_id"),
+          expected_source_sha256: sha256(formData, "expected_source_sha256"),
+          expected_period_sha256: sha256(formData, "expected_period_sha256"),
+          expected_publication_proof_sha256: sha256(
+            formData,
+            "expected_publication_proof_sha256",
+          ),
+          expected_withdrawal_proof_sha256: sha256(
+            formData,
+            "expected_withdrawal_proof_sha256",
+          ),
+          expected_public_review_id: evidenceId(formData, "expected_public_review_id"),
+          expected_publication_audit_event_id: evidenceId(
+            formData,
+            "expected_publication_audit_event_id",
+          ),
+          expected_publication_event_id: evidenceId(
+            formData,
+            "expected_publication_event_id",
+          ),
+          expected_publication_event_sha256: sha256(
+            formData,
+            "expected_publication_event_sha256",
+          ),
+          expected_public_effect_sha256: sha256(
+            formData,
+            "expected_public_effect_sha256",
+          ),
+          rationale: requiredText(formData, "rationale"),
+          public_rationale: requiredText(formData, "public_rationale"),
+          reason_category: reasonCategory as ParliamentWithdrawalReason,
+          confirm_source_and_publication_reviewed: true,
+          confirm_exact_office: true,
+          confirm_public_effect_reviewed: true,
+          confirm_office_and_history_preserved: true,
+          confirm_no_selective_identity_or_mandate_change: true,
+          confirm_withdrawal: true,
+        }),
+      },
+    );
+  } catch (error) {
+    failure = actionError(error);
+  }
+  const destination = "/admin/revisao/parlamento/deputados/cargos";
+  if (failure) {
+    const params = new URLSearchParams({ legislature, erro: failure });
+    redirect(`${destination}?${params.toString()}`);
+  }
+  revalidatePath("/admin/revisao");
+  revalidatePath(destination);
+  revalidatePath("/politicos");
+  revalidatePath("/sitemap.xml");
+  revalidatePath("/");
+  const params = new URLSearchParams({ legislature, sucesso: "cargo-retirado" });
   redirect(`${destination}?${params.toString()}`);
 }
 
