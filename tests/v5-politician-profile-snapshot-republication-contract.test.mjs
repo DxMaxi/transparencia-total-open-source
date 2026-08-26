@@ -55,5 +55,5 @@ test("V5.32 documents a tested gate without claiming a real republication", asyn
   assert.match(checklist, /\[x\] V5\.32 — republicação exige uma nova fonte/);
   assert.match(plan, /V5_POLITICIAN_PROFILE_SNAPSHOT_REPUBLICATION\.md/);
   assert.match(handoff, /V5\.32/);
-  assert.match(readme, /V5\.1 a V5\.35 preparadas/);
+  assert.match(readme, /V5\.1 a V5\.36 preparadas/);
 });

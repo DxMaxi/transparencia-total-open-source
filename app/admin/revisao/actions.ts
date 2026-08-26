@@ -14,6 +14,7 @@ import {
   type ParliamentEditorialScope,
   type ParliamentEditorialWithdrawalResult,
   type ParliamentWithdrawalReason,
+  type PoliticianOfficeEditorialProposalResult,
   type PoliticianMandateEditorialProposalResult,
   type PoliticianMandatePublicationResult,
   type PoliticianMandateWithdrawalResult,
@@ -235,6 +236,55 @@ export async function createPoliticianMandateProposal(formData: FormData) {
   revalidatePath("/admin/revisao/parlamento/deputados/mandatos");
   redirect(
     `/admin/revisao/${created!.case.id}?sucesso=${created!.created ? "mandato-importado" : "mandato-existente"}`,
+  );
+}
+
+export async function createPoliticianOfficeProposal(formData: FormData) {
+  const observationId = evidenceId(formData, "observation_id");
+  const sourcePeriodSha256 = sha256(formData, "source_period_sha256");
+  const legislature = requiredText(formData, "legislature").slice(0, 20);
+  let created: PoliticianOfficeEditorialProposalResult | null = null;
+  let failure: string | null = null;
+  try {
+    for (const [field, message] of [
+      ["confirm_private_only", "Confirme que a proposta permanece privada"],
+      ["confirm_exact_official_ids_only", "Confirme o uso exclusivo de DepId e CarId oficiais"],
+      [
+        "confirm_observed_period_requires_human_review",
+        "Confirme que o intervalo observado exige revisão humana",
+      ],
+      [
+        "confirm_no_mandate_or_party_inference",
+        "Confirme que não será inferido mandato ou filiação partidária",
+      ],
+    ] as const) {
+      if (formData.get(field) !== "on") throw new Error(message);
+    }
+    created = await editorialFetch<PoliticianOfficeEditorialProposalResult>(
+      "/parliament/office-proposals",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          observation_id: observationId,
+          source_period_sha256: sourcePeriodSha256,
+          confirm_private_only: true,
+          confirm_exact_official_ids_only: true,
+          confirm_observed_period_requires_human_review: true,
+          confirm_no_mandate_or_party_inference: true,
+        }),
+      },
+    );
+  } catch (error) {
+    failure = actionError(error);
+  }
+  if (failure) {
+    const params = new URLSearchParams({ legislature, erro: failure });
+    redirect(`/admin/revisao/parlamento/deputados/cargos?${params.toString()}`);
+  }
+  revalidatePath("/admin/revisao");
+  revalidatePath("/admin/revisao/parlamento/deputados/cargos");
+  redirect(
+    `/admin/revisao/${created!.case.id}?sucesso=${created!.created ? "cargo-importado" : "cargo-existente"}`,
   );
 }
 
