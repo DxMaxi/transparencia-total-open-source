@@ -652,6 +652,7 @@ class PublishedPoliticianCoverage(BaseModel):
     identity: PublishedProfileCoverageArea
     membership_observations: PublishedProfileCoverageArea
     mandates: PublishedProfileCoverageArea
+    parliamentary_offices: PublishedProfileCoverageArea | None = None
     attendance: PublishedProfileCoverageArea
     initiatives: PublishedProfileCoverageArea
     nominal_votes: PublishedProfileCoverageArea
@@ -685,6 +686,20 @@ class PublishedMandate(BaseModel):
     ended_at: datetime | None = None
     verified_at: datetime
     source_period_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    source: OfficialSource
+
+
+class PublishedParliamentaryOffice(BaseModel):
+    id: str
+    official_office_id: str
+    title: str
+    legislature: str
+    constituency_source_id: str
+    constituency: str
+    started_at: datetime
+    ended_at: datetime | None = None
+    verified_at: datetime
+    source_period_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     source: OfficialSource
 
 
@@ -733,6 +748,7 @@ class PublishedPoliticianProfile(PublishedPersonSummary):
     contract_version: Literal["v5.6"] = "v5.6"
     membership_observations: list[PublishedMembershipObservation] = Field(default_factory=list)
     mandates: list[PublishedMandate] = Field(default_factory=list)
+    parliamentary_offices: list[PublishedParliamentaryOffice] = Field(default_factory=list)
     attendance: PublishedAttendanceSummary
     attendance_rate: int | None = Field(default=None, ge=0, le=100)
     attendance_label: str

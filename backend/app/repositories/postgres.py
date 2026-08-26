@@ -732,7 +732,7 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                       ON selected.source_document_id = membership.source_document_id
                      AND selected.legislature = membership.legislature
                 )
-                SELECT p.id, p.slug,
+                SELECT p.id, p.source_id, p.slug,
                        COALESCE(ms.parliamentary_name,
                                 p.parliamentary_name, p.full_name) AS name,
                        p.role::text AS role, p.photo_url,
@@ -901,6 +901,73 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                 LIMIT 100
                 """,
                 row["id"],
+            )
+
+            office_rows = await connection.fetch(
+                """
+                SELECT office.id, office.official_office_id, office.title,
+                       office.legislature, office.constituency_source_id,
+                       office.constituency, office.started_at, office.ended_at,
+                       office.source_period_sha256,
+                       review.reviewed_at AS verified_at,
+                       source.publisher::text AS source_publisher,
+                       source.url AS source_url,
+                       source.retrieved_at AS source_retrieved_at,
+                       source.content_sha256 AS source_sha256
+                FROM parliamentary_office_periods office
+                JOIN source_documents source ON source.id = office.source_document_id
+                JOIN parliament_deputy_observations observation
+                  ON observation.id = office.source_observation_id
+                 AND observation.source_id = $2
+                 AND observation.constituency_source_id = office.constituency_source_id
+                 AND observation.constituency_label = office.constituency
+                JOIN parliament_deputy_snapshots snapshot
+                  ON snapshot.id = observation.snapshot_id
+                 AND snapshot.source_document_id = source.id
+                 AND snapshot.legislature = office.legislature
+                JOIN LATERAL jsonb_array_elements(observation.offices)
+                    WITH ORDINALITY AS source_office(period, ordinality)
+                  ON source_office.ordinality = office.source_period_ordinal
+                 AND source_office.period ->> 'source_id' = office.official_office_id
+                 AND source_office.period ->> 'title' = office.title
+                JOIN parliamentary_membership_snapshots membership
+                  ON membership.person_id = office.person_id
+                 AND membership.source_document_id = source.id
+                 AND membership.legislature = office.legislature
+                 AND membership.constituency = office.constituency
+                JOIN LATERAL (
+                    SELECT candidate.publishable
+                    FROM data_publication_reviews candidate
+                    WHERE candidate.entity_type = 'PERSON'
+                      AND candidate.entity_id = office.person_id
+                      AND candidate.source_document_id = source.id
+                    ORDER BY candidate.reviewed_at DESC, candidate.id DESC
+                    LIMIT 1
+                ) person_review ON person_review.publishable = TRUE
+                JOIN LATERAL (
+                    SELECT candidate.publishable, candidate.reviewed_at
+                    FROM data_publication_reviews candidate
+                    WHERE candidate.entity_type = 'PARLIAMENT_OFFICE'
+                      AND candidate.entity_id = office.id
+                      AND candidate.source_document_id = source.id
+                    ORDER BY candidate.reviewed_at DESC, candidate.id DESC
+                    LIMIT 1
+                ) review ON review.publishable = TRUE
+                WHERE office.person_id = $1
+                  AND source.publisher = 'PARLIAMENT'
+                  AND source.kind <> 'NEWS_ARTICLE'
+                  AND EXISTS (
+                      SELECT 1 FROM source_archive_attestations office_archive
+                      WHERE office_archive.source_document_id = source.id
+                        AND office_archive.content_sha256 = source.content_sha256
+                        AND office_archive.retrieval_url = source.url
+                        AND office_archive.retrieved_at = source.retrieved_at
+                  )
+                ORDER BY office.started_at DESC, office.id DESC
+                LIMIT 100
+                """,
+                row["id"],
+                row["source_id"],
             )
 
             attendance = await connection.fetchrow(
@@ -1198,6 +1265,22 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
             }
             for mandate in mandate_rows
         ]
+        parliamentary_offices = [
+            {
+                "id": office["id"],
+                "official_office_id": office["official_office_id"],
+                "title": office["title"],
+                "legislature": office["legislature"],
+                "constituency_source_id": office["constituency_source_id"],
+                "constituency": office["constituency"],
+                "started_at": office["started_at"],
+                "ended_at": office["ended_at"],
+                "verified_at": office["verified_at"],
+                "source_period_sha256": office["source_period_sha256"],
+                "source": _source_from_row(office),
+            }
+            for office in office_rows
+        ]
 
         attendance_snapshot_available = attendance is not None
         attendance_total = int(attendance["record_count"]) if attendance is not None else 0
@@ -1241,6 +1324,7 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
         declaration_source = declaration_record["source"] if declaration_record else None
 
         mandate_dates = [mandate["started_at"] for mandate in mandates]
+        office_dates = [office["started_at"] for office in parliamentary_offices]
         membership_dates = [membership["observed_at"] for membership in membership_observations]
         declaration_dates = [
             declaration["declared_at"]
@@ -1252,6 +1336,7 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                 "contract_version": "v5.6",
                 "membership_observations": membership_observations,
                 "mandates": mandates,
+                "parliamentary_offices": parliamentary_offices,
                 "attendance": {
                     "available": attendance_total > 0,
                     "record_count": attendance_total,
@@ -1330,6 +1415,28 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                             else None
                         ),
                         "source": mandates[0]["source"] if mandates else None,
+                    },
+                    "parliamentary_offices": {
+                        "state": "AVAILABLE" if parliamentary_offices else "UNAVAILABLE",
+                        "record_count": len(parliamentary_offices),
+                        "note": (
+                            "Só entram cargos com DepId, CarId, período, arquivo e revisão "
+                            "específica; nunca são convertidos em mandatos."
+                            if parliamentary_offices
+                            else "Não existem períodos de cargo revistos para publicação."
+                        ),
+                        "observed_from": min(office_dates) if office_dates else None,
+                        "observed_through": (
+                            max(
+                                (office["ended_at"] or office["started_at"])
+                                for office in parliamentary_offices
+                            )
+                            if parliamentary_offices
+                            else None
+                        ),
+                        "source": (
+                            parliamentary_offices[0]["source"] if parliamentary_offices else None
+                        ),
                     },
                     "attendance": {
                         "state": (

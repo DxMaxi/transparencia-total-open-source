@@ -158,6 +158,7 @@ class PublicProfileConnection:
             return [
                 {
                     "id": "person-1",
+                    "source_id": "person-source-1",
                     "slug": "pessoa-1",
                     "name": "Pessoa 1",
                     "role": "DEPUTY",

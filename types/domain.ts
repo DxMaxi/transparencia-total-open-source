@@ -53,6 +53,7 @@ export interface PoliticianProfileCoverage {
   identity: ProfileCoverageArea;
   membershipObservations: ProfileCoverageArea;
   mandates: ProfileCoverageArea;
+  parliamentaryOffices: ProfileCoverageArea;
   attendance: ProfileCoverageArea;
   initiatives: ProfileCoverageArea;
   nominalVotes: ProfileCoverageArea;
@@ -83,6 +84,20 @@ export interface MandateRecord {
   endedAt?: string;
   verifiedAt: string;
   sourcePeriodSha256?: string;
+  source: OfficialSource;
+}
+
+export interface ParliamentaryOfficeRecord {
+  id: string;
+  officialOfficeId: string;
+  title: string;
+  legislature: string;
+  constituencySourceId: string;
+  constituency: string;
+  startedAt: string;
+  endedAt?: string;
+  verifiedAt: string;
+  sourcePeriodSha256: string;
   source: OfficialSource;
 }
 
@@ -147,6 +162,7 @@ export interface PoliticianProfileData {
   profileSource: OfficialSource;
   membershipObservations: MembershipObservation[];
   mandates: MandateRecord[];
+  parliamentaryOffices: ParliamentaryOfficeRecord[];
   attendance: AttendanceSummary;
   initiatives: PoliticianInitiativeRecord[];
   declarations: AssetDeclarationRecord[];
