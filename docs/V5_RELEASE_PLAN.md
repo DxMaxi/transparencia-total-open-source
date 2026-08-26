@@ -11,12 +11,12 @@ reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.32 integradas; staging remoto pendente |
+| Código V5 | V5.1 a V5.33 preparadas; staging remoto pendente |
 | Frontend público | V5.21 preparado; capacidades sem backend ou esquema pronto ficam fail-closed |
 | API pública | `0.5.0-alpha.0`; capacidades anunciadas apenas após prova read-only do esquema |
 | Painel editorial | implementado no código, não ativado em produção |
 | IA | geração, revisão, publicação e retirada implementadas; esquema remoto ainda não ativado |
-| Parlamento | matriz V5.21 e gates V5.22–V5.32 preparados; atividades gerais e ativação editorial pendentes |
+| Parlamento | matriz V5.21 e gates V5.22–V5.33 preparados; atividades gerais e ativação editorial pendentes |
 | Perfis | ciclo integral de entrada, publicação, retirada e republicação provado; domínios individuais pendentes |
 | Promessómetro | catálogo editorial inicial de 10 compromissos; vocabulário V5.20 protegido |
 | Investigador Cívico | zero contratos e zero relações na projeção pública |
@@ -182,6 +182,13 @@ A republicação exclusivamente por outra fonte e fotografia imutáveis está co
 Uma ação `ADMIN` com MFA repete as provas e acrescenta identidades, observações, revisões,
 auditorias, decisões e eventos numa só transação. A ligação usa apenas `DepId` oficial exato; não
 cria mandatos nem filiações. Esta capacidade ainda não foi ativada ou executada num ambiente real.
+
+O décimo gate de perfis está preparado em
+[V5.33 — intervalos oficiais no circuito editorial de mandatos](V5_POLITICIAN_MANDATE_EDITORIAL.md).
+O painel separa cada situação por hash canónico, exige identidade já publicada pelo mesmo `DepId`,
+círculo oficial, manifesto e arquivo coincidentes, e cria somente uma proposta privada `PENDING`.
+Mesmo uma aprovação não cria `Mandate`, revisão pública ou evento; publicação e retirada continuam
+uma porta posterior e independente.
 
 Critérios de saída:
 

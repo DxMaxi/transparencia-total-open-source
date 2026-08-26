@@ -78,6 +78,9 @@ export default async function PoliticianProfileEditorialPage({
           </p>
         </div>
         <div className="admin-heading-actions">
+          <Link href="/admin/revisao/parlamento/deputados/mandatos">
+            Rever mandatos datados
+          </Link>
           <Link href="/admin/revisao/parlamento/deputados/prontidao">
             Ver prontidão da fotografia
           </Link>

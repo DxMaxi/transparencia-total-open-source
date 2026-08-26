@@ -8,6 +8,7 @@ from app.models.editorial import (
     EditorialDecisionRequest,
     ParliamentEditorialProposalRequest,
     ParliamentEditorialPublicationRequest,
+    PoliticianMandateEditorialProposalRequest,
     PoliticianProfileEditorialProposalRequest,
     PoliticianProfileSnapshotPublicationRequest,
 )
@@ -135,6 +136,36 @@ def test_politician_profile_proposal_accepts_only_an_observation_and_three_confi
     with pytest.raises(ValidationError):
         PoliticianProfileEditorialProposalRequest.model_validate(
             {**payload.model_dump(), "normalized_data": {"name": "browser-controlled"}}
+        )
+
+
+def test_mandate_proposal_binds_one_period_hash_and_four_safety_confirmations() -> None:
+    payload = PoliticianMandateEditorialProposalRequest.model_validate(
+        {
+            "observation_id": "parliament_deputy_observation_123abc",
+            "source_period_sha256": "a" * 64,
+            "confirm_private_only": True,
+            "confirm_exact_official_id_only": True,
+            "confirm_period_semantics_require_human_review": True,
+            "confirm_no_party_inference": True,
+        }
+    )
+    assert payload.source_period_sha256 == "a" * 64
+
+    for field in (
+        "confirm_private_only",
+        "confirm_exact_official_id_only",
+        "confirm_period_semantics_require_human_review",
+        "confirm_no_party_inference",
+    ):
+        invalid = payload.model_dump()
+        invalid[field] = False
+        with pytest.raises(ValidationError):
+            PoliticianMandateEditorialProposalRequest.model_validate(invalid)
+
+    with pytest.raises(ValidationError):
+        PoliticianMandateEditorialProposalRequest.model_validate(
+            {**payload.model_dump(), "source_period_sha256": "browser-date"}
         )
 
 

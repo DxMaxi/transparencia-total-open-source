@@ -149,7 +149,7 @@ test("the historical backfill remains a versioned editorial plan, not a publicat
   assert.match(plan, /V5_PARLIAMENT_DEPUTY_OBSERVATIONS\.md/);
   assert.match(plan, /V5_POLITICIAN_PROFILE_EDITORIAL\.md/);
   assert.match(plan, /V5_POLITICIAN_PROFILE_SNAPSHOT_PUBLICATION\.md/);
-  assert.match(readme, /V5\.1 a V5\.32 integradas/);
+  assert.match(readme, /V5\.1 a V5\.33 preparadas/);
   assert.match(readme, /V5_PARLIAMENT_COVERAGE_AND_BACKFILL\.md/);
   assert.match(readme, /V5_PARLIAMENT_SOURCE_CATALOGUE\.md/);
   assert.match(readme, /V5_PARLIAMENT_RESOURCE_MANIFEST\.md/);
