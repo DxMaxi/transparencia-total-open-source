@@ -333,6 +333,7 @@ a.feature-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
 .profile-timeline span, .profile-observation-list span { color: var(--ink-soft); font-size: 11px; }
 .profile-timeline small, .profile-observation-list small, .profile-initiative-list small, .profile-timeline__proof { color: var(--muted); font-size: 9px; line-height: 1.5; }
 .profile-timeline__proof { display: grid; justify-items: end; gap: 6px; text-align: right; }
+.profile-timeline__proof code { max-width: 34ch; overflow-wrap: anywhere; white-space: normal; }
 .profile-history summary { cursor: pointer; color: var(--teal); font-size: 11px; font-weight: 800; }
 .profile-history[open] summary { margin-bottom: 6px; }
 .profile-unavailable-inline { padding: 20px; border: 1px dashed #b9c9c7; border-radius: 12px; background: var(--canvas); }
@@ -988,6 +989,14 @@ body:has(.private-route-frame) #conteudo { min-height: 100vh; }
 .parliament-proposal-card--existing { border-color: #b9ded8; background: #f0faf8; }
 .parliament-proposal-card .admin-confirmation { color: var(--ink-soft); font-size: 10px; font-weight: 600; letter-spacing: normal; text-transform: none; }
 .parliament-proposal-card .button { justify-self: start; }
+.parliament-publication-card { border-color: #a8d8d0; background: #f5fbfa; }
+.parliament-publication-card > dl { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.parliament-publication-card > dl > div { min-width: 0; padding: 10px; border: 1px solid #cfe6e2; border-radius: 9px; background: white; }
+.parliament-publication-card dt { color: var(--muted); font-size: 8px; font-weight: 760; letter-spacing: .05em; text-transform: uppercase; }
+.parliament-publication-card dd { margin: 5px 0 0; color: var(--navy); font-size: 16px; font-weight: 780; }
+.parliament-publication-card > label:not(.admin-confirmation) { display: grid; gap: 6px; color: var(--navy); font-size: 9px; font-weight: 730; letter-spacing: .04em; text-transform: uppercase; }
+.parliament-publication-card textarea { min-height: 92px; padding: 11px; border: 1px solid var(--line); border-radius: 9px; resize: vertical; color: var(--ink); background: white; font: inherit; font-size: 11px; line-height: 1.55; letter-spacing: normal; text-transform: none; }
+.parliament-publication-card .button:disabled { cursor: not-allowed; opacity: .5; }
 
 @media (max-width: 1050px) {
   .admin-header { grid-template-columns: auto 1fr; gap: 15px; }
@@ -1030,7 +1039,7 @@ body:has(.private-route-frame) #conteudo { min-height: 100vh; }
   .admin-publication-summary dl > div { grid-template-columns: 1fr; }
   .parliament-snapshot-card { padding: 18px; }
   .parliament-snapshot-card > header { flex-direction: column; }
-  .parliament-filter, .parliament-proof-grid > dl, .parliament-count-grid, .parliament-proposal-grid { grid-template-columns: 1fr; }
+  .parliament-filter, .parliament-proof-grid > dl, .parliament-count-grid, .parliament-proposal-grid, .parliament-publication-card > dl { grid-template-columns: 1fr; }
   .parliament-diff-list > div, .parliament-coverage-list > div { grid-template-columns: 1fr; }
 }
 

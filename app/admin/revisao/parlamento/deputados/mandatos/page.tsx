@@ -1,10 +1,14 @@
 import Link from "next/link";
-import { createPoliticianMandateProposal } from "../../../actions";
-import { editorialFetch } from "@/lib/editorial-api";
+import {
+  createPoliticianMandateProposal,
+  publishPoliticianMandate,
+} from "../../../actions";
+import { editorialFetch, getEditorialContext } from "@/lib/editorial-api";
 import {
   STATE_LABELS,
   type PoliticianMandateEditorialCandidate,
   type PoliticianMandateEditorialCandidateList,
+  type PoliticianMandatePublicationPreview,
 } from "@/lib/editorial-types";
 
 const dateFormatter = new Intl.DateTimeFormat("pt-PT", {
@@ -35,6 +39,18 @@ function formatDate(value: string | null): string {
   return value ? dateFormatter.format(new Date(value)) : "dados indisponíveis";
 }
 
+async function loadPublicationPreview(
+  caseId: string,
+): Promise<PoliticianMandatePublicationPreview | null> {
+  try {
+    return await editorialFetch<PoliticianMandatePublicationPreview>(
+      `/parliament/mandate-cases/${encodeURIComponent(caseId)}/publication`,
+    );
+  } catch {
+    return null;
+  }
+}
+
 export default async function PoliticianMandateEditorialPage({
   searchParams,
 }: {
@@ -43,6 +59,7 @@ export default async function PoliticianMandateEditorialPage({
     q?: string;
     offset?: string;
     erro?: string;
+    sucesso?: string;
   }>;
 }) {
   const input = await searchParams;
@@ -58,6 +75,16 @@ export default async function PoliticianMandateEditorialPage({
   if (query.length >= 2) params.set("q", query);
   const catalogue = await editorialFetch<PoliticianMandateEditorialCandidateList>(
     `/parliament/mandate-candidates?${params.toString()}`,
+  );
+  const { staff } = await getEditorialContext();
+  const publicationPreviews = new Map<string, PoliticianMandatePublicationPreview>();
+  await Promise.all(
+    catalogue.items.map(async (candidate) => {
+      if (candidate.existing_case?.state === "APPROVED" && candidate.proposal_eligible) {
+        const preview = await loadPublicationPreview(candidate.existing_case.id);
+        if (preview) publicationPreviews.set(candidate.existing_case.id, preview);
+      }
+    }),
   );
 
   return (
@@ -80,6 +107,12 @@ export default async function PoliticianMandateEditorialPage({
       {input.erro ? (
         <p className="private-message private-message--error" role="alert">
           {input.erro}
+        </p>
+      ) : null}
+
+      {input.sucesso === "mandato-publicado" ? (
+        <p className="private-message private-message--success" role="status">
+          Mandato publicado com revisão própria e histórico append-only.
         </p>
       ) : null}
 
@@ -120,6 +153,12 @@ export default async function PoliticianMandateEditorialPage({
             <MandateCandidateCard
               candidate={candidate}
               key={`${candidate.observation_id}-${candidate.source_period_sha256}`}
+              isAdmin={staff.role === "ADMIN"}
+              publicationPreview={
+                candidate.existing_case
+                  ? (publicationPreviews.get(candidate.existing_case.id) ?? null)
+                  : null
+              }
             />
           ))}
         </section>
@@ -152,7 +191,15 @@ export default async function PoliticianMandateEditorialPage({
   );
 }
 
-function MandateCandidateCard({ candidate }: { candidate: PoliticianMandateEditorialCandidate }) {
+function MandateCandidateCard({
+  candidate,
+  publicationPreview,
+  isAdmin,
+}: {
+  candidate: PoliticianMandateEditorialCandidate;
+  publicationPreview: PoliticianMandatePublicationPreview | null;
+  isAdmin: boolean;
+}) {
   return (
     <article className="parliament-snapshot-card">
       <header>
@@ -207,16 +254,25 @@ function MandateCandidateCard({ candidate }: { candidate: PoliticianMandateEdito
       ) : null}
 
       {candidate.existing_case ? (
-        <section className="parliament-proposal-card parliament-proposal-card--existing">
-          <p className="eyebrow">Mandato</p>
-          <h3>Processo já existente</h3>
-          <p>
-            {STATE_LABELS[candidate.existing_case.state]} · revisão {candidate.existing_case.revision}
-          </p>
-          <Link className="button" href={`/admin/revisao/${candidate.existing_case.id}`}>
-            Abrir processo
-          </Link>
-        </section>
+        <>
+          <section className="parliament-proposal-card parliament-proposal-card--existing">
+            <p className="eyebrow">Mandato</p>
+            <h3>Processo já existente</h3>
+            <p>
+              {STATE_LABELS[candidate.existing_case.state]} · revisão {candidate.existing_case.revision}
+            </p>
+            <Link className="button" href={`/admin/revisao/${candidate.existing_case.id}`}>
+              Abrir processo
+            </Link>
+          </section>
+          {candidate.existing_case.state === "APPROVED" ? (
+            <MandatePublicationAction
+              candidate={candidate}
+              preview={publicationPreview}
+              isAdmin={isAdmin}
+            />
+          ) : null}
+        </>
       ) : (
         <form action={createPoliticianMandateProposal} className="parliament-proposal-card">
           <input type="hidden" name="observation_id" value={candidate.observation_id} />
@@ -251,5 +307,105 @@ function MandateCandidateCard({ candidate }: { candidate: PoliticianMandateEdito
         </form>
       )}
     </article>
+  );
+}
+
+function MandatePublicationAction({
+  candidate,
+  preview,
+  isAdmin,
+}: {
+  candidate: PoliticianMandateEditorialCandidate;
+  preview: PoliticianMandatePublicationPreview | null;
+  isAdmin: boolean;
+}) {
+  if (!preview) {
+    return (
+      <section className="parliament-proposal-card">
+        <strong>Prova de publicação indisponível.</strong>
+        <p>O processo continua aprovado e privado; nenhuma ação pública é apresentada.</p>
+      </section>
+    );
+  }
+  return (
+    <form
+      action={publishPoliticianMandate}
+      className="parliament-proposal-card parliament-publication-card"
+    >
+      <input type="hidden" name="legislature" value={candidate.legislature} />
+      <input type="hidden" name="expected_case_id" value={preview.case_id} />
+      <input type="hidden" name="expected_version_id" value={preview.version_id} />
+      <input type="hidden" name="expected_version_sha256" value={preview.version_sha256} />
+      <input type="hidden" name="expected_source_sha256" value={preview.source.content_sha256} />
+      <input
+        type="hidden"
+        name="expected_period_sha256"
+        value={preview.source_period_sha256}
+      />
+      <input
+        type="hidden"
+        name="expected_publication_proof_sha256"
+        value={preview.publication_proof_sha256 ?? ""}
+      />
+      <div>
+        <p className="eyebrow">V5.34 · porta pública específica</p>
+        <h3>Publicar um mandato revisto</h3>
+        <p>{preview.publication_rule}</p>
+      </div>
+      <dl>
+        <div><dt>Mandatos a criar</dt><dd>{preview.public_effect.mandates_to_create}</dd></div>
+        <div><dt>Revisões MANDATE</dt><dd>{preview.public_effect.mandate_reviews_to_append}</dd></div>
+        <div><dt>Pessoas a criar</dt><dd>{preview.public_effect.people_to_create}</dd></div>
+        <div><dt>Ligações partidárias</dt><dd>{preview.public_effect.party_links_to_create}</dd></div>
+      </dl>
+      {preview.blockers.length ? (
+        <ul className="parliament-limitations">
+          {preview.blockers.map((blocker) => <li key={blocker.code}>{blocker.detail}</li>)}
+        </ul>
+      ) : null}
+      <label>
+        Fundamentação editorial privada
+        <textarea name="rationale" minLength={20} maxLength={1850} required />
+      </label>
+      <label>
+        Fundamentação pública factual
+        <textarea name="public_rationale" minLength={20} maxLength={500} required />
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_source_reviewed" type="checkbox" required />
+        <span>Voltei a comparar a fonte oficial, o arquivo e os SHA-256.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_human_period_interpretation" type="checkbox" required />
+        <span>Confirmo humanamente que este intervalo representa o mandato indicado.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_exact_official_id_only" type="checkbox" required />
+        <span>Confirmo a correspondência exclusiva pelo DepId oficial exato.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_no_party_inference" type="checkbox" required />
+        <span>Confirmo que nenhuma filiação partidária será inferida.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_append_only_publication" type="checkbox" required />
+        <span>Confirmo que correções e retiradas acrescentam histórico, sem apagar esta versão.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_publication" type="checkbox" required />
+        <span>Confirmo a publicação deste mandato e da sua prova.</span>
+      </label>
+      {!isAdmin ? <p>A publicação exige uma conta ADMIN com MFA.</p> : null}
+      <button
+        className="button button--primary"
+        type="submit"
+        disabled={!isAdmin || !preview.eligible || !preview.publication_proof_sha256}
+      >
+        Publicar mandato com prova
+      </button>
+      <p className="admin-form-help">
+        A ativação em ambiente real continua bloqueada até a V5.35 provar a retirada imutável.
+      </p>
+    </form>
   );
 }

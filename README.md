@@ -23,7 +23,7 @@ definição da Open Source Initiative.
 > commit final desse fecho. A V5 começa pela governação de licença e pelo circuito editorial
 > privado; esta branch não altera os dados aprovados da V4.
 
-> **V5.1 a V5.33 preparadas; ativação remota de staging pendente:** o painel privado usa
+> **V5.1 a V5.34 preparadas; ativação remota de staging pendente:** o painel privado usa
 > login por convite,
 > MFA obrigatório, funções de administrador/revisor, comparação entre fonte atestada e JSON
 > normalizado, versões e decisões append-only. A V5.2 acrescentou propostas parlamentares privadas,
@@ -88,7 +88,10 @@ definição da Open Source Initiative.
 > fonte arquivada, nova fotografia, novos processos e nova revisão; a pessoa só é reutilizada pelo
 > mesmo `DepId` oficial exato. A V5.33 acrescenta candidatos privados de mandato por intervalo
 > oficial e SHA-256 exatos; exige identidade publicada, círculo oficial e revisão humana da
-> semântica, mas aprovação ainda cria zero mandatos e zero eventos públicos. O código e os testes
+> semântica, mas aprovação ainda cria zero mandatos e zero eventos públicos. A V5.34 acrescenta a
+> publicação transacional ADMIN+MFA: guarda a observação, a posição e o SHA-256 do intervalo,
+> acrescenta revisão `MANDATE`, auditoria, decisão e evento, e torna mandato e revisões append-only.
+> A ativação real continua bloqueada até existir retirada específica na V5.35. O código e os testes
 > não executam estas operações sobre staging ou
 > produção. O plano e a checklist
 > de fecho estão em
@@ -119,6 +122,7 @@ definição da Open Source Initiative.
 > [Retirada imutável da fotografia de perfis V5.31](docs/V5_POLITICIAN_PROFILE_SNAPSHOT_WITHDRAWAL.md),
 > [Republicação por nova fotografia imutável V5.32](docs/V5_POLITICIAN_PROFILE_SNAPSHOT_REPUBLICATION.md),
 > [Intervalos oficiais no circuito editorial de mandatos V5.33](docs/V5_POLITICIAN_MANDATE_EDITORIAL.md),
+> [Publicação transacional de mandatos V5.34](docs/V5_POLITICIAN_MANDATE_PUBLICATION.md),
 > [Adaptador parlamentar V5.2](docs/V5_PARLIAMENT_EDITORIAL_ADAPTER.md) e
 > [Publicação parlamentar por âmbito V5.3](docs/V5_PARLIAMENT_SCOPE_PUBLICATION.md),
 > [Retirada parlamentar imutável V5.4](docs/V5_PARLIAMENT_WITHDRAWAL.md) e

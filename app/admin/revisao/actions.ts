@@ -15,6 +15,7 @@ import {
   type ParliamentEditorialWithdrawalResult,
   type ParliamentWithdrawalReason,
   type PoliticianMandateEditorialProposalResult,
+  type PoliticianMandatePublicationResult,
   type PoliticianProfileEditorialProposalResult,
   type PoliticianProfileSnapshotPublicationResult,
   type PoliticianProfileSnapshotWithdrawalResult,
@@ -234,6 +235,65 @@ export async function createPoliticianMandateProposal(formData: FormData) {
   redirect(
     `/admin/revisao/${created!.case.id}?sucesso=${created!.created ? "mandato-importado" : "mandato-existente"}`,
   );
+}
+
+export async function publishPoliticianMandate(formData: FormData) {
+  const caseReference = evidenceId(formData, "expected_case_id");
+  const legislature = requiredText(formData, "legislature").slice(0, 20);
+  let failure: string | null = null;
+  try {
+    for (const [field, message] of [
+      ["confirm_source_reviewed", "Confirme a nova revisão da fonte oficial"],
+      [
+        "confirm_human_period_interpretation",
+        "Confirme a interpretação humana do intervalo oficial",
+      ],
+      ["confirm_exact_official_id_only", "Confirme o uso exclusivo do DepId oficial"],
+      ["confirm_no_party_inference", "Confirme que não será inferida filiação partidária"],
+      ["confirm_append_only_publication", "Confirme a preservação integral do histórico"],
+      ["confirm_publication", "Confirme a publicação deste mandato"],
+    ] as const) {
+      if (formData.get(field) !== "on") throw new Error(message);
+    }
+    await editorialFetch<PoliticianMandatePublicationResult>(
+      `/parliament/mandate-cases/${encodeURIComponent(caseReference)}/publication`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          expected_case_id: caseReference,
+          expected_version_id: evidenceId(formData, "expected_version_id"),
+          expected_version_sha256: sha256(formData, "expected_version_sha256"),
+          expected_source_sha256: sha256(formData, "expected_source_sha256"),
+          expected_period_sha256: sha256(formData, "expected_period_sha256"),
+          expected_publication_proof_sha256: sha256(
+            formData,
+            "expected_publication_proof_sha256",
+          ),
+          rationale: requiredText(formData, "rationale"),
+          public_rationale: requiredText(formData, "public_rationale"),
+          confirm_source_reviewed: true,
+          confirm_human_period_interpretation: true,
+          confirm_exact_official_id_only: true,
+          confirm_no_party_inference: true,
+          confirm_append_only_publication: true,
+          confirm_publication: true,
+        }),
+      },
+    );
+  } catch (error) {
+    failure = actionError(error);
+  }
+  const destination = "/admin/revisao/parlamento/deputados/mandatos";
+  if (failure) {
+    const params = new URLSearchParams({ legislature, erro: failure });
+    redirect(`${destination}?${params.toString()}`);
+  }
+  revalidatePath("/admin/revisao");
+  revalidatePath(destination);
+  revalidatePath("/politicos");
+  revalidatePath("/");
+  const params = new URLSearchParams({ legislature, sucesso: "mandato-publicado" });
+  redirect(`${destination}?${params.toString()}`);
 }
 
 export async function publishPoliticianProfileSnapshot(formData: FormData) {

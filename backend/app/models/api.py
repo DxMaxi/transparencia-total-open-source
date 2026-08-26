@@ -684,6 +684,7 @@ class PublishedMandate(BaseModel):
     started_at: datetime
     ended_at: datetime | None = None
     verified_at: datetime
+    source_period_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     source: OfficialSource
 
 

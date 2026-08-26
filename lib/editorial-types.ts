@@ -513,6 +513,7 @@ export type PoliticianProfileEditorialProposalResult = {
 
 export type PoliticianMandateEditorialCandidate = {
   subject_id: string;
+  source_period_ordinal: number;
   observation_id: string;
   source_document_id: string;
   snapshot_id: string;
@@ -559,6 +560,68 @@ export type PoliticianMandateEditorialProposalResult = {
   mandate_created: false;
   public_review_created: false;
   party_link_created: false;
+};
+
+export type PoliticianMandatePublicationPreview = {
+  case_id: string;
+  case_state: "APPROVED";
+  case_revision: number;
+  version_id: string;
+  version_sha256: string;
+  source_period_sha256: string;
+  source: PoliticianMandateEditorialCandidate["source"];
+  archive: PoliticianMandateEditorialCandidate["archive"];
+  proposed_mandate: {
+    office_title: string;
+    legislature: string;
+    constituency: string;
+    started_at: string;
+    ended_at: string | null;
+    party: "dados indisponíveis";
+  };
+  identity: {
+    parliamentary_name: string;
+    official_deputy_id: string;
+    person_reference_sha256: string;
+    exact_match: true;
+  };
+  source_observation_reference_sha256: string;
+  source_period_ordinal: number;
+  public_effect: {
+    mandates_to_create: 1;
+    mandate_reviews_to_append: 1;
+    mandate_audits_to_append: 1;
+    editorial_decisions_to_append: 1;
+    publication_events_to_append: 1;
+    people_to_create: 0;
+    party_links_to_create: 0;
+  };
+  publication_proof_sha256: string | null;
+  eligible: boolean;
+  blockers: Array<{ code: string; detail: string }>;
+  automatic_publication: false;
+  human_review_required: true;
+  party_inference_allowed: false;
+  withdrawal_required_before_real_activation: true;
+  publication_rule: string;
+};
+
+export type PoliticianMandatePublicationResult = {
+  created: true;
+  case_id: string;
+  version_id: string;
+  state: "PUBLISHED";
+  mandate_id: string;
+  mandate_review_id: string;
+  audit_event_id: string;
+  editorial_decision_id: string;
+  publication_event_id: string;
+  source_sha256: string;
+  source_period_sha256: string;
+  publication_proof_sha256: string;
+  party_link_created: false;
+  automatic_publication: false;
+  publication_rule: string;
 };
 
 export type PoliticianProfilePublicationReadiness = {

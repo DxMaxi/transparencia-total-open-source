@@ -276,6 +276,7 @@ type RawProfile = RawPerson & {
     started_at: string;
     ended_at?: string | null;
     verified_at: string;
+    source_period_sha256?: string | null;
     source: RawSource;
   }>;
   attendance?: {
@@ -1920,6 +1921,7 @@ export async function loadPublicPolitician(
           startedAt: formatDate(item.started_at),
           endedAt: item.ended_at ? formatDate(item.ended_at) : undefined,
           verifiedAt: formatDate(item.verified_at),
+          sourcePeriodSha256: item.source_period_sha256 ?? undefined,
           source: toOfficialSource(item.source),
         })),
         attendance,
