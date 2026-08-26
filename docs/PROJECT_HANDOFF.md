@@ -152,8 +152,14 @@ A V5.37 acrescenta a publicação específica desses cargos sem os converter em 
 acrescentar o cargo, a revisão `PARLIAMENT_OFFICE`, a auditoria, a decisão e o evento `PUBLISH`
 numa única transação. A consulta pública exige que as revisões mais recentes da identidade e do
 cargo continuem positivas e apresenta o cargo numa secção própria com fonte, data e SHA-256. A
-V5.37 não executa migrações ou publicações reais; a retirada append-only V5.38 permanece obrigatória
-antes de qualquer ativação operacional.
+V5.37 não executa migrações ou publicações reais.
+
+A V5.38 fecha a retirada append-only deste domínio. O preview privado reconstrói a fonte, o
+`DepId`, o `CarId`, o círculo, o período, a versão, a revisão positiva, a auditoria e o evento
+`PUBLISH`; a ação `ADMIN` com MFA acrescenta revisão negativa, `AuditEvent`, decisão e evento
+`WITHDRAW` numa transação. O cargo, a pessoa, os mandatos, a pertença parlamentar, a fonte e a
+publicação original ficam intactos. A consulta pública deixa de selecionar apenas esse cargo.
+Staging e produção permanecem intactos e a ativação continua dependente dos gates operacionais.
 
 A melhoria de UX iniciada em agosto de 2026 faz parte da estabilização/conclusão da **V5**. Não deve ser tratada como início de uma V6 nem como autorização para reescrever o projeto.
 

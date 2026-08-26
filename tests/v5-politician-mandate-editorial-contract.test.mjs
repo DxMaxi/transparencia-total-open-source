@@ -81,5 +81,5 @@ test("V5.33 documentation keeps approval separate from mandate publication", asy
   assert.match(documentation, /operação de domínio separada/i);
   assert.match(checklist, /\[x\] V5\.33 — intervalos oficiais/);
   assert.match(plan, /V5_POLITICIAN_MANDATE_EDITORIAL\.md/);
-  assert.match(readme, /V5\.1 a V5\.37 preparadas/);
+  assert.match(readme, /V5\.1 a V5\.38 preparadas/);
 });

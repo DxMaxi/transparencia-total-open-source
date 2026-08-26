@@ -12,8 +12,10 @@ from app.core.config import Settings
 from app.models.archive import PrivateRawDocument
 from app.models.editorial import (
     EditorialAction,
+    ParliamentWithdrawalReason,
     PoliticianOfficeEditorialProposalRequest,
     PoliticianOfficePublicationRequest,
+    PoliticianOfficeWithdrawalRequest,
     StaffRole,
     StaffSession,
 )
@@ -24,6 +26,9 @@ from app.repositories.politician_office_editorial import (
 )
 from app.repositories.politician_office_publication import (
     PoliticianOfficePublicationRepository,
+)
+from app.repositories.politician_office_withdrawal import (
+    PoliticianOfficeWithdrawalRepository,
 )
 
 pytestmark = pytest.mark.skipif(
@@ -454,4 +459,188 @@ async def test_exact_official_office_creates_only_an_idempotent_private_case(
     assert (
         public_profile["parliamentary_offices"][0]["source_period_sha256"]
         == candidate["source_period_sha256"]
+    )
+
+    withdrawer = PoliticianOfficeWithdrawalRepository(repository.pool)
+    withdrawal_preview = await withdrawer.inspect(case_id=case_id)
+    assert withdrawal_preview["eligible"] is True, withdrawal_preview["blockers"]
+    assert withdrawal_preview["office_id"] == office_id
+    withdrawal_effect = withdrawal_preview["public_effect"]
+    assert isinstance(withdrawal_effect, dict)
+    assert withdrawal_effect["kind"] == "PARLIAMENT_OFFICE_HIDDEN_HISTORY_PRESERVED"
+    assert withdrawal_effect["exact_office_public_after_withdrawal"] is False
+    assert withdrawal_effect["remaining_public_offices_for_person"] == 0
+    assert withdrawal_effect["office_row_preserved"] is True
+
+    withdrawal_payload = PoliticianOfficeWithdrawalRequest(
+        expected_case_id=case_id,
+        expected_revision=int(withdrawal_preview["case_revision"]),
+        expected_version_id=str(withdrawal_preview["version_id"]),
+        expected_version_sha256=str(withdrawal_preview["version_sha256"]),
+        expected_office_id=office_id,
+        expected_source_sha256=content_sha256,
+        expected_period_sha256=str(candidate["source_period_sha256"]),
+        expected_publication_proof_sha256=str(withdrawal_preview["publication_proof_sha256"]),
+        expected_withdrawal_proof_sha256=str(withdrawal_preview["withdrawal_proof_sha256"]),
+        expected_public_review_id=str(withdrawal_preview["public_review_id"]),
+        expected_publication_audit_event_id=str(withdrawal_preview["publication_audit_event_id"]),
+        expected_publication_event_id=str(withdrawal_preview["publication_event_id"]),
+        expected_publication_event_sha256=str(withdrawal_preview["publication_event_sha256"]),
+        expected_public_effect_sha256=str(withdrawal_preview["public_effect_sha256"]),
+        rationale="A fonte oficial corrigiu o cargo anteriormente publicado.",
+        public_rationale="Cargo retirado após correção documentada da fonte oficial.",
+        reason_category=ParliamentWithdrawalReason.OFFICIAL_SOURCE_CORRECTION,
+        confirm_source_and_publication_reviewed=True,
+        confirm_exact_office=True,
+        confirm_public_effect_reviewed=True,
+        confirm_office_and_history_preserved=True,
+        confirm_no_selective_identity_or_mandate_change=True,
+        confirm_withdrawal=True,
+    )
+    async with repository.pool.acquire() as connection:
+        counts_before_failed_withdrawal = {
+            "reviews": int(
+                await connection.fetchval(
+                    "SELECT COUNT(*) FROM data_publication_reviews "
+                    "WHERE entity_type = 'PARLIAMENT_OFFICE' AND entity_id = $1",
+                    office_id,
+                )
+            ),
+            "audits": int(
+                await connection.fetchval(
+                    "SELECT COUNT(*) FROM audit_events "
+                    "WHERE entity_type = 'PARLIAMENT_OFFICE' AND entity_id = $1",
+                    office_id,
+                )
+            ),
+            "events": int(
+                await connection.fetchval(
+                    "SELECT COUNT(*) FROM editorial_publication_events WHERE case_id = $1",
+                    case_id,
+                )
+            ),
+            "decisions": int(
+                await connection.fetchval(
+                    "SELECT COUNT(*) FROM editorial_decisions WHERE case_id = $1",
+                    case_id,
+                )
+            ),
+        }
+    with pytest.raises(EditorialConflictError):
+        await withdrawer.withdraw(
+            case_id=case_id,
+            payload=withdrawal_payload.model_copy(
+                update={"expected_public_effect_sha256": "0" * 64}
+            ),
+            actor=actor,
+        )
+    async with repository.pool.acquire() as connection:
+        counts_after_failed_withdrawal = {
+            "reviews": int(
+                await connection.fetchval(
+                    "SELECT COUNT(*) FROM data_publication_reviews "
+                    "WHERE entity_type = 'PARLIAMENT_OFFICE' AND entity_id = $1",
+                    office_id,
+                )
+            ),
+            "audits": int(
+                await connection.fetchval(
+                    "SELECT COUNT(*) FROM audit_events "
+                    "WHERE entity_type = 'PARLIAMENT_OFFICE' AND entity_id = $1",
+                    office_id,
+                )
+            ),
+            "events": int(
+                await connection.fetchval(
+                    "SELECT COUNT(*) FROM editorial_publication_events WHERE case_id = $1",
+                    case_id,
+                )
+            ),
+            "decisions": int(
+                await connection.fetchval(
+                    "SELECT COUNT(*) FROM editorial_decisions WHERE case_id = $1",
+                    case_id,
+                )
+            ),
+        }
+    assert counts_after_failed_withdrawal == counts_before_failed_withdrawal
+
+    withdrawn = await withdrawer.withdraw(
+        case_id=case_id,
+        payload=withdrawal_payload,
+        actor=actor,
+    )
+    assert withdrawn["state"] == "WITHDRAWN"
+    assert withdrawn["office_id"] == office_id
+    assert withdrawn["offices_deleted"] == 0
+    assert withdrawn["people_deleted"] == 0
+    assert withdrawn["memberships_deleted"] == 0
+    with pytest.raises(EditorialConflictError):
+        await withdrawer.withdraw(
+            case_id=case_id,
+            payload=withdrawal_payload,
+            actor=actor,
+        )
+
+    async with repository.pool.acquire() as connection:
+        assert (
+            await connection.fetchval(
+                "SELECT COUNT(*) FROM parliamentary_office_periods WHERE id = $1",
+                office_id,
+            )
+            == 1
+        )
+        reviews = await connection.fetch(
+            "SELECT publishable FROM data_publication_reviews "
+            "WHERE entity_type = 'PARLIAMENT_OFFICE' AND entity_id = $1 "
+            "ORDER BY reviewed_at, id",
+            office_id,
+        )
+        assert [row["publishable"] for row in reviews] == [True, False]
+        assert (
+            await connection.fetchval(
+                "SELECT COUNT(*) FROM audit_events "
+                "WHERE entity_type = 'PARLIAMENT_OFFICE' AND entity_id = $1 "
+                "AND action IN ('PUBLISHED', 'WITHDRAWN')",
+                office_id,
+            )
+            == 2
+        )
+        publication_actions = await connection.fetch(
+            "SELECT action::text AS action FROM editorial_publication_events "
+            "WHERE case_id = $1 ORDER BY created_at, id",
+            case_id,
+        )
+        assert [row["action"] for row in publication_actions] == ["PUBLISH", "WITHDRAW"]
+        assert await connection.fetchval("SELECT COUNT(*) FROM mandates") == mandates_before
+        assert (
+            await connection.fetchval("SELECT COUNT(*) FROM people WHERE id = $1", person_id) == 1
+        )
+        assert (
+            await connection.fetchval(
+                "SELECT COUNT(*) FROM parliamentary_membership_snapshots WHERE id = $1",
+                membership_id,
+            )
+            == 1
+        )
+        assert (
+            await connection.fetchval(
+                "SELECT COUNT(*) FROM source_documents WHERE id = $1",
+                source_document_id,
+            )
+            == 1
+        )
+        with pytest.raises(asyncpg.PostgresError, match="append-only"):
+            async with connection.transaction():
+                await connection.execute(
+                    "DELETE FROM parliamentary_office_periods WHERE id = $1",
+                    office_id,
+                )
+
+    public_profile_after_withdrawal = await repository.get_public_politician(f"pessoa-{suffix}")
+    assert public_profile_after_withdrawal is not None
+    assert public_profile_after_withdrawal["parliamentary_offices"] == []
+    assert (
+        public_profile_after_withdrawal["coverage"]["parliamentary_offices"]["state"]
+        == "UNAVAILABLE"
     )

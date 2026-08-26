@@ -2,19 +2,27 @@ import Link from "next/link";
 import {
   createPoliticianOfficeProposal,
   publishPoliticianOffice,
+  withdrawPoliticianOffice,
 } from "../../../actions";
 import { editorialFetch, getEditorialContext } from "@/lib/editorial-api";
 import {
+  PARLIAMENT_WITHDRAWAL_REASON_LABELS,
   STATE_LABELS,
+  type ParliamentWithdrawalReason,
   type PoliticianOfficeEditorialCandidate,
   type PoliticianOfficeEditorialCandidateList,
   type PoliticianOfficePublicationPreview,
+  type PoliticianOfficeWithdrawalPreview,
 } from "@/lib/editorial-types";
 
 const dateFormatter = new Intl.DateTimeFormat("pt-PT", {
   dateStyle: "medium",
   timeZone: "Europe/Lisbon",
 });
+
+const withdrawalReasonEntries = Object.entries(PARLIAMENT_WITHDRAWAL_REASON_LABELS) as Array<
+  [ParliamentWithdrawalReason, string]
+>;
 
 function boundedOffset(value: string | undefined): number {
   const parsed = Number.parseInt(value ?? "0", 10);
@@ -51,6 +59,18 @@ async function loadPublicationPreview(
   }
 }
 
+async function loadWithdrawalPreview(
+  caseId: string,
+): Promise<PoliticianOfficeWithdrawalPreview | null> {
+  try {
+    return await editorialFetch<PoliticianOfficeWithdrawalPreview>(
+      `/parliament/office-cases/${encodeURIComponent(caseId)}/withdrawal`,
+    );
+  } catch {
+    return null;
+  }
+}
+
 export default async function PoliticianOfficeEditorialPage({
   searchParams,
 }: {
@@ -78,11 +98,16 @@ export default async function PoliticianOfficeEditorialPage({
   );
   const { staff } = await getEditorialContext();
   const publicationPreviews = new Map<string, PoliticianOfficePublicationPreview>();
+  const withdrawalPreviews = new Map<string, PoliticianOfficeWithdrawalPreview>();
   await Promise.all(
     catalogue.items.map(async (candidate) => {
       if (candidate.existing_case?.state === "APPROVED" && candidate.proposal_eligible) {
         const preview = await loadPublicationPreview(candidate.existing_case.id);
         if (preview) publicationPreviews.set(candidate.existing_case.id, preview);
+      }
+      if (candidate.existing_case?.state === "PUBLISHED") {
+        const preview = await loadWithdrawalPreview(candidate.existing_case.id);
+        if (preview) withdrawalPreviews.set(candidate.existing_case.id, preview);
       }
     }),
   );
@@ -114,6 +139,12 @@ export default async function PoliticianOfficeEditorialPage({
       {input.sucesso === "cargo-publicado" ? (
         <p className="private-message private-message--success" role="status">
           Cargo publicado com CarId, período, revisão própria e histórico append-only.
+        </p>
+      ) : null}
+
+      {input.sucesso === "cargo-retirado" ? (
+        <p className="private-message private-message--success" role="status">
+          Cargo retirado da consulta ativa; a linha e toda a prova histórica foram preservadas.
         </p>
       ) : null}
 
@@ -161,6 +192,11 @@ export default async function PoliticianOfficeEditorialPage({
                   ? (publicationPreviews.get(candidate.existing_case.id) ?? null)
                   : null
               }
+              withdrawalPreview={
+                candidate.existing_case
+                  ? (withdrawalPreviews.get(candidate.existing_case.id) ?? null)
+                  : null
+              }
             />
           ))}
         </section>
@@ -196,10 +232,12 @@ export default async function PoliticianOfficeEditorialPage({
 function OfficeCandidateCard({
   candidate,
   publicationPreview,
+  withdrawalPreview,
   isAdmin,
 }: {
   candidate: PoliticianOfficeEditorialCandidate;
   publicationPreview: PoliticianOfficePublicationPreview | null;
+  withdrawalPreview: PoliticianOfficeWithdrawalPreview | null;
   isAdmin: boolean;
 }) {
   return (
@@ -264,6 +302,13 @@ function OfficeCandidateCard({
             <OfficePublicationAction
               candidate={candidate}
               preview={publicationPreview}
+              isAdmin={isAdmin}
+            />
+          ) : null}
+          {candidate.existing_case.state === "PUBLISHED" ? (
+            <OfficeWithdrawalAction
+              candidate={candidate}
+              preview={withdrawalPreview}
               isAdmin={isAdmin}
             />
           ) : null}
@@ -399,9 +444,162 @@ function OfficePublicationAction({
         Publicar cargo com prova
       </button>
       <p className="admin-form-help">
-        A retirada append-only será acrescentada na V5.38 antes de qualquer ativação real em
-        staging; esta ação nunca publica automaticamente.
+        A retirada é sempre uma ação posterior, separada e append-only; publicar nunca retira
+        nem altera automaticamente este cargo.
       </p>
+    </form>
+  );
+}
+
+function OfficeWithdrawalAction({
+  candidate,
+  preview,
+  isAdmin,
+}: {
+  candidate: PoliticianOfficeEditorialCandidate;
+  preview: PoliticianOfficeWithdrawalPreview | null;
+  isAdmin: boolean;
+}) {
+  if (!preview) {
+    return (
+      <section className="parliament-proposal-card">
+        <strong>Prova de retirada indisponível.</strong>
+        <p>O cargo permanece publicado; nenhuma retirada pode avançar sem prova completa.</p>
+      </section>
+    );
+  }
+
+  return (
+    <form
+      action={withdrawPoliticianOffice}
+      className="parliament-proposal-card parliament-publication-card admin-withdrawal-panel"
+    >
+      <input type="hidden" name="legislature" value={candidate.legislature} />
+      <input type="hidden" name="expected_case_id" value={preview.case_id} />
+      <input type="hidden" name="expected_revision" value={preview.case_revision} />
+      <input type="hidden" name="expected_version_id" value={preview.version_id} />
+      <input type="hidden" name="expected_version_sha256" value={preview.version_sha256} />
+      <input type="hidden" name="expected_office_id" value={preview.office_id} />
+      <input type="hidden" name="expected_source_sha256" value={preview.source.content_sha256} />
+      <input
+        type="hidden"
+        name="expected_period_sha256"
+        value={preview.source_period_sha256}
+      />
+      <input
+        type="hidden"
+        name="expected_publication_proof_sha256"
+        value={preview.publication_proof_sha256}
+      />
+      <input
+        type="hidden"
+        name="expected_withdrawal_proof_sha256"
+        value={preview.withdrawal_proof_sha256 ?? ""}
+      />
+      <input type="hidden" name="expected_public_review_id" value={preview.public_review_id} />
+      <input
+        type="hidden"
+        name="expected_publication_audit_event_id"
+        value={preview.publication_audit_event_id}
+      />
+      <input
+        type="hidden"
+        name="expected_publication_event_id"
+        value={preview.publication_event_id}
+      />
+      <input
+        type="hidden"
+        name="expected_publication_event_sha256"
+        value={preview.publication_event_sha256}
+      />
+      <input
+        type="hidden"
+        name="expected_public_effect_sha256"
+        value={preview.public_effect_sha256}
+      />
+
+      <div>
+        <p className="eyebrow">V5.38 · retirada imutável</p>
+        <h3>Retirar este cargo da consulta ativa</h3>
+        <p>{preview.withdrawal_rule}</p>
+      </div>
+      <dl>
+        <div><dt>Cargos a eliminar</dt><dd>{preview.offices_to_delete}</dd></div>
+        <div><dt>Pessoas a eliminar</dt><dd>{preview.people_to_delete}</dd></div>
+        <div>
+          <dt>Outros cargos públicos</dt>
+          <dd>{preview.public_effect.remaining_public_offices_for_person}</dd>
+        </div>
+        <div>
+          <dt>Linha histórica preservada</dt>
+          <dd>{preview.public_effect.office_row_preserved ? "Sim" : "Não"}</dd>
+        </div>
+      </dl>
+      <p>{preview.public_effect.message}</p>
+      <div className="admin-proof-callout">
+        <strong>SHA-256 da prova de retirada</strong>
+        <code>{preview.withdrawal_proof_sha256 ?? "dados indisponíveis"}</code>
+        <strong>SHA-256 do efeito público</strong>
+        <code>{preview.public_effect_sha256}</code>
+      </div>
+      {preview.blockers.length ? (
+        <ul className="parliament-limitations">
+          {preview.blockers.map((blocker) => <li key={blocker.code}>{blocker.detail}</li>)}
+        </ul>
+      ) : null}
+      <label>
+        Categoria permitida pela governação
+        <select name="reason_category" required defaultValue="">
+          <option value="" disabled>Selecione um fundamento</option>
+          {withdrawalReasonEntries.map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Fundamentação editorial privada
+        <textarea name="rationale" minLength={20} maxLength={1850} required />
+      </label>
+      <label>
+        Fundamentação pública factual
+        <textarea name="public_rationale" minLength={20} maxLength={500} required />
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_source_and_publication_reviewed" type="checkbox" required />
+        <span>Revi a fonte, o CarId, o período, a publicação original e todos os SHA-256.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_exact_office" type="checkbox" required />
+        <span>Confirmo que a retirada incide apenas neste cargo exato.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_public_effect_reviewed" type="checkbox" required />
+        <span>Revi o efeito que ficará visível ao público depois da retirada.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_office_and_history_preserved" type="checkbox" required />
+        <span>Confirmo que o cargo, a fonte, a versão e o histórico não serão apagados.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input
+          name="confirm_no_selective_identity_or_mandate_change"
+          type="checkbox"
+          required
+        />
+        <span>Confirmo que identidades, mandatos e outros cargos não serão alterados.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_withdrawal" type="checkbox" required />
+        <span>Confirmo a retirada deste cargo da consulta pública ativa.</span>
+      </label>
+      {!isAdmin ? <p>A retirada exige uma conta ADMIN com MFA.</p> : null}
+      <button
+        className="button button--danger"
+        type="submit"
+        disabled={!isAdmin || !preview.eligible || !preview.withdrawal_proof_sha256}
+      >
+        Retirar cargo e preservar histórico
+      </button>
     </form>
   );
 }

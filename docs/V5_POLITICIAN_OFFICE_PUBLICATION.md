@@ -8,8 +8,9 @@ mandato**, não cria filiação partidária e não afirma competências fora do 
 oficial fornece.
 
 Esta entrega prepara código, esquema, interface e testes. **Não publica dados reais**, não executa
-migrações em staging ou produção e não altera segredos ou contas. A retirada imutável é uma porta
-separada planeada para a V5.38 e continua obrigatória antes de qualquer ativação real.
+migrações em staging ou produção e não altera segredos ou contas. A retirada imutável continua uma
+porta separada e foi fechada no código pela
+[V5.38](V5_POLITICIAN_OFFICE_WITHDRAWAL.md), antes de qualquer ativação real.
 
 ## Prova exigida
 
