@@ -161,7 +161,7 @@ class PoliticianMandatePublicationRepository:
                    editorial_case.current_state::text AS current_state,
                    editorial_case.revision,
                    editorial_case.current_version_id,
-                   version.normalized_data,
+                   version.normalized_json AS normalized_data,
                    version.normalized_sha256,
                    latest_decision.action::text AS latest_decision_action,
                    latest_decision.resulting_state::text AS latest_decision_state,

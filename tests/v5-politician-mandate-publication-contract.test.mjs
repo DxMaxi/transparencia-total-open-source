@@ -71,6 +71,8 @@ test("V5.34 publishes one exact mandate in one ADMIN MFA transaction", async () 
 
   assert.match(repository, /pg_advisory_xact_lock/);
   assert.match(repository, /connection\.transaction\(\)/);
+  assert.match(repository, /version\.normalized_json AS normalized_data/);
+  assert.doesNotMatch(repository, /version\.normalized_data/);
   assert.match(repository, /INSERT INTO mandates/);
   assert.match(repository, /'MANDATE'/);
   assert.match(repository, /INSERT INTO audit_events/);
