@@ -27,6 +27,16 @@ const initiativeRelationLabels = {
   PROPOSER: "Proponente",
 } as const;
 
+function proofDate(value: string | undefined): string {
+  if (!value) return "dados indisponíveis";
+  const date = new Date(value);
+  if (Number.isNaN(date.valueOf())) return "dados indisponíveis";
+  return new Intl.DateTimeFormat("pt-PT", {
+    dateStyle: "medium",
+    timeZone: "Europe/Lisbon",
+  }).format(date);
+}
+
 function coveragePeriod(area: ProfileCoverageArea): string | null {
   if (!area.observedFrom && !area.observedThrough) return null;
   if (area.observedFrom === area.observedThrough) return area.observedFrom ?? null;
@@ -171,6 +181,21 @@ export function PoliticianProfile({ profile }: { profile: PoliticianProfileData 
                   <div className="profile-timeline__proof">
                     <small>Revisto em {mandate.verifiedAt}</small>
                     <SourceLink source={mandate.source} compact />
+                    <small>Fonte recolhida em {proofDate(mandate.source.retrievedAt)}</small>
+                    {mandate.source.sha256 ? (
+                      <code title={`SHA-256 da fonte ${mandate.source.sha256}`}>
+                        Fonte SHA-256 {mandate.source.sha256}
+                      </code>
+                    ) : (
+                      <small>SHA-256 da fonte: dados indisponíveis</small>
+                    )}
+                    {mandate.sourcePeriodSha256 ? (
+                      <code title={`SHA-256 do intervalo ${mandate.sourcePeriodSha256}`}>
+                        Intervalo SHA-256 {mandate.sourcePeriodSha256}
+                      </code>
+                    ) : (
+                      <small>Prova do intervalo: dados indisponíveis</small>
+                    )}
                   </div>
                 </li>
               ))}

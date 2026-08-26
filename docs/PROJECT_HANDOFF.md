@@ -126,6 +126,13 @@ círculo tem identificador oficial, as datas são coerentes e fonte, arquivo e m
 O caso fica `PENDING`; mesmo depois de aprovação são criados zero `Mandate`, zero revisões públicas
 e zero eventos de publicação. A publicação e a retirada imutável são o gate seguinte.
 
+A V5.34 prepara a publicação individual do mandato, exclusiva de `ADMIN` com MFA. Uma migração
+compatível acrescenta a observação oficial, a posição do intervalo e o SHA-256 a cada nova linha,
+com chave estrangeira, unicidade e histórico append-only. A operação acrescenta `Mandate`, revisão
+`MANDATE`, `AuditEvent`, decisão e evento numa só transação e cria zero pessoas ou filiações. O
+teste de integração usa apenas PostgreSQL descartável; staging e produção permanecem intactos. A
+ativação real fica bloqueada até a retirada imutável V5.35 estar provada.
+
 A melhoria de UX iniciada em agosto de 2026 faz parte da estabilização/conclusão da **V5**. Não deve ser tratada como início de uma V6 nem como autorização para reescrever o projeto.
 
 ## 5. Baseline técnico conhecido

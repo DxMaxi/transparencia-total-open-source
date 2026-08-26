@@ -109,6 +109,6 @@ test("V5.30 documentation preserves the boundary between code and real publicati
   assert.match(checklist, /\[x\] V5\.30 — publicação transacional da fotografia completa/);
   assert.match(plan, /V5_POLITICIAN_PROFILE_SNAPSHOT_PUBLICATION\.md/);
   assert.match(handoff, /V5\.30/);
-  assert.match(readme, /V5\.1 a V5\.33 preparadas/);
+  assert.match(readme, /V5\.1 a V5\.34 preparadas/);
   assert.match(readme, /V5_POLITICIAN_PROFILE_SNAPSHOT_PUBLICATION\.md/);
 });

@@ -82,6 +82,7 @@ export interface MandateRecord {
   startedAt: string;
   endedAt?: string;
   verifiedAt: string;
+  sourcePeriodSha256?: string;
   source: OfficialSource;
 }
 

@@ -363,23 +363,28 @@ model Person {
 }
 
 model Mandate {
-  id                String             @id @default(cuid())
-  personId          String             @map("person_id")
-  partyId           String?            @map("party_id")
-  legislature       String?
-  officeTitle       String             @map("office_title")
-  constituency      String?
-  startedAt         DateTime           @map("started_at")
-  endedAt           DateTime?          @map("ended_at")
-  sourceDocumentId  String             @map("source_document_id")
-  createdAt         DateTime           @default(now()) @map("created_at")
-  updatedAt         DateTime           @updatedAt @map("updated_at")
-  person            Person             @relation(fields: [personId], references: [id], onDelete: Cascade)
-  party             Party?             @relation(fields: [partyId], references: [id], onDelete: SetNull)
-  sourceDocument    SourceDocument     @relation(fields: [sourceDocumentId], references: [id])
-  attendanceRecords AttendanceRecord[]
+  id                  String                       @id @default(cuid())
+  personId            String                       @map("person_id")
+  partyId             String?                      @map("party_id")
+  legislature         String?
+  officeTitle         String                       @map("office_title")
+  constituency        String?
+  startedAt           DateTime                     @map("started_at")
+  endedAt             DateTime?                    @map("ended_at")
+  sourceDocumentId    String                       @map("source_document_id")
+  sourceObservationId String?                      @map("source_observation_id")
+  sourcePeriodOrdinal Int?                         @map("source_period_ordinal")
+  sourcePeriodSha256  String?                      @map("source_period_sha256") @db.Char(64)
+  createdAt           DateTime                     @default(now()) @map("created_at")
+  updatedAt           DateTime                     @updatedAt @map("updated_at")
+  person              Person                       @relation(fields: [personId], references: [id], onDelete: Cascade)
+  party               Party?                       @relation(fields: [partyId], references: [id], onDelete: SetNull)
+  sourceDocument      SourceDocument               @relation(fields: [sourceDocumentId], references: [id])
+  sourceObservation   ParliamentDeputyObservation? @relation(fields: [sourceObservationId], references: [id], onDelete: Restrict)
+  attendanceRecords   AttendanceRecord[]
 
   @@unique([personId, officeTitle, startedAt])
+  @@unique([sourceObservationId, sourcePeriodOrdinal])
   @@index([legislature])
   @@index([partyId])
   @@map("mandates")
@@ -470,6 +475,7 @@ model ParliamentDeputyObservation {
   offices                Json                     @default("[]")
   createdAt              DateTime                 @default(now()) @map("created_at")
   snapshot               ParliamentDeputySnapshot @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
+  mandates               Mandate[]
 
   @@unique([sourceId, snapshotId])
   @@index([snapshotId])

@@ -869,6 +869,8 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                 SELECT mandate.id, mandate.office_title, mandate.legislature,
                        party.name AS party, party.short_name AS party_short,
                        mandate.constituency, mandate.started_at, mandate.ended_at,
+                       to_jsonb(mandate) ->> 'source_period_sha256'
+                           AS source_period_sha256,
                        review.reviewed_at AS verified_at,
                        source.publisher::text AS source_publisher,
                        source.url AS source_url,
@@ -1191,6 +1193,7 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                 "started_at": mandate["started_at"],
                 "ended_at": mandate["ended_at"],
                 "verified_at": mandate["verified_at"],
+                "source_period_sha256": mandate["source_period_sha256"],
                 "source": _source_from_row(mandate),
             }
             for mandate in mandate_rows

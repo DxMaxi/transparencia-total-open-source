@@ -54,6 +54,9 @@ continuam a exigir autorizações separadas.
   `DepId` exato e mantém a versão retirada definitivamente inativa.
 - [x] V5.33 — intervalos oficiais entram numa fila privada própria por hash, identidade publicada e
   `DepId` exato; aprovação continua sem criar mandato, revisão pública ou evento de publicação.
+- [x] V5.34 — publicação transacional ADMIN+MFA acrescenta um mandato por intervalo exato, revisão
+  `MANDATE`, auditoria, decisão e evento, com constraints e histórico append-only.
+- [ ] V5.35 — retirada imutável do mandato acrescenta revisão negativa e preserva a linha original.
 - [x] Existe um [conjunto de issues de conclusão](https://github.com/DxMaxi/transparencia-total-open-source/issues/58) para todos os itens ainda abertos.
 
 ## B. Estabilização pública
@@ -148,7 +151,8 @@ continuam a exigir autorizações separadas.
 - [x] Observação parlamentar não é apresentada como início de mandato.
 - [ ] Mandatos têm datas oficiais e revisão `MANDATE` própria.
   - [x] Proposta privada por intervalo oficial exato, com semântica sujeita a revisão humana.
-  - [ ] Publicação e retirada append-only com revisão `MANDATE` própria.
+  - [x] Publicação transacional append-only com revisão `MANDATE` própria.
+  - [ ] Retirada append-only específica, sem alteração ou eliminação da linha publicada.
 - [ ] Cargos e círculo têm fonte e período explícitos.
 - [ ] Presenças dependem de mandato revisto e fotografia publicada.
 - [ ] Autoria de iniciativas usa relação oficial individual.

@@ -137,19 +137,14 @@ class PoliticianMandateEditorialRepository:
         payload: PoliticianMandateEditorialProposalRequest,
         actor: StaffSession,
     ) -> dict[str, object]:
-        candidates, _total = await self._load_candidates(
-            legislature=None,
-            query=None,
+        candidate = await self.get_exact_candidate(
             observation_id=payload.observation_id,
             source_period_sha256=payload.source_period_sha256,
-            limit=100,
-            offset=0,
         )
-        if not candidates:
+        if candidate is None:
             raise EditorialSourceError(
                 "O intervalo oficial não existe ou deixou de corresponder à observação atestada"
             )
-        candidate = candidates[0]
         if candidate["proposal_eligible"] is not True:
             reasons = candidate["blocked_reasons"]
             detail = (
@@ -184,6 +179,26 @@ class PoliticianMandateEditorialRepository:
             "party_link_created": False,
         }
 
+    async def get_exact_candidate(
+        self,
+        *,
+        observation_id: str,
+        source_period_sha256: str,
+        connection: asyncpg.Connection | None = None,
+    ) -> dict[str, object] | None:
+        """Reconstrói um intervalo exato; o hash nunca é aceite como conteúdo do cliente."""
+
+        candidates, _total = await self._load_candidates(
+            legislature=None,
+            query=None,
+            observation_id=observation_id,
+            source_period_sha256=source_period_sha256,
+            limit=100,
+            offset=0,
+            connection=connection,
+        )
+        return candidates[0] if candidates else None
+
     async def _load_candidates(
         self,
         *,
@@ -193,6 +208,7 @@ class PoliticianMandateEditorialRepository:
         source_period_sha256: str | None,
         limit: int,
         offset: int,
+        connection: asyncpg.Connection | None = None,
     ) -> tuple[list[dict[str, object]], int]:
         conditions = [
             "source.publisher = 'PARLIAMENT'",
@@ -220,7 +236,8 @@ class PoliticianMandateEditorialRepository:
         limit_arg = len(arguments) - 1
         offset_arg = len(arguments)
 
-        rows = await self.pool.fetch(
+        database: asyncpg.Pool | asyncpg.Connection = connection or self.pool
+        rows = await database.fetch(
             f"""
             WITH materialised AS (
                 SELECT candidate.snapshot_id,
@@ -389,6 +406,7 @@ class PoliticianMandateEditorialRepository:
             blocked.append("A referência interna do intervalo excede o limite editorial.")
         return {
             "subject_id": subject_id,
+            "source_period_ordinal": int(row["period_ordinal"]),
             "observation_id": str(row["observation_id"]),
             "source_document_id": str(row["source_document_id"]),
             "snapshot_id": str(row["snapshot_id"]),
