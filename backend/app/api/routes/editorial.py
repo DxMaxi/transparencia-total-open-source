@@ -15,6 +15,7 @@ from app.api.dependencies import (
     get_politician_mandate_publication_repository,
     get_politician_mandate_withdrawal_repository,
     get_politician_office_editorial_repository,
+    get_politician_office_publication_repository,
     get_politician_profile_editorial_repository,
     get_politician_profile_publication_readiness_repository,
     get_politician_profile_snapshot_publication_repository,
@@ -43,6 +44,7 @@ from app.models.editorial import (
     PoliticianMandatePublicationRequest,
     PoliticianMandateWithdrawalRequest,
     PoliticianOfficeEditorialProposalRequest,
+    PoliticianOfficePublicationRequest,
     PoliticianProfileEditorialProposalRequest,
     PoliticianProfileSnapshotPublicationRequest,
     PoliticianProfileSnapshotWithdrawalRequest,
@@ -71,6 +73,9 @@ from app.repositories.politician_mandate_withdrawal import (
 )
 from app.repositories.politician_office_editorial import (
     PoliticianOfficeEditorialRepository,
+)
+from app.repositories.politician_office_publication import (
+    PoliticianOfficePublicationRepository,
 )
 from app.repositories.politician_profile_editorial import (
     PoliticianProfileEditorialRepository,
@@ -261,6 +266,44 @@ async def create_parliament_office_proposal(
     try:
         return await repository.create_proposal(payload=payload, actor=actor)
     except (EditorialConflictError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.get("/parliament/office-cases/{case_id}/publication")
+async def parliament_office_publication_preview(
+    case_id: Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,200}$")],
+    repository: Annotated[
+        PoliticianOfficePublicationRepository,
+        Depends(get_politician_office_publication_repository),
+    ],
+    _actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> dict[str, object]:
+    """Reconstrói a publicação do cargo sem escrever em qualquer projeção."""
+
+    try:
+        return await repository.inspect(case_id=case_id)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.post(
+    "/parliament/office-cases/{case_id}/publication",
+    status_code=status.HTTP_201_CREATED,
+)
+async def publish_parliament_office(
+    case_id: Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,200}$")],
+    payload: PoliticianOfficePublicationRequest,
+    repository: Annotated[
+        PoliticianOfficePublicationRepository,
+        Depends(get_politician_office_publication_repository),
+    ],
+    actor: Annotated[StaffSession, Depends(require_editorial_admin)],
+) -> dict[str, object]:
+    """Publica um cargo e toda a prova numa única transação ADMIN com MFA."""
+
+    try:
+        return await repository.publish(case_id=case_id, payload=payload, actor=actor)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
         raise _translate_error(exc) from exc
 
 

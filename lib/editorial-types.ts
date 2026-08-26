@@ -616,6 +616,72 @@ export type PoliticianOfficeEditorialProposalResult = {
   party_link_created: false;
 };
 
+export type PoliticianOfficePublicationPreview = {
+  case_id: string;
+  case_state: "APPROVED";
+  case_revision: number;
+  version_id: string;
+  version_sha256: string;
+  source_period_sha256: string;
+  source: PoliticianOfficeEditorialCandidate["source"];
+  archive: PoliticianOfficeEditorialCandidate["archive"];
+  proposed_office: {
+    official_office_id: string;
+    title: string;
+    legislature: string;
+    constituency_source_id: string;
+    constituency: string;
+    started_at: string;
+    ended_at: string | null;
+  };
+  identity: {
+    parliamentary_name: string;
+    official_deputy_id: string;
+    person_reference_sha256: string;
+    exact_match: true;
+  };
+  source_observation_reference_sha256: string;
+  source_period_ordinal: number;
+  public_effect: {
+    offices_to_create: 1;
+    office_reviews_to_append: 1;
+    office_audits_to_append: 1;
+    editorial_decisions_to_append: 1;
+    publication_events_to_append: 1;
+    people_to_create: 0;
+    mandates_to_create: 0;
+    party_links_to_create: 0;
+  };
+  publication_proof_sha256: string | null;
+  eligible: boolean;
+  blockers: Array<{ code: string; detail: string }>;
+  automatic_publication: false;
+  human_review_required: true;
+  mandate_inference_allowed: false;
+  party_inference_allowed: false;
+  withdrawal_required_before_real_activation: true;
+  publication_rule: string;
+};
+
+export type PoliticianOfficePublicationResult = {
+  created: true;
+  case_id: string;
+  version_id: string;
+  state: "PUBLISHED";
+  office_id: string;
+  office_review_id: string;
+  audit_event_id: string;
+  editorial_decision_id: string;
+  publication_event_id: string;
+  source_sha256: string;
+  source_period_sha256: string;
+  publication_proof_sha256: string;
+  mandate_created: false;
+  party_link_created: false;
+  automatic_publication: false;
+  publication_rule: string;
+};
+
 export type PoliticianMandatePublicationPreview = {
   case_id: string;
   case_state: "APPROVED";

@@ -335,27 +335,28 @@ model Party {
 }
 
 model Person {
-  id                   String                            @id @default(cuid())
-  sourceId             String?                           @unique @map("source_id")
-  fullName             String                            @map("full_name")
-  parliamentaryName    String?                           @map("parliamentary_name")
-  slug                 String                            @unique
-  role                 PersonRole
-  photoUrl             String?                           @map("photo_url")
-  officialProfileUrl   String?                           @map("official_profile_url")
-  active               Boolean                           @default(true)
-  createdAt            DateTime                          @default(now()) @map("created_at")
-  updatedAt            DateTime                          @updatedAt @map("updated_at")
-  mandates             Mandate[]
-  membershipSnapshots  ParliamentaryMembershipSnapshot[]
-  voteRecords          VoteRecord[]
-  statements           PublicStatement[]
-  assetDeclarations    AssetDeclarationMetadata[]
-  interestEntity       InterestEntity?
-  protectedIdentifiers ProtectedIdentifierDigest[]
-  judicialSubjects     JudicialCaseSubject[]
-  newsMentions         NewsEntityMention[]
-  coherenceSnapshots   CoherenceSnapshot[]
+  id                         String                            @id @default(cuid())
+  sourceId                   String?                           @unique @map("source_id")
+  fullName                   String                            @map("full_name")
+  parliamentaryName          String?                           @map("parliamentary_name")
+  slug                       String                            @unique
+  role                       PersonRole
+  photoUrl                   String?                           @map("photo_url")
+  officialProfileUrl         String?                           @map("official_profile_url")
+  active                     Boolean                           @default(true)
+  createdAt                  DateTime                          @default(now()) @map("created_at")
+  updatedAt                  DateTime                          @updatedAt @map("updated_at")
+  mandates                   Mandate[]
+  parliamentaryOfficePeriods ParliamentaryOfficePeriod[]
+  membershipSnapshots        ParliamentaryMembershipSnapshot[]
+  voteRecords                VoteRecord[]
+  statements                 PublicStatement[]
+  assetDeclarations          AssetDeclarationMetadata[]
+  interestEntity             InterestEntity?
+  protectedIdentifiers       ProtectedIdentifierDigest[]
+  judicialSubjects           JudicialCaseSubject[]
+  newsMentions               NewsEntityMention[]
+  coherenceSnapshots         CoherenceSnapshot[]
 
   @@index([fullName])
   @@index([role, active])
@@ -440,18 +441,18 @@ model ParliamentActivitySnapshot {
 /// Fotografia privada e versionada das fichas biográficas publicadas pela
 /// Assembleia da República. Não constitui revisão, mandato ou publicação.
 model ParliamentDeputySnapshot {
-  id                   String                         @id @default(cuid())
-  sourceDocumentId     String                         @map("source_document_id")
+  id                   String                        @id @default(cuid())
+  sourceDocumentId     String                        @map("source_document_id")
   legislature          String
-  parserVersion        String                         @map("parser_version")
-  normalisedSha256     String                         @map("normalised_sha256") @db.Char(64)
-  collectedAt          DateTime                       @map("collected_at")
-  deputyCount          Int                            @map("deputy_count")
-  groupPeriodCount     Int                            @map("group_period_count")
-  situationPeriodCount Int                            @map("situation_period_count")
-  officePeriodCount    Int                            @map("office_period_count")
-  createdAt            DateTime                       @default(now()) @map("created_at")
-  sourceDocument       SourceDocument                 @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
+  parserVersion        String                        @map("parser_version")
+  normalisedSha256     String                        @map("normalised_sha256") @db.Char(64)
+  collectedAt          DateTime                      @map("collected_at")
+  deputyCount          Int                           @map("deputy_count")
+  groupPeriodCount     Int                           @map("group_period_count")
+  situationPeriodCount Int                           @map("situation_period_count")
+  officePeriodCount    Int                           @map("office_period_count")
+  createdAt            DateTime                      @default(now()) @map("created_at")
+  sourceDocument       SourceDocument                @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
   observations         ParliamentDeputyObservation[]
 
   @@unique([sourceDocumentId, legislature, parserVersion])
@@ -462,25 +463,54 @@ model ParliamentDeputySnapshot {
 /// Observação privada ligada apenas ao DepId explícito da fonte. Os intervalos
 /// JSON conservam a semântica oficial e não são convertidos em mandatos.
 model ParliamentDeputyObservation {
-  id                    String                   @id @default(cuid())
-  snapshotId            String                   @map("snapshot_id")
-  sourceId              String                   @map("source_id")
-  candidateSourceId     String?                  @map("candidate_source_id")
-  parliamentaryName     String                   @map("parliamentary_name")
-  fullName              String?                  @map("full_name")
-  constituencySourceId  String?                  @map("constituency_source_id")
-  constituencyLabel     String?                  @map("constituency_label")
-  parliamentaryGroups   Json                     @default("[]") @map("parliamentary_groups")
-  mandateSituations     Json                     @default("[]") @map("mandate_situations")
-  offices                Json                     @default("[]")
-  createdAt              DateTime                 @default(now()) @map("created_at")
-  snapshot               ParliamentDeputySnapshot @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
-  mandates               Mandate[]
+  id                   String                      @id @default(cuid())
+  snapshotId           String                      @map("snapshot_id")
+  sourceId             String                      @map("source_id")
+  candidateSourceId    String?                     @map("candidate_source_id")
+  parliamentaryName    String                      @map("parliamentary_name")
+  fullName             String?                     @map("full_name")
+  constituencySourceId String?                     @map("constituency_source_id")
+  constituencyLabel    String?                     @map("constituency_label")
+  parliamentaryGroups  Json                        @default("[]") @map("parliamentary_groups")
+  mandateSituations    Json                        @default("[]") @map("mandate_situations")
+  offices              Json                        @default("[]")
+  createdAt            DateTime                    @default(now()) @map("created_at")
+  snapshot             ParliamentDeputySnapshot    @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
+  mandates             Mandate[]
+  officePeriods        ParliamentaryOfficePeriod[]
 
   @@unique([sourceId, snapshotId])
   @@index([snapshotId])
   @@index([constituencySourceId])
   @@map("parliament_deputy_observations")
+}
+
+/// Período de cargo parlamentar publicado após revisão humana específica.
+/// É distinto de um mandato e não transporta qualquer filiação partidária.
+model ParliamentaryOfficePeriod {
+  id                   String                      @id @default(cuid())
+  personId             String                      @map("person_id")
+  sourceObservationId  String                      @map("source_observation_id")
+  sourcePeriodOrdinal  Int                         @map("source_period_ordinal")
+  officialOfficeId     String                      @map("official_office_id")
+  title                String
+  legislature          String
+  constituencySourceId String                      @map("constituency_source_id")
+  constituency         String
+  startedAt            DateTime                    @map("started_at")
+  endedAt              DateTime?                   @map("ended_at")
+  sourceDocumentId     String                      @map("source_document_id")
+  sourcePeriodSha256   String                      @map("source_period_sha256") @db.Char(64)
+  createdAt            DateTime                    @default(now()) @map("created_at")
+  person               Person                      @relation(fields: [personId], references: [id], onDelete: Restrict)
+  sourceObservation    ParliamentDeputyObservation @relation(fields: [sourceObservationId], references: [id], onDelete: Restrict)
+  sourceDocument       SourceDocument              @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
+
+  @@unique([sourceObservationId, sourcePeriodOrdinal])
+  @@index([personId, startedAt])
+  @@index([officialOfficeId])
+  @@index([legislature, startedAt])
+  @@map("parliamentary_office_periods")
 }
 
 model ParliamentarySession {
@@ -1379,8 +1409,8 @@ model EditorialPublicationEvent {
   version     EditorialVersion           @relation(fields: [versionId], references: [id], onDelete: Restrict)
   actor       StaffProfile               @relation("EditorialPublicationActor", fields: [actorId], references: [id], onDelete: Restrict)
 
-  @@index([caseId, createdAt, id])
   @@unique([caseId, versionId, action, targetType, targetId])
+  @@index([caseId, createdAt, id])
   @@index([targetType, targetId, createdAt])
   @@index([versionId])
   @@index([actorId])
@@ -1409,52 +1439,53 @@ model DataPublicationReview {
 }
 
 model SourceDocument {
-  id                    String                            @id @default(cuid())
-  publisher             SourcePublisher
-  kind                  DocumentKind
-  title                 String
-  officialIdentifier    String?                           @map("official_identifier")
-  url                   String
-  retrievedAt           DateTime                          @map("retrieved_at")
-  publishedAt           DateTime?                         @map("published_at")
-  contentSha256         String                            @map("content_sha256")
-  mimeType              String?                           @map("mime_type")
-  rawStorageKey         String?                           @map("raw_storage_key")
-  parserVersion         String?                           @map("parser_version")
-  createdAt             DateTime                          @default(now()) @map("created_at")
-  mandates              Mandate[]
-  membershipSnapshots   ParliamentaryMembershipSnapshot[]
-  parliamentSnapshots   ParliamentActivitySnapshot[]
-  parliamentDeputySnapshots ParliamentDeputySnapshot[]
-  sessions              ParliamentarySession[]
-  attendanceRecords     AttendanceRecord[]
-  initiatives           ParliamentaryInitiative[]
-  voteEvents            VoteEvent[]
-  voteRecords           VoteRecord[]
-  laws                  Law[]
-  governmentProgrammes  GovernmentProgramme[]
-  promiseEvidence       PromiseEvidence[]
-  promiseReviews        PromiseReview[]
-  publicStatements      PublicStatement[]
-  comparisons           StatementVoteComparison[]
-  assetDeclarations     AssetDeclarationMetadata[]
-  aiSummaries           AiSummary[]
-  localItems            LocalTransparencyItem[]
-  organisations         Organisation[]
-  protectedIdentifiers  ProtectedIdentifierDigest[]
-  baseStagingBatches    BaseStagingBatch[]
-  publicContracts       PublicContract[]
-  contractMatchReviews  ContractMatchReview[]
-  interestRelationships InterestRelationship[]
-  judicialCases         JudicialCase[]
-  newsArticles          NewsArticle[]
-  newsEvidence          NewsEvidence[]
-  citizenImpactRules    CitizenImpactRule[]
-  citizenAlerts         CitizenAlert[]
-  rightsOfReply         RightOfReply[]
-  publicationReviews    DataPublicationReview[]
-  archiveAttestations   SourceArchiveAttestation[]
-  editorialCases        EditorialCase[]
+  id                         String                            @id @default(cuid())
+  publisher                  SourcePublisher
+  kind                       DocumentKind
+  title                      String
+  officialIdentifier         String?                           @map("official_identifier")
+  url                        String
+  retrievedAt                DateTime                          @map("retrieved_at")
+  publishedAt                DateTime?                         @map("published_at")
+  contentSha256              String                            @map("content_sha256")
+  mimeType                   String?                           @map("mime_type")
+  rawStorageKey              String?                           @map("raw_storage_key")
+  parserVersion              String?                           @map("parser_version")
+  createdAt                  DateTime                          @default(now()) @map("created_at")
+  mandates                   Mandate[]
+  parliamentaryOfficePeriods ParliamentaryOfficePeriod[]
+  membershipSnapshots        ParliamentaryMembershipSnapshot[]
+  parliamentSnapshots        ParliamentActivitySnapshot[]
+  parliamentDeputySnapshots  ParliamentDeputySnapshot[]
+  sessions                   ParliamentarySession[]
+  attendanceRecords          AttendanceRecord[]
+  initiatives                ParliamentaryInitiative[]
+  voteEvents                 VoteEvent[]
+  voteRecords                VoteRecord[]
+  laws                       Law[]
+  governmentProgrammes       GovernmentProgramme[]
+  promiseEvidence            PromiseEvidence[]
+  promiseReviews             PromiseReview[]
+  publicStatements           PublicStatement[]
+  comparisons                StatementVoteComparison[]
+  assetDeclarations          AssetDeclarationMetadata[]
+  aiSummaries                AiSummary[]
+  localItems                 LocalTransparencyItem[]
+  organisations              Organisation[]
+  protectedIdentifiers       ProtectedIdentifierDigest[]
+  baseStagingBatches         BaseStagingBatch[]
+  publicContracts            PublicContract[]
+  contractMatchReviews       ContractMatchReview[]
+  interestRelationships      InterestRelationship[]
+  judicialCases              JudicialCase[]
+  newsArticles               NewsArticle[]
+  newsEvidence               NewsEvidence[]
+  citizenImpactRules         CitizenImpactRule[]
+  citizenAlerts              CitizenAlert[]
+  rightsOfReply              RightOfReply[]
+  publicationReviews         DataPublicationReview[]
+  archiveAttestations        SourceArchiveAttestation[]
+  editorialCases             EditorialCase[]
 
   @@unique([url, contentSha256])
   @@index([publisher, kind, publishedAt])

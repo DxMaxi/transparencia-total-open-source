@@ -95,6 +95,7 @@ export function PoliticianProfile({ profile }: { profile: PoliticianProfileData 
     ["Identidade", profile.coverage.identity],
     ["Observações parlamentares", profile.coverage.membershipObservations],
     ["Mandatos datados", profile.coverage.mandates],
+    ["Cargos parlamentares", profile.coverage.parliamentaryOffices],
     ["Presenças", profile.coverage.attendance],
     ["Iniciativas individuais", profile.coverage.initiatives],
     ["Votos nominais", profile.coverage.nominalVotes],
@@ -164,7 +165,7 @@ export function PoliticianProfile({ profile }: { profile: PoliticianProfileData 
       <section className="profile-two-column">
         <div className="card profile-section">
           <span className="eyebrow">Períodos com datas oficiais</span>
-          <h2>Mandatos e cargos</h2>
+          <h2>Mandatos parlamentares</h2>
           {profile.mandates.length ? (
             <ol className="profile-timeline">
               {profile.mandates.map((mandate) => (
@@ -209,6 +210,47 @@ export function PoliticianProfile({ profile }: { profile: PoliticianProfileData 
         </div>
 
         <div className="card profile-section">
+          <span className="eyebrow">Funções com CarId oficial e revisão própria</span>
+          <h2>Cargos parlamentares observados</h2>
+          <p className="profile-section-intro">
+            Estes cargos são apresentados separadamente dos mandatos. O período corresponde ao
+            que a fonte oficial indica e não prova competências atuais fora dessas datas.
+          </p>
+          {profile.parliamentaryOffices.length ? (
+            <ol className="profile-timeline">
+              {profile.parliamentaryOffices.map((office) => (
+                <li key={office.id}>
+                  <div>
+                    <strong>{office.title}</strong>
+                    <span>{office.startedAt} — {office.endedAt ?? "fim não indicado"}</span>
+                    <small>
+                      {office.legislature} · {office.constituency} · CarId {office.officialOfficeId}
+                    </small>
+                  </div>
+                  <div className="profile-timeline__proof">
+                    <small>Revisto em {office.verifiedAt}</small>
+                    <SourceLink source={office.source} compact />
+                    <small>Fonte recolhida em {proofDate(office.source.retrievedAt)}</small>
+                    <code title={`SHA-256 da fonte ${office.source.sha256}`}>
+                      Fonte SHA-256 {office.source.sha256 ?? "dados indisponíveis"}
+                    </code>
+                    <code title={`SHA-256 do período ${office.sourcePeriodSha256}`}>
+                      Período SHA-256 {office.sourcePeriodSha256}
+                    </code>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <div className="profile-unavailable-inline">
+              <strong>Dados de cargos indisponíveis</strong>
+              <p>{profile.coverage.parliamentaryOffices.note}</p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="card profile-section">
           <span className="eyebrow">Fotografias oficiais sucessivas</span>
           <h2>Pertença parlamentar observada</h2>
           <p className="profile-section-intro">
@@ -241,7 +283,6 @@ export function PoliticianProfile({ profile }: { profile: PoliticianProfileData 
               <p>{profile.coverage.membershipObservations.note}</p>
             </div>
           )}
-        </div>
       </section>
 
       <section className="card profile-section">

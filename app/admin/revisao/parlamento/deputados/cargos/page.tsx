@@ -1,10 +1,14 @@
 import Link from "next/link";
-import { createPoliticianOfficeProposal } from "../../../actions";
-import { editorialFetch } from "@/lib/editorial-api";
+import {
+  createPoliticianOfficeProposal,
+  publishPoliticianOffice,
+} from "../../../actions";
+import { editorialFetch, getEditorialContext } from "@/lib/editorial-api";
 import {
   STATE_LABELS,
   type PoliticianOfficeEditorialCandidate,
   type PoliticianOfficeEditorialCandidateList,
+  type PoliticianOfficePublicationPreview,
 } from "@/lib/editorial-types";
 
 const dateFormatter = new Intl.DateTimeFormat("pt-PT", {
@@ -35,6 +39,18 @@ function pageHref({
   return `/admin/revisao/parlamento/deputados/cargos?${params.toString()}`;
 }
 
+async function loadPublicationPreview(
+  caseId: string,
+): Promise<PoliticianOfficePublicationPreview | null> {
+  try {
+    return await editorialFetch<PoliticianOfficePublicationPreview>(
+      `/parliament/office-cases/${encodeURIComponent(caseId)}/publication`,
+    );
+  } catch {
+    return null;
+  }
+}
+
 export default async function PoliticianOfficeEditorialPage({
   searchParams,
 }: {
@@ -43,6 +59,7 @@ export default async function PoliticianOfficeEditorialPage({
     q?: string;
     offset?: string;
     erro?: string;
+    sucesso?: string;
   }>;
 }) {
   const input = await searchParams;
@@ -59,12 +76,22 @@ export default async function PoliticianOfficeEditorialPage({
   const catalogue = await editorialFetch<PoliticianOfficeEditorialCandidateList>(
     `/parliament/office-candidates?${params.toString()}`,
   );
+  const { staff } = await getEditorialContext();
+  const publicationPreviews = new Map<string, PoliticianOfficePublicationPreview>();
+  await Promise.all(
+    catalogue.items.map(async (candidate) => {
+      if (candidate.existing_case?.state === "APPROVED" && candidate.proposal_eligible) {
+        const preview = await loadPublicationPreview(candidate.existing_case.id);
+        if (preview) publicationPreviews.set(candidate.existing_case.id, preview);
+      }
+    }),
+  );
 
   return (
     <div className="admin-page parliament-editorial-page">
       <header className="admin-page-heading">
         <div>
-          <p className="eyebrow">V5.36 · cargos parlamentares observados</p>
+          <p className="eyebrow">V5.36–V5.37 · cargos parlamentares observados</p>
           <h1>Preparar cargos para revisão humana</h1>
           <p>
             Cada linha conserva o CarId, o título e o intervalo fornecidos pela Assembleia. A
@@ -81,6 +108,12 @@ export default async function PoliticianOfficeEditorialPage({
       {input.erro ? (
         <p className="private-message private-message--error" role="alert">
           {input.erro}
+        </p>
+      ) : null}
+
+      {input.sucesso === "cargo-publicado" ? (
+        <p className="private-message private-message--success" role="status">
+          Cargo publicado com CarId, período, revisão própria e histórico append-only.
         </p>
       ) : null}
 
@@ -122,6 +155,12 @@ export default async function PoliticianOfficeEditorialPage({
             <OfficeCandidateCard
               candidate={candidate}
               key={`${candidate.observation_id}-${candidate.source_period_sha256}`}
+              isAdmin={staff.role === "ADMIN"}
+              publicationPreview={
+                candidate.existing_case
+                  ? (publicationPreviews.get(candidate.existing_case.id) ?? null)
+                  : null
+              }
             />
           ))}
         </section>
@@ -154,7 +193,15 @@ export default async function PoliticianOfficeEditorialPage({
   );
 }
 
-function OfficeCandidateCard({ candidate }: { candidate: PoliticianOfficeEditorialCandidate }) {
+function OfficeCandidateCard({
+  candidate,
+  publicationPreview,
+  isAdmin,
+}: {
+  candidate: PoliticianOfficeEditorialCandidate;
+  publicationPreview: PoliticianOfficePublicationPreview | null;
+  isAdmin: boolean;
+}) {
   return (
     <article className="parliament-snapshot-card">
       <header>
@@ -202,16 +249,25 @@ function OfficeCandidateCard({ candidate }: { candidate: PoliticianOfficeEditori
       ) : null}
 
       {candidate.existing_case ? (
-        <section className="parliament-proposal-card parliament-proposal-card--existing">
-          <p className="eyebrow">Cargo observado</p>
-          <h3>Processo privado já existente</h3>
-          <p>
-            {STATE_LABELS[candidate.existing_case.state]} · revisão {candidate.existing_case.revision}
-          </p>
-          <Link className="button" href={`/admin/revisao/${candidate.existing_case.id}`}>
-            Abrir processo
-          </Link>
-        </section>
+        <>
+          <section className="parliament-proposal-card parliament-proposal-card--existing">
+            <p className="eyebrow">Cargo observado</p>
+            <h3>Processo privado já existente</h3>
+            <p>
+              {STATE_LABELS[candidate.existing_case.state]} · revisão {candidate.existing_case.revision}
+            </p>
+            <Link className="button" href={`/admin/revisao/${candidate.existing_case.id}`}>
+              Abrir processo
+            </Link>
+          </section>
+          {candidate.existing_case.state === "APPROVED" ? (
+            <OfficePublicationAction
+              candidate={candidate}
+              preview={publicationPreview}
+              isAdmin={isAdmin}
+            />
+          ) : null}
+        </>
       ) : (
         <form action={createPoliticianOfficeProposal} className="parliament-proposal-card">
           <input type="hidden" name="observation_id" value={candidate.observation_id} />
@@ -246,5 +302,106 @@ function OfficeCandidateCard({ candidate }: { candidate: PoliticianOfficeEditori
         </form>
       )}
     </article>
+  );
+}
+
+function OfficePublicationAction({
+  candidate,
+  preview,
+  isAdmin,
+}: {
+  candidate: PoliticianOfficeEditorialCandidate;
+  preview: PoliticianOfficePublicationPreview | null;
+  isAdmin: boolean;
+}) {
+  if (!preview) {
+    return (
+      <section className="parliament-proposal-card">
+        <strong>Prova de publicação indisponível.</strong>
+        <p>O processo continua aprovado e privado; nenhuma ação pública é apresentada.</p>
+      </section>
+    );
+  }
+  return (
+    <form
+      action={publishPoliticianOffice}
+      className="parliament-proposal-card parliament-publication-card"
+    >
+      <input type="hidden" name="legislature" value={candidate.legislature} />
+      <input type="hidden" name="expected_case_id" value={preview.case_id} />
+      <input type="hidden" name="expected_version_id" value={preview.version_id} />
+      <input type="hidden" name="expected_version_sha256" value={preview.version_sha256} />
+      <input type="hidden" name="expected_source_sha256" value={preview.source.content_sha256} />
+      <input
+        type="hidden"
+        name="expected_period_sha256"
+        value={preview.source_period_sha256}
+      />
+      <input
+        type="hidden"
+        name="expected_publication_proof_sha256"
+        value={preview.publication_proof_sha256 ?? ""}
+      />
+      <div>
+        <p className="eyebrow">V5.37 · porta pública específica</p>
+        <h3>Publicar este cargo parlamentar</h3>
+        <p>{preview.publication_rule}</p>
+      </div>
+      <dl>
+        <div><dt>Cargos a criar</dt><dd>{preview.public_effect.offices_to_create}</dd></div>
+        <div><dt>Revisões próprias</dt><dd>{preview.public_effect.office_reviews_to_append}</dd></div>
+        <div><dt>Mandatos a criar</dt><dd>{preview.public_effect.mandates_to_create}</dd></div>
+        <div><dt>Ligações partidárias</dt><dd>{preview.public_effect.party_links_to_create}</dd></div>
+      </dl>
+      {preview.blockers.length ? (
+        <ul className="parliament-limitations">
+          {preview.blockers.map((blocker) => <li key={blocker.code}>{blocker.detail}</li>)}
+        </ul>
+      ) : null}
+      <label>
+        Fundamentação editorial privada
+        <textarea name="rationale" minLength={20} maxLength={1850} required />
+      </label>
+      <label>
+        Fundamentação pública factual
+        <textarea name="public_rationale" minLength={20} maxLength={500} required />
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_source_reviewed" type="checkbox" required />
+        <span>Voltei a comparar a fonte oficial, o arquivo e os SHA-256.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_human_office_interpretation" type="checkbox" required />
+        <span>Confirmo humanamente o título e o período deste cargo.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_exact_official_ids_only" type="checkbox" required />
+        <span>Confirmo as correspondências exclusivas pelos DepId e CarId oficiais.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_no_mandate_or_party_inference" type="checkbox" required />
+        <span>Confirmo que não será criado mandato nem inferida filiação partidária.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_append_only_publication" type="checkbox" required />
+        <span>Confirmo que correções e retiradas acrescentam histórico sem apagar esta versão.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_publication" type="checkbox" required />
+        <span>Confirmo a publicação deste cargo e da respetiva prova.</span>
+      </label>
+      {!isAdmin ? <p>A publicação exige uma conta ADMIN com MFA.</p> : null}
+      <button
+        className="button button--primary"
+        type="submit"
+        disabled={!isAdmin || !preview.eligible || !preview.publication_proof_sha256}
+      >
+        Publicar cargo com prova
+      </button>
+      <p className="admin-form-help">
+        A retirada append-only será acrescentada na V5.38 antes de qualquer ativação real em
+        staging; esta ação nunca publica automaticamente.
+      </p>
+    </form>
   );
 }

@@ -96,6 +96,6 @@ test("V5.35 closes the mandate gate without activating real data", async () => {
   assert.match(documentation, /não executa[\s\S]*dados reais/i);
   assert.match(checklist, /\[x\] V5\.35 — retirada transacional e imutável/);
   assert.match(plan, /V5_POLITICIAN_MANDATE_WITHDRAWAL\.md/);
-  assert.match(readme, /V5\.1 a V5\.36 preparadas/);
+  assert.match(readme, /V5\.1 a V5\.37 preparadas/);
   assert.doesNotMatch(readme, /V5\.1 a V5\.34 preparadas/);
 });

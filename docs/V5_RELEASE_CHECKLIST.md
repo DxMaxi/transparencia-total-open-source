@@ -60,6 +60,9 @@ continuam a exigir autorizações separadas.
   decisão e evento, preserva a linha e a publicação originais e recua tudo perante divergência.
 - [x] V5.36 — cada `DepCargo` com DepId, CarId, círculo, período, fonte e SHA-256 exatos pode criar
   apenas uma proposta privada `PENDING`; aprovação ainda não cria cargo, mandato ou publicação.
+- [x] V5.37 — publicação transacional ADMIN+MFA acrescenta um cargo numa estrutura própria,
+  revisão `PARLIAMENT_OFFICE`, auditoria, decisão e evento append-only; cria zero mandatos e zero
+  filiações e a ficha pública mantém os dois conceitos separados.
 - [x] Existe um [conjunto de issues de conclusão](https://github.com/DxMaxi/transparencia-total-open-source/issues/58) para todos os itens ainda abertos.
 
 ## B. Estabilização pública

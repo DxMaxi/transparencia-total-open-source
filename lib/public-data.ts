@@ -279,6 +279,19 @@ type RawProfile = RawPerson & {
     source_period_sha256?: string | null;
     source: RawSource;
   }>;
+  parliamentary_offices?: Array<{
+    id: string;
+    official_office_id: string;
+    title: string;
+    legislature: string;
+    constituency_source_id: string;
+    constituency: string;
+    started_at: string;
+    ended_at?: string | null;
+    verified_at: string;
+    source_period_sha256: string;
+    source: RawSource;
+  }>;
   attendance?: {
     available: boolean;
     record_count: number;
@@ -334,6 +347,7 @@ type RawProfile = RawPerson & {
     identity: RawCoverageArea;
     membership_observations: RawCoverageArea;
     mandates: RawCoverageArea;
+    parliamentary_offices?: RawCoverageArea | null;
     attendance: RawCoverageArea;
     initiatives: RawCoverageArea;
     nominal_votes: RawCoverageArea;
@@ -706,6 +720,9 @@ function legacyProfileCoverage(
     },
     mandates: unavailableCoverage(
       "A API em produção ainda não expõe períodos de mandato revistos individualmente.",
+    ),
+    parliamentaryOffices: unavailableCoverage(
+      "A API em produção ainda não expõe períodos de cargo revistos individualmente.",
     ),
     attendance: {
       state: attendanceState,
@@ -1852,6 +1869,11 @@ export async function loadPublicPolitician(
             result.data.coverage.membership_observations,
           ),
           mandates: mapCoverageArea(result.data.coverage.mandates),
+          parliamentaryOffices: result.data.coverage.parliamentary_offices
+            ? mapCoverageArea(result.data.coverage.parliamentary_offices)
+            : unavailableCoverage(
+                "A API pública ainda não expõe a cobertura específica de cargos parlamentares.",
+              ),
           attendance: mapCoverageArea(result.data.coverage.attendance),
           initiatives: mapCoverageArea(result.data.coverage.initiatives),
           nominalVotes: mapCoverageArea(result.data.coverage.nominal_votes),
@@ -1922,6 +1944,19 @@ export async function loadPublicPolitician(
           endedAt: item.ended_at ? formatDate(item.ended_at) : undefined,
           verifiedAt: formatDate(item.verified_at),
           sourcePeriodSha256: item.source_period_sha256 ?? undefined,
+          source: toOfficialSource(item.source),
+        })),
+        parliamentaryOffices: (result.data.parliamentary_offices ?? []).map((item) => ({
+          id: item.id,
+          officialOfficeId: item.official_office_id,
+          title: item.title,
+          legislature: item.legislature,
+          constituencySourceId: item.constituency_source_id,
+          constituency: item.constituency,
+          startedAt: formatDate(item.started_at),
+          endedAt: item.ended_at ? formatDate(item.ended_at) : undefined,
+          verifiedAt: formatDate(item.verified_at),
+          sourcePeriodSha256: item.source_period_sha256,
           source: toOfficialSource(item.source),
         })),
         attendance,

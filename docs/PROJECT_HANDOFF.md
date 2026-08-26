@@ -147,6 +147,14 @@ confirmações fechadas; o servidor reconstrói a proposta `PARLIAMENT_OFFICE_PE
 zero cargos, mandatos, revisões públicas ou eventos. A publicação e a retirada de cargos continuam
 pendentes e terão de ser portas append-only próprias antes de qualquer ensaio operacional.
 
+A V5.37 acrescenta a publicação específica desses cargos sem os converter em mandatos. Um
+`ADMIN` com MFA volta a provar versão, fonte, arquivo, `DepId`, `CarId`, círculo e período antes de
+acrescentar o cargo, a revisão `PARLIAMENT_OFFICE`, a auditoria, a decisão e o evento `PUBLISH`
+numa única transação. A consulta pública exige que as revisões mais recentes da identidade e do
+cargo continuem positivas e apresenta o cargo numa secção própria com fonte, data e SHA-256. A
+V5.37 não executa migrações ou publicações reais; a retirada append-only V5.38 permanece obrigatória
+antes de qualquer ativação operacional.
+
 A melhoria de UX iniciada em agosto de 2026 faz parte da estabilização/conclusão da **V5**. Não deve ser tratada como início de uma V6 nem como autorização para reescrever o projeto.
 
 ## 5. Baseline técnico conhecido

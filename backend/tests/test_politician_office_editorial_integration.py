@@ -13,13 +13,17 @@ from app.models.archive import PrivateRawDocument
 from app.models.editorial import (
     EditorialAction,
     PoliticianOfficeEditorialProposalRequest,
+    PoliticianOfficePublicationRequest,
     StaffRole,
     StaffSession,
 )
-from app.repositories.editorial import EditorialRepository
+from app.repositories.editorial import EditorialConflictError, EditorialRepository
 from app.repositories.official_index_staging import OfficialIndexStagingRepository
 from app.repositories.politician_office_editorial import (
     PoliticianOfficeEditorialRepository,
+)
+from app.repositories.politician_office_publication import (
+    PoliticianOfficePublicationRepository,
 )
 
 pytestmark = pytest.mark.skipif(
@@ -177,7 +181,7 @@ async def test_exact_official_office_creates_only_an_idempotent_private_case(
             """
             INSERT INTO staff_profiles
                 (id, auth_user_id, public_alias, role, active, created_at, updated_at)
-            VALUES ($1, $2, $3, 'REVIEWER', TRUE, NOW(), NOW())
+            VALUES ($1, $2, $3, 'ADMIN', TRUE, NOW(), NOW())
             """,
             staff_id,
             auth_user_id,
@@ -194,7 +198,7 @@ async def test_exact_official_office_creates_only_an_idempotent_private_case(
         staff_id=staff_id,
         auth_user_id=auth_user_id,
         public_alias=alias,
-        role=StaffRole.REVIEWER,
+        role=StaffRole.ADMIN,
         assurance_level="aal2",
         mfa_required=False,
     )
@@ -248,7 +252,7 @@ async def test_exact_official_office_creates_only_an_idempotent_private_case(
 
     case_id = str(created["case"]["id"])
     editorial = EditorialRepository(repository.pool)
-    await editorial.transition(
+    approved = await editorial.transition(
         case_id=case_id,
         action=EditorialAction.START_REVIEW,
         expected_revision=1,
@@ -289,3 +293,165 @@ async def test_exact_official_office_creates_only_an_idempotent_private_case(
     assert reviews_after == reviews_before
     assert publication_events == 0
     assert decisions == 3
+
+    publisher = PoliticianOfficePublicationRepository(repository.pool)
+    preview = await publisher.inspect(case_id=case_id)
+    assert preview["eligible"] is True, preview["blockers"]
+    assert preview["publication_proof_sha256"] is not None
+    public_effect = preview["public_effect"]
+    assert isinstance(public_effect, dict)
+    assert public_effect["offices_to_create"] == 1
+    assert public_effect["mandates_to_create"] == 0
+    assert public_effect["party_links_to_create"] == 0
+    payload = PoliticianOfficePublicationRequest(
+        expected_case_id=case_id,
+        expected_version_id=str(approved["current_version_id"]),
+        expected_version_sha256=str(preview["version_sha256"]),
+        expected_source_sha256=content_sha256,
+        expected_period_sha256=str(candidate["source_period_sha256"]),
+        expected_publication_proof_sha256=str(preview["publication_proof_sha256"]),
+        rationale="A fonte, o DepId, o CarId, o círculo e as datas foram confirmados.",
+        public_rationale="Cargo confirmado na ficha parlamentar oficial arquivada.",
+        confirm_source_reviewed=True,
+        confirm_human_office_interpretation=True,
+        confirm_exact_official_ids_only=True,
+        confirm_no_mandate_or_party_inference=True,
+        confirm_append_only_publication=True,
+        confirm_publication=True,
+    )
+    async with repository.pool.acquire() as connection:
+        counts_before_failed_publication = {
+            "offices": int(
+                await connection.fetchval(
+                    "SELECT COUNT(*) FROM parliamentary_office_periods "
+                    "WHERE source_observation_id = $1",
+                    observation_id,
+                )
+            ),
+            "reviews": int(
+                await connection.fetchval(
+                    "SELECT COUNT(*) FROM data_publication_reviews "
+                    "WHERE entity_type = 'PARLIAMENT_OFFICE'"
+                )
+            ),
+            "audits": int(
+                await connection.fetchval(
+                    "SELECT COUNT(*) FROM audit_events WHERE entity_type = 'PARLIAMENT_OFFICE'"
+                )
+            ),
+            "events": int(
+                await connection.fetchval(
+                    "SELECT COUNT(*) FROM editorial_publication_events WHERE case_id = $1",
+                    case_id,
+                )
+            ),
+        }
+    with pytest.raises(EditorialConflictError):
+        await publisher.publish(
+            case_id=case_id,
+            payload=payload.model_copy(update={"expected_publication_proof_sha256": "0" * 64}),
+            actor=actor,
+        )
+    async with repository.pool.acquire() as connection:
+        counts_after_failed_publication = {
+            "offices": int(
+                await connection.fetchval(
+                    "SELECT COUNT(*) FROM parliamentary_office_periods "
+                    "WHERE source_observation_id = $1",
+                    observation_id,
+                )
+            ),
+            "reviews": int(
+                await connection.fetchval(
+                    "SELECT COUNT(*) FROM data_publication_reviews "
+                    "WHERE entity_type = 'PARLIAMENT_OFFICE'"
+                )
+            ),
+            "audits": int(
+                await connection.fetchval(
+                    "SELECT COUNT(*) FROM audit_events WHERE entity_type = 'PARLIAMENT_OFFICE'"
+                )
+            ),
+            "events": int(
+                await connection.fetchval(
+                    "SELECT COUNT(*) FROM editorial_publication_events WHERE case_id = $1",
+                    case_id,
+                )
+            ),
+        }
+    assert counts_after_failed_publication == counts_before_failed_publication
+
+    published = await publisher.publish(case_id=case_id, payload=payload, actor=actor)
+    office_id = str(published["office_id"])
+    assert published["state"] == "PUBLISHED"
+    assert published["mandate_created"] is False
+    assert published["party_link_created"] is False
+    with pytest.raises(EditorialConflictError):
+        await publisher.publish(case_id=case_id, payload=payload, actor=actor)
+
+    async with repository.pool.acquire() as connection:
+        office = await connection.fetchrow(
+            """
+            SELECT person_id, source_observation_id, source_period_ordinal,
+                   official_office_id, title, legislature,
+                   constituency_source_id, constituency, started_at, ended_at,
+                   source_document_id, source_period_sha256
+            FROM parliamentary_office_periods
+            WHERE id = $1
+            """,
+            office_id,
+        )
+        assert office is not None
+        assert office["person_id"] == person_id
+        assert office["source_observation_id"] == observation_id
+        assert office["source_period_ordinal"] == 1
+        assert office["official_office_id"] == period["source_id"]
+        assert office["title"] == period["title"]
+        assert office["constituency_source_id"] == "circle-porto"
+        assert office["source_document_id"] == source_document_id
+        assert office["source_period_sha256"] == candidate["source_period_sha256"]
+        assert (
+            await connection.fetchval(
+                "SELECT COUNT(*) FROM data_publication_reviews "
+                "WHERE entity_type = 'PARLIAMENT_OFFICE' "
+                "AND entity_id = $1 AND publishable = TRUE",
+                office_id,
+            )
+            == 1
+        )
+        assert (
+            await connection.fetchval(
+                "SELECT COUNT(*) FROM audit_events "
+                "WHERE entity_type = 'PARLIAMENT_OFFICE' "
+                "AND entity_id = $1 AND action = 'PUBLISHED'",
+                office_id,
+            )
+            == 1
+        )
+        assert (
+            await connection.fetchval(
+                "SELECT COUNT(*) FROM editorial_publication_events "
+                "WHERE case_id = $1 AND target_type = 'PARLIAMENT_OFFICE' "
+                "AND target_id = $2",
+                case_id,
+                office_id,
+            )
+            == 1
+        )
+        assert await connection.fetchval("SELECT COUNT(*) FROM mandates") == mandates_before
+        with pytest.raises(asyncpg.PostgresError, match="append-only"):
+            async with connection.transaction():
+                await connection.execute(
+                    "UPDATE parliamentary_office_periods SET title = 'Alterado' WHERE id = $1",
+                    office_id,
+                )
+
+    public_profile = await repository.get_public_politician(f"pessoa-{suffix}")
+    assert public_profile is not None
+    assert public_profile["mandates"] == []
+    assert len(public_profile["parliamentary_offices"]) == 1
+    assert public_profile["parliamentary_offices"][0]["official_office_id"] == period["source_id"]
+    assert (
+        public_profile["parliamentary_offices"][0]["source_period_sha256"]
+        == candidate["source_period_sha256"]
+    )
