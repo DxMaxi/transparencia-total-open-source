@@ -52,6 +52,9 @@ test("V5.35 withdraws one exact mandate and preserves every historical row", asy
 
   assert.match(repository, /pg_advisory_xact_lock/);
   assert.match(repository, /connection\.transaction\(\)/);
+  assert.match(repository, /publication_audit\.before_json AS publication_audit_before_json/);
+  assert.match(repository, /audit_before\.get\("case_reference_sha256"\)/);
+  assert.match(repository, /audit_before\.get\("version_sha256"\)/);
   assert.match(repository, /VALUES \(\$1, 'MANDATE',[\s\S]*FALSE/);
   assert.match(repository, /'MANDATE', \$2, 'WITHDRAWN'/);
   assert.match(repository, /EditorialAction\.WITHDRAW/);

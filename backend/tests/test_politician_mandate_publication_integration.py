@@ -366,7 +366,7 @@ async def test_admin_publishes_one_exact_append_only_mandate_or_nothing(
 
     withdrawer = PoliticianMandateWithdrawalRepository(repository.pool)
     withdrawal_preview = await withdrawer.inspect(case_id=case_id)
-    assert withdrawal_preview["eligible"] is True
+    assert withdrawal_preview["eligible"] is True, withdrawal_preview["blockers"]
     assert withdrawal_preview["withdrawal_proof_sha256"] is not None
     withdrawal_effect = withdrawal_preview["public_effect"]
     assert isinstance(withdrawal_effect, dict)

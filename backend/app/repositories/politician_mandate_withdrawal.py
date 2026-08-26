@@ -153,6 +153,7 @@ class PoliticianMandateWithdrawalRepository:
                    mandate_review.publishable AS mandate_publishable,
                    mandate_review.reviewed_at AS mandate_reviewed_at,
                    publication_audit.id AS publication_audit_event_id,
+                   publication_audit.before_json AS publication_audit_before_json,
                    publication_audit.after_json AS publication_audit_after_json,
                    publication_audit.created_at AS publication_audit_created_at
             FROM editorial_cases AS editorial_case
@@ -231,7 +232,7 @@ class PoliticianMandateWithdrawalRepository:
                 LIMIT 1
             ) AS mandate_review ON TRUE
             LEFT JOIN LATERAL (
-                SELECT audit.id, audit.after_json, audit.created_at
+                SELECT audit.id, audit.before_json, audit.after_json, audit.created_at
                 FROM audit_events AS audit
                 WHERE audit.entity_type = 'MANDATE'
                   AND audit.entity_id = mandate.id
@@ -433,8 +434,13 @@ class PoliticianMandateWithdrawalRepository:
                 "O evento já não aponta para esta versão e alvo.",
             )
 
+        audit_before = _json_object_or_none(case["publication_audit_before_json"])
         audit_after = _json_object_or_none(case["publication_audit_after_json"])
-        if case["publication_audit_event_id"] is None or audit_after is None:
+        if (
+            case["publication_audit_event_id"] is None
+            or audit_before is None
+            or audit_after is None
+        ):
             block(
                 "PUBLICATION_AUDIT_MISSING",
                 "A auditoria da publicação original está incompleta.",
@@ -457,8 +463,11 @@ class PoliticianMandateWithdrawalRepository:
             ended_at=source_period["ends_at"],
             public_effect=_PUBLICATION_EFFECT,
         )
-        if audit_after is not None:
+        if audit_before is not None and audit_after is not None:
             audit_checks = (
+                (audit_before.get("publishable"), False),
+                (audit_before.get("case_reference_sha256"), _reference_sha256(case_id)),
+                (audit_before.get("version_sha256"), str(case["normalized_sha256"])),
                 (audit_after.get("source_sha256"), source["content_sha256"]),
                 (audit_after.get("source_period_sha256"), period_sha256),
                 (
@@ -469,8 +478,6 @@ class PoliticianMandateWithdrawalRepository:
                     audit_after.get("official_deputy_id_reference_sha256"),
                     _reference_sha256(candidate["official_deputy_id"]),
                 ),
-                (audit_after.get("case_reference_sha256"), _reference_sha256(case_id)),
-                (audit_after.get("version_sha256"), str(case["normalized_sha256"])),
                 (audit_after.get("publication_proof_sha256"), publication_proof_sha256),
                 (audit_after.get("party_link_created"), False),
             )
