@@ -15,6 +15,7 @@ from app.models.editorial import (
     EditorialAction,
     PoliticianMandateEditorialProposalRequest,
     PoliticianMandatePublicationRequest,
+    PoliticianMandateWithdrawalRequest,
     StaffRole,
     StaffSession,
 )
@@ -25,6 +26,9 @@ from app.repositories.politician_mandate_editorial import (
 )
 from app.repositories.politician_mandate_publication import (
     PoliticianMandatePublicationRepository,
+)
+from app.repositories.politician_mandate_withdrawal import (
+    PoliticianMandateWithdrawalRepository,
 )
 
 pytestmark = pytest.mark.skipif(
@@ -65,8 +69,9 @@ async def test_admin_publishes_one_exact_append_only_mandate_or_nothing(
 ) -> None:
     assert repository.pool is not None
     suffix = uuid.uuid4().hex[:12].translate(str.maketrans("0123456789", "ghijklmnop"))
+    legislature = f"TEST-{suffix}"
     now = datetime.now(UTC).replace(microsecond=0)
-    content = json.dumps({"fixture": suffix, "legislature": "XVII"}).encode()
+    content = json.dumps({"fixture": suffix, "legislature": legislature}).encode()
     content_sha256 = hashlib.sha256(content).hexdigest()
     stored = await repository.store_index(
         source_name=f"PARLIAMENT_MANDATE_PUBLICATION_{suffix}",
@@ -109,11 +114,12 @@ async def test_admin_publishes_one_exact_append_only_mandate_or_nothing(
                  normalised_sha256, collected_at, deputy_count,
                  group_period_count, situation_period_count, office_period_count,
                  created_at)
-            VALUES ($1, $2, 'XVII', 'parliament-historical-deputies-v1',
-                    $3, $4, 1, 0, 1, 0, NOW())
+            VALUES ($1, $2, $3, 'parliament-historical-deputies-v1',
+                    $4, $5, 1, 0, 1, 0, NOW())
             """,
             snapshot_id,
             source_document_id,
+            legislature,
             "a" * 64,
             now.replace(tzinfo=None),
         )
@@ -151,10 +157,11 @@ async def test_admin_publishes_one_exact_append_only_mandate_or_nothing(
                 (id, person_id, parliamentary_name, full_name, party_id,
                  legislature, constituency, observed_at, source_document_id)
             VALUES ($1, $2, 'Pessoa Deputada', 'Pessoa Deputada de Integração', NULL,
-                    'XVII', 'Porto', $3, $4)
+                    $3, 'Porto', $4, $5)
             """,
             membership_id,
             person_id,
+            legislature,
             now.replace(tzinfo=None),
             source_document_id,
         )
@@ -198,7 +205,7 @@ async def test_admin_publishes_one_exact_append_only_mandate_or_nothing(
     )
     candidate_repository = PoliticianMandateEditorialRepository(repository.pool)
     catalogue = await candidate_repository.list_candidates(
-        legislature="XVII",
+        legislature=legislature,
         query=official_deputy_id,
         limit=20,
         offset=0,
@@ -356,3 +363,126 @@ async def test_admin_publishes_one_exact_append_only_mandate_or_nothing(
     assert (
         public_profile["mandates"][0]["source_period_sha256"] == candidate["source_period_sha256"]
     )
+
+    withdrawer = PoliticianMandateWithdrawalRepository(repository.pool)
+    withdrawal_preview = await withdrawer.inspect(case_id=case_id)
+    assert withdrawal_preview["eligible"] is True, withdrawal_preview["blockers"]
+    assert withdrawal_preview["withdrawal_proof_sha256"] is not None
+    withdrawal_effect = withdrawal_preview["public_effect"]
+    assert isinstance(withdrawal_effect, dict)
+    assert withdrawal_effect["exact_mandate_public_after_withdrawal"] is False
+    assert withdrawal_effect["mandate_row_preserved"] is True
+    withdrawal_payload = PoliticianMandateWithdrawalRequest(
+        expected_case_id=case_id,
+        expected_revision=int(withdrawal_preview["case_revision"]),
+        expected_version_id=str(withdrawal_preview["version_id"]),
+        expected_version_sha256=str(withdrawal_preview["version_sha256"]),
+        expected_mandate_id=mandate_id,
+        expected_source_sha256=content_sha256,
+        expected_period_sha256=str(candidate["source_period_sha256"]),
+        expected_publication_proof_sha256=str(withdrawal_preview["publication_proof_sha256"]),
+        expected_withdrawal_proof_sha256=str(withdrawal_preview["withdrawal_proof_sha256"]),
+        expected_public_review_id=str(withdrawal_preview["public_review_id"]),
+        expected_publication_audit_event_id=str(withdrawal_preview["publication_audit_event_id"]),
+        expected_publication_event_id=str(withdrawal_preview["publication_event_id"]),
+        expected_publication_event_sha256=str(withdrawal_preview["publication_event_sha256"]),
+        expected_public_effect_sha256=str(withdrawal_preview["public_effect_sha256"]),
+        rationale="A fonte oficial corrigiu o intervalo anteriormente publicado.",
+        public_rationale="Mandato retirado após correção documentada da fonte oficial.",
+        reason_category="OFFICIAL_SOURCE_CORRECTION",
+        confirm_source_and_publication_reviewed=True,
+        confirm_exact_mandate=True,
+        confirm_public_effect_reviewed=True,
+        confirm_mandate_and_history_preserved=True,
+        confirm_no_selective_identity_change=True,
+        confirm_withdrawal=True,
+    )
+    with pytest.raises(EditorialConflictError):
+        await withdrawer.withdraw(
+            case_id=case_id,
+            payload=withdrawal_payload.model_copy(
+                update={"expected_public_effect_sha256": "0" * 64}
+            ),
+            actor=actor,
+        )
+    async with repository.pool.acquire() as connection:
+        assert (
+            await connection.fetchval(
+                "SELECT COUNT(*) FROM data_publication_reviews "
+                "WHERE entity_type = 'MANDATE' AND entity_id = $1",
+                mandate_id,
+            )
+            == 1
+        )
+        assert (
+            await connection.fetchval(
+                "SELECT current_state::text FROM editorial_cases WHERE id = $1",
+                case_id,
+            )
+            == "PUBLISHED"
+        )
+        assert (
+            await connection.fetchval(
+                "SELECT COUNT(*) FROM editorial_publication_events "
+                "WHERE case_id = $1 AND action = 'WITHDRAW'",
+                case_id,
+            )
+            == 0
+        )
+
+    withdrawn = await withdrawer.withdraw(
+        case_id=case_id,
+        payload=withdrawal_payload,
+        actor=actor,
+    )
+    assert withdrawn["state"] == "WITHDRAWN"
+    assert withdrawn["mandates_deleted"] == 0
+    assert withdrawn["people_deleted"] == 0
+    assert withdrawn["memberships_deleted"] == 0
+    with pytest.raises(EditorialConflictError):
+        await withdrawer.withdraw(
+            case_id=case_id,
+            payload=withdrawal_payload,
+            actor=actor,
+        )
+
+    async with repository.pool.acquire() as connection:
+        assert await connection.fetchval(
+            "SELECT EXISTS (SELECT 1 FROM mandates WHERE id = $1)",
+            mandate_id,
+        )
+        reviews = await connection.fetch(
+            "SELECT publishable FROM data_publication_reviews "
+            "WHERE entity_type = 'MANDATE' AND entity_id = $1 "
+            "ORDER BY reviewed_at, id",
+            mandate_id,
+        )
+        assert [row["publishable"] for row in reviews] == [True, False]
+        assert (
+            await connection.fetchval(
+                "SELECT COUNT(*) FROM audit_events "
+                "WHERE entity_type = 'MANDATE' AND entity_id = $1 AND action = 'WITHDRAWN'",
+                mandate_id,
+            )
+            == 1
+        )
+        assert (
+            await connection.fetchval(
+                "SELECT COUNT(*) FROM editorial_publication_events "
+                "WHERE case_id = $1 AND target_type = 'MANDATE' AND target_id = $2",
+                case_id,
+                mandate_id,
+            )
+            == 2
+        )
+        assert (
+            await connection.fetchval(
+                "SELECT COUNT(*) FROM editorial_decisions WHERE case_id = $1",
+                case_id,
+            )
+            == 5
+        )
+
+    public_profile_after_withdrawal = await repository.get_public_politician(f"pessoa-{suffix}")
+    assert public_profile_after_withdrawal is not None
+    assert public_profile_after_withdrawal["mandates"] == []

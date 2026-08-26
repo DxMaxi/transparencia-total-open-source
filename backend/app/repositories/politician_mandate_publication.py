@@ -107,9 +107,11 @@ def _publication_event_sha256(
     event_id: str,
     case_id: str,
     version_id: str,
+    action: str,
     target_id: str,
     rationale: str,
-    actor: StaffSession,
+    actor_id: str,
+    actor_alias: str,
     created_at: datetime,
 ) -> str:
     return _sha256_json(
@@ -117,13 +119,55 @@ def _publication_event_sha256(
             "id": event_id,
             "case_id": case_id,
             "version_id": version_id,
-            "action": "PUBLISH",
+            "action": action,
             "target_type": "MANDATE",
             "target_id": target_id,
             "rationale": rationale,
-            "actor_id": actor.staff_id,
-            "actor_alias": actor.public_alias,
+            "actor_id": actor_id,
+            "actor_alias": actor_alias,
             "created_at": _iso_timestamp(created_at),
+        }
+    )
+
+
+def _mandate_publication_proof_sha256(
+    *,
+    case_id: str,
+    version_id: object,
+    version_sha256: object,
+    source_sha256: object,
+    observation_id: object,
+    person_id: object,
+    source_period_ordinal: int,
+    source_period_sha256: object,
+    legislature: object,
+    constituency: object,
+    started_at: object,
+    ended_at: object,
+    public_effect: dict[str, int],
+) -> str:
+    """Reconstrói a mesma prova pública sem confiar em identificadores do cliente."""
+
+    return _sha256_json(
+        {
+            "schema_version": _PUBLICATION_SCHEMA_VERSION,
+            "case_reference_sha256": _reference_sha256(case_id),
+            "version_reference_sha256": _reference_sha256(version_id),
+            "version_sha256": str(version_sha256),
+            "source_sha256": str(source_sha256),
+            "observation_reference_sha256": _reference_sha256(observation_id),
+            "person_reference_sha256": _reference_sha256(person_id),
+            "source_period_ordinal": source_period_ordinal,
+            "source_period_sha256": str(source_period_sha256),
+            "office_title": _OFFICE_TITLE,
+            "legislature": legislature,
+            "constituency": constituency,
+            "started_at": started_at,
+            "ended_at": ended_at,
+            "public_effect": public_effect,
+            "identity_rule": "EXACT_AR_DEP_ID_ONLY",
+            "party_inference_allowed": False,
+            "automatic_publication": False,
         }
     )
 
@@ -358,26 +402,21 @@ class PoliticianMandatePublicationRepository:
             "people_to_create": 0,
             "party_links_to_create": 0,
         }
-        proof_payload = {
-            "schema_version": _PUBLICATION_SCHEMA_VERSION,
-            "case_reference_sha256": _reference_sha256(case_id),
-            "version_reference_sha256": _reference_sha256(case["current_version_id"]),
-            "version_sha256": str(case["normalized_sha256"]),
-            "source_sha256": str(source["content_sha256"]),
-            "observation_reference_sha256": _reference_sha256(observation_id),
-            "person_reference_sha256": _reference_sha256(person_id),
-            "source_period_ordinal": period_ordinal,
-            "source_period_sha256": period_sha256,
-            "office_title": _OFFICE_TITLE,
-            "legislature": candidate["legislature"],
-            "constituency": constituency["label"],
-            "started_at": source_period["starts_at"],
-            "ended_at": source_period["ends_at"],
-            "public_effect": public_effect,
-            "identity_rule": "EXACT_AR_DEP_ID_ONLY",
-            "party_inference_allowed": False,
-            "automatic_publication": False,
-        }
+        publication_proof_sha256 = _mandate_publication_proof_sha256(
+            case_id=case_id,
+            version_id=case["current_version_id"],
+            version_sha256=case["normalized_sha256"],
+            source_sha256=source["content_sha256"],
+            observation_id=observation_id,
+            person_id=person_id,
+            source_period_ordinal=period_ordinal,
+            source_period_sha256=period_sha256,
+            legislature=candidate["legislature"],
+            constituency=constituency["label"],
+            started_at=source_period["starts_at"],
+            ended_at=source_period["ends_at"],
+            public_effect=public_effect,
+        )
         eligible = not blockers
         preview: dict[str, object] = {
             "case_id": case_id,
@@ -405,7 +444,7 @@ class PoliticianMandatePublicationRepository:
             "source_observation_reference_sha256": _reference_sha256(observation_id),
             "source_period_ordinal": period_ordinal,
             "public_effect": public_effect,
-            "publication_proof_sha256": _sha256_json(proof_payload) if eligible else None,
+            "publication_proof_sha256": publication_proof_sha256 if eligible else None,
             "eligible": eligible,
             "blockers": blockers,
             "automatic_publication": False,
@@ -628,9 +667,11 @@ class PoliticianMandatePublicationRepository:
                     event_id=event_id,
                     case_id=case_id,
                     version_id=version_id,
+                    action="PUBLISH",
                     target_id=mandate_id,
                     rationale=payload.public_rationale,
-                    actor=actor,
+                    actor_id=actor.staff_id,
+                    actor_alias=actor.public_alias,
                     created_at=created_at,
                 )
                 await connection.execute(

@@ -69,8 +69,9 @@ auditoria, decisão e evento sem apagar o mandato original.
 ## Limite operacional
 
 Esta entrega prepara e testa a capacidade. Não migra staging ou produção, não cria utilizadores,
-não altera segredos e não publica dados reais. A ativação real continua bloqueada até a V5.35
-implementar e provar a retirada imutável específica do mandato.
+não altera segredos e não publica dados reais. A retirada imutável específica ficou implementada e
+provada separadamente na [V5.35](V5_POLITICIAN_MANDATE_WITHDRAWAL.md); a ativação real continua
+dependente dos gates operacionais de staging.
 
 Integrar código, executar uma migração ou aprovar um processo nunca chama automaticamente a
 operação de publicação.

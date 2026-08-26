@@ -2,19 +2,27 @@ import Link from "next/link";
 import {
   createPoliticianMandateProposal,
   publishPoliticianMandate,
+  withdrawPoliticianMandate,
 } from "../../../actions";
 import { editorialFetch, getEditorialContext } from "@/lib/editorial-api";
 import {
+  PARLIAMENT_WITHDRAWAL_REASON_LABELS,
   STATE_LABELS,
+  type ParliamentWithdrawalReason,
   type PoliticianMandateEditorialCandidate,
   type PoliticianMandateEditorialCandidateList,
   type PoliticianMandatePublicationPreview,
+  type PoliticianMandateWithdrawalPreview,
 } from "@/lib/editorial-types";
 
 const dateFormatter = new Intl.DateTimeFormat("pt-PT", {
   dateStyle: "medium",
   timeZone: "Europe/Lisbon",
 });
+
+const withdrawalReasonEntries = Object.entries(PARLIAMENT_WITHDRAWAL_REASON_LABELS) as Array<
+  [ParliamentWithdrawalReason, string]
+>;
 
 function boundedOffset(value: string | undefined): number {
   const parsed = Number.parseInt(value ?? "0", 10);
@@ -51,6 +59,18 @@ async function loadPublicationPreview(
   }
 }
 
+async function loadWithdrawalPreview(
+  caseId: string,
+): Promise<PoliticianMandateWithdrawalPreview | null> {
+  try {
+    return await editorialFetch<PoliticianMandateWithdrawalPreview>(
+      `/parliament/mandate-cases/${encodeURIComponent(caseId)}/withdrawal`,
+    );
+  } catch {
+    return null;
+  }
+}
+
 export default async function PoliticianMandateEditorialPage({
   searchParams,
 }: {
@@ -78,11 +98,16 @@ export default async function PoliticianMandateEditorialPage({
   );
   const { staff } = await getEditorialContext();
   const publicationPreviews = new Map<string, PoliticianMandatePublicationPreview>();
+  const withdrawalPreviews = new Map<string, PoliticianMandateWithdrawalPreview>();
   await Promise.all(
     catalogue.items.map(async (candidate) => {
       if (candidate.existing_case?.state === "APPROVED" && candidate.proposal_eligible) {
         const preview = await loadPublicationPreview(candidate.existing_case.id);
         if (preview) publicationPreviews.set(candidate.existing_case.id, preview);
+      }
+      if (candidate.existing_case?.state === "PUBLISHED") {
+        const preview = await loadWithdrawalPreview(candidate.existing_case.id);
+        if (preview) withdrawalPreviews.set(candidate.existing_case.id, preview);
       }
     }),
   );
@@ -113,6 +138,12 @@ export default async function PoliticianMandateEditorialPage({
       {input.sucesso === "mandato-publicado" ? (
         <p className="private-message private-message--success" role="status">
           Mandato publicado com revisão própria e histórico append-only.
+        </p>
+      ) : null}
+
+      {input.sucesso === "mandato-retirado" ? (
+        <p className="private-message private-message--success" role="status">
+          Mandato retirado da consulta ativa; linha, fonte, versão e histórico preservados.
         </p>
       ) : null}
 
@@ -159,6 +190,11 @@ export default async function PoliticianMandateEditorialPage({
                   ? (publicationPreviews.get(candidate.existing_case.id) ?? null)
                   : null
               }
+              withdrawalPreview={
+                candidate.existing_case
+                  ? (withdrawalPreviews.get(candidate.existing_case.id) ?? null)
+                  : null
+              }
             />
           ))}
         </section>
@@ -194,10 +230,12 @@ export default async function PoliticianMandateEditorialPage({
 function MandateCandidateCard({
   candidate,
   publicationPreview,
+  withdrawalPreview,
   isAdmin,
 }: {
   candidate: PoliticianMandateEditorialCandidate;
   publicationPreview: PoliticianMandatePublicationPreview | null;
+  withdrawalPreview: PoliticianMandateWithdrawalPreview | null;
   isAdmin: boolean;
 }) {
   return (
@@ -269,6 +307,13 @@ function MandateCandidateCard({
             <MandatePublicationAction
               candidate={candidate}
               preview={publicationPreview}
+              isAdmin={isAdmin}
+            />
+          ) : null}
+          {candidate.existing_case.state === "PUBLISHED" ? (
+            <MandateWithdrawalAction
+              candidate={candidate}
+              preview={withdrawalPreview}
               isAdmin={isAdmin}
             />
           ) : null}
@@ -404,8 +449,152 @@ function MandatePublicationAction({
         Publicar mandato com prova
       </button>
       <p className="admin-form-help">
-        A ativação em ambiente real continua bloqueada até a V5.35 provar a retirada imutável.
+        A retirada V5.35 preserva esta linha e toda a prova; a ativação real continua sujeita aos
+        gates operacionais de staging.
       </p>
+    </form>
+  );
+}
+
+function MandateWithdrawalAction({
+  candidate,
+  preview,
+  isAdmin,
+}: {
+  candidate: PoliticianMandateEditorialCandidate;
+  preview: PoliticianMandateWithdrawalPreview | null;
+  isAdmin: boolean;
+}) {
+  if (!preview) {
+    return (
+      <section className="parliament-proposal-card">
+        <strong>Prova de retirada indisponível.</strong>
+        <p>O mandato permanece publicado; nenhuma retirada pode ser confirmada sem prova completa.</p>
+      </section>
+    );
+  }
+
+  return (
+    <form
+      action={withdrawPoliticianMandate}
+      className="parliament-proposal-card parliament-publication-card admin-withdrawal-panel"
+    >
+      <input type="hidden" name="legislature" value={candidate.legislature} />
+      <input type="hidden" name="expected_case_id" value={preview.case_id} />
+      <input type="hidden" name="expected_revision" value={preview.case_revision} />
+      <input type="hidden" name="expected_version_id" value={preview.version_id} />
+      <input type="hidden" name="expected_version_sha256" value={preview.version_sha256} />
+      <input type="hidden" name="expected_mandate_id" value={preview.mandate_id} />
+      <input type="hidden" name="expected_source_sha256" value={preview.source.content_sha256} />
+      <input
+        type="hidden"
+        name="expected_period_sha256"
+        value={preview.source_period_sha256}
+      />
+      <input
+        type="hidden"
+        name="expected_publication_proof_sha256"
+        value={preview.publication_proof_sha256}
+      />
+      <input
+        type="hidden"
+        name="expected_withdrawal_proof_sha256"
+        value={preview.withdrawal_proof_sha256 ?? ""}
+      />
+      <input type="hidden" name="expected_public_review_id" value={preview.public_review_id} />
+      <input
+        type="hidden"
+        name="expected_publication_audit_event_id"
+        value={preview.publication_audit_event_id}
+      />
+      <input
+        type="hidden"
+        name="expected_publication_event_id"
+        value={preview.publication_event_id}
+      />
+      <input
+        type="hidden"
+        name="expected_publication_event_sha256"
+        value={preview.publication_event_sha256}
+      />
+      <input
+        type="hidden"
+        name="expected_public_effect_sha256"
+        value={preview.public_effect_sha256}
+      />
+
+      <div>
+        <p className="eyebrow">V5.35 · retirada imutável</p>
+        <h3>Retirar este mandato da consulta ativa</h3>
+        <p>{preview.withdrawal_rule}</p>
+      </div>
+      <dl>
+        <div><dt>Mandatos a eliminar</dt><dd>{preview.mandates_to_delete}</dd></div>
+        <div><dt>Pessoas a eliminar</dt><dd>{preview.people_to_delete}</dd></div>
+        <div><dt>Outros mandatos públicos</dt><dd>{preview.public_effect.remaining_public_mandates_for_person}</dd></div>
+        <div><dt>Linha histórica preservada</dt><dd>{preview.public_effect.mandate_row_preserved ? "Sim" : "Não"}</dd></div>
+      </dl>
+      <p>{preview.public_effect.message}</p>
+      <div className="admin-proof-callout">
+        <strong>SHA-256 da prova de retirada</strong>
+        <code>{preview.withdrawal_proof_sha256 ?? "dados indisponíveis"}</code>
+        <strong>SHA-256 do efeito público</strong>
+        <code>{preview.public_effect_sha256}</code>
+      </div>
+      {preview.blockers.length ? (
+        <ul className="parliament-limitations">
+          {preview.blockers.map((blocker) => <li key={blocker.code}>{blocker.detail}</li>)}
+        </ul>
+      ) : null}
+      <label>
+        Categoria permitida pela governação
+        <select name="reason_category" required defaultValue="">
+          <option value="" disabled>Selecione um fundamento</option>
+          {withdrawalReasonEntries.map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Fundamentação editorial privada
+        <textarea name="rationale" minLength={20} maxLength={1850} required />
+      </label>
+      <label>
+        Fundamentação pública factual
+        <textarea name="public_rationale" minLength={20} maxLength={500} required />
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_source_and_publication_reviewed" type="checkbox" required />
+        <span>Revi a fonte, o intervalo, a publicação original e todos os SHA-256.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_exact_mandate" type="checkbox" required />
+        <span>Confirmo que a retirada incide apenas neste mandato exato.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_public_effect_reviewed" type="checkbox" required />
+        <span>Revi o efeito que ficará visível ao público depois da retirada.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_mandate_and_history_preserved" type="checkbox" required />
+        <span>Confirmo que o mandato, a fonte, a versão e o histórico não serão apagados.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_no_selective_identity_change" type="checkbox" required />
+        <span>Confirmo que a identidade e os outros mandatos não serão alterados.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_withdrawal" type="checkbox" required />
+        <span>Confirmo a retirada deste mandato da consulta pública ativa.</span>
+      </label>
+      {!isAdmin ? <p>A retirada exige uma conta ADMIN com MFA.</p> : null}
+      <button
+        className="button button--danger"
+        type="submit"
+        disabled={!isAdmin || !preview.eligible || !preview.withdrawal_proof_sha256}
+      >
+        Retirar mandato e preservar histórico
+      </button>
     </form>
   );
 }
