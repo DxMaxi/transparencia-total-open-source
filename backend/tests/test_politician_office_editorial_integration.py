@@ -70,7 +70,8 @@ async def test_exact_official_office_creates_only_an_idempotent_private_case(
     assert repository.pool is not None
     suffix = uuid.uuid4().hex[:12].translate(str.maketrans("0123456789", "ghijklmnop"))
     now = datetime.now(UTC).replace(microsecond=0)
-    content = json.dumps({"fixture": suffix, "legislature": "XVII"}).encode()
+    legislature = f"V538-{suffix}"
+    content = json.dumps({"fixture": suffix, "legislature": legislature}).encode()
     content_sha256 = hashlib.sha256(content).hexdigest()
     stored = await repository.store_index(
         source_name=f"PARLIAMENT_OFFICE_EDITORIAL_{suffix}",
@@ -114,11 +115,12 @@ async def test_exact_official_office_creates_only_an_idempotent_private_case(
                  normalised_sha256, collected_at, deputy_count,
                  group_period_count, situation_period_count, office_period_count,
                  created_at)
-            VALUES ($1, $2, 'XVII', 'parliament-historical-deputies-v1',
-                    $3, $4, 1, 0, 0, 1, NOW())
+            VALUES ($1, $2, $3, 'parliament-historical-deputies-v1',
+                    $4, $5, 1, 0, 0, 1, NOW())
             """,
             snapshot_id,
             source_document_id,
+            legislature,
             "a" * 64,
             now.replace(tzinfo=None),
         )
@@ -156,10 +158,11 @@ async def test_exact_official_office_creates_only_an_idempotent_private_case(
                 (id, person_id, parliamentary_name, full_name, party_id,
                  legislature, constituency, observed_at, source_document_id)
             VALUES ($1, $2, 'Pessoa Deputada', 'Pessoa Deputada de Integração', NULL,
-                    'XVII', 'Porto', $3, $4)
+                    $3, 'Porto', $4, $5)
             """,
             membership_id,
             person_id,
+            legislature,
             now.replace(tzinfo=None),
             source_document_id,
         )
@@ -209,7 +212,7 @@ async def test_exact_official_office_creates_only_an_idempotent_private_case(
     )
     adapter = PoliticianOfficeEditorialRepository(repository.pool)
     catalogue = await adapter.list_candidates(
-        legislature="XVII",
+        legislature=legislature,
         query=official_deputy_id,
         limit=20,
         offset=0,
