@@ -112,7 +112,13 @@ cria mandatos ou filiações e não foi executada sobre staging ou produção. A
 retirada não seletiva da fotografia completa: recalcula a prova de cada perfil e da publicação,
 simula o recuo público, acrescenta revisões, auditorias, decisões e eventos negativos numa única
 transação e preserva pessoas, fontes, observações e versões. Não foi executada sobre staging ou
-produção. A republicação comprovada a partir de uma nova fotografia imutável é o gate seguinte.
+produção. A republicação comprovada a partir de uma nova fotografia imutável era o gate seguinte.
+
+A V5.32 fecha esse gate numa base PostgreSQL descartável: depois de publicar e retirar a primeira
+fotografia, cria outra fonte, fotografia, observação, processo e versão; reutiliza a pessoa apenas
+pelo mesmo `DepId` exato e publica a nova fotografia. A versão antiga permanece `WITHDRAWN`, os seus
+eventos `PUBLISH` e `WITHDRAW` permanecem e a consulta passa para o novo SHA-256. Nenhuma operação
+foi executada sobre staging ou produção.
 
 A melhoria de UX iniciada em agosto de 2026 faz parte da estabilização/conclusão da **V5**. Não deve ser tratada como início de uma V6 nem como autorização para reescrever o projeto.
 

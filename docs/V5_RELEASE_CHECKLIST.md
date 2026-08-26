@@ -50,6 +50,8 @@ continuam a exigir autorizações separadas.
   contagens, liga apenas por `DepId` exato e acrescenta todo o histórico ou recua tudo.
 - [x] V5.31 — retirada não seletiva da fotografia de perfis acrescenta revisões, auditorias,
   decisões e eventos em bloco, calcula o efeito público e não apaga pessoas nem histórico.
+- [x] V5.32 — republicação exige uma nova fonte e fotografia imutáveis, reutiliza a pessoa apenas por
+  `DepId` exato e mantém a versão retirada definitivamente inativa.
 - [x] Existe um [conjunto de issues de conclusão](https://github.com/DxMaxi/transparencia-total-open-source/issues/58) para todos os itens ainda abertos.
 
 ## B. Estabilização pública
@@ -135,7 +137,7 @@ continuam a exigir autorizações separadas.
   zero mandatos e zero filiações inferidas num PostgreSQL descartável.
 - [x] A retirada V5.31 volta a provar todos os perfis e a publicação original, acrescenta a decisão
   negativa numa única transação e faz recuar a consulta ou mostrar dados indisponíveis.
-- [ ] A republicação de perfis a partir de uma nova fotografia imutável está comprovada sem reativar
+- [x] A republicação de perfis a partir de uma nova fotografia imutável está comprovada sem reativar
   a versão retirada.
 
 ## F. Perfis políticos

@@ -5,7 +5,7 @@ import json
 import os
 import re
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import asyncpg
 import pytest
@@ -76,7 +76,7 @@ async def test_complete_snapshot_publication_and_withdrawal_are_atomic_exact_and
 ) -> None:
     assert repository.pool is not None
     suffix = uuid.uuid4().hex[:12].translate(str.maketrans("0123456789", "ghijklmnop"))
-    now = datetime.now(UTC).replace(microsecond=0)
+    now = datetime.now(UTC).replace(microsecond=0) - timedelta(minutes=2)
     legislature = f"V530-{suffix}"
     parliamentary_name = f"Pessoa V530 {suffix}"
     official_deputy_id = f"dep-v530-{suffix}"
@@ -569,3 +569,242 @@ async def test_complete_snapshot_publication_and_withdrawal_are_atomic_exact_and
             payload=PoliticianProfileSnapshotWithdrawalRequest.model_validate(withdrawal_data),
             actor=actor,
         )
+
+    retired_preview = await withdrawal.inspect(snapshot_id=snapshot_id)
+    assert retired_preview["eligible"] is False
+    assert retired_preview["withdrawal_proof_sha256"] is None
+
+    next_retrieved_at = now + timedelta(minutes=1)
+    next_parliamentary_name = f"{parliamentary_name} Atualizada"
+    next_content = json.dumps(
+        {
+            "fixture": f"{suffix}-next",
+            "legislature": legislature,
+            "official_deputy_id": official_deputy_id,
+        }
+    ).encode()
+    next_content_sha256 = hashlib.sha256(next_content).hexdigest()
+    next_stored = await repository.store_index(
+        source_name=f"PARLIAMENT_DEPUTY_REPUBLICATION_{suffix}",
+        publisher="PARLIAMENT",
+        title="Atividade oficial dos deputados — teste V5.32",
+        raw_document=PrivateRawDocument(
+            source_url=HttpUrl(
+                "https://app.parlamento.pt/webutils/docs/doc.txt"
+                f"?fich=AtividadeDeputadoV532_{suffix}_json.txt&Inline=true"
+            ),
+            retrieved_at=next_retrieved_at,
+            content_sha256=next_content_sha256,
+            mime_type="application/json",
+            content=next_content,
+        ),
+        resources=[],
+        code_version=f"politician-profile-republication-integration-{suffix}",
+    )
+    next_source_document_id = str(next_stored["source_document_id"])
+    next_snapshot_id = f"parliament_deputy_snapshot_v532_{suffix}"
+    next_observation_id = f"parliament_deputy_observation_v532_{suffix}"
+
+    async with repository.pool.acquire() as connection, connection.transaction():
+        await connection.execute(
+            """
+            INSERT INTO parliament_deputy_snapshots
+                (id, source_document_id, legislature, parser_version,
+                 normalised_sha256, collected_at, deputy_count,
+                 group_period_count, situation_period_count, office_period_count,
+                 created_at)
+            VALUES ($1, $2, $3, 'parliament-historical-deputies-v1',
+                    $4, $5, 1, 1, 1, 0, NOW())
+            """,
+            next_snapshot_id,
+            next_source_document_id,
+            legislature,
+            "c" * 64,
+            next_retrieved_at.replace(tzinfo=None),
+        )
+        await connection.execute(
+            """
+            INSERT INTO parliament_deputy_observations
+                (id, snapshot_id, source_id, candidate_source_id,
+                 parliamentary_name, full_name, constituency_source_id,
+                 constituency_label, parliamentary_groups,
+                 mandate_situations, offices, created_at)
+            VALUES ($1, $2, $3, NULL, $4, $5, 'circle-test', 'Círculo de teste',
+                    $6::jsonb, $7::jsonb, '[]'::jsonb, NOW())
+            """,
+            next_observation_id,
+            next_snapshot_id,
+            official_deputy_id,
+            next_parliamentary_name,
+            f"{next_parliamentary_name} Nome Completo",
+            json.dumps(
+                [
+                    {
+                        "source_id": "group-test",
+                        "short_name": "GP Teste",
+                        "starts_at": "2025-06-03T00:00:00Z",
+                        "ends_at": None,
+                    }
+                ]
+            ),
+            json.dumps(
+                [
+                    {
+                        "description": "Efetivo",
+                        "starts_at": "2025-06-03T00:00:00Z",
+                        "ends_at": None,
+                    }
+                ]
+            ),
+        )
+
+    next_created = await profile_editorial.create_proposal(
+        payload=PoliticianProfileEditorialProposalRequest(
+            observation_id=next_observation_id,
+            confirm_private_only=True,
+            confirm_exact_official_id_only=True,
+            confirm_no_mandate_inference=True,
+        ),
+        actor=actor,
+    )
+    next_case_id = str(next_created["case"]["id"])
+    await editorial.transition(
+        case_id=next_case_id,
+        action=EditorialAction.START_REVIEW,
+        expected_revision=1,
+        rationale="A nova fotografia será comparada de forma independente com a nova fonte.",
+        source_confirmed=False,
+        actor=actor,
+    )
+    await editorial.transition(
+        case_id=next_case_id,
+        action=EditorialAction.APPROVE,
+        expected_revision=2,
+        rationale=(
+            "Novo arquivo, DepId e versão exata confirmados sem reativar a fotografia antiga."
+        ),
+        source_confirmed=True,
+        actor=actor,
+    )
+
+    next_preview = await publication.inspect(snapshot_id=next_snapshot_id)
+    assert next_preview["eligible"] is True
+    assert next_preview["identity_projection"]["legacy_review_decisions"] == 0
+    assert next_preview["public_effect"] == {
+        "people_to_create": 0,
+        "people_to_reuse_by_exact_depid": 1,
+        "memberships_to_create": 1,
+        "memberships_to_reuse": 0,
+        "person_reviews_to_append": 1,
+        "cases_to_publish": 1,
+        "mandates_to_create": 0,
+        "party_links_to_create": 0,
+    }
+    next_publication_data = {
+        "expected_snapshot_id": next_snapshot_id,
+        "expected_source_sha256": next_content_sha256,
+        "expected_snapshot_sha256": "c" * 64,
+        "expected_readiness_proof_sha256": next_preview["readiness_proof_sha256"],
+        "expected_publication_proof_sha256": next_preview["publication_proof_sha256"],
+        "expected_deputy_count": 1,
+        "rationale": "A nova fotografia integral e a nova prova oficial foram confirmadas.",
+        "public_rationale": "Fotografia parlamentar posterior revista com prova completa.",
+        "confirm_source_reviewed": True,
+        "confirm_complete_snapshot": True,
+        "confirm_exact_official_id_only": True,
+        "confirm_no_mandate_inference": True,
+        "confirm_no_party_inference": True,
+        "confirm_publication": True,
+    }
+    republished = await publication.publish(
+        snapshot_id=next_snapshot_id,
+        payload=PoliticianProfileSnapshotPublicationRequest.model_validate(next_publication_data),
+        actor=actor,
+    )
+    assert republished["state"] == "PUBLISHED"
+    assert republished["people_created"] == 0
+    assert republished["memberships_created"] == 1
+    assert republished["mandates_created"] == 0
+    assert republished["party_links_created"] == 0
+
+    public_after_republication = await PublicPoliticianRepository(repository.pool).explore(
+        query=next_parliamentary_name,
+        party_short=None,
+        limit=10,
+        cursor=None,
+    )
+    assert public_after_republication["total"] == 1
+    assert public_after_republication["items"][0]["name"] == next_parliamentary_name
+    assert (
+        public_after_republication["items"][0]["profile_source"]["content_sha256"]
+        == next_content_sha256
+    )
+
+    async with repository.pool.acquire() as connection:
+        lifecycle = await connection.fetchrow(
+            """
+            SELECT
+                (SELECT COUNT(*) FROM people WHERE source_id = $1) AS people,
+                (
+                    SELECT COUNT(*)
+                    FROM parliamentary_membership_snapshots AS membership
+                    JOIN people AS person ON person.id = membership.person_id
+                    WHERE person.source_id = $1
+                      AND membership.source_document_id IN ($2, $3)
+                ) AS memberships,
+                (
+                    SELECT current_state::text FROM editorial_cases WHERE id = $4
+                ) AS old_state,
+                (
+                    SELECT current_state::text FROM editorial_cases WHERE id = $5
+                ) AS new_state,
+                (
+                    SELECT COUNT(*) FROM editorial_versions WHERE case_id IN ($4, $5)
+                ) AS versions
+            """,
+            official_deputy_id,
+            source_document_id,
+            next_source_document_id,
+            case_id,
+            next_case_id,
+        )
+        assert lifecycle is not None
+        assert int(lifecycle["people"]) == 1
+        assert int(lifecycle["memberships"]) == 2
+        assert lifecycle["old_state"] == "WITHDRAWN"
+        assert lifecycle["new_state"] == "PUBLISHED"
+        assert int(lifecycle["versions"]) == 2
+        old_version_id = await connection.fetchval(
+            "SELECT current_version_id FROM editorial_cases WHERE id = $1", case_id
+        )
+        next_version_id = await connection.fetchval(
+            "SELECT current_version_id FROM editorial_cases WHERE id = $1", next_case_id
+        )
+        assert old_version_id != next_version_id
+        assert int(await connection.fetchval("SELECT COUNT(*) FROM mandates")) == mandates_before
+        old_actions = await connection.fetch(
+            """
+            SELECT action::text FROM editorial_publication_events
+            WHERE case_id = $1 ORDER BY created_at, id
+            """,
+            case_id,
+        )
+        next_actions = await connection.fetch(
+            """
+            SELECT action::text FROM editorial_publication_events
+            WHERE case_id = $1 ORDER BY created_at, id
+            """,
+            next_case_id,
+        )
+        assert [str(item["action"]) for item in old_actions] == ["PUBLISH", "WITHDRAW"]
+        assert [str(item["action"]) for item in next_actions] == ["PUBLISH"]
+
+    with pytest.raises((EditorialConflictError, EditorialSourceError)):
+        await publication.publish(
+            snapshot_id=snapshot_id,
+            payload=PoliticianProfileSnapshotPublicationRequest.model_validate(request_data),
+            actor=actor,
+        )
+    old_snapshot_after_republication = await withdrawal.inspect(snapshot_id=snapshot_id)
+    assert old_snapshot_after_republication["eligible"] is False
+    assert old_snapshot_after_republication["withdrawal_proof_sha256"] is None
