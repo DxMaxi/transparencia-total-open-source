@@ -23,7 +23,7 @@ definição da Open Source Initiative.
 > commit final desse fecho. A V5 começa pela governação de licença e pelo circuito editorial
 > privado; esta branch não altera os dados aprovados da V4.
 
-> **V5.1 a V5.35 preparadas; ativação remota de staging pendente:** o painel privado usa
+> **V5.1 a V5.36 preparadas; ativação remota de staging pendente:** o painel privado usa
 > login por convite,
 > MFA obrigatório, funções de administrador/revisor, comparação entre fonte atestada e JSON
 > normalizado, versões e decisões append-only. A V5.2 acrescentou propostas parlamentares privadas,
@@ -93,6 +93,8 @@ definição da Open Source Initiative.
 > acrescenta revisão `MANDATE`, auditoria, decisão e evento, e torna mandato e revisões append-only.
 > A V5.35 acrescenta a retirada específica: nova revisão negativa, auditoria, decisão e evento numa
 > transação `ADMIN` com MFA, sem apagar ou alterar o mandato, a pessoa ou a publicação original. A
+> V5.36 abre a porta privada dos cargos parlamentares: cada `DepCargo` exige DepId, CarId, círculo,
+> período, fonte e SHA-256 exatos, e uma aprovação ainda cria zero cargos ou publicações. A
 > ativação real continua dependente dos gates operacionais de staging. O código e os testes
 > não executam estas operações sobre staging ou
 > produção. O plano e a checklist
@@ -126,6 +128,7 @@ definição da Open Source Initiative.
 > [Intervalos oficiais no circuito editorial de mandatos V5.33](docs/V5_POLITICIAN_MANDATE_EDITORIAL.md),
 > [Publicação transacional de mandatos V5.34](docs/V5_POLITICIAN_MANDATE_PUBLICATION.md),
 > [Retirada transacional e imutável de mandatos V5.35](docs/V5_POLITICIAN_MANDATE_WITHDRAWAL.md),
+> [Cargos parlamentares oficiais no circuito editorial V5.36](docs/V5_POLITICIAN_OFFICE_EDITORIAL.md),
 > [Adaptador parlamentar V5.2](docs/V5_PARLIAMENT_EDITORIAL_ADAPTER.md) e
 > [Publicação parlamentar por âmbito V5.3](docs/V5_PARLIAMENT_SCOPE_PUBLICATION.md),
 > [Retirada parlamentar imutável V5.4](docs/V5_PARLIAMENT_WITHDRAWAL.md) e

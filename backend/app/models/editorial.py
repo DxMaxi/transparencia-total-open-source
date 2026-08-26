@@ -233,6 +233,19 @@ class PoliticianMandateEditorialProposalRequest(BaseModel):
     confirm_no_party_inference: Literal[True]
 
 
+class PoliticianOfficeEditorialProposalRequest(BaseModel):
+    """Seleciona um cargo parlamentar oficial exato para revisão privada."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    observation_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,180}$")
+    source_period_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    confirm_private_only: Literal[True]
+    confirm_exact_official_ids_only: Literal[True]
+    confirm_observed_period_requires_human_review: Literal[True]
+    confirm_no_mandate_or_party_inference: Literal[True]
+
+
 class PoliticianMandatePublicationRequest(BaseModel):
     """Confirma uma publicação de mandato reconstruída integralmente no servidor."""
 

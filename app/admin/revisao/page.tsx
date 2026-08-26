@@ -52,6 +52,9 @@ export default async function EditorialQueuePage({
           <Link className="button" href="/admin/revisao/parlamento/deputados">
             Rever observações de deputados
           </Link>
+          <Link className="button" href="/admin/revisao/parlamento/deputados/cargos">
+            Rever cargos parlamentares
+          </Link>
           <Link className="button" href="/admin/revisao/novo">
             Criar processo manual
           </Link>

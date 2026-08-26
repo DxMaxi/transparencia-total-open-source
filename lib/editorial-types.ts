@@ -562,6 +562,60 @@ export type PoliticianMandateEditorialProposalResult = {
   party_link_created: false;
 };
 
+export type PoliticianOfficeEditorialCandidate = {
+  subject_id: string;
+  source_period_ordinal: number;
+  observation_id: string;
+  source_document_id: string;
+  snapshot_id: string;
+  official_deputy_id: string;
+  parliamentary_name: string;
+  full_name: string | null;
+  legislature: string;
+  constituency: { source_id: string | null; label: string | null };
+  source_office: {
+    source_id: string | null;
+    title: string;
+    starts_at: string | null;
+    ends_at: string | null;
+  };
+  source_period_sha256: string;
+  snapshot: PoliticianProfileEditorialCandidate["snapshot"];
+  source: PoliticianProfileEditorialCandidate["source"];
+  archive: PoliticianProfileEditorialCandidate["archive"];
+  manifest_counts: PoliticianProfileEditorialCandidate["manifest_counts"];
+  materialised_counts: PoliticianProfileEditorialCandidate["materialised_counts"];
+  identity_publication_ready: boolean;
+  existing_case: PoliticianProfileEditorialCandidate["editorial_case"];
+  blocked_reasons: string[];
+  warnings: string[];
+  proposal_eligible: boolean;
+  public_projection_allowed: false;
+  mandate_inference_allowed: false;
+  party_inference_allowed: false;
+};
+
+export type PoliticianOfficeEditorialCandidateList = {
+  items: PoliticianOfficeEditorialCandidate[];
+  total: number;
+  limit: number;
+  offset: number;
+  next_offset: number | null;
+  publication_performed: false;
+  search_rule: string;
+};
+
+export type PoliticianOfficeEditorialProposalResult = {
+  created: boolean;
+  case: EditorialCaseDetail;
+  state: "PRIVATE_PENDING_REVIEW";
+  publication_performed: false;
+  office_created: false;
+  mandate_created: false;
+  public_review_created: false;
+  party_link_created: false;
+};
+
 export type PoliticianMandatePublicationPreview = {
   case_id: string;
   case_state: "APPROVED";

@@ -58,6 +58,8 @@ continuam a exigir autorizações separadas.
   `MANDATE`, auditoria, decisão e evento, com constraints e histórico append-only.
 - [x] V5.35 — retirada transacional e imutável do mandato acrescenta revisão negativa, auditoria,
   decisão e evento, preserva a linha e a publicação originais e recua tudo perante divergência.
+- [x] V5.36 — cada `DepCargo` com DepId, CarId, círculo, período, fonte e SHA-256 exatos pode criar
+  apenas uma proposta privada `PENDING`; aprovação ainda não cria cargo, mandato ou publicação.
 - [x] Existe um [conjunto de issues de conclusão](https://github.com/DxMaxi/transparencia-total-open-source/issues/58) para todos os itens ainda abertos.
 
 ## B. Estabilização pública
@@ -155,6 +157,9 @@ continuam a exigir autorizações separadas.
   - [x] Publicação transacional append-only com revisão `MANDATE` própria.
   - [x] Retirada append-only específica, sem alteração ou eliminação da linha publicada.
 - [ ] Cargos e círculo têm fonte e período explícitos.
+  - [x] Proposta privada específica por `DepCargo`, DepId, CarId, círculo e período exatos.
+  - [ ] Publicação append-only do cargo com revisão própria e projeção pública.
+  - [ ] Retirada append-only específica do cargo, sem apagar a linha nem a prova anterior.
 - [ ] Presenças dependem de mandato revisto e fotografia publicada.
 - [ ] Autoria de iniciativas usa relação oficial individual.
 - [ ] Votos do perfil são nominais e ligados por identificador oficial exato.

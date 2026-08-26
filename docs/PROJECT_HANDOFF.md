@@ -140,6 +140,13 @@ O mandato, a pessoa, a pertença parlamentar, a fonte e a publicação original 
 consulta pública deixa de selecionar apenas esse mandato pela revisão mais recente. Staging e
 produção permanecem intactos e a ativação real continua dependente dos gates operacionais.
 
+A V5.36 inicia a porta independente dos cargos parlamentares observados. O painel expande cada
+`DepCargo` apenas dentro da área autenticada e exige `DepId`, `CarId`, círculo, período, fonte,
+arquivo e manifesto coincidentes. O browser envia somente a observação, o SHA-256 do período e
+confirmações fechadas; o servidor reconstrói a proposta `PARLIAMENT_OFFICE_PERIOD`. Aprovar cria
+zero cargos, mandatos, revisões públicas ou eventos. A publicação e a retirada de cargos continuam
+pendentes e terão de ser portas append-only próprias antes de qualquer ensaio operacional.
+
 A melhoria de UX iniciada em agosto de 2026 faz parte da estabilização/conclusão da **V5**. Não deve ser tratada como início de uma V6 nem como autorização para reescrever o projeto.
 
 ## 5. Baseline técnico conhecido
