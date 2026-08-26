@@ -11,12 +11,12 @@ reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.34 preparadas; staging remoto pendente |
+| Código V5 | V5.1 a V5.35 preparadas; staging remoto pendente |
 | Frontend público | V5.21 preparado; capacidades sem backend ou esquema pronto ficam fail-closed |
 | API pública | `0.5.0-alpha.0`; capacidades anunciadas apenas após prova read-only do esquema |
 | Painel editorial | implementado no código, não ativado em produção |
 | IA | geração, revisão, publicação e retirada implementadas; esquema remoto ainda não ativado |
-| Parlamento | matriz V5.21 e gates V5.22–V5.34 preparados; atividades gerais e ativação editorial pendentes |
+| Parlamento | matriz V5.21 e gates V5.22–V5.35 preparados; atividades gerais e ativação editorial pendentes |
 | Perfis | ciclo integral de entrada, publicação, retirada e republicação provado; domínios individuais pendentes |
 | Promessómetro | catálogo editorial inicial de 10 compromissos; vocabulário V5.20 protegido |
 | Investigador Cívico | zero contratos e zero relações na projeção pública |
@@ -195,8 +195,16 @@ O décimo primeiro gate de perfis está preparado em
 exclusiva de `ADMIN` com MFA revalida versão, fonte, arquivo, `DepId`, círculo e intervalo e
 acrescenta o mandato, revisão `MANDATE`, auditoria, decisão e evento numa única transação. O esquema
 guarda observação, posição e SHA-256 e rejeita alterações ou eliminações posteriores. Esta
-capacidade não foi executada em staging ou produção e só poderá ser ativada depois de a retirada
-imutável V5.35 estar implementada e provada.
+capacidade não foi executada em staging ou produção; a V5.35 fecha a retirada exigida antes do
+ensaio operacional controlado.
+
+O décimo segundo gate de perfis está preparado em
+[V5.35 — retirada transacional e imutável de um mandato](V5_POLITICIAN_MANDATE_WITHDRAWAL.md).
+A operação exclusiva de `ADMIN` com MFA repete a fonte, a versão, o `DepId`, o intervalo, a revisão
+ativa, a auditoria e o evento da publicação. Acrescenta uma revisão `MANDATE` negativa, auditoria,
+decisão e evento `WITHDRAW`, confirma que a linha permanece e que deixa de ser selecionada pela
+consulta pública. Não foi executada em staging ou produção; a ativação continua dependente dos gates
+operacionais e nunca acompanha automaticamente um deploy ou uma migração.
 
 Critérios de saída:
 

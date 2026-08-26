@@ -131,7 +131,14 @@ compatível acrescenta a observação oficial, a posição do intervalo e o SHA-
 com chave estrangeira, unicidade e histórico append-only. A operação acrescenta `Mandate`, revisão
 `MANDATE`, `AuditEvent`, decisão e evento numa só transação e cria zero pessoas ou filiações. O
 teste de integração usa apenas PostgreSQL descartável; staging e produção permanecem intactos. A
-ativação real fica bloqueada até a retirada imutável V5.35 estar provada.
+ativação real permanecia bloqueada até a retirada imutável V5.35 ficar provada.
+
+A V5.35 fecha esse ciclo no código e numa base PostgreSQL descartável. O preview privado reconstrói
+a fonte, o intervalo, a versão, a revisão positiva, a auditoria e o evento `PUBLISH`; a ação `ADMIN`
+com MFA acrescenta revisão negativa, `AuditEvent`, decisão e evento `WITHDRAW` numa só transação.
+O mandato, a pessoa, a pertença parlamentar, a fonte e a publicação original ficam intactos. A
+consulta pública deixa de selecionar apenas esse mandato pela revisão mais recente. Staging e
+produção permanecem intactos e a ativação real continua dependente dos gates operacionais.
 
 A melhoria de UX iniciada em agosto de 2026 faz parte da estabilização/conclusão da **V5**. Não deve ser tratada como início de uma V6 nem como autorização para reescrever o projeto.
 

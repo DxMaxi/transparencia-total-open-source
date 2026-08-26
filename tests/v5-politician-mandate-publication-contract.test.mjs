@@ -100,7 +100,7 @@ test("V5.34 publishes one exact mandate in one ADMIN MFA transaction", async () 
   assert.match(publicProfile, /Prova do intervalo: dados indisponíveis/);
 });
 
-test("V5.34 remains blocked from real activation until immutable withdrawal exists", async () => {
+test("V5.34 remains operationally gated after the separate immutable withdrawal", async () => {
   const [documentation, checklist, plan, readme] = await Promise.all([
     source("docs/V5_POLITICIAN_MANDATE_PUBLICATION.md"),
     source("docs/V5_RELEASE_CHECKLIST.md"),
@@ -113,9 +113,9 @@ test("V5.34 remains blocked from real activation until immutable withdrawal exis
   assert.match(documentation, /SHA-256/);
   assert.match(documentation, /append-only/i);
   assert.match(documentation, /não publica dados reais/i);
-  assert.match(documentation, /V5\.35[\s\S]*retirada imutável/i);
+  assert.match(documentation, /retirada imutável[\s\S]*V5\.35/i);
   assert.match(checklist, /\[x\] V5\.34 — publicação transacional/);
-  assert.match(checklist, /\[ \] V5\.35 — retirada imutável/);
+  assert.match(checklist, /\[x\] V5\.35 — retirada transacional e imutável/);
   assert.match(plan, /V5_POLITICIAN_MANDATE_PUBLICATION\.md/);
-  assert.match(readme, /V5\.1 a V5\.34 preparadas/);
+  assert.match(readme, /V5\.1 a V5\.35 preparadas/);
 });
