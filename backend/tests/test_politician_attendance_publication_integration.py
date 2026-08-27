@@ -13,6 +13,7 @@ from app.models.editorial import (
     EditorialAction,
     PoliticianAttendanceEditorialProposalRequest,
     PoliticianAttendancePublicationRequest,
+    PoliticianAttendanceWithdrawalRequest,
     StaffRole,
     StaffSession,
 )
@@ -23,6 +24,9 @@ from app.repositories.politician_attendance_editorial import (
 )
 from app.repositories.politician_attendance_publication import (
     PoliticianAttendancePublicationRepository,
+)
+from app.repositories.politician_attendance_withdrawal import (
+    PoliticianAttendanceWithdrawalRepository,
 )
 from app.services.parliament_attendance import (
     ParliamentAttendanceNormalizer,
@@ -360,3 +364,132 @@ async def test_admin_publishes_whole_attendance_meeting_or_nothing(
                 "UPDATE attendance_records SET absence_reason = 'alterada' WHERE id = $1",
                 first_record_id,
             )
+
+    withdrawal_repository = PoliticianAttendanceWithdrawalRepository(repository.pool)
+    withdrawal_preview = await withdrawal_repository.inspect(case_id=case_id)
+    assert withdrawal_preview["eligible"] is True
+    assert withdrawal_preview["withdrawal_proof_sha256"] is not None
+    assert withdrawal_preview["sessions_to_delete"] == 0
+    assert withdrawal_preview["attendance_records_to_delete"] == 0
+    withdrawal_payload = PoliticianAttendanceWithdrawalRequest(
+        expected_case_id=case_id,
+        expected_revision=int(withdrawal_preview["case_revision"]),
+        expected_version_id=str(withdrawal_preview["version_id"]),
+        expected_version_sha256=str(withdrawal_preview["version_sha256"]),
+        expected_snapshot_id=snapshot_id,
+        expected_source_sha256=content_sha256,
+        expected_snapshot_sha256=str(withdrawal_preview["snapshot_sha256"]),
+        expected_mapping_sha256=str(withdrawal_preview["mapping_sha256"]),
+        expected_publication_proof_sha256=str(withdrawal_preview["publication_proof_sha256"]),
+        expected_withdrawal_proof_sha256=str(withdrawal_preview["withdrawal_proof_sha256"]),
+        expected_public_review_id=str(withdrawal_preview["public_review_id"]),
+        expected_publication_audit_event_id=str(withdrawal_preview["publication_audit_event_id"]),
+        expected_publication_event_id=str(withdrawal_preview["publication_event_id"]),
+        expected_publication_event_sha256=str(withdrawal_preview["publication_event_sha256"]),
+        expected_public_effect_sha256=str(withdrawal_preview["public_effect_sha256"]),
+        expected_record_count=100,
+        rationale="A correção oficial exige retirar a reunião integral sem apagar a prova.",
+        public_rationale="Reunião retirada após revisão humana documentada da fonte oficial.",
+        reason_category="OFFICIAL_SOURCE_CORRECTION",
+        confirm_source_and_publication_reviewed=True,
+        confirm_complete_meeting=True,
+        confirm_public_effect_reviewed=True,
+        confirm_session_records_and_history_preserved=True,
+        confirm_no_selective_person_or_mandate_change=True,
+        confirm_absence_is_not_noncompliance=True,
+        confirm_withdrawal=True,
+    )
+
+    with pytest.raises(EditorialConflictError):
+        await withdrawal_repository.withdraw(
+            case_id=case_id,
+            payload=withdrawal_payload.model_copy(
+                update={"expected_withdrawal_proof_sha256": "0" * 64}
+            ),
+            actor=actor,
+        )
+    async with repository.pool.acquire() as connection:
+        assert (
+            await connection.fetchval(
+                "SELECT COUNT(*) FROM data_publication_reviews "
+                "WHERE entity_type = 'PARLIAMENT_ATTENDANCE_SNAPSHOT' "
+                "AND entity_id = $1",
+                snapshot_id,
+            )
+            == 1
+        )
+
+    withdrawn = await withdrawal_repository.withdraw(
+        case_id=case_id,
+        payload=withdrawal_payload,
+        actor=actor,
+    )
+    assert withdrawn["state"] == "WITHDRAWN"
+    assert withdrawn["sessions_deleted"] == 0
+    assert withdrawn["attendance_records_deleted"] == 0
+    assert withdrawn["people_deleted"] == 0
+    assert withdrawn["mandates_deleted"] == 0
+    assert withdrawn["absence_is_noncompliance"] is False
+    with pytest.raises(EditorialConflictError):
+        await withdrawal_repository.withdraw(
+            case_id=case_id,
+            payload=withdrawal_payload,
+            actor=actor,
+        )
+
+    async with repository.pool.acquire() as connection:
+        preserved = await connection.fetchrow(
+            """
+            SELECT editorial_case.current_state::text AS case_state,
+                   EXISTS (
+                       SELECT 1 FROM parliamentary_sessions
+                       WHERE id = $2 AND attendance_snapshot_id = $1
+                   ) AS session_preserved,
+                   (
+                       SELECT COUNT(*)::int FROM attendance_records WHERE session_id = $2
+                   ) AS records_preserved,
+                   (
+                       SELECT review.publishable
+                       FROM data_publication_reviews AS review
+                       WHERE review.entity_type = 'PARLIAMENT_ATTENDANCE_SNAPSHOT'
+                         AND review.entity_id = $1
+                         AND review.source_document_id = $3
+                       ORDER BY review.reviewed_at DESC, review.id DESC
+                       LIMIT 1
+                   ) AS latest_publishable
+            FROM editorial_cases AS editorial_case
+            WHERE editorial_case.id = $4
+            """,
+            snapshot_id,
+            str(published["session_id"]),
+            source_document_id,
+            case_id,
+        )
+        assert preserved is not None
+        assert preserved["case_state"] == "WITHDRAWN"
+        assert preserved["session_preserved"] is True
+        assert preserved["records_preserved"] == 100
+        assert preserved["latest_publishable"] is False
+        actions = await connection.fetch(
+            """
+            SELECT action::text
+            FROM editorial_publication_events
+            WHERE case_id = $1
+              AND target_type = 'PARLIAMENT_ATTENDANCE_SNAPSHOT'
+            ORDER BY created_at, id
+            """,
+            case_id,
+        )
+        assert [str(row["action"]) for row in actions] == ["PUBLISH", "WITHDRAW"]
+        audit_actions = await connection.fetch(
+            """
+            SELECT action
+            FROM audit_events
+            WHERE entity_type = 'PARLIAMENT_ATTENDANCE_SNAPSHOT'
+              AND entity_id = $1
+              AND action IN ('PUBLISHED', 'WITHDRAWN')
+            ORDER BY created_at, id
+            """,
+            snapshot_id,
+        )
+        assert [str(row["action"]) for row in audit_actions] == ["PUBLISHED", "WITHDRAWN"]
