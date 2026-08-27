@@ -17,6 +17,7 @@ from app.models.editorial import (
     StaffSession,
 )
 from app.repositories.editorial import EditorialRepository
+from app.repositories.parliament_activity import ParliamentActivityRepository
 from app.repositories.parliament_initiative_authorship import (
     ParliamentInitiativeAuthorshipRepository,
 )
@@ -56,18 +57,19 @@ async def _prepare_disposable_auth_user(
 
 
 def _proof(unique_value: str) -> PrivateParliamentArchivedResourceProof:
-    initiative_id = str(int(unique_value[:12], 16))
+    initiative_id = str(100_000 + int(unique_value[:8], 16) % 900_000)
     official_deputy_id = str(int(unique_value[12:24], 16))
+    unique_label = "".join(chr(ord("a") + int(character, 16)) for character in unique_value)
     resource_url = (
         "https://app.parlamento.pt/webutils/docs/doc.txt?"
-        f"fich=IniciativasXVII_{unique_value}_json.txt&Inline=true"
+        f"fich=IniciativasXVII_{unique_label}_json.txt&Inline=true"
     )
     content = json.dumps(
         {
             "Iniciativas": [
                 {
                     "IniId": initiative_id,
-                    "IniNr": f"{initiative_id}/XVII/1",
+                    "IniNr": "1/XVII/1",
                     "IniDescTipo": "Projeto de Lei",
                     "IniTitulo": "Iniciativa oficial descartável de integração",
                     "IniLinkTexto": (
@@ -134,8 +136,13 @@ async def test_authorship_snapshot_and_pending_case_are_private_append_only_and_
     initiative_collection = ParliamentResourceNormalizer().normalise(proof)
     authorship_collection = ParliamentInitiativeAuthorshipNormalizer().normalise(proof)
 
-    initiatives = await repository.persist_private_initiatives(initiative_collection.dataset)
-    source_document_id = str(initiatives["source_document_id"])
+    archive_receipt = await repository.archive_raw_document(raw_document=proof.raw_document)
+    initiatives = await ParliamentActivityRepository(repository.pool).persist(
+        initiative_collection.dataset,
+        archive_receipt=archive_receipt,
+        archived_by="parliament-initiative-authorship-integration",
+    )
+    source_document_id = initiatives.source_document_id
     stored = await repository.persist_private_authorships(
         authorship_collection.dataset,
         source_document_id=source_document_id,
