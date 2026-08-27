@@ -724,7 +724,7 @@ export type PoliticianInitiativeAuthorshipEditorialCandidate = {
   warnings: string[];
   proposal_eligible: boolean;
   publication_blockers: string[];
-  publication_ready: false;
+  publication_ready: boolean;
   public_projection_allowed: false;
   name_matching_allowed: false;
   party_matching_allowed: false;
@@ -751,6 +751,85 @@ export type PoliticianInitiativeAuthorshipEditorialProposalResult = {
   party_links_created: 0;
   public_reviews_created: 0;
   name_matching_allowed: false;
+};
+
+export type PoliticianInitiativeAuthorshipPublicationPreview = {
+  case_id: string;
+  case_state: "APPROVED";
+  case_revision: number;
+  version_id: string;
+  version_sha256: string;
+  source_record_sha256: string;
+  source: PoliticianInitiativeAuthorshipEditorialCandidate["source"];
+  archive: PoliticianInitiativeAuthorshipEditorialCandidate["archive"];
+  authorship: {
+    observation_reference_sha256: string;
+    official_deputy_id: string;
+    initiative_source_id: string;
+    parliamentary_name: string;
+    relation: "AUTHOR";
+  };
+  identity: {
+    person_reference_sha256: string;
+    exact_match: true;
+    reviewed: boolean;
+  } | null;
+  initiative: {
+    initiative_reference_sha256: string;
+    number: string;
+    type: string;
+    title: string;
+    status: string | null;
+    introduced_at: string | null;
+    official_url: string;
+    activity_snapshot_sha256: string;
+    activity_source: {
+      url: string;
+      retrieved_at: string;
+      content_sha256: string;
+    };
+  } | null;
+  public_effect: {
+    authorships_to_create: 1;
+    authorship_reviews_to_append: 1;
+    authorship_audits_to_append: 1;
+    editorial_decisions_to_append: 1;
+    publication_events_to_append: 1;
+    people_to_create: 0;
+    initiatives_to_create: 0;
+    party_links_to_create: 0;
+  };
+  publication_proof_sha256: string | null;
+  eligible: boolean;
+  blockers: Array<{ code: string; detail: string }>;
+  automatic_publication: false;
+  human_review_required: true;
+  name_matching_allowed: false;
+  party_matching_allowed: false;
+  collective_position_inference_allowed: false;
+  withdrawal_required_before_real_activation: true;
+  publication_rule: string;
+};
+
+export type PoliticianInitiativeAuthorshipPublicationResult = {
+  created: true;
+  case_id: string;
+  version_id: string;
+  state: "PUBLISHED";
+  authorship_id: string;
+  authorship_review_id: string;
+  audit_event_id: string;
+  editorial_decision_id: string;
+  publication_event_id: string;
+  source_sha256: string;
+  source_record_sha256: string;
+  activity_snapshot_sha256: string;
+  publication_proof_sha256: string;
+  people_created: 0;
+  initiatives_created: 0;
+  party_links_created: 0;
+  automatic_publication: false;
+  publication_rule: string;
 };
 
 export type PoliticianAttendancePublicationPreview = {

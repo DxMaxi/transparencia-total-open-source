@@ -18,6 +18,7 @@ import {
   type PoliticianAttendancePublicationResult,
   type PoliticianAttendanceWithdrawalResult,
   type PoliticianInitiativeAuthorshipEditorialProposalResult,
+  type PoliticianInitiativeAuthorshipPublicationResult,
   type PoliticianOfficeEditorialProposalResult,
   type PoliticianOfficePublicationResult,
   type PoliticianOfficeWithdrawalResult,
@@ -304,6 +305,76 @@ export async function createPoliticianInitiativeAuthorshipProposal(formData: For
   redirect(
     `/admin/revisao/${created!.case.id}?sucesso=${created!.created ? "autoria-importada" : "autoria-existente"}`,
   );
+}
+
+export async function publishPoliticianInitiativeAuthorship(formData: FormData) {
+  const caseReference = evidenceId(formData, "expected_case_id");
+  const legislature = requiredText(formData, "legislature").slice(0, 20);
+  let failure: string | null = null;
+  try {
+    for (const [field, message] of [
+      ["confirm_source_reviewed", "Confirme a revisão das duas fontes oficiais"],
+      ["confirm_exact_official_ids_only", "Confirme o uso exclusivo de IniId e idCadastro"],
+      ["confirm_official_author_relation", "Confirme a relação AUTHOR declarada pela fonte"],
+      ["confirm_public_initiative_reviewed", "Confirme a iniciativa pública revista"],
+      ["confirm_no_name_or_party_matching", "Confirme que nome e partido não fazem ligações"],
+      [
+        "confirm_no_collective_position_inference",
+        "Confirme que autoria não prova voto, apoio ou posição coletiva",
+      ],
+      ["confirm_append_only_publication", "Confirme a preservação integral do histórico"],
+      ["confirm_publication", "Confirme a publicação desta autoria exata"],
+    ] as const) {
+      if (formData.get(field) !== "on") throw new Error(message);
+    }
+    await editorialFetch<PoliticianInitiativeAuthorshipPublicationResult>(
+      `/parliament/initiative-authorship-cases/${encodeURIComponent(caseReference)}/publication`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          expected_case_id: caseReference,
+          expected_version_id: evidenceId(formData, "expected_version_id"),
+          expected_version_sha256: sha256(formData, "expected_version_sha256"),
+          expected_source_sha256: sha256(formData, "expected_source_sha256"),
+          expected_source_record_sha256: sha256(
+            formData,
+            "expected_source_record_sha256",
+          ),
+          expected_activity_snapshot_sha256: sha256(
+            formData,
+            "expected_activity_snapshot_sha256",
+          ),
+          expected_publication_proof_sha256: sha256(
+            formData,
+            "expected_publication_proof_sha256",
+          ),
+          rationale: requiredText(formData, "rationale"),
+          public_rationale: requiredText(formData, "public_rationale"),
+          confirm_source_reviewed: true,
+          confirm_exact_official_ids_only: true,
+          confirm_official_author_relation: true,
+          confirm_public_initiative_reviewed: true,
+          confirm_no_name_or_party_matching: true,
+          confirm_no_collective_position_inference: true,
+          confirm_append_only_publication: true,
+          confirm_publication: true,
+        }),
+      },
+    );
+  } catch (error) {
+    failure = actionError(error);
+  }
+  const destination = "/admin/revisao/parlamento/deputados/iniciativas";
+  if (failure) {
+    const params = new URLSearchParams({ legislature, erro: failure });
+    redirect(`${destination}?${params.toString()}`);
+  }
+  revalidatePath("/admin/revisao");
+  revalidatePath(destination);
+  revalidatePath("/politicos");
+  revalidatePath("/");
+  const params = new URLSearchParams({ legislature, sucesso: "autoria-publicada" });
+  redirect(`${destination}?${params.toString()}`);
 }
 
 export async function publishPoliticianAttendance(formData: FormData) {

@@ -70,7 +70,7 @@ proposta editorial PENDING reconstruída no servidor
         ↓
 revisão humana
         ↓
-publicação específica futura (não incluída na V5.42)
+publicação específica da V5.43, novamente confirmada por ADMIN com MFA
 ```
 
 O formulário privado exige confirmação expressa de que:
@@ -85,6 +85,9 @@ O formulário privado exige confirmação expressa de que:
 O servidor ignora qualquer tentativa do browser de construir os dados normalizados. Reconstrói a
 proposta a partir da observação imutável, compara o SHA-256 enviado com o registo atual e volta a
 validar fonte, arquivo, manifesto, iniciativa e contagens.
+
+A etapa posterior está documentada em
+[V5.43 — publicação transacional de autoria individual](V5_POLITICIAN_INITIATIVE_AUTHORSHIP_PUBLICATION.md).
 
 ## Persistência e segurança
 

@@ -13,10 +13,11 @@ from app.models.archive import PrivateRawDocument
 from app.models.editorial import (
     EditorialAction,
     PoliticianInitiativeAuthorshipEditorialProposalRequest,
+    PoliticianInitiativeAuthorshipPublicationRequest,
     StaffRole,
     StaffSession,
 )
-from app.repositories.editorial import EditorialRepository
+from app.repositories.editorial import EditorialConflictError, EditorialRepository
 from app.repositories.parliament_activity import ParliamentActivityRepository
 from app.repositories.parliament_initiative_authorship import (
     ParliamentInitiativeAuthorshipRepository,
@@ -27,6 +28,10 @@ from app.repositories.parliament_resource_normalization import (
 from app.repositories.politician_initiative_authorship_editorial import (
     PoliticianInitiativeAuthorshipEditorialRepository,
 )
+from app.repositories.politician_initiative_authorship_publication import (
+    PoliticianInitiativeAuthorshipPublicationRepository,
+)
+from app.repositories.postgres import PostgresRepository
 from app.services.parliament_initiative_authorship import (
     ParliamentInitiativeAuthorshipNormalizer,
 )
@@ -285,3 +290,187 @@ async def test_authorship_snapshot_and_pending_case_are_private_append_only_and_
                 "DELETE FROM parliament_initiative_author_snapshots WHERE id = $1",
                 snapshot_id,
             )
+
+    admin_staff_id = f"staff_authorship_admin_{uuid.uuid4().hex}"
+    admin_auth_user_id = uuid.uuid4()
+    admin_alias = f"admin-authorship-{uuid.uuid4().hex[:12]}"
+    membership_id = f"membership_authorship_{uuid.uuid4().hex}"
+    async with repository.pool.acquire() as connection, connection.transaction():
+        await _prepare_disposable_auth_user(connection, admin_auth_user_id)
+        await connection.execute(
+            """
+            INSERT INTO staff_profiles
+                (id, auth_user_id, public_alias, role, active, created_at, updated_at)
+            VALUES ($1, $2, $3, 'ADMIN', TRUE, NOW(), NOW())
+            """,
+            admin_staff_id,
+            admin_auth_user_id,
+            admin_alias,
+        )
+        await connection.execute(
+            """
+            INSERT INTO parliamentary_membership_snapshots
+                (id, person_id, parliamentary_name, full_name, party_id,
+                 legislature, constituency, observed_at, source_document_id)
+            VALUES ($1, $2, 'Nome parlamentar observado na fonte',
+                    'Nome deliberadamente diferente', NULL, 'XVII',
+                    'Dados indisponíveis', NOW(), $3)
+            """,
+            membership_id,
+            person_id,
+            source_document_id,
+        )
+        await connection.execute(
+            """
+            INSERT INTO data_publication_reviews
+                (id, entity_type, entity_id, purpose, legal_basis, sensitivity,
+                 necessity_assessment, proportionality_test, publishable,
+                 source_document_id, reviewed_by, reviewed_at)
+            VALUES ($1, 'PERSON', $2, 'Identidade parlamentar oficial',
+                    'PUBLIC_INTEREST', 'PUBLIC_PERSONAL',
+                    'O idCadastro e a fonte oficial foram revistos.',
+                    'Publica apenas a identidade necessária.', TRUE, $3, $4, NOW()),
+                   ($5, 'PARLIAMENT_ACTIVITY_SNAPSHOT', $6,
+                    'Fotografia oficial de atividade parlamentar',
+                    'PUBLIC_INTEREST', 'PUBLIC_OFFICIAL',
+                    'A iniciativa e o manifesto foram revistos.',
+                    'Publica apenas a fotografia aprovada.', TRUE, $3, $4, NOW())
+            """,
+            f"review_person_authorship_{uuid.uuid4().hex}",
+            person_id,
+            source_document_id,
+            admin_alias,
+            f"review_activity_authorship_{uuid.uuid4().hex}",
+            initiatives.snapshot_id,
+        )
+
+    admin = StaffSession(
+        staff_id=admin_staff_id,
+        auth_user_id=admin_auth_user_id,
+        public_alias=admin_alias,
+        role=StaffRole.ADMIN,
+        assurance_level="aal2",
+        mfa_required=True,
+    )
+    publisher = PoliticianInitiativeAuthorshipPublicationRepository(repository.pool)
+    preview = await publisher.inspect(case_id=case_id)
+    assert preview["eligible"] is True, preview["blockers"]
+    assert preview["publication_proof_sha256"] is not None
+    public_initiative = preview["initiative"]
+    assert isinstance(public_initiative, dict)
+    assert public_initiative["number"] == "1/XVII/1"
+    assert preview["authorship"]["relation"] == "AUTHOR"
+    publication_payload = PoliticianInitiativeAuthorshipPublicationRequest(
+        expected_case_id=case_id,
+        expected_version_id=str(preview["version_id"]),
+        expected_version_sha256=str(preview["version_sha256"]),
+        expected_source_sha256=proof.content_sha256,
+        expected_source_record_sha256=str(candidate["source_record_sha256"]),
+        expected_activity_snapshot_sha256=str(public_initiative["activity_snapshot_sha256"]),
+        expected_publication_proof_sha256=str(preview["publication_proof_sha256"]),
+        rationale=("A relação AUTHOR, os dois identificadores e os dois arquivos foram revistos."),
+        public_rationale=(
+            "A Assembleia identifica esta pessoa como autora desta iniciativa pelo id oficial."
+        ),
+        confirm_source_reviewed=True,
+        confirm_exact_official_ids_only=True,
+        confirm_official_author_relation=True,
+        confirm_public_initiative_reviewed=True,
+        confirm_no_name_or_party_matching=True,
+        confirm_no_collective_position_inference=True,
+        confirm_append_only_publication=True,
+        confirm_publication=True,
+    )
+
+    invalid_payload = publication_payload.model_copy(
+        update={"expected_source_record_sha256": "f" * 64}
+    )
+    async with repository.pool.acquire() as connection:
+        rows_before = int(
+            await connection.fetchval("SELECT COUNT(*) FROM politician_initiative_authorships")
+        )
+        events_before = int(
+            await connection.fetchval(
+                "SELECT COUNT(*) FROM editorial_publication_events WHERE case_id = $1",
+                case_id,
+            )
+        )
+    with pytest.raises(EditorialConflictError):
+        await publisher.publish(case_id=case_id, payload=invalid_payload, actor=admin)
+    async with repository.pool.acquire() as connection:
+        assert (
+            int(await connection.fetchval("SELECT COUNT(*) FROM politician_initiative_authorships"))
+            == rows_before
+        )
+        assert (
+            int(
+                await connection.fetchval(
+                    "SELECT COUNT(*) FROM editorial_publication_events WHERE case_id = $1",
+                    case_id,
+                )
+            )
+            == events_before
+        )
+
+    published = await publisher.publish(
+        case_id=case_id,
+        payload=publication_payload,
+        actor=admin,
+    )
+    authorship_id = str(published["authorship_id"])
+    assert published["state"] == "PUBLISHED"
+    assert published["people_created"] == 0
+    assert published["initiatives_created"] == 0
+    assert published["party_links_created"] == 0
+    with pytest.raises(EditorialConflictError):
+        await publisher.publish(case_id=case_id, payload=publication_payload, actor=admin)
+
+    async with repository.pool.acquire() as connection:
+        stored_authorship = await connection.fetchrow(
+            """
+            SELECT person_id, initiative_id, source_observation_id, relation,
+                   source_document_id, source_record_sha256
+            FROM politician_initiative_authorships WHERE id = $1
+            """,
+            authorship_id,
+        )
+        assert stored_authorship is not None
+        assert stored_authorship["person_id"] == person_id
+        assert stored_authorship["source_observation_id"] == candidate["observation_id"]
+        assert stored_authorship["relation"] == "AUTHOR"
+        assert stored_authorship["source_document_id"] == source_document_id
+        assert stored_authorship["source_record_sha256"] == candidate["source_record_sha256"]
+        assert (
+            await connection.fetchval(
+                "SELECT COUNT(*) FROM data_publication_reviews "
+                "WHERE entity_type = 'POLITICIAN_INITIATIVE_AUTHORSHIP' "
+                "AND entity_id = $1 AND publishable = TRUE",
+                authorship_id,
+            )
+            == 1
+        )
+        assert (
+            await connection.fetchval(
+                "SELECT COUNT(*) FROM audit_events "
+                "WHERE entity_type = 'POLITICIAN_INITIATIVE_AUTHORSHIP' "
+                "AND entity_id = $1 AND action = 'PUBLISHED'",
+                authorship_id,
+            )
+            == 1
+        )
+        with pytest.raises(asyncpg.PostgresError, match="append-only"):
+            async with connection.transaction():
+                await connection.execute(
+                    "UPDATE politician_initiative_authorships "
+                    "SET relation = 'AUTHOR' WHERE id = $1",
+                    authorship_id,
+                )
+
+    public_repository = PostgresRepository(Settings(environment="test"))
+    public_repository.pool = repository.pool
+    public_profile = await public_repository.get_public_politician(person_slug)
+    assert public_profile is not None
+    assert len(public_profile["initiatives"]) == 1
+    assert public_profile["initiatives"][0]["relation"] == "AUTHOR"
+    assert public_profile["initiatives"][0]["number"] == "1/XVII/1"
+    assert public_profile["coverage"]["initiatives"]["state"] == "AVAILABLE"

@@ -78,6 +78,9 @@ continuam a exigir autorizações separadas.
 - [x] V5.42 — `iniAutorDeputados` é derivado do arquivo oficial para uma fotografia privada por
   `IniId + idCadastro`; a proposta nasce `PENDING`, sem correspondência por nome ou sigla e com
   zero autorias públicas, pessoas, filiações, revisões públicas ou eventos.
+- [x] V5.43 — publicação ADMIN+MFA acrescenta uma autoria `AUTHOR`, revisão própria, auditoria,
+  decisão e evento numa transação; exige `IniId`, `idCadastro`, dois arquivos e revisões públicas
+  exatos e cria zero pessoas, iniciativas ou filiações.
 - [x] Existe um [conjunto de issues de conclusão](https://github.com/DxMaxi/transparencia-total-open-source/issues/58) para todos os itens ainda abertos.
 
 ## B. Estabilização pública
@@ -186,7 +189,8 @@ continuam a exigir autorizações separadas.
     sessão, linhas ou prova anterior.
 - [ ] Autoria de iniciativas usa relação oficial individual.
   - [x] V5.42 — recolha privada append-only e proposta editorial por `IniId + idCadastro` exatos.
-  - [ ] Publicação transacional específica da relação individual.
+  - [x] V5.43 — publicação transacional específica da relação individual, sem inferência por nome,
+    sigla, voto ou posição coletiva.
   - [ ] Retirada append-only específica, sem apagar relação, fonte ou publicação original.
 - [ ] Votos do perfil são nominais e ligados por identificador oficial exato.
 - [ ] Posições coletivas permanecem fora do histórico individual.

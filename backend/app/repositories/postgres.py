@@ -970,6 +970,105 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                 row["source_id"],
             )
 
+            initiative_rows: list[Any] = []
+            initiative_projection_ready = await connection.fetchval(
+                """
+                SELECT to_regclass('public.politician_initiative_authorships') IS NOT NULL
+                   AND to_regclass('public.parliament_initiative_author_observations') IS NOT NULL
+                   AND to_regclass('public.parliament_initiative_author_snapshots') IS NOT NULL
+                """
+            )
+            if initiative_projection_ready is True:
+                initiative_rows = list(
+                    await connection.fetch(
+                        """
+                SELECT authorship.id, initiative.number,
+                       initiative.type AS initiative_type,
+                       initiative.title, initiative.status,
+                       initiative.introduced_at, authorship.relation,
+                       review.reviewed_at AS verified_at,
+                       author_source.publisher::text AS source_publisher,
+                       author_source.url AS source_url,
+                       author_source.retrieved_at AS source_retrieved_at,
+                       author_source.content_sha256 AS source_sha256
+                FROM politician_initiative_authorships AS authorship
+                JOIN parliament_initiative_author_observations AS observation
+                  ON observation.id = authorship.source_observation_id
+                 AND observation.relation = 'AUTHOR'
+                 AND observation.source_record_sha256 = authorship.source_record_sha256
+                JOIN parliament_initiative_author_snapshots AS author_snapshot
+                  ON author_snapshot.id = observation.snapshot_id
+                 AND author_snapshot.source_document_id = authorship.source_document_id
+                JOIN source_documents AS author_source
+                  ON author_source.id = authorship.source_document_id
+                JOIN people AS exact_person
+                  ON exact_person.id = authorship.person_id
+                 AND exact_person.source_id = observation.official_deputy_id
+                 AND exact_person.role = 'DEPUTY'
+                 AND exact_person.active = TRUE
+                JOIN parliamentary_initiatives AS initiative
+                  ON initiative.id = authorship.initiative_id
+                 AND initiative.source_id = observation.initiative_source_id
+                 AND initiative.legislature = author_snapshot.legislature
+                JOIN parliament_activity_snapshots AS activity_snapshot
+                  ON activity_snapshot.id = initiative.snapshot_id
+                 AND activity_snapshot.source_document_id = initiative.source_document_id
+                JOIN source_documents AS activity_source
+                  ON activity_source.id = initiative.source_document_id
+                JOIN LATERAL (
+                    SELECT candidate.publishable
+                    FROM data_publication_reviews AS candidate
+                    WHERE candidate.entity_type = 'PERSON'
+                      AND candidate.entity_id = exact_person.id
+                    ORDER BY candidate.reviewed_at DESC, candidate.id DESC
+                    LIMIT 1
+                ) AS identity_review ON identity_review.publishable = TRUE
+                JOIN LATERAL (
+                    SELECT candidate.publishable
+                    FROM data_publication_reviews AS candidate
+                    WHERE candidate.entity_type = 'PARLIAMENT_ACTIVITY_SNAPSHOT'
+                      AND candidate.entity_id = activity_snapshot.id
+                      AND candidate.source_document_id = activity_source.id
+                    ORDER BY candidate.reviewed_at DESC, candidate.id DESC
+                    LIMIT 1
+                ) AS activity_review ON activity_review.publishable = TRUE
+                JOIN LATERAL (
+                    SELECT candidate.publishable, candidate.reviewed_at
+                    FROM data_publication_reviews AS candidate
+                    WHERE candidate.entity_type = 'POLITICIAN_INITIATIVE_AUTHORSHIP'
+                      AND candidate.entity_id = authorship.id
+                      AND candidate.source_document_id = author_source.id
+                    ORDER BY candidate.reviewed_at DESC, candidate.id DESC
+                    LIMIT 1
+                ) AS review ON review.publishable = TRUE
+                WHERE authorship.person_id = $1
+                  AND authorship.relation = 'AUTHOR'
+                  AND author_source.publisher = 'PARLIAMENT'
+                  AND author_source.kind <> 'NEWS_ARTICLE'
+                  AND activity_source.publisher = 'PARLIAMENT'
+                  AND activity_source.kind <> 'NEWS_ARTICLE'
+                  AND EXISTS (
+                      SELECT 1 FROM source_archive_attestations AS author_archive
+                      WHERE author_archive.source_document_id = author_source.id
+                        AND author_archive.content_sha256 = author_source.content_sha256
+                        AND author_archive.retrieval_url = author_source.url
+                        AND author_archive.retrieved_at = author_source.retrieved_at
+                  )
+                  AND EXISTS (
+                      SELECT 1 FROM source_archive_attestations AS activity_archive
+                      WHERE activity_archive.source_document_id = activity_source.id
+                        AND activity_archive.content_sha256 = activity_source.content_sha256
+                        AND activity_archive.retrieval_url = activity_source.url
+                        AND activity_archive.retrieved_at = activity_source.retrieved_at
+                  )
+                ORDER BY initiative.introduced_at DESC NULLS LAST,
+                         initiative.number, authorship.id
+                LIMIT 250
+                        """,
+                        row["id"],
+                    )
+                )
+
             attendance = await connection.fetchrow(
                 """
                 WITH published_meetings AS (
@@ -1429,6 +1528,19 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
             }
             for office in office_rows
         ]
+        initiatives = [
+            {
+                "id": initiative["id"],
+                "number": initiative["number"],
+                "initiative_type": initiative["initiative_type"],
+                "title": initiative["title"],
+                "status": initiative["status"],
+                "introduced_at": initiative["introduced_at"],
+                "relation": initiative["relation"],
+                "source": _source_from_row(initiative),
+            }
+            for initiative in initiative_rows
+        ]
 
         attendance_published_meetings = (
             int(attendance["published_meeting_count"]) if attendance is not None else 0
@@ -1504,6 +1616,11 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
 
         mandate_dates = [mandate["started_at"] for mandate in mandates]
         office_dates = [office["started_at"] for office in parliamentary_offices]
+        initiative_dates = [
+            initiative["introduced_at"]
+            for initiative in initiatives
+            if initiative["introduced_at"] is not None
+        ]
         membership_dates = [membership["observed_at"] for membership in membership_observations]
         declaration_dates = [
             declaration["declared_at"]
@@ -1539,7 +1656,7 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                 "attendance_label": attendance_note,
                 "nominal_votes_available": nominal_vote_count > 0,
                 "nominal_vote_count": nominal_vote_count,
-                "initiatives": [],
+                "initiatives": initiatives,
                 "declarations": declarations,
                 "declaration": declaration_record,
                 "declaration_source": declaration_source,
@@ -1639,16 +1756,19 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                         "source": attendance_source,
                     },
                     "initiatives": {
-                        "state": "UNAVAILABLE",
-                        "record_count": 0,
+                        "state": "AVAILABLE" if initiatives else "UNAVAILABLE",
+                        "record_count": len(initiatives),
                         "note": (
-                            "A fotografia publicada ainda não fornece uma associação individual "
-                            "de autoria por identificador oficial; nomes não são usados para "
-                            "a criar."
+                            "Só entram relações AUTHOR com IniId e idCadastro oficiais, dois "
+                            "arquivos atestados e revisões públicas específicas; autoria não "
+                            "prova voto, apoio futuro ou posição coletiva do partido."
+                            if initiatives
+                            else "Não existem autorias individuais publicadas por IniId e "
+                            "idCadastro exatos. Isto não prova ausência de autoria."
                         ),
-                        "observed_from": None,
-                        "observed_through": None,
-                        "source": None,
+                        "observed_from": min(initiative_dates) if initiative_dates else None,
+                        "observed_through": max(initiative_dates) if initiative_dates else None,
+                        "source": initiatives[0]["source"] if initiatives else None,
                     },
                     "nominal_votes": {
                         "state": (

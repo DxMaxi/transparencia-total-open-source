@@ -134,7 +134,7 @@ test("V5.42 creates only a PENDING proposal reconstructed from exact official id
   assert.match(documentation, /PostgreSQL\s+descartável/);
   assert.match(checklist, /\[x\] V5\.42 — `iniAutorDeputados`/);
   assert.match(plan, /V5_POLITICIAN_INITIATIVE_AUTHORSHIP\.md/);
-  assert.match(readme, /V5\.1 a V5\.42 preparadas/);
+  assert.match(readme, /V5\.1 a V5\.\d+ preparadas/);
   assert.match(types, /PoliticianInitiativeAuthorshipEditorialCandidate/);
   assert.match(types, /PoliticianInitiativeAuthorshipEditorialProposalResult/);
 });

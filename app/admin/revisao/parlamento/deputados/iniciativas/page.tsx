@@ -1,11 +1,15 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { createPoliticianInitiativeAuthorshipProposal } from "../../../actions";
-import { editorialFetch } from "@/lib/editorial-api";
+import {
+  createPoliticianInitiativeAuthorshipProposal,
+  publishPoliticianInitiativeAuthorship,
+} from "../../../actions";
+import { editorialFetch, getEditorialContext } from "@/lib/editorial-api";
 import {
   STATE_LABELS,
   type PoliticianInitiativeAuthorshipEditorialCandidate,
   type PoliticianInitiativeAuthorshipEditorialCandidateList,
+  type PoliticianInitiativeAuthorshipPublicationPreview,
 } from "@/lib/editorial-types";
 
 const dateFormatter = new Intl.DateTimeFormat("pt-PT", {
@@ -44,6 +48,18 @@ function pageHref({
   return `/admin/revisao/parlamento/deputados/iniciativas?${params.toString()}`;
 }
 
+async function loadPublicationPreview(
+  caseId: string,
+): Promise<PoliticianInitiativeAuthorshipPublicationPreview | null> {
+  try {
+    return await editorialFetch<PoliticianInitiativeAuthorshipPublicationPreview>(
+      `/parliament/initiative-authorship-cases/${encodeURIComponent(caseId)}/publication`,
+    );
+  } catch {
+    return null;
+  }
+}
+
 export default async function PoliticianInitiativeAuthorshipEditorialPage({
   searchParams,
 }: {
@@ -52,6 +68,7 @@ export default async function PoliticianInitiativeAuthorshipEditorialPage({
     q?: string;
     offset?: string;
     erro?: string;
+    sucesso?: string;
   }>;
 }) {
   const input = await searchParams;
@@ -68,12 +85,25 @@ export default async function PoliticianInitiativeAuthorshipEditorialPage({
   const catalogue = await editorialFetch<PoliticianInitiativeAuthorshipEditorialCandidateList>(
     `/parliament/initiative-authorship-candidates?${params.toString()}`,
   );
+  const { staff } = await getEditorialContext();
+  const publicationPreviews = new Map<
+    string,
+    PoliticianInitiativeAuthorshipPublicationPreview
+  >();
+  await Promise.all(
+    catalogue.items.map(async (candidate) => {
+      if (candidate.existing_case?.state === "APPROVED" && candidate.proposal_eligible) {
+        const preview = await loadPublicationPreview(candidate.existing_case.id);
+        if (preview) publicationPreviews.set(candidate.existing_case.id, preview);
+      }
+    }),
+  );
 
   return (
     <div className="admin-page parliament-editorial-page">
       <header className="admin-page-heading">
         <div>
-          <p className="eyebrow">V5.42 · autoria por prova oficial</p>
+          <p className="eyebrow">V5.42–V5.43 · autoria por prova oficial</p>
           <h1>Autoria individual de iniciativas</h1>
           <p>
             Compare a iniciativa, o autor declarado e o arquivo original. Enviar para revisão cria
@@ -92,6 +122,11 @@ export default async function PoliticianInitiativeAuthorshipEditorialPage({
       {input.erro ? (
         <p className="private-message private-message--error" role="alert">
           {input.erro}
+        </p>
+      ) : null}
+      {input.sucesso === "autoria-publicada" ? (
+        <p className="private-message private-message--success" role="status">
+          A autoria exata foi publicada com duas fontes revistas e histórico imutável.
         </p>
       ) : null}
 
@@ -131,7 +166,16 @@ export default async function PoliticianInitiativeAuthorshipEditorialPage({
       {catalogue.items.length ? (
         <section className="parliament-snapshot-list" aria-label="Autorias oficiais observadas">
           {catalogue.items.map((candidate) => (
-            <CandidateCard candidate={candidate} key={candidate.observation_id} />
+            <CandidateCard
+              candidate={candidate}
+              publicationPreview={
+                candidate.existing_case
+                  ? publicationPreviews.get(candidate.existing_case.id) ?? null
+                  : null
+              }
+              isAdmin={staff.role === "ADMIN"}
+              key={candidate.observation_id}
+            />
           ))}
         </section>
       ) : (
@@ -165,8 +209,12 @@ export default async function PoliticianInitiativeAuthorshipEditorialPage({
 
 function CandidateCard({
   candidate,
+  publicationPreview,
+  isAdmin,
 }: {
   candidate: PoliticianInitiativeAuthorshipEditorialCandidate;
+  publicationPreview: PoliticianInitiativeAuthorshipPublicationPreview | null;
+  isAdmin: boolean;
 }) {
   const sourceUrl = safeOfficialSourceUrl(candidate.source.url);
   const initiativeUrl = safeOfficialSourceUrl(candidate.initiative.official_url);
@@ -264,16 +312,25 @@ function CandidateCard({
       </details>
 
       {candidate.existing_case ? (
-        <section className="parliament-proposal-card parliament-proposal-card--existing">
-          <p className="eyebrow">Autoria individual</p>
-          <h3>Processo já existente</h3>
-          <p>
-            {STATE_LABELS[candidate.existing_case.state]} · revisão {candidate.existing_case.revision}
-          </p>
-          <Link className="button" href={`/admin/revisao/${candidate.existing_case.id}`}>
-            Abrir processo
-          </Link>
-        </section>
+        <>
+          <section className="parliament-proposal-card parliament-proposal-card--existing">
+            <p className="eyebrow">Autoria individual</p>
+            <h3>Processo já existente</h3>
+            <p>
+              {STATE_LABELS[candidate.existing_case.state]} · revisão {candidate.existing_case.revision}
+            </p>
+            <Link className="button" href={`/admin/revisao/${candidate.existing_case.id}`}>
+              Abrir processo
+            </Link>
+          </section>
+          {candidate.existing_case.state === "APPROVED" ? (
+            <AuthorshipPublicationAction
+              candidate={candidate}
+              preview={publicationPreview}
+              isAdmin={isAdmin}
+            />
+          ) : null}
+        </>
       ) : (
         <form
           action={createPoliticianInitiativeAuthorshipProposal}
@@ -317,6 +374,118 @@ function CandidateCard({
         </form>
       )}
     </article>
+  );
+}
+
+function AuthorshipPublicationAction({
+  candidate,
+  preview,
+  isAdmin,
+}: {
+  candidate: PoliticianInitiativeAuthorshipEditorialCandidate;
+  preview: PoliticianInitiativeAuthorshipPublicationPreview | null;
+  isAdmin: boolean;
+}) {
+  if (!preview || !preview.initiative) {
+    return (
+      <section className="parliament-proposal-card">
+        <strong>Prova de publicação indisponível.</strong>
+        <p>
+          O processo continua aprovado e privado. Pode faltar a identidade revista ou uma
+          fotografia pública que contenha exatamente este IniId.
+        </p>
+      </section>
+    );
+  }
+  return (
+    <form
+      action={publishPoliticianInitiativeAuthorship}
+      className="parliament-proposal-card parliament-publication-card"
+    >
+      <input type="hidden" name="legislature" value={candidate.legislature} />
+      <input type="hidden" name="expected_case_id" value={preview.case_id} />
+      <input type="hidden" name="expected_version_id" value={preview.version_id} />
+      <input type="hidden" name="expected_version_sha256" value={preview.version_sha256} />
+      <input type="hidden" name="expected_source_sha256" value={preview.source.content_sha256} />
+      <input
+        type="hidden"
+        name="expected_source_record_sha256"
+        value={preview.source_record_sha256}
+      />
+      <input
+        type="hidden"
+        name="expected_activity_snapshot_sha256"
+        value={preview.initiative.activity_snapshot_sha256}
+      />
+      <input
+        type="hidden"
+        name="expected_publication_proof_sha256"
+        value={preview.publication_proof_sha256 ?? ""}
+      />
+      <div>
+        <p className="eyebrow">V5.43 · porta pública específica</p>
+        <h3>Publicar autoria individual</h3>
+        <p>{preview.publication_rule}</p>
+      </div>
+      <dl>
+        <div><dt>Autorias a criar</dt><dd>{preview.public_effect.authorships_to_create}</dd></div>
+        <div><dt>Pessoas a criar</dt><dd>{preview.public_effect.people_to_create}</dd></div>
+        <div><dt>Iniciativas a criar</dt><dd>{preview.public_effect.initiatives_to_create}</dd></div>
+        <div><dt>Ligações partidárias</dt><dd>{preview.public_effect.party_links_to_create}</dd></div>
+      </dl>
+      <div className="admin-proof-callout">
+        <strong>Iniciativa pública revista</strong>
+        <span>{preview.initiative.number} · {preview.initiative.title}</span>
+        <code>{preview.initiative.activity_snapshot_sha256}</code>
+        <strong>SHA-256 da prova de publicação</strong>
+        <code>{preview.publication_proof_sha256 ?? "dados indisponíveis"}</code>
+      </div>
+      {preview.blockers.length ? (
+        <ul className="parliament-limitations">
+          {preview.blockers.map((blocker) => <li key={blocker.code}>{blocker.detail}</li>)}
+        </ul>
+      ) : null}
+      <label>
+        Fundamentação editorial privada
+        <textarea name="rationale" minLength={20} maxLength={1850} required />
+      </label>
+      <label>
+        Fundamentação pública factual
+        <textarea name="public_rationale" minLength={20} maxLength={500} required />
+      </label>
+      <Confirmation name="confirm_source_reviewed">
+        Voltei a comparar as fontes de autoria e da iniciativa pública, os arquivos e os hashes.
+      </Confirmation>
+      <Confirmation name="confirm_exact_official_ids_only">
+        Confirmo o uso exclusivo do IniId e do idCadastro oficiais exatos.
+      </Confirmation>
+      <Confirmation name="confirm_official_author_relation">
+        Confirmo que a fonte declara literalmente esta pessoa como AUTHOR.
+      </Confirmation>
+      <Confirmation name="confirm_public_initiative_reviewed">
+        Confirmo que a iniciativa pertence a uma fotografia pública revista.
+      </Confirmation>
+      <Confirmation name="confirm_no_name_or_party_matching">
+        Confirmo que nome e sigla partidária não criaram nenhuma correspondência.
+      </Confirmation>
+      <Confirmation name="confirm_no_collective_position_inference">
+        Confirmo que autoria não prova voto, apoio ou posição coletiva do partido.
+      </Confirmation>
+      <Confirmation name="confirm_append_only_publication">
+        Confirmo que correções e retiradas acrescentarão histórico sem apagar esta prova.
+      </Confirmation>
+      <Confirmation name="confirm_publication">
+        Confirmo a publicação desta autoria e destes SHA-256 exatos.
+      </Confirmation>
+      {!isAdmin ? <p>A publicação exige uma conta ADMIN com MFA.</p> : null}
+      <button
+        className="button button--primary"
+        type="submit"
+        disabled={!isAdmin || !preview.eligible || !preview.publication_proof_sha256}
+      >
+        Publicar autoria com prova
+      </button>
+    </form>
   );
 }
 

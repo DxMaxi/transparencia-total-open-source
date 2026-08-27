@@ -148,6 +148,7 @@ class PublicProfileConnection:
         self.membership_query = ""
         self.mandate_query = ""
         self.attendance_query = ""
+        self.initiative_capability_query = ""
         self.availability_query = ""
         self.vote_query = ""
         self.declaration_query = ""
@@ -184,6 +185,11 @@ class PublicProfileConnection:
         elif "FROM vote_records vr" in query:
             self.vote_query = query
         return []
+
+    async def fetchval(self, query: str, *arguments: object) -> bool:
+        assert arguments == ()
+        self.initiative_capability_query = query
+        return False
 
     async def fetchrow(self, query: str, *arguments: object) -> dict[str, Any] | None:
         if "WITH published_meetings AS" in query:
@@ -293,6 +299,9 @@ def test_v56_profile_areas_have_independent_fail_closed_publication_gates() -> N
 
     assert profile["contract_version"] == "v5.6"
     assert profile["coverage"]["initiatives"]["state"] == "UNAVAILABLE"
+    assert "to_regclass('public.politician_initiative_authorships')" in (
+        connection.initiative_capability_query
+    )
     assert profile["declarations"] == []
     assert profile["declaration"] is None
     assert profile["declaration_source"] is None

@@ -1,6 +1,6 @@
 # PROJECT HANDOFF — Transparência Total / Fator Cívico
 
-Atualizado em: **2026-08-26**
+Atualizado em: **2026-08-27**
 
 Este documento existe para permitir continuidade segura entre sessões de trabalho, colaboradores e chats sem depender de memória externa ao repositório.
 
@@ -168,6 +168,16 @@ editorial é sempre da reunião inteira, nasce `PENDING`, não usa correspondên
 zero sessões ou presenças públicas. Estados desconhecidos, identidades sem revisão ou ausência de
 um mandato revisto para a data ficam visíveis como bloqueios de uma futura publicação. Nenhuma
 operação de staging ou produção foi executada.
+
+A V5.40 publica uma reunião integral apenas depois de reconstruir todos os BID, mandatos e provas
+numa transação `ADMIN` com MFA. A V5.41 acrescenta a retirada integral por revisão negativa, sem
+apagar sessão, linhas ou publicação original. A V5.42 deriva `iniAutorDeputados` para uma fotografia
+privada append-only por `IniId + idCadastro` e cria apenas propostas `PENDING`; nomes e siglas não
+fazem correspondências. A V5.43 acrescenta a publicação específica da relação `AUTHOR`: exige a
+identidade exata revista, uma iniciativa já publicada por fotografia de atividade, os dois arquivos
+e todos os SHA-256; depois acrescenta relação, revisão, auditoria, decisão e evento ou reverte tudo.
+Não cria pessoas, iniciativas ou filiações, não infere voto ou apoio e não foi executada em staging
+ou produção. A retirada específica desta autoria permanece para a V5.44.
 
 A melhoria de UX iniciada em agosto de 2026 faz parte da estabilização/conclusão da **V5**. Não deve ser tratada como início de uma V6 nem como autorização para reescrever o projeto.
 
