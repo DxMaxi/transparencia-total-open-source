@@ -81,6 +81,6 @@ test("V5.41 closes the attendance gate without activating real data", async () =
   assert.match(documentation, /dados indisponíveis/i);
   assert.match(checklist, /\[x\] V5\.41 — retirada transacional e imutável/);
   assert.match(plan, /V5_POLITICIAN_ATTENDANCE_WITHDRAWAL\.md/);
-  assert.match(readme, /V5\.1 a V5\.41 preparadas/);
+  assert.match(readme, /V5\.1 a V5\.42 preparadas/);
   assert.match(readme, /V5_POLITICIAN_ATTENDANCE_WITHDRAWAL\.md/);
 });

@@ -639,6 +639,47 @@ model ParliamentaryInitiative {
   @@map("parliamentary_initiatives")
 }
 
+/// Fotografia privada das relações individuais declaradas em
+/// iniAutorDeputados. Não liga pessoas e nunca equivale a publicação.
+model ParliamentInitiativeAuthorSnapshot {
+  id               String                                  @id
+  sourceDocumentId String                                  @map("source_document_id")
+  legislature      String
+  parserVersion    String                                  @map("parser_version")
+  normalisedSha256 String                                  @map("normalised_sha256") @db.Char(64)
+  collectedAt      DateTime                                @map("collected_at")
+  initiativeCount  Int                                     @map("initiative_count")
+  authorshipCount  Int                                     @map("authorship_count")
+  deputyCount      Int                                     @map("deputy_count")
+  createdAt        DateTime                                @default(now()) @map("created_at")
+  sourceDocument   SourceDocument                          @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
+  observations     ParliamentInitiativeAuthorObservation[]
+
+  @@unique([sourceDocumentId, legislature, parserVersion])
+  @@index([legislature, collectedAt])
+  @@map("parliament_initiative_author_snapshots")
+}
+
+/// Relação literal por idCadastro oficial. O nome e o grupo são conservados
+/// como texto da fonte, mas não podem ser usados para correspondência.
+model ParliamentInitiativeAuthorObservation {
+  id                       String                              @id
+  snapshotId               String                              @map("snapshot_id")
+  initiativeSourceId       String                              @map("initiative_source_id")
+  officialDeputyId         String                              @map("official_deputy_id")
+  parliamentaryName        String                              @map("parliamentary_name")
+  parliamentaryGroupLabel  String?                             @map("parliamentary_group_label")
+  relation                 String
+  sourceRecordSha256       String                              @map("source_record_sha256") @db.Char(64)
+  createdAt                DateTime                            @default(now()) @map("created_at")
+  snapshot                 ParliamentInitiativeAuthorSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
+
+  @@unique([snapshotId, initiativeSourceId, officialDeputyId])
+  @@index([initiativeSourceId])
+  @@index([officialDeputyId])
+  @@map("parliament_initiative_author_observations")
+}
+
 model VoteEvent {
   id               String                      @id @default(cuid())
   sourceId         String                      @map("source_id")
@@ -1518,6 +1559,7 @@ model SourceDocument {
   parliamentSnapshots        ParliamentActivitySnapshot[]
   parliamentDeputySnapshots  ParliamentDeputySnapshot[]
   parliamentAttendanceSnapshots ParliamentAttendanceSnapshot[]
+  parliamentInitiativeAuthorSnapshots ParliamentInitiativeAuthorSnapshot[]
   sessions                   ParliamentarySession[]
   attendanceRecords          AttendanceRecord[]
   initiatives                ParliamentaryInitiative[]

@@ -17,6 +17,7 @@ import {
   type PoliticianAttendanceEditorialProposalResult,
   type PoliticianAttendancePublicationResult,
   type PoliticianAttendanceWithdrawalResult,
+  type PoliticianInitiativeAuthorshipEditorialProposalResult,
   type PoliticianOfficeEditorialProposalResult,
   type PoliticianOfficePublicationResult,
   type PoliticianOfficeWithdrawalResult,
@@ -246,6 +247,62 @@ export async function createPoliticianAttendanceProposal(formData: FormData) {
   revalidatePath("/admin/revisao/parlamento/deputados/presencas");
   redirect(
     `/admin/revisao/${created!.case.id}?sucesso=${created!.created ? "presencas-importadas" : "presencas-existentes"}`,
+  );
+}
+
+export async function createPoliticianInitiativeAuthorshipProposal(formData: FormData) {
+  const observationId = evidenceId(formData, "observation_id");
+  const sourceRecordSha256 = sha256(formData, "source_record_sha256");
+  const legislature = requiredText(formData, "legislature").slice(0, 20);
+  let created: PoliticianInitiativeAuthorshipEditorialProposalResult | null = null;
+  let failure: string | null = null;
+  try {
+    for (const [field, message] of [
+      ["confirm_private_only", "Confirme que a proposta permanece privada"],
+      ["confirm_exact_initiative_id", "Confirme o uso do IniId oficial exato"],
+      [
+        "confirm_exact_official_deputy_id",
+        "Confirme o uso exclusivo do idCadastro oficial",
+      ],
+      ["confirm_official_author_relation", "Confirme a relação de autoria literal da fonte"],
+      [
+        "confirm_no_name_or_party_matching",
+        "Confirme que nome e partido não serão usados para correspondência",
+      ],
+      [
+        "confirm_no_collective_position_inference",
+        "Confirme que a autoria não prova posição coletiva ou sentido de voto",
+      ],
+    ] as const) {
+      if (formData.get(field) !== "on") throw new Error(message);
+    }
+    created = await editorialFetch<PoliticianInitiativeAuthorshipEditorialProposalResult>(
+      "/parliament/initiative-authorship-proposals",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          observation_id: observationId,
+          source_record_sha256: sourceRecordSha256,
+          confirm_private_only: true,
+          confirm_exact_initiative_id: true,
+          confirm_exact_official_deputy_id: true,
+          confirm_official_author_relation: true,
+          confirm_no_name_or_party_matching: true,
+          confirm_no_collective_position_inference: true,
+        }),
+      },
+    );
+  } catch (error) {
+    failure = actionError(error);
+  }
+  if (failure) {
+    const params = new URLSearchParams({ legislature, erro: failure });
+    redirect(`/admin/revisao/parlamento/deputados/iniciativas?${params.toString()}`);
+  }
+  revalidatePath("/admin/revisao");
+  revalidatePath("/admin/revisao/parlamento/deputados/iniciativas");
+  redirect(
+    `/admin/revisao/${created!.case.id}?sucesso=${created!.created ? "autoria-importada" : "autoria-existente"}`,
   );
 }
 
