@@ -78,6 +78,9 @@ export default async function PoliticianProfileEditorialPage({
           </p>
         </div>
         <div className="admin-heading-actions">
+          <Link href="/admin/revisao/parlamento/deputados/iniciativas">
+            Rever autoria de iniciativas
+          </Link>
           <Link href="/admin/revisao/parlamento/deputados/presencas">
             Rever presenças por reunião
           </Link>

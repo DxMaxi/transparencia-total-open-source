@@ -678,6 +678,81 @@ export type PoliticianAttendanceEditorialProposalResult = {
   selective_processing_allowed: false;
 };
 
+export type PoliticianInitiativeAuthorshipCounts = {
+  initiatives: number;
+  authorships: number;
+  deputies: number;
+};
+
+export type PoliticianInitiativeAuthorshipEditorialCandidate = {
+  observation_id: string;
+  snapshot_id: string;
+  source_document_id: string;
+  legislature: string;
+  initiative_source_id: string;
+  official_deputy_id: string;
+  parliamentary_name: string;
+  parliamentary_group_label: string | null;
+  relation: "AUTHOR";
+  source_record_sha256: string;
+  snapshot: {
+    parser_version: string;
+    normalised_sha256: string;
+    collected_at: string;
+    manifest_counts: PoliticianInitiativeAuthorshipCounts;
+    materialised_counts: PoliticianInitiativeAuthorshipCounts;
+  };
+  initiative: {
+    exact_match_count: number;
+    id: string | null;
+    number: string | null;
+    type: string | null;
+    title: string | null;
+    status: string | null;
+    official_url: string | null;
+  };
+  identity_reconciliation: {
+    exact_identity: boolean;
+    reviewed_identity: boolean;
+    full_name: string | null;
+    rule: "EXACT_AR_IDCADASTRO_ONLY";
+  };
+  source: ParliamentEditorialSnapshot["source"];
+  archive: ParliamentEditorialSnapshot["archive"];
+  existing_case: PoliticianProfileEditorialCandidate["editorial_case"];
+  blocked_reasons: string[];
+  warnings: string[];
+  proposal_eligible: boolean;
+  publication_blockers: string[];
+  publication_ready: false;
+  public_projection_allowed: false;
+  name_matching_allowed: false;
+  party_matching_allowed: false;
+  collective_position_inference_allowed: false;
+};
+
+export type PoliticianInitiativeAuthorshipEditorialCandidateList = {
+  items: PoliticianInitiativeAuthorshipEditorialCandidate[];
+  total: number;
+  limit: number;
+  offset: number;
+  next_offset: number | null;
+  publication_performed: false;
+  search_rule: string;
+};
+
+export type PoliticianInitiativeAuthorshipEditorialProposalResult = {
+  created: boolean;
+  case: EditorialCaseDetail;
+  state: "PRIVATE_PENDING_REVIEW";
+  publication_performed: false;
+  initiative_authorship_created: false;
+  people_created: 0;
+  party_links_created: 0;
+  public_reviews_created: 0;
+  name_matching_allowed: false;
+};
+
 export type PoliticianAttendancePublicationPreview = {
   case_id: string;
   case_state: "APPROVED";

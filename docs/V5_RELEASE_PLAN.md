@@ -11,12 +11,12 @@ reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.41 preparadas; staging remoto pendente |
+| Código V5 | V5.1 a V5.42 preparadas; staging remoto pendente |
 | Frontend público | V5.21 preparado; capacidades sem backend ou esquema pronto ficam fail-closed |
 | API pública | `0.5.0-alpha.0`; capacidades anunciadas apenas após prova read-only do esquema |
 | Painel editorial | implementado no código, não ativado em produção |
 | IA | geração, revisão, publicação e retirada implementadas; esquema remoto ainda não ativado |
-| Parlamento | matriz V5.21 e gates V5.22–V5.41 preparados; autoria, votos individuais e ativação editorial pendentes |
+| Parlamento | matriz V5.21 e gates V5.22–V5.42 preparados; publicação de autoria, votos individuais e ativação editorial pendentes |
 | Perfis | ciclo integral de entrada, publicação, retirada e republicação provado; domínios individuais pendentes |
 | Promessómetro | catálogo editorial inicial de 10 compromissos; vocabulário V5.20 protegido |
 | Investigador Cívico | zero contratos e zero relações na projeção pública |
@@ -252,6 +252,14 @@ auditoria, decisão e evento de retirada na mesma transação. A reunião inteir
 ativa, mas nenhuma sessão, presença, pessoa, mandato ou prova histórica é apagada ou alterada. A
 capacidade não foi executada em staging ou produção.
 
+O décimo nono gate de perfis está preparado em
+[V5.42 — autoria individual de iniciativas no circuito editorial](V5_POLITICIAN_INITIATIVE_AUTHORSHIP.md).
+Dos bytes oficiais já arquivados é derivada uma fotografia privada separada das relações
+`IniId + idCadastro`, com manifesto, SHA-256 por relação e histórico append-only. Nome e grupo são
+apenas texto da fonte. O comparador exige uma única iniciativa do mesmo arquivo e só reconcilia uma
+pessoa pelo mesmo `people.source_id`; a proposta nasce `PENDING` e cria zero autorias públicas,
+pessoas, filiações, revisões públicas ou eventos. Publicação e retirada continuam gates separados.
+
 Critérios de saída:
 
 - fotografia `parliament-activity-v5` recolhida e atestada;
@@ -274,7 +282,8 @@ Critérios de saída:
 - mandatos têm datas oficiais, fonte arquivada e revisão `MANDATE` própria;
 - cargos, círculo e observações parlamentares distinguem facto observado de período jurídico;
 - presenças indicam período observado e dependem de mandato revisto;
-- autoria de iniciativas exige relação individual por identificador oficial;
+- autoria de iniciativas exige relação individual por identificador oficial; a entrada privada e
+  a proposta estão preparadas na V5.42, enquanto publicação e retirada continuam pendentes;
 - votos do perfil são nominais, `PERSON` e ligados por `people.source_id` exato;
 - declarações individuais exigem fonte EPT, arquivo e confirmação jurídica explícita;
 - o portal geral da EPT permanece apenas uma porta de pesquisa;

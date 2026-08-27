@@ -260,6 +260,21 @@ class PoliticianAttendanceEditorialProposalRequest(BaseModel):
     confirm_no_selective_processing: Literal[True]
 
 
+class PoliticianInitiativeAuthorshipEditorialProposalRequest(BaseModel):
+    """Seleciona uma autoria oficial exata para revisão privada."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    observation_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    source_record_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    confirm_private_only: Literal[True]
+    confirm_exact_initiative_id: Literal[True]
+    confirm_exact_official_deputy_id: Literal[True]
+    confirm_official_author_relation: Literal[True]
+    confirm_no_name_or_party_matching: Literal[True]
+    confirm_no_collective_position_inference: Literal[True]
+
+
 class PoliticianAttendancePublicationRequest(BaseModel):
     """Confirma a publicação integral de uma reunião reconstruída no servidor."""
 

@@ -75,6 +75,9 @@ continuam a exigir autorizações separadas.
 - [x] V5.41 — retirada transacional e imutável acrescenta revisão negativa, auditoria, decisão e
   evento para a reunião inteira; sessão, presenças, identidades, mandatos e publicação original
   permanecem e não existe retirada seletiva.
+- [x] V5.42 — `iniAutorDeputados` é derivado do arquivo oficial para uma fotografia privada por
+  `IniId + idCadastro`; a proposta nasce `PENDING`, sem correspondência por nome ou sigla e com
+  zero autorias públicas, pessoas, filiações, revisões públicas ou eventos.
 - [x] Existe um [conjunto de issues de conclusão](https://github.com/DxMaxi/transparencia-total-open-source/issues/58) para todos os itens ainda abertos.
 
 ## B. Estabilização pública
@@ -182,6 +185,9 @@ continuam a exigir autorizações separadas.
   - [x] V5.41 — retirada transacional e imutável da reunião inteira, sem apagar observações,
     sessão, linhas ou prova anterior.
 - [ ] Autoria de iniciativas usa relação oficial individual.
+  - [x] V5.42 — recolha privada append-only e proposta editorial por `IniId + idCadastro` exatos.
+  - [ ] Publicação transacional específica da relação individual.
+  - [ ] Retirada append-only específica, sem apagar relação, fonte ou publicação original.
 - [ ] Votos do perfil são nominais e ligados por identificador oficial exato.
 - [ ] Posições coletivas permanecem fora do histórico individual.
 - [ ] Declaração individual exige fonte EPT, arquivo e revisão jurídica.

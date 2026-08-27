@@ -80,9 +80,12 @@ Nomes parlamentares, nomes civis e siglas servem apenas para apresentação. Nã
 associação. A interface deixou também de sugerir uma secção de “posições do grupo” dentro da ficha
 individual: uma posição coletiva pertence à consulta parlamentar, não ao histórico pessoal.
 
-O modelo atual de iniciativas não contém uma relação de autoria individual por identificador
-oficial. Por isso, a V5.6 publica uma lista vazia com cobertura `UNAVAILABLE`; não tenta descobrir
-autores no título, na descrição ou por semelhança de nomes.
+A V5.42 acrescenta uma fotografia **privada** de autoria individual por `IniId + idCadastro`
+oficiais e uma proposta editorial `PENDING`, documentadas em
+[V5_POLITICIAN_INITIATIVE_AUTHORSHIP.md](V5_POLITICIAN_INITIATIVE_AUTHORSHIP.md). A projeção pública
+continua, por desenho, com lista vazia e cobertura `UNAVAILABLE` até existirem publicação e retirada
+específicas deste domínio. Nunca tenta descobrir autores no título, na descrição, no nome ou na
+sigla partidária.
 
 ## Declarações: prova individual versus portal de pesquisa
 

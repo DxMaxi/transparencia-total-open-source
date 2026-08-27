@@ -117,5 +117,5 @@ test("V5.34 remains operationally gated after the separate immutable withdrawal"
   assert.match(checklist, /\[x\] V5\.34 — publicação transacional/);
   assert.match(checklist, /\[x\] V5\.35 — retirada transacional e imutável/);
   assert.match(plan, /V5_POLITICIAN_MANDATE_PUBLICATION\.md/);
-  assert.match(readme, /V5\.1 a V5\.41 preparadas/);
+  assert.match(readme, /V5\.1 a V5\.42 preparadas/);
 });

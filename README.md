@@ -23,7 +23,7 @@ definição da Open Source Initiative.
 > commit final desse fecho. A V5 começa pela governação de licença e pelo circuito editorial
 > privado; esta branch não altera os dados aprovados da V4.
 
-> **V5.1 a V5.41 preparadas; ativação remota de staging pendente:** o painel privado usa
+> **V5.1 a V5.42 preparadas; ativação remota de staging pendente:** o painel privado usa
 > login por convite,
 > MFA obrigatório, funções de administrador/revisor, comparação entre fonte atestada e JSON
 > normalizado, versões e decisões append-only. A V5.2 acrescentou propostas parlamentares privadas,
@@ -110,7 +110,11 @@ definição da Open Source Initiative.
 > reunião com a respetiva fonte e SHA-256; não cria pessoas, mandatos ou filiações. A V5.41 fecha
 > a retirada integral append-only: uma revisão negativa, auditoria, decisão e evento ocultam toda a
 > reunião ativa sem apagar sessão, presenças, fonte, versão ou publicação original. Não existe
-> retirada seletiva por deputado. A
+> retirada seletiva por deputado. A V5.42 inicia o domínio de autoria individual de iniciativas:
+> deriva do mesmo JSON oficial arquivado uma fotografia privada por `IniId + idCadastro`, conserva
+> SHA-256 por relação e só permite propostas `PENDING` reconstruídas no servidor. Nome e grupo são
+> texto da fonte, não chaves de identidade ou filiação; autoria não é convertida em voto, apoio ou
+> posição coletiva e esta entrega cria zero relações públicas. A
 > ativação real continua dependente dos gates operacionais de staging. O código e os testes
 > não executam estas operações sobre staging ou
 > produção. O plano e a checklist
@@ -150,6 +154,7 @@ definição da Open Source Initiative.
 > [Presenças parlamentares por reunião no circuito editorial V5.39](docs/V5_POLITICIAN_ATTENDANCE_EDITORIAL.md),
 > [Publicação transacional de presenças por reunião V5.40](docs/V5_POLITICIAN_ATTENDANCE_PUBLICATION.md),
 > [Retirada integral e imutável de presenças por reunião V5.41](docs/V5_POLITICIAN_ATTENDANCE_WITHDRAWAL.md),
+> [Autoria individual de iniciativas no circuito editorial V5.42](docs/V5_POLITICIAN_INITIATIVE_AUTHORSHIP.md),
 > [Adaptador parlamentar V5.2](docs/V5_PARLIAMENT_EDITORIAL_ADAPTER.md) e
 > [Publicação parlamentar por âmbito V5.3](docs/V5_PARLIAMENT_SCOPE_PUBLICATION.md),
 > [Retirada parlamentar imutável V5.4](docs/V5_PARLIAMENT_WITHDRAWAL.md) e
