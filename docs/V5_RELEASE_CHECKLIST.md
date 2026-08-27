@@ -66,6 +66,9 @@ continuam a exigir autorizações separadas.
 - [x] V5.38 — retirada transacional e imutável do cargo acrescenta revisão negativa, auditoria,
   decisão e evento, preserva cargo, identidade, mandatos, fonte e publicação e recua tudo perante
   qualquer divergência.
+- [x] V5.39 — presenças oficiais por reunião entram numa fotografia privada integral e append-only,
+  com BID exato, fonte arquivada e proposta `PENDING`; aprovação cria zero sessões ou presenças
+  públicas e uma falta nunca é convertida automaticamente em incumprimento.
 - [x] Existe um [conjunto de issues de conclusão](https://github.com/DxMaxi/transparencia-total-open-source/issues/58) para todos os itens ainda abertos.
 
 ## B. Estabilização pública
@@ -162,11 +165,15 @@ continuam a exigir autorizações separadas.
   - [x] Proposta privada por intervalo oficial exato, com semântica sujeita a revisão humana.
   - [x] Publicação transacional append-only com revisão `MANDATE` própria.
   - [x] Retirada append-only específica, sem alteração ou eliminação da linha publicada.
-- [ ] Cargos e círculo têm fonte e período explícitos.
+- [x] Cargos e círculo têm fonte e período explícitos.
   - [x] Proposta privada específica por `DepCargo`, DepId, CarId, círculo e período exatos.
-  - [ ] Publicação append-only do cargo com revisão própria e projeção pública.
-  - [ ] Retirada append-only específica do cargo, sem apagar a linha nem a prova anterior.
+  - [x] Publicação append-only do cargo com revisão própria e projeção pública.
+  - [x] Retirada append-only específica do cargo, sem apagar a linha nem a prova anterior.
 - [ ] Presenças dependem de mandato revisto e fotografia publicada.
+  - [x] Recolha privada da reunião inteira, arquivo, SHA-256 e manifesto append-only.
+  - [x] Proposta editorial integral por BID exato, sem correspondência por nome ou seleção individual.
+  - [ ] Publicação transacional da reunião inteira com revisão própria.
+  - [ ] Retirada integral append-only sem apagar observações ou prova anterior.
 - [ ] Autoria de iniciativas usa relação oficial individual.
 - [ ] Votos do perfil são nominais e ligados por identificador oficial exato.
 - [ ] Posições coletivas permanecem fora do histórico individual.

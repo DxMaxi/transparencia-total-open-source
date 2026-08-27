@@ -246,6 +246,20 @@ class PoliticianOfficeEditorialProposalRequest(BaseModel):
     confirm_no_mandate_or_party_inference: Literal[True]
 
 
+class PoliticianAttendanceEditorialProposalRequest(BaseModel):
+    """Seleciona uma reunião oficial completa para revisão privada."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    snapshot_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    confirm_private_only: Literal[True]
+    confirm_complete_meeting: Literal[True]
+    confirm_exact_official_ids_only: Literal[True]
+    confirm_no_name_matching: Literal[True]
+    confirm_absence_is_not_noncompliance: Literal[True]
+    confirm_no_selective_processing: Literal[True]
+
+
 class PoliticianOfficePublicationRequest(BaseModel):
     """Confirma a publicação de um cargo reconstruído integralmente no servidor."""
 

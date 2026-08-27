@@ -11,6 +11,7 @@ from app.api.dependencies import (
     get_editorial_repository,
     get_parliament_editorial_publication_repository,
     get_parliament_editorial_repository,
+    get_politician_attendance_editorial_repository,
     get_politician_mandate_editorial_repository,
     get_politician_mandate_publication_repository,
     get_politician_mandate_withdrawal_repository,
@@ -41,6 +42,7 @@ from app.models.editorial import (
     ParliamentEditorialProposalRequest,
     ParliamentEditorialPublicationRequest,
     ParliamentEditorialWithdrawalRequest,
+    PoliticianAttendanceEditorialProposalRequest,
     PoliticianMandateEditorialProposalRequest,
     PoliticianMandatePublicationRequest,
     PoliticianMandateWithdrawalRequest,
@@ -63,6 +65,9 @@ from app.repositories.editorial import (
 from app.repositories.parliament_editorial import ParliamentEditorialRepository
 from app.repositories.parliament_editorial_publication import (
     ParliamentEditorialPublicationRepository,
+)
+from app.repositories.politician_attendance_editorial import (
+    PoliticianAttendanceEditorialRepository,
 )
 from app.repositories.politician_mandate_editorial import (
     PoliticianMandateEditorialRepository,
@@ -267,6 +272,43 @@ async def create_parliament_office_proposal(
     actor: Annotated[StaffSession, Depends(require_editorial_staff)],
 ) -> dict[str, object]:
     """Cria um caso PENDING por cargo exato; nunca cria ou publica um cargo ou mandato."""
+
+    try:
+        return await repository.create_proposal(payload=payload, actor=actor)
+    except (EditorialConflictError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.get("/parliament/attendance-candidates")
+async def parliament_attendance_candidates(
+    repository: Annotated[
+        PoliticianAttendanceEditorialRepository,
+        Depends(get_politician_attendance_editorial_repository),
+    ],
+    _actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+    legislature: Annotated[str | None, Query(min_length=1, max_length=20)] = None,
+    limit: Annotated[int, Query(ge=1, le=20)] = 10,
+    offset: Annotated[int, Query(ge=0, le=10_000)] = 0,
+) -> dict[str, object]:
+    """Lista reuniões integrais atestadas sem criar presenças públicas."""
+
+    return await repository.list_candidates(
+        legislature=legislature,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.post("/parliament/attendance-proposals", status_code=status.HTTP_201_CREATED)
+async def create_parliament_attendance_proposal(
+    payload: PoliticianAttendanceEditorialProposalRequest,
+    repository: Annotated[
+        PoliticianAttendanceEditorialRepository,
+        Depends(get_politician_attendance_editorial_repository),
+    ],
+    actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> dict[str, object]:
+    """Cria um caso PENDING para a reunião completa; nunca publica linhas individuais."""
 
     try:
         return await repository.create_proposal(payload=payload, actor=actor)

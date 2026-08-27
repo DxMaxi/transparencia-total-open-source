@@ -15,6 +15,9 @@ from app.repositories.parliament_editorial import ParliamentEditorialRepository
 from app.repositories.parliament_editorial_publication import (
     ParliamentEditorialPublicationRepository,
 )
+from app.repositories.politician_attendance_editorial import (
+    PoliticianAttendanceEditorialRepository,
+)
 from app.repositories.politician_mandate_editorial import (
     PoliticianMandateEditorialRepository,
 )
@@ -116,6 +119,17 @@ def get_politician_profile_editorial_repository(
             detail="Base de dados editorial não configurada",
         )
     return PoliticianProfileEditorialRepository(repository.pool)
+
+
+def get_politician_attendance_editorial_repository(
+    repository: Annotated[PostgresRepository, Depends(get_repository)],
+) -> PoliticianAttendanceEditorialRepository:
+    if repository.pool is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Base de dados editorial não configurada",
+        )
+    return PoliticianAttendanceEditorialRepository(repository.pool)
 
 
 def get_politician_mandate_editorial_repository(

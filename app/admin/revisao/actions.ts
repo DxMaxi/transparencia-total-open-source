@@ -14,6 +14,7 @@ import {
   type ParliamentEditorialScope,
   type ParliamentEditorialWithdrawalResult,
   type ParliamentWithdrawalReason,
+  type PoliticianAttendanceEditorialProposalResult,
   type PoliticianOfficeEditorialProposalResult,
   type PoliticianOfficePublicationResult,
   type PoliticianOfficeWithdrawalResult,
@@ -192,6 +193,57 @@ export async function createPoliticianProfileProposal(formData: FormData) {
   revalidatePath("/admin/revisao/parlamento/deputados");
   redirect(
     `/admin/revisao/${created!.case.id}?sucesso=${created!.created ? "perfil-importado" : "perfil-existente"}`,
+  );
+}
+
+export async function createPoliticianAttendanceProposal(formData: FormData) {
+  const snapshotId = evidenceId(formData, "snapshot_id");
+  const legislature = requiredText(formData, "legislature").slice(0, 20);
+  let created: PoliticianAttendanceEditorialProposalResult | null = null;
+  let failure: string | null = null;
+  try {
+    for (const [field, message] of [
+      ["confirm_private_only", "Confirme que a proposta permanece privada"],
+      ["confirm_complete_meeting", "Confirme a revisão da reunião completa"],
+      ["confirm_exact_official_ids_only", "Confirme o uso exclusivo dos BID oficiais"],
+      ["confirm_no_name_matching", "Confirme que não será feita correspondência por nome"],
+      [
+        "confirm_absence_is_not_noncompliance",
+        "Confirme que uma falta não é tratada automaticamente como incumprimento",
+      ],
+      [
+        "confirm_no_selective_processing",
+        "Confirme que nenhum deputado será processado isoladamente",
+      ],
+    ] as const) {
+      if (formData.get(field) !== "on") throw new Error(message);
+    }
+    created = await editorialFetch<PoliticianAttendanceEditorialProposalResult>(
+      "/parliament/attendance-proposals",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          snapshot_id: snapshotId,
+          confirm_private_only: true,
+          confirm_complete_meeting: true,
+          confirm_exact_official_ids_only: true,
+          confirm_no_name_matching: true,
+          confirm_absence_is_not_noncompliance: true,
+          confirm_no_selective_processing: true,
+        }),
+      },
+    );
+  } catch (error) {
+    failure = actionError(error);
+  }
+  if (failure) {
+    const params = new URLSearchParams({ legislature, erro: failure });
+    redirect(`/admin/revisao/parlamento/deputados/presencas?${params.toString()}`);
+  }
+  revalidatePath("/admin/revisao");
+  revalidatePath("/admin/revisao/parlamento/deputados/presencas");
+  redirect(
+    `/admin/revisao/${created!.case.id}?sucesso=${created!.created ? "presencas-importadas" : "presencas-existentes"}`,
   );
 }
 

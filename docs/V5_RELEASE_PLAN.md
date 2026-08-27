@@ -3,7 +3,7 @@
 ## Estado de referência
 
 Este plano fixa o âmbito necessário para concluir a `v0.5.0`. Foi preparado em 13 de agosto de
-2026 e atualizado em 24 de agosto de 2026 a partir do código integrado em `main`, da produção
+2026 e atualizado em 27 de agosto de 2026 a partir do código integrado em `main`, da produção
 pública e dos princípios de governação do projeto. Não autoriza deploy, migração remota, criação de
 utilizadores, alteração de segredos, geração por IA, publicação, retirada ou tratamento de dados
 reais.
@@ -11,12 +11,12 @@ reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.38 preparadas; staging remoto pendente |
+| Código V5 | V5.1 a V5.39 preparadas; staging remoto pendente |
 | Frontend público | V5.21 preparado; capacidades sem backend ou esquema pronto ficam fail-closed |
 | API pública | `0.5.0-alpha.0`; capacidades anunciadas apenas após prova read-only do esquema |
 | Painel editorial | implementado no código, não ativado em produção |
 | IA | geração, revisão, publicação e retirada implementadas; esquema remoto ainda não ativado |
-| Parlamento | matriz V5.21 e gates V5.22–V5.38 preparados; atividades gerais e ativação editorial pendentes |
+| Parlamento | matriz V5.21 e gates V5.22–V5.39 preparados; publicação de presenças e ativação editorial pendentes |
 | Perfis | ciclo integral de entrada, publicação, retirada e republicação provado; domínios individuais pendentes |
 | Promessómetro | catálogo editorial inicial de 10 compromissos; vocabulário V5.20 protegido |
 | Investigador Cívico | zero contratos e zero relações na projeção pública |
@@ -227,6 +227,14 @@ a auditoria e o evento da publicação. Acrescenta revisão negativa, auditoria,
 `WITHDRAW`, confirma que a linha permanece e que deixa de integrar a consulta ativa. Não foi
 executada em staging ou produção; qualquer ativação depende dos gates operacionais e nunca acompanha
 automaticamente um deploy ou uma migração.
+
+O décimo sexto gate de perfis está preparado em
+[V5.39 — presenças parlamentares por reunião no circuito editorial](V5_POLITICIAN_ATTENDANCE_EDITORIAL.md).
+Uma reunião plenária exata é arquivada e normalizada como fotografia privada integral, com BID
+individual, estado literal, URL, data e SHA-256. O comparador reconcilia apenas identidades e
+mandatos já publicados pelos identificadores oficiais exatos. A proposta nasce `PENDING`; mesmo
+aprovada cria zero sessões, presenças, revisões públicas ou eventos. Publicação e retirada deste
+domínio permanecem portas separadas antes de qualquer ativação real.
 
 Critérios de saída:
 

@@ -161,6 +161,14 @@ A V5.38 fecha a retirada append-only deste domínio. O preview privado reconstr�
 publicação original ficam intactos. A consulta pública deixa de selecionar apenas esse cargo.
 Staging e produção permanecem intactos e a ativação continua dependente dos gates operacionais.
 
+A V5.39 inicia o domínio individual das presenças sem confundir assiduidade numa reunião com mérito
+ou incumprimento. Recolhe apenas uma página oficial de detalhe com BID da reunião, arquiva os bytes
+e cria uma fotografia append-only com todos os BID individuais e os estados literais. A proposta
+editorial é sempre da reunião inteira, nasce `PENDING`, não usa correspondência por nome e cria
+zero sessões ou presenças públicas. Estados desconhecidos, identidades sem revisão ou ausência de
+um mandato revisto para a data ficam visíveis como bloqueios de uma futura publicação. Nenhuma
+operação de staging ou produção foi executada.
+
 A melhoria de UX iniciada em agosto de 2026 faz parte da estabilização/conclusão da **V5**. Não deve ser tratada como início de uma V6 nem como autorização para reescrever o projeto.
 
 ## 5. Baseline técnico conhecido
