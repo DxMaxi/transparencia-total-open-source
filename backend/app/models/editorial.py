@@ -260,6 +260,38 @@ class PoliticianAttendanceEditorialProposalRequest(BaseModel):
     confirm_no_selective_processing: Literal[True]
 
 
+class PoliticianAttendancePublicationRequest(BaseModel):
+    """Confirma a publicação integral de uma reunião reconstruída no servidor."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    expected_case_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    expected_version_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    expected_version_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_snapshot_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_mapping_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_publication_proof_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_record_count: int = Field(ge=1, le=500)
+    rationale: str = Field(min_length=20, max_length=1850)
+    public_rationale: str = Field(min_length=20, max_length=500)
+    confirm_source_reviewed: Literal[True]
+    confirm_complete_meeting: Literal[True]
+    confirm_exact_official_ids_and_mandates_only: Literal[True]
+    confirm_all_statuses_reviewed: Literal[True]
+    confirm_absence_is_not_noncompliance: Literal[True]
+    confirm_append_only_publication: Literal[True]
+    confirm_publication: Literal[True]
+
+    @field_validator("rationale", "public_rationale")
+    @classmethod
+    def strip_attendance_publication_rationale(cls, value: str) -> str:
+        stripped = value.strip()
+        if len(stripped) < 20:
+            raise ValueError("A fundamentação deve ter pelo menos 20 caracteres úteis")
+        return stripped
+
+
 class PoliticianOfficePublicationRequest(BaseModel):
     """Confirma a publicação de um cargo reconstruído integralmente no servidor."""
 

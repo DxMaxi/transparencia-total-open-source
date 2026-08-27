@@ -186,9 +186,18 @@ class PublicProfileConnection:
         return []
 
     async def fetchrow(self, query: str, *arguments: object) -> dict[str, Any] | None:
-        if "latest_published_activity_snapshot" in query:
+        if "WITH published_meetings AS" in query:
             self.attendance_query = query
-            return None
+            return {
+                "published_meeting_count": 0,
+                "record_count": 0,
+                "meeting_count": 0,
+                "present_count": 0,
+                "absent_count": 0,
+                "excused_count": 0,
+                "observed_from": None,
+                "observed_through": None,
+            }
         if "latest_published_vote_snapshot" in query:
             self.availability_query = query
             return {
@@ -298,11 +307,14 @@ def test_v56_profile_areas_have_independent_fail_closed_publication_gates() -> N
     assert "source.publisher <> 'MEDIA'" in connection.mandate_query
     assert "source_archive_attestations mandate_archive" in connection.mandate_query
 
-    assert "candidate.entity_type = 'PARLIAMENT_ACTIVITY_SNAPSHOT'" in connection.attendance_query
-    assert "candidate.entity_type = 'MANDATE'" in connection.attendance_query
+    assert "review.entity_type = 'PARLIAMENT_ATTENDANCE_SNAPSHOT'" in connection.attendance_query
+    assert "review.entity_id = snapshot.id" in connection.attendance_query
+    assert "review.source_document_id = source.id" in connection.attendance_query
+    assert "review.publishable = TRUE" in connection.attendance_query
+    assert "review.entity_type = 'MANDATE'" in connection.attendance_query
     assert "mandate_review.publishable = TRUE" in connection.attendance_query
-    assert "source_archive_attestations activity_archive" in connection.attendance_query
-    assert "source_archive_attestations mandate_archive" in connection.attendance_query
+    assert "source_archive_attestations AS archive" in connection.attendance_query
+    assert "source_archive_attestations AS mandate_archive" in connection.attendance_query
 
     assert "snapshot.parser_version = $3" in connection.availability_query
     assert "exact_person.source_id IS NOT NULL" in connection.availability_query

@@ -295,6 +295,7 @@ type RawProfile = RawPerson & {
   attendance?: {
     available: boolean;
     record_count: number;
+    meeting_count?: number;
     present_count: number;
     absent_count: number;
     excused_count: number;
@@ -303,6 +304,19 @@ type RawProfile = RawPerson & {
     observed_through?: string | null;
     note: string;
     source?: RawSource | null;
+    records_complete?: boolean;
+    records?: Array<{
+      id: string;
+      official_meeting_id: string;
+      meeting_title: string;
+      meeting_date: string;
+      session_number?: string | null;
+      status: "PRESENT" | "JUSTIFIED_ABSENCE" | "UNJUSTIFIED_ABSENCE";
+      absence_reason?: string | null;
+      verified_at: string;
+      source_record_sha256: string;
+      source: RawSource;
+    }>;
   };
   attendance_rate?: number | null;
   attendance_label: string;
@@ -1821,6 +1835,8 @@ export async function loadPublicPolitician(
       ? {
           available: result.data.attendance.available,
           recordCount: result.data.attendance.record_count,
+          meetingCount: result.data.attendance.meeting_count
+            ?? result.data.attendance.record_count,
           presentCount: result.data.attendance.present_count,
           absentCount: result.data.attendance.absent_count,
           excusedCount: result.data.attendance.excused_count,
@@ -1835,15 +1851,31 @@ export async function loadPublicPolitician(
           source: result.data.attendance.source
             ? toOfficialSource(result.data.attendance.source)
             : undefined,
+          recordsComplete: result.data.attendance.records_complete ?? true,
+          records: (result.data.attendance.records ?? []).map((record) => ({
+            id: record.id,
+            officialMeetingId: record.official_meeting_id,
+            meetingTitle: record.meeting_title,
+            meetingDate: formatDate(record.meeting_date),
+            sessionNumber: record.session_number ?? undefined,
+            status: record.status,
+            absenceReason: record.absence_reason ?? undefined,
+            verifiedAt: formatDate(record.verified_at),
+            sourceRecordSha256: record.source_record_sha256,
+            source: toOfficialSource(record.source),
+          })),
         }
       : {
           available: result.data.attendance_rate != null,
           recordCount: 0,
+          meetingCount: 0,
           presentCount: 0,
           absentCount: 0,
           excusedCount: 0,
           attendanceRate: result.data.attendance_rate ?? undefined,
           note: result.data.attendance_label,
+          recordsComplete: true,
+          records: [],
         };
     const fallbackLookupSource = result.data.declaration_source;
     const declarationLookupSource: OfficialLookup = result.data.declaration_lookup_source

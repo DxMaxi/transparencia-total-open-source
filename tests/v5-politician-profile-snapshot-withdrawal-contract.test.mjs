@@ -105,6 +105,6 @@ test("V5.31 documents immutable withdrawal without claiming a real operation", a
   assert.match(checklist, /\[x\] V5\.31 — retirada não seletiva/);
   assert.match(plan, /V5_POLITICIAN_PROFILE_SNAPSHOT_WITHDRAWAL\.md/);
   assert.match(handoff, /V5\.31/);
-  assert.match(readme, /V5\.1 a V5\.39 preparadas/);
+  assert.match(readme, /V5\.1 a V5\.40 preparadas/);
   assert.match(readme, /V5_POLITICIAN_PROFILE_SNAPSHOT_WITHDRAWAL\.md/);
 });

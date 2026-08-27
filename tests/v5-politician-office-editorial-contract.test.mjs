@@ -83,5 +83,5 @@ test("V5.36 documents an editorial gate without activating real office data", as
   assert.match(documentation, /não recolhe nem[\s\S]*staging ou produção/i);
   assert.match(checklist, /\[x\] V5\.36 — cada `DepCargo`/);
   assert.match(plan, /V5_POLITICIAN_OFFICE_EDITORIAL\.md/);
-  assert.match(readme, /V5\.1 a V5\.39 preparadas/);
+  assert.match(readme, /V5\.1 a V5\.40 preparadas/);
 });

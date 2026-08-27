@@ -506,6 +506,7 @@ model ParliamentAttendanceSnapshot {
   createdAt                  DateTime                          @default(now()) @map("created_at")
   sourceDocument             SourceDocument                    @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
   observations               ParliamentAttendanceObservation[]
+  publishedSessions          ParliamentarySession[]
 
   @@unique([sourceDocumentId, legislature, parserVersion])
   @@index([legislature, meetingDate])
@@ -528,6 +529,7 @@ model ParliamentAttendanceObservation {
   sourceRecordSha256       String                       @map("source_record_sha256") @db.Char(64)
   createdAt                DateTime                     @default(now()) @map("created_at")
   snapshot                 ParliamentAttendanceSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
+  publishedRecords         AttendanceRecord[]
 
   @@unique([snapshotId, officialDeputyId])
   @@index([officialDeputyId])
@@ -564,40 +566,48 @@ model ParliamentaryOfficePeriod {
 }
 
 model ParliamentarySession {
-  id                String                      @id @default(cuid())
-  sourceId          String                      @map("source_id")
-  legislature       String
-  sessionNumber     String?                     @map("session_number")
-  title             String
-  startsAt          DateTime                    @map("starts_at")
-  endsAt            DateTime?                   @map("ends_at")
-  snapshotId        String?                     @map("snapshot_id")
-  sourceDocumentId  String                      @map("source_document_id")
-  snapshot          ParliamentActivitySnapshot? @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
-  sourceDocument    SourceDocument              @relation(fields: [sourceDocumentId], references: [id])
-  attendanceRecords AttendanceRecord[]
-  voteEvents        VoteEvent[]
+  id                   String                        @id @default(cuid())
+  sourceId             String                        @map("source_id")
+  legislature          String
+  sessionNumber        String?                       @map("session_number")
+  title                String
+  startsAt             DateTime                      @map("starts_at")
+  endsAt               DateTime?                     @map("ends_at")
+  snapshotId           String?                       @map("snapshot_id")
+  attendanceSnapshotId String?                       @map("attendance_snapshot_id")
+  sourceDocumentId     String                        @map("source_document_id")
+  snapshot             ParliamentActivitySnapshot?   @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
+  attendanceSnapshot   ParliamentAttendanceSnapshot? @relation(fields: [attendanceSnapshotId], references: [id], onDelete: Restrict)
+  sourceDocument       SourceDocument                @relation(fields: [sourceDocumentId], references: [id])
+  attendanceRecords    AttendanceRecord[]
+  voteEvents           VoteEvent[]
 
   @@unique([sourceId, snapshotId])
+  @@unique([attendanceSnapshotId])
   @@index([snapshotId])
+  @@index([attendanceSnapshotId])
   @@index([legislature, startsAt])
   @@map("parliamentary_sessions")
 }
 
 model AttendanceRecord {
-  id               String               @id @default(cuid())
-  mandateId        String               @map("mandate_id")
-  sessionId        String               @map("session_id")
-  present          Boolean?
-  absenceReason    String?              @map("absence_reason")
-  isExcused        Boolean?             @map("is_excused")
-  sourceDocumentId String               @map("source_document_id")
-  recordedAt       DateTime             @default(now()) @map("recorded_at")
-  mandate          Mandate              @relation(fields: [mandateId], references: [id], onDelete: Cascade)
-  session          ParliamentarySession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  sourceDocument   SourceDocument       @relation(fields: [sourceDocumentId], references: [id])
+  id                  String                          @id @default(cuid())
+  mandateId           String                          @map("mandate_id")
+  sessionId           String                          @map("session_id")
+  present             Boolean?
+  absenceReason       String?                         @map("absence_reason")
+  isExcused           Boolean?                        @map("is_excused")
+  sourceDocumentId    String                          @map("source_document_id")
+  sourceObservationId String?                         @map("source_observation_id")
+  sourceRecordSha256  String?                         @map("source_record_sha256") @db.Char(64)
+  recordedAt          DateTime                        @default(now()) @map("recorded_at")
+  mandate             Mandate                         @relation(fields: [mandateId], references: [id], onDelete: Restrict)
+  session             ParliamentarySession            @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  sourceDocument      SourceDocument                  @relation(fields: [sourceDocumentId], references: [id])
+  sourceObservation   ParliamentAttendanceObservation? @relation(fields: [sourceObservationId], references: [id], onDelete: Restrict)
 
   @@unique([mandateId, sessionId])
+  @@unique([sourceObservationId])
   @@index([sessionId, present])
   @@map("attendance_records")
 }

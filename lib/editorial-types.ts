@@ -678,6 +678,74 @@ export type PoliticianAttendanceEditorialProposalResult = {
   selective_processing_allowed: false;
 };
 
+export type PoliticianAttendancePublicationPreview = {
+  case_id: string;
+  case_state: "APPROVED";
+  case_revision: number;
+  version_id: string;
+  version_sha256: string;
+  snapshot_id: string;
+  snapshot_sha256: string;
+  source: PoliticianAttendanceEditorialCandidate["source"];
+  archive: PoliticianAttendanceEditorialCandidate["archive"];
+  meeting: {
+    legislature: string;
+    official_meeting_id: string;
+    date: string;
+    type: string;
+    session_number: string | null;
+  };
+  counts: PoliticianAttendanceCounts;
+  identity_reconciliation: PoliticianAttendanceEditorialCandidate["identity_reconciliation"];
+  mapping_sha256: string | null;
+  public_effect: {
+    sessions_to_create: 1;
+    attendance_records_to_create: number;
+    attendance_reviews_to_append: 1;
+    attendance_audits_to_append: 1;
+    editorial_decisions_to_append: 1;
+    publication_events_to_append: 1;
+    people_to_create: 0;
+    mandates_to_create: 0;
+    party_links_to_create: 0;
+  };
+  publication_proof_sha256: string | null;
+  eligible: boolean;
+  blockers: Array<{ code: string; detail: string }>;
+  automatic_publication: false;
+  human_review_required: true;
+  selective_processing_allowed: false;
+  name_matching_allowed: false;
+  absence_is_noncompliance: false;
+  withdrawal_required_before_real_activation: true;
+  publication_rule: string;
+};
+
+export type PoliticianAttendancePublicationResult = {
+  created: true;
+  case_id: string;
+  version_id: string;
+  state: "PUBLISHED";
+  snapshot_id: string;
+  session_id: string;
+  attendance_record_count: number;
+  attendance_review_id: string;
+  audit_event_id: string;
+  editorial_decision_id: string;
+  publication_event_id: string;
+  source_sha256: string;
+  snapshot_sha256: string;
+  mapping_sha256: string;
+  publication_proof_sha256: string;
+  people_created: 0;
+  mandates_created: 0;
+  party_links_created: 0;
+  automatic_publication: false;
+  selective_processing_allowed: false;
+  absence_is_noncompliance: false;
+  publication_rule: string;
+};
+
 export type PoliticianOfficePublicationPreview = {
   case_id: string;
   case_state: "APPROVED";

@@ -15,6 +15,7 @@ import {
   type ParliamentEditorialWithdrawalResult,
   type ParliamentWithdrawalReason,
   type PoliticianAttendanceEditorialProposalResult,
+  type PoliticianAttendancePublicationResult,
   type PoliticianOfficeEditorialProposalResult,
   type PoliticianOfficePublicationResult,
   type PoliticianOfficeWithdrawalResult,
@@ -245,6 +246,83 @@ export async function createPoliticianAttendanceProposal(formData: FormData) {
   redirect(
     `/admin/revisao/${created!.case.id}?sucesso=${created!.created ? "presencas-importadas" : "presencas-existentes"}`,
   );
+}
+
+export async function publishPoliticianAttendance(formData: FormData) {
+  const caseReference = evidenceId(formData, "expected_case_id");
+  const legislature = requiredText(formData, "legislature").slice(0, 20);
+  const expectedRecordCount = Number.parseInt(
+    requiredText(formData, "expected_record_count"),
+    10,
+  );
+  let failure: string | null = null;
+  try {
+    if (
+      !Number.isSafeInteger(expectedRecordCount)
+      || expectedRecordCount < 1
+      || expectedRecordCount > 500
+    ) {
+      throw new Error("A contagem integral da reunião é inválida");
+    }
+    for (const [field, message] of [
+      ["confirm_source_reviewed", "Confirme a nova revisão da fonte e do arquivo"],
+      ["confirm_complete_meeting", "Confirme a reunião integral"],
+      [
+        "confirm_exact_official_ids_and_mandates_only",
+        "Confirme BID exatos e exatamente um mandato revisto por registo",
+      ],
+      ["confirm_all_statuses_reviewed", "Confirme a revisão de todos os estados"],
+      [
+        "confirm_absence_is_not_noncompliance",
+        "Confirme que uma falta não é tratada como incumprimento",
+      ],
+      ["confirm_append_only_publication", "Confirme a preservação integral do histórico"],
+      ["confirm_publication", "Confirme a publicação da reunião completa"],
+    ] as const) {
+      if (formData.get(field) !== "on") throw new Error(message);
+    }
+    await editorialFetch<PoliticianAttendancePublicationResult>(
+      `/parliament/attendance-cases/${encodeURIComponent(caseReference)}/publication`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          expected_case_id: caseReference,
+          expected_version_id: evidenceId(formData, "expected_version_id"),
+          expected_version_sha256: sha256(formData, "expected_version_sha256"),
+          expected_source_sha256: sha256(formData, "expected_source_sha256"),
+          expected_snapshot_sha256: sha256(formData, "expected_snapshot_sha256"),
+          expected_mapping_sha256: sha256(formData, "expected_mapping_sha256"),
+          expected_publication_proof_sha256: sha256(
+            formData,
+            "expected_publication_proof_sha256",
+          ),
+          expected_record_count: expectedRecordCount,
+          rationale: requiredText(formData, "rationale"),
+          public_rationale: requiredText(formData, "public_rationale"),
+          confirm_source_reviewed: true,
+          confirm_complete_meeting: true,
+          confirm_exact_official_ids_and_mandates_only: true,
+          confirm_all_statuses_reviewed: true,
+          confirm_absence_is_not_noncompliance: true,
+          confirm_append_only_publication: true,
+          confirm_publication: true,
+        }),
+      },
+    );
+  } catch (error) {
+    failure = actionError(error);
+  }
+  const destination = "/admin/revisao/parlamento/deputados/presencas";
+  if (failure) {
+    const params = new URLSearchParams({ legislature, erro: failure });
+    redirect(`${destination}?${params.toString()}`);
+  }
+  revalidatePath("/admin/revisao");
+  revalidatePath(destination);
+  revalidatePath("/politicos");
+  revalidatePath("/");
+  const params = new URLSearchParams({ legislature, sucesso: "reuniao-publicada" });
+  redirect(`${destination}?${params.toString()}`);
 }
 
 export async function createPoliticianMandateProposal(formData: FormData) {

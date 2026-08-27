@@ -59,6 +59,7 @@ class PoliticianAttendanceEditorialRepository:
             snapshot_id=None,
             limit=limit,
             offset=offset,
+            connection=None,
         )
         if not items and offset:
             _first, total = await self._load_candidates(
@@ -66,6 +67,7 @@ class PoliticianAttendanceEditorialRepository:
                 snapshot_id=None,
                 limit=1,
                 offset=0,
+                connection=None,
             )
         return {
             "items": items,
@@ -91,6 +93,7 @@ class PoliticianAttendanceEditorialRepository:
             snapshot_id=payload.snapshot_id,
             limit=1,
             offset=0,
+            connection=None,
         )
         if not candidates:
             raise EditorialSourceError(
@@ -107,7 +110,10 @@ class PoliticianAttendanceEditorialRepository:
                 + (f": {detail}" if detail else "")
             )
 
-        observations = await self._load_observations(payload.snapshot_id)
+        observations = await self.load_proposal_observations(
+            payload.snapshot_id,
+            connection=None,
+        )
         record_count = candidate["record_count"]
         if not isinstance(record_count, int):
             raise EditorialSourceError("O manifesto da reunião não contém uma contagem válida")
@@ -145,6 +151,7 @@ class PoliticianAttendanceEditorialRepository:
         snapshot_id: str | None,
         limit: int,
         offset: int,
+        connection: asyncpg.Connection | None,
     ) -> tuple[list[dict[str, object]], int]:
         conditions = [
             "source.publisher = 'PARLIAMENT'",
@@ -163,7 +170,8 @@ class PoliticianAttendanceEditorialRepository:
         limit_arg = len(arguments) - 1
         offset_arg = len(arguments)
 
-        rows = await self.pool.fetch(
+        database: asyncpg.Pool | asyncpg.Connection = connection or self.pool
+        rows = await database.fetch(
             f"""
             SELECT snapshot.id,
                    snapshot.source_document_id,
@@ -308,8 +316,33 @@ class PoliticianAttendanceEditorialRepository:
         total = int(rows[0]["total_count"]) if rows else 0
         return items, total
 
-    async def _load_observations(self, snapshot_id: str) -> list[dict[str, object]]:
-        rows = await self.pool.fetch(
+    async def get_exact_candidate(
+        self,
+        *,
+        snapshot_id: str,
+        connection: asyncpg.Connection | None,
+    ) -> dict[str, object] | None:
+        """Reconstrói uma fotografia exata através da mesma porta usada pela proposta."""
+
+        candidates, _total = await self._load_candidates(
+            legislature=None,
+            snapshot_id=snapshot_id,
+            limit=1,
+            offset=0,
+            connection=connection,
+        )
+        return candidates[0] if candidates else None
+
+    async def load_proposal_observations(
+        self,
+        snapshot_id: str,
+        *,
+        connection: asyncpg.Connection | None,
+    ) -> list[dict[str, object]]:
+        """Devolve a projeção privada, com o BID apenas sob referência SHA-256."""
+
+        database: asyncpg.Pool | asyncpg.Connection = connection or self.pool
+        rows = await database.fetch(
             """
             SELECT official_deputy_id, parliamentary_name,
                    parliamentary_group_label, status, source_status_label,
