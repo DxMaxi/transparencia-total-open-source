@@ -12,6 +12,7 @@ from app.api.dependencies import (
     get_parliament_editorial_publication_repository,
     get_parliament_editorial_repository,
     get_politician_attendance_editorial_repository,
+    get_politician_attendance_publication_repository,
     get_politician_mandate_editorial_repository,
     get_politician_mandate_publication_repository,
     get_politician_mandate_withdrawal_repository,
@@ -43,6 +44,7 @@ from app.models.editorial import (
     ParliamentEditorialPublicationRequest,
     ParliamentEditorialWithdrawalRequest,
     PoliticianAttendanceEditorialProposalRequest,
+    PoliticianAttendancePublicationRequest,
     PoliticianMandateEditorialProposalRequest,
     PoliticianMandatePublicationRequest,
     PoliticianMandateWithdrawalRequest,
@@ -68,6 +70,9 @@ from app.repositories.parliament_editorial_publication import (
 )
 from app.repositories.politician_attendance_editorial import (
     PoliticianAttendanceEditorialRepository,
+)
+from app.repositories.politician_attendance_publication import (
+    PoliticianAttendancePublicationRepository,
 )
 from app.repositories.politician_mandate_editorial import (
     PoliticianMandateEditorialRepository,
@@ -313,6 +318,44 @@ async def create_parliament_attendance_proposal(
     try:
         return await repository.create_proposal(payload=payload, actor=actor)
     except (EditorialConflictError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.get("/parliament/attendance-cases/{case_id}/publication")
+async def parliament_attendance_publication_preview(
+    case_id: Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,200}$")],
+    repository: Annotated[
+        PoliticianAttendancePublicationRepository,
+        Depends(get_politician_attendance_publication_repository),
+    ],
+    _actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> dict[str, object]:
+    """Reconstrói a reunião integral e todos os mapeamentos sem escrever."""
+
+    try:
+        return await repository.inspect(case_id=case_id)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.post(
+    "/parliament/attendance-cases/{case_id}/publication",
+    status_code=status.HTTP_201_CREATED,
+)
+async def publish_parliament_attendance(
+    case_id: Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,200}$")],
+    payload: PoliticianAttendancePublicationRequest,
+    repository: Annotated[
+        PoliticianAttendancePublicationRepository,
+        Depends(get_politician_attendance_publication_repository),
+    ],
+    actor: Annotated[StaffSession, Depends(require_editorial_admin)],
+) -> dict[str, object]:
+    """Publica a reunião completa e a prova numa transação ADMIN com MFA."""
+
+    try:
+        return await repository.publish(case_id=case_id, payload=payload, actor=actor)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
         raise _translate_error(exc) from exc
 
 

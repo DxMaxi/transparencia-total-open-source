@@ -1,9 +1,13 @@
 import Link from "next/link";
-import { createPoliticianAttendanceProposal } from "../../../actions";
-import { editorialFetch } from "@/lib/editorial-api";
+import {
+  createPoliticianAttendanceProposal,
+  publishPoliticianAttendance,
+} from "../../../actions";
+import { editorialFetch, getEditorialContext } from "@/lib/editorial-api";
 import type {
   PoliticianAttendanceEditorialCandidate,
   PoliticianAttendanceEditorialCandidateList,
+  PoliticianAttendancePublicationPreview,
 } from "@/lib/editorial-types";
 
 const dateFormatter = new Intl.DateTimeFormat("pt-PT", {
@@ -34,6 +38,18 @@ function safeOfficialSourceUrl(value: string): string | null {
   }
 }
 
+async function loadPublicationPreview(
+  caseId: string,
+): Promise<PoliticianAttendancePublicationPreview | null> {
+  try {
+    return await editorialFetch<PoliticianAttendancePublicationPreview>(
+      `/parliament/attendance-cases/${encodeURIComponent(caseId)}/publication`,
+    );
+  } catch {
+    return null;
+  }
+}
+
 export default async function PoliticianAttendanceEditorialPage({
   searchParams,
 }: {
@@ -41,6 +57,7 @@ export default async function PoliticianAttendanceEditorialPage({
     legislature?: string;
     offset?: string;
     erro?: string;
+    sucesso?: string;
   }>;
 }) {
   const input = await searchParams;
@@ -52,15 +69,27 @@ export default async function PoliticianAttendanceEditorialPage({
     limit: String(limit),
     offset: String(offset),
   });
-  const catalogue = await editorialFetch<PoliticianAttendanceEditorialCandidateList>(
-    `/parliament/attendance-candidates?${params.toString()}`,
+  const [catalogue, { staff }] = await Promise.all([
+    editorialFetch<PoliticianAttendanceEditorialCandidateList>(
+      `/parliament/attendance-candidates?${params.toString()}`,
+    ),
+    getEditorialContext(),
+  ]);
+  const publicationPreviews = new Map<string, PoliticianAttendancePublicationPreview>();
+  await Promise.all(
+    catalogue.items.map(async (candidate) => {
+      if (candidate.existing_case?.state === "APPROVED") {
+        const preview = await loadPublicationPreview(candidate.existing_case.id);
+        if (preview) publicationPreviews.set(candidate.existing_case.id, preview);
+      }
+    }),
   );
 
   return (
     <div className="admin-page parliament-editorial-page">
       <header className="admin-page-heading">
         <div>
-          <p className="eyebrow">V5.39 · presenças por reunião oficial</p>
+          <p className="eyebrow">V5.40 · presenças por reunião oficial</p>
           <h1>Rever a fotografia completa de cada reunião</h1>
           <p>
             Cada proposta contém todos os registos que a Assembleia publicou para a reunião. A
@@ -76,6 +105,12 @@ export default async function PoliticianAttendanceEditorialPage({
       {input.erro ? (
         <p className="private-message private-message--error" role="alert">
           {input.erro}
+        </p>
+      ) : null}
+      {input.sucesso ? (
+        <p className="private-message private-message--success" role="status">
+          A reunião integral e a respetiva prova foram publicadas sem criar pessoas, mandatos ou
+          filiações.
         </p>
       ) : null}
 
@@ -104,7 +139,16 @@ export default async function PoliticianAttendanceEditorialPage({
       {catalogue.items.length ? (
         <section className="parliament-snapshot-list" aria-label="Reuniões privadas de presenças">
           {catalogue.items.map((candidate) => (
-            <AttendanceCandidateCard candidate={candidate} key={candidate.snapshot_id} />
+            <AttendanceCandidateCard
+              candidate={candidate}
+              isAdmin={staff.role === "ADMIN"}
+              key={candidate.snapshot_id}
+              publicationPreview={
+                candidate.existing_case
+                  ? publicationPreviews.get(candidate.existing_case.id) ?? null
+                  : null
+              }
+            />
           ))}
         </section>
       ) : (
@@ -136,8 +180,12 @@ export default async function PoliticianAttendanceEditorialPage({
 
 function AttendanceCandidateCard({
   candidate,
+  publicationPreview,
+  isAdmin,
 }: {
   candidate: PoliticianAttendanceEditorialCandidate;
+  publicationPreview: PoliticianAttendancePublicationPreview | null;
+  isAdmin: boolean;
 }) {
   const counts = candidate.materialised_counts;
   const reconciliation = candidate.identity_reconciliation;
@@ -208,11 +256,20 @@ function AttendanceCandidateCard({
       ) : null}
 
       {candidate.existing_case ? (
-        <div className="parliament-proposal-card parliament-proposal-card--existing">
-          <strong>Processo privado já existente</strong>
-          <p>Estado: {candidate.existing_case.state} · revisão {candidate.existing_case.revision}</p>
-          <Link href={`/admin/revisao/${candidate.existing_case.id}`}>Abrir processo</Link>
-        </div>
+        <>
+          <div className="parliament-proposal-card parliament-proposal-card--existing">
+            <strong>Processo editorial já existente</strong>
+            <p>Estado: {candidate.existing_case.state} · revisão {candidate.existing_case.revision}</p>
+            <Link href={`/admin/revisao/${candidate.existing_case.id}`}>Abrir processo</Link>
+          </div>
+          {candidate.existing_case.state === "APPROVED" ? (
+            <AttendancePublicationAction
+              candidate={candidate}
+              isAdmin={isAdmin}
+              preview={publicationPreview}
+            />
+          ) : null}
+        </>
       ) : candidate.proposal_eligible ? (
         <AttendanceProposalForm candidate={candidate} />
       ) : (
@@ -224,6 +281,117 @@ function AttendanceCandidateCard({
         </div>
       )}
     </article>
+  );
+}
+
+function AttendancePublicationAction({
+  candidate,
+  preview,
+  isAdmin,
+}: {
+  candidate: PoliticianAttendanceEditorialCandidate;
+  preview: PoliticianAttendancePublicationPreview | null;
+  isAdmin: boolean;
+}) {
+  if (!preview) {
+    return (
+      <section className="parliament-proposal-card">
+        <strong>Prova de publicação indisponível.</strong>
+        <p>A reunião continua aprovada e privada; nenhuma publicação é apresentada sem prova.</p>
+      </section>
+    );
+  }
+  return (
+    <form
+      action={publishPoliticianAttendance}
+      className="parliament-proposal-card parliament-publication-card"
+    >
+      <input type="hidden" name="legislature" value={candidate.legislature} />
+      <input type="hidden" name="expected_case_id" value={preview.case_id} />
+      <input type="hidden" name="expected_version_id" value={preview.version_id} />
+      <input type="hidden" name="expected_version_sha256" value={preview.version_sha256} />
+      <input type="hidden" name="expected_source_sha256" value={preview.source.content_sha256} />
+      <input type="hidden" name="expected_snapshot_sha256" value={preview.snapshot_sha256} />
+      <input
+        type="hidden"
+        name="expected_mapping_sha256"
+        value={preview.mapping_sha256 ?? ""}
+      />
+      <input
+        type="hidden"
+        name="expected_publication_proof_sha256"
+        value={preview.publication_proof_sha256 ?? ""}
+      />
+      <input
+        type="hidden"
+        name="expected_record_count"
+        value={preview.public_effect.attendance_records_to_create}
+      />
+      <div>
+        <p className="eyebrow">Porta pública por reunião integral</p>
+        <h3>Publicar todas as presenças desta reunião</h3>
+        <p>{preview.publication_rule}</p>
+      </div>
+      <dl>
+        <div><dt>Sessões a criar</dt><dd>{preview.public_effect.sessions_to_create}</dd></div>
+        <div><dt>Linhas de presença</dt><dd>{preview.public_effect.attendance_records_to_create}</dd></div>
+        <div><dt>Pessoas a criar</dt><dd>{preview.public_effect.people_to_create}</dd></div>
+        <div><dt>Mandatos a criar</dt><dd>{preview.public_effect.mandates_to_create}</dd></div>
+      </dl>
+      {preview.blockers.length ? (
+        <ul className="parliament-limitations">
+          {preview.blockers.map((blocker) => <li key={blocker.code}>{blocker.detail}</li>)}
+        </ul>
+      ) : null}
+      <label>
+        Fundamentação editorial privada
+        <textarea name="rationale" minLength={20} maxLength={1850} required />
+      </label>
+      <label>
+        Fundamentação pública factual
+        <textarea name="public_rationale" minLength={20} maxLength={500} required />
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_source_reviewed" type="checkbox" required />
+        <span>Voltei a comparar a fonte, o arquivo e todos os SHA-256.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_complete_meeting" type="checkbox" required />
+        <span>Confirmo que a fotografia inclui a reunião completa, sem seleção individual.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_exact_official_ids_and_mandates_only" type="checkbox" required />
+        <span>Confirmo cada BID exato e exatamente um mandato revisto para a data.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_all_statuses_reviewed" type="checkbox" required />
+        <span>Comparei humanamente todos os estados e confirmei zero UNKNOWN.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_absence_is_not_noncompliance" type="checkbox" required />
+        <span>Confirmo que uma falta não será apresentada como culpa ou incumprimento.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_append_only_publication" type="checkbox" required />
+        <span>Confirmo que correções e retiradas só acrescentam histórico.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_publication" type="checkbox" required />
+        <span>Confirmo a publicação desta reunião integral e da sua prova.</span>
+      </label>
+      {!isAdmin ? <p>A publicação exige uma conta ADMIN com MFA.</p> : null}
+      <button
+        className="button button--primary"
+        type="submit"
+        disabled={!isAdmin || !preview.eligible || !preview.publication_proof_sha256}
+      >
+        Publicar reunião completa com prova
+      </button>
+      <p className="admin-form-help">
+        A operação não cria pessoas, mandatos ou filiações e será revertida por inteiro perante
+        qualquer divergência.
+      </p>
+    </form>
   );
 }
 

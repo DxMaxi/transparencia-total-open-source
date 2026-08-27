@@ -69,6 +69,9 @@ continuam a exigir autorizações separadas.
 - [x] V5.39 — presenças oficiais por reunião entram numa fotografia privada integral e append-only,
   com BID exato, fonte arquivada e proposta `PENDING`; aprovação cria zero sessões ou presenças
   públicas e uma falta nunca é convertida automaticamente em incumprimento.
+- [x] V5.40 — publicação transacional ADMIN+MFA acrescenta a reunião integral, todas as linhas,
+  revisão própria, auditoria, decisão e evento numa única transação; cada BID exige exatamente um
+  mandato revisto e a ficha pública conserva a fonte de cada reunião.
 - [x] Existe um [conjunto de issues de conclusão](https://github.com/DxMaxi/transparencia-total-open-source/issues/58) para todos os itens ainda abertos.
 
 ## B. Estabilização pública
@@ -172,8 +175,9 @@ continuam a exigir autorizações separadas.
 - [ ] Presenças dependem de mandato revisto e fotografia publicada.
   - [x] Recolha privada da reunião inteira, arquivo, SHA-256 e manifesto append-only.
   - [x] Proposta editorial integral por BID exato, sem correspondência por nome ou seleção individual.
-  - [ ] Publicação transacional da reunião inteira com revisão própria.
-  - [ ] Retirada integral append-only sem apagar observações ou prova anterior.
+  - [x] V5.40 — publicação transacional da reunião inteira com revisão própria.
+  - [ ] V5.41 — retirada transacional e imutável da reunião inteira, sem apagar observações,
+    sessão, linhas ou prova anterior.
 - [ ] Autoria de iniciativas usa relação oficial individual.
 - [ ] Votos do perfil são nominais e ligados por identificador oficial exato.
 - [ ] Posições coletivas permanecem fora do histórico individual.

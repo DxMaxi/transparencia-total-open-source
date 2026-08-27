@@ -11,12 +11,12 @@ reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.39 preparadas; staging remoto pendente |
+| Código V5 | V5.1 a V5.40 preparadas; staging remoto pendente |
 | Frontend público | V5.21 preparado; capacidades sem backend ou esquema pronto ficam fail-closed |
 | API pública | `0.5.0-alpha.0`; capacidades anunciadas apenas após prova read-only do esquema |
 | Painel editorial | implementado no código, não ativado em produção |
 | IA | geração, revisão, publicação e retirada implementadas; esquema remoto ainda não ativado |
-| Parlamento | matriz V5.21 e gates V5.22–V5.39 preparados; publicação de presenças e ativação editorial pendentes |
+| Parlamento | matriz V5.21 e gates V5.22–V5.40 preparados; retirada de presenças e ativação editorial pendentes |
 | Perfis | ciclo integral de entrada, publicação, retirada e republicação provado; domínios individuais pendentes |
 | Promessómetro | catálogo editorial inicial de 10 compromissos; vocabulário V5.20 protegido |
 | Investigador Cívico | zero contratos e zero relações na projeção pública |
@@ -235,6 +235,15 @@ individual, estado literal, URL, data e SHA-256. O comparador reconcilia apenas 
 mandatos já publicados pelos identificadores oficiais exatos. A proposta nasce `PENDING`; mesmo
 aprovada cria zero sessões, presenças, revisões públicas ou eventos. Publicação e retirada deste
 domínio permanecem portas separadas antes de qualquer ativação real.
+
+O décimo sétimo gate de perfis está preparado em
+[V5.40 — publicação transacional de uma reunião integral de presenças](V5_POLITICIAN_ATTENDANCE_PUBLICATION.md).
+Uma ação `ADMIN` com MFA repete versão, fonte, arquivo, manifesto, todos os BID e exatamente um
+mandato revisto por registo. Sessão, linhas, revisão `PARLIAMENT_ATTENDANCE_SNAPSHOT`, auditoria,
+decisão e evento são acrescentados ou recuam em conjunto. A ficha pública identifica a fonte e o
+SHA-256 de cada reunião; uma falta continua sem equivaler a culpa ou incumprimento. A capacidade
+não foi executada em staging ou produção e permanece bloqueada até existir a retirada imutável
+V5.41.
 
 Critérios de saída:
 

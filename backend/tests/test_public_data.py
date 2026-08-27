@@ -67,6 +67,7 @@ class FakePublicRepository:
             "attendance": {
                 "available": False,
                 "record_count": 0,
+                "meeting_count": 0,
                 "present_count": 0,
                 "absent_count": 0,
                 "excused_count": 0,
@@ -75,6 +76,8 @@ class FakePublicRepository:
                 "observed_through": None,
                 "note": "Sem registos individuais suficientes.",
                 "source": None,
+                "records_complete": True,
+                "records": [],
             },
             "attendance_rate": None,
             "attendance_label": "Sem registos individuais suficientes.",

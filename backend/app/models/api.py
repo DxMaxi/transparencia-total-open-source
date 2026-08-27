@@ -703,9 +703,23 @@ class PublishedParliamentaryOffice(BaseModel):
     source: OfficialSource
 
 
+class PublishedAttendanceRecord(BaseModel):
+    id: str
+    official_meeting_id: str
+    meeting_title: str
+    meeting_date: datetime
+    session_number: str | None = None
+    status: Literal["PRESENT", "JUSTIFIED_ABSENCE", "UNJUSTIFIED_ABSENCE"]
+    absence_reason: str | None = None
+    verified_at: datetime
+    source_record_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    source: OfficialSource
+
+
 class PublishedAttendanceSummary(BaseModel):
     available: bool
     record_count: int = Field(ge=0)
+    meeting_count: int = Field(ge=0)
     present_count: int = Field(ge=0)
     absent_count: int = Field(ge=0)
     excused_count: int = Field(ge=0)
@@ -714,6 +728,8 @@ class PublishedAttendanceSummary(BaseModel):
     observed_through: datetime | None = None
     note: str
     source: OfficialSource | None = None
+    records_complete: bool = True
+    records: list[PublishedAttendanceRecord] = Field(default_factory=list)
 
 
 class PublishedPoliticianInitiative(BaseModel):

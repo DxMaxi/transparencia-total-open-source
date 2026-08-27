@@ -27,6 +27,12 @@ const initiativeRelationLabels = {
   PROPOSER: "Proponente",
 } as const;
 
+const attendanceStatusLabels = {
+  PRESENT: "Presença",
+  JUSTIFIED_ABSENCE: "Falta justificada na fonte",
+  UNJUSTIFIED_ABSENCE: "Falta sem justificação indicada na fonte",
+} as const;
+
 function proofDate(value: string | undefined): string {
   if (!value) return "dados indisponíveis";
   const date = new Date(value);
@@ -312,6 +318,37 @@ export function PoliticianProfile({ profile }: { profile: PoliticianProfileData 
         )}
         {profile.attendance.available ? <p className="profile-data-note">{profile.attendance.note}</p> : null}
         {profile.attendance.source ? <SourceLink source={profile.attendance.source} compact /> : null}
+        {profile.attendance.records.length ? (
+          <details className="profile-history" open={profile.attendance.records.length <= 5}>
+            <summary>
+              Ver {profile.attendance.records.length.toLocaleString("pt-PT")} reunião(ões) com
+              prova individual
+              {!profile.attendance.recordsComplete ? " — 250 mais recentes" : ""}
+            </summary>
+            <ol className="profile-timeline">
+              {profile.attendance.records.map((record) => (
+                <li key={record.id}>
+                  <div>
+                    <strong>{attendanceStatusLabels[record.status]}</strong>
+                    <span>
+                      {record.meetingDate} · reunião {record.sessionNumber ?? record.officialMeetingId}
+                    </span>
+                    <small>{record.meetingTitle}</small>
+                    {record.absenceReason ? <small>Motivo indicado: {record.absenceReason}</small> : null}
+                  </div>
+                  <div className="profile-timeline__proof">
+                    <small>Revisto em {record.verifiedAt}</small>
+                    <SourceLink source={record.source} compact />
+                    <small>Fonte recolhida em {proofDate(record.source.retrievedAt)}</small>
+                    <code title={`SHA-256 do registo ${record.sourceRecordSha256}`}>
+                      Registo SHA-256 {record.sourceRecordSha256}
+                    </code>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </details>
+        ) : null}
       </section>
 
       <section className="card profile-section">

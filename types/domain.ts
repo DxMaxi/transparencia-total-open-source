@@ -104,6 +104,7 @@ export interface ParliamentaryOfficeRecord {
 export interface AttendanceSummary {
   available: boolean;
   recordCount: number;
+  meetingCount: number;
   presentCount: number;
   absentCount: number;
   excusedCount: number;
@@ -112,6 +113,21 @@ export interface AttendanceSummary {
   observedThrough?: string;
   note: string;
   source?: OfficialSource;
+  recordsComplete: boolean;
+  records: AttendanceMeetingRecord[];
+}
+
+export interface AttendanceMeetingRecord {
+  id: string;
+  officialMeetingId: string;
+  meetingTitle: string;
+  meetingDate: string;
+  sessionNumber?: string;
+  status: "PRESENT" | "JUSTIFIED_ABSENCE" | "UNJUSTIFIED_ABSENCE";
+  absenceReason?: string;
+  verifiedAt: string;
+  sourceRecordSha256: string;
+  source: OfficialSource;
 }
 
 export interface PoliticianInitiativeRecord {

@@ -972,96 +972,244 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
 
             attendance = await connection.fetchrow(
                 """
-                WITH latest_published_activity_snapshot AS (
-                    SELECT snapshot.id, snapshot.source_document_id,
+                WITH published_meetings AS (
+                    SELECT session.id AS session_id,
+                           session.starts_at,
+                           snapshot.id AS snapshot_id,
+                           snapshot.meeting_date,
+                           snapshot.legislature,
+                           source.id AS source_document_id
+                    FROM parliamentary_sessions AS session
+                    JOIN parliament_attendance_snapshots AS snapshot
+                      ON snapshot.id = session.attendance_snapshot_id
+                     AND snapshot.source_document_id = session.source_document_id
+                    JOIN source_documents AS source
+                      ON source.id = session.source_document_id
+                    JOIN LATERAL (
+                        SELECT review.publishable
+                        FROM data_publication_reviews AS review
+                        WHERE review.entity_type = 'PARLIAMENT_ATTENDANCE_SNAPSHOT'
+                          AND review.entity_id = snapshot.id
+                          AND review.source_document_id = source.id
+                        ORDER BY review.reviewed_at DESC, review.id DESC
+                        LIMIT 1
+                    ) AS review ON review.publishable = TRUE
+                    WHERE snapshot.legislature = $2
+                      AND source.publisher = 'PARLIAMENT'
+                      AND source.kind = 'ATTENDANCE'
+                      AND EXISTS (
+                          SELECT 1
+                          FROM source_archive_attestations AS archive
+                          WHERE archive.source_document_id = source.id
+                            AND archive.content_sha256 = source.content_sha256
+                            AND archive.retrieval_url = source.url
+                            AND archive.retrieved_at = source.retrieved_at
+                      )
+                ),
+                valid_records AS (
+                    SELECT attendance_record.id,
+                           attendance_record.present,
+                           attendance_record.is_excused,
+                           meeting.starts_at,
+                           meeting.session_id
+                    FROM published_meetings AS meeting
+                    JOIN attendance_records AS attendance_record
+                      ON attendance_record.session_id = meeting.session_id
+                     AND attendance_record.source_document_id =
+                         meeting.source_document_id
+                    JOIN parliament_attendance_observations AS observation
+                      ON observation.id = attendance_record.source_observation_id
+                     AND observation.snapshot_id = meeting.snapshot_id
+                     AND observation.source_record_sha256 =
+                         attendance_record.source_record_sha256
+                    JOIN mandates AS mandate
+                      ON mandate.id = attendance_record.mandate_id
+                     AND mandate.person_id = $1
+                     AND mandate.legislature = meeting.legislature
+                     AND mandate.started_at::date <= meeting.meeting_date
+                     AND (
+                         mandate.ended_at IS NULL
+                         OR mandate.ended_at::date >= meeting.meeting_date
+                     )
+                    JOIN people AS person
+                      ON person.id = mandate.person_id
+                     AND person.source_id = observation.official_deputy_id
+                     AND person.role = 'DEPUTY'
+                     AND person.active = TRUE
+                    JOIN source_documents AS mandate_source
+                      ON mandate_source.id = mandate.source_document_id
+                    JOIN LATERAL (
+                        SELECT review.publishable
+                        FROM data_publication_reviews AS review
+                        WHERE review.entity_type = 'MANDATE'
+                          AND review.entity_id = mandate.id
+                          AND review.source_document_id = mandate_source.id
+                        ORDER BY review.reviewed_at DESC, review.id DESC
+                        LIMIT 1
+                    ) AS mandate_review ON mandate_review.publishable = TRUE
+                    WHERE mandate_source.publisher = 'PARLIAMENT'
+                      AND mandate_source.kind <> 'NEWS_ARTICLE'
+                      AND EXISTS (
+                          SELECT 1
+                          FROM source_archive_attestations AS mandate_archive
+                          WHERE mandate_archive.source_document_id = mandate_source.id
+                            AND mandate_archive.content_sha256 =
+                                mandate_source.content_sha256
+                            AND mandate_archive.retrieval_url = mandate_source.url
+                            AND mandate_archive.retrieved_at =
+                                mandate_source.retrieved_at
+                      )
+                      AND (
+                          (observation.status = 'PRESENT'
+                           AND attendance_record.present = TRUE
+                           AND attendance_record.is_excused IS NULL)
+                          OR
+                          (observation.status = 'JUSTIFIED_ABSENCE'
+                           AND attendance_record.present = FALSE
+                           AND attendance_record.is_excused = TRUE)
+                          OR
+                          (observation.status = 'UNJUSTIFIED_ABSENCE'
+                           AND attendance_record.present = FALSE
+                           AND attendance_record.is_excused = FALSE)
+                      )
+                )
+                SELECT (SELECT COUNT(*) FROM published_meetings)::int
+                           AS published_meeting_count,
+                       COUNT(valid_records.id)::int AS record_count,
+                       COUNT(DISTINCT valid_records.session_id)::int AS meeting_count,
+                       COUNT(valid_records.id) FILTER (
+                           WHERE valid_records.present = TRUE
+                       )::int AS present_count,
+                       COUNT(valid_records.id) FILTER (
+                           WHERE valid_records.present = FALSE
+                       )::int AS absent_count,
+                       COUNT(valid_records.id) FILTER (
+                           WHERE valid_records.is_excused = TRUE
+                       )::int AS excused_count,
+                       MIN(valid_records.starts_at) AS observed_from,
+                       MAX(valid_records.starts_at) AS observed_through
+                FROM valid_records
+                """,
+                row["id"],
+                row["legislature"],
+            )
+
+            attendance_rows = await connection.fetch(
+                """
+                WITH published_meetings AS (
+                    SELECT session.id AS session_id,
+                           session.source_id AS official_meeting_id,
+                           session.title AS meeting_title,
+                           session.session_number,
+                           session.starts_at,
+                           snapshot.id AS snapshot_id,
+                           snapshot.meeting_date,
+                           snapshot.legislature,
+                           source.id AS source_document_id,
                            review.reviewed_at AS verified_at,
                            source.publisher::text AS source_publisher,
                            source.url AS source_url,
                            source.retrieved_at AS source_retrieved_at,
                            source.content_sha256 AS source_sha256
-                    FROM parliament_activity_snapshots snapshot
-                    JOIN source_documents source
-                      ON source.id = snapshot.source_document_id
+                    FROM parliamentary_sessions AS session
+                    JOIN parliament_attendance_snapshots AS snapshot
+                      ON snapshot.id = session.attendance_snapshot_id
+                     AND snapshot.source_document_id = session.source_document_id
+                    JOIN source_documents AS source
+                      ON source.id = session.source_document_id
                     JOIN LATERAL (
                         SELECT candidate.publishable, candidate.reviewed_at
-                        FROM data_publication_reviews candidate
-                        WHERE candidate.entity_type = 'PARLIAMENT_ACTIVITY_SNAPSHOT'
+                        FROM data_publication_reviews AS candidate
+                        WHERE candidate.entity_type = 'PARLIAMENT_ATTENDANCE_SNAPSHOT'
                           AND candidate.entity_id = snapshot.id
                           AND candidate.source_document_id = source.id
                         ORDER BY candidate.reviewed_at DESC, candidate.id DESC
                         LIMIT 1
-                    ) review ON review.publishable = TRUE
+                    ) AS review ON review.publishable = TRUE
                     WHERE snapshot.legislature = $2
                       AND source.publisher = 'PARLIAMENT'
+                      AND source.kind = 'ATTENDANCE'
                       AND EXISTS (
-                          SELECT 1 FROM source_archive_attestations activity_archive
-                          WHERE activity_archive.source_document_id = source.id
-                            AND activity_archive.content_sha256 = source.content_sha256
-                            AND activity_archive.retrieval_url = source.url
+                          SELECT 1
+                          FROM source_archive_attestations AS archive
+                          WHERE archive.source_document_id = source.id
+                            AND archive.content_sha256 = source.content_sha256
+                            AND archive.retrieval_url = source.url
+                            AND archive.retrieved_at = source.retrieved_at
                       )
-                    ORDER BY review.reviewed_at DESC,
-                             snapshot.collected_at DESC, snapshot.id DESC
-                    LIMIT 1
                 )
-                SELECT published.verified_at, published.source_publisher,
-                       published.source_url, published.source_retrieved_at,
-                       published.source_sha256,
-                       attendance_stats.record_count,
-                       attendance_stats.present_count,
-                       attendance_stats.absent_count,
-                       attendance_stats.excused_count,
-                       attendance_stats.observed_from,
-                       attendance_stats.observed_through
-                FROM latest_published_activity_snapshot published
+                SELECT attendance_record.id,
+                       meeting.official_meeting_id,
+                       meeting.meeting_title,
+                       meeting.session_number,
+                       meeting.starts_at AS meeting_date,
+                       observation.status,
+                       attendance_record.absence_reason,
+                       meeting.verified_at,
+                       attendance_record.source_record_sha256,
+                       meeting.source_publisher,
+                       meeting.source_url,
+                       meeting.source_retrieved_at,
+                       meeting.source_sha256
+                FROM published_meetings AS meeting
+                JOIN attendance_records AS attendance_record
+                  ON attendance_record.session_id = meeting.session_id
+                 AND attendance_record.source_document_id = meeting.source_document_id
+                JOIN parliament_attendance_observations AS observation
+                  ON observation.id = attendance_record.source_observation_id
+                 AND observation.snapshot_id = meeting.snapshot_id
+                 AND observation.source_record_sha256 =
+                     attendance_record.source_record_sha256
+                JOIN mandates AS mandate
+                  ON mandate.id = attendance_record.mandate_id
+                 AND mandate.person_id = $1
+                 AND mandate.legislature = meeting.legislature
+                 AND mandate.started_at::date <= meeting.meeting_date
+                 AND (
+                     mandate.ended_at IS NULL
+                     OR mandate.ended_at::date >= meeting.meeting_date
+                 )
+                JOIN people AS person
+                  ON person.id = mandate.person_id
+                 AND person.source_id = observation.official_deputy_id
+                 AND person.role = 'DEPUTY'
+                 AND person.active = TRUE
+                JOIN source_documents AS mandate_source
+                  ON mandate_source.id = mandate.source_document_id
                 JOIN LATERAL (
-                    SELECT COUNT(attendance_record.id) FILTER (
-                               WHERE attendance_record.present IS NOT NULL
-                           ) AS record_count,
-                           COUNT(attendance_record.id) FILTER (
-                               WHERE attendance_record.present = TRUE
-                           ) AS present_count,
-                           COUNT(attendance_record.id) FILTER (
-                               WHERE attendance_record.present = FALSE
-                           ) AS absent_count,
-                           COUNT(attendance_record.id) FILTER (
-                               WHERE attendance_record.is_excused = TRUE
-                           ) AS excused_count,
-                           MIN(session.starts_at) FILTER (
-                               WHERE attendance_record.present IS NOT NULL
-                           ) AS observed_from,
-                           MAX(session.starts_at) FILTER (
-                               WHERE attendance_record.present IS NOT NULL
-                           ) AS observed_through
-                    FROM parliamentary_sessions session
-                    JOIN attendance_records attendance_record
-                      ON attendance_record.session_id = session.id
-                     AND attendance_record.source_document_id = session.source_document_id
-                    JOIN mandates mandate
-                      ON mandate.id = attendance_record.mandate_id
-                     AND mandate.person_id = $1
-                    JOIN source_documents mandate_source
-                      ON mandate_source.id = mandate.source_document_id
-                    JOIN LATERAL (
-                        SELECT candidate.publishable
-                        FROM data_publication_reviews candidate
-                        WHERE candidate.entity_type = 'MANDATE'
-                          AND candidate.entity_id = mandate.id
-                          AND candidate.source_document_id = mandate_source.id
-                        ORDER BY candidate.reviewed_at DESC, candidate.id DESC
-                        LIMIT 1
-                    ) mandate_review ON mandate_review.publishable = TRUE
-                    WHERE session.snapshot_id = published.id
-                      AND session.source_document_id = published.source_document_id
-                      AND mandate_source.publisher <> 'MEDIA'
-                      AND mandate_source.kind <> 'NEWS_ARTICLE'
-                      AND EXISTS (
-                          SELECT 1 FROM source_archive_attestations mandate_archive
-                          WHERE mandate_archive.source_document_id = mandate_source.id
-                            AND mandate_archive.content_sha256 =
-                                mandate_source.content_sha256
-                            AND mandate_archive.retrieval_url = mandate_source.url
-                      )
-                ) attendance_stats ON TRUE
+                    SELECT review.publishable
+                    FROM data_publication_reviews AS review
+                    WHERE review.entity_type = 'MANDATE'
+                      AND review.entity_id = mandate.id
+                      AND review.source_document_id = mandate_source.id
+                    ORDER BY review.reviewed_at DESC, review.id DESC
+                    LIMIT 1
+                ) AS mandate_review ON mandate_review.publishable = TRUE
+                WHERE mandate_source.publisher = 'PARLIAMENT'
+                  AND mandate_source.kind <> 'NEWS_ARTICLE'
+                  AND EXISTS (
+                      SELECT 1
+                      FROM source_archive_attestations AS mandate_archive
+                      WHERE mandate_archive.source_document_id = mandate_source.id
+                        AND mandate_archive.content_sha256 = mandate_source.content_sha256
+                        AND mandate_archive.retrieval_url = mandate_source.url
+                        AND mandate_archive.retrieved_at = mandate_source.retrieved_at
+                  )
+                  AND (
+                      (observation.status = 'PRESENT'
+                       AND attendance_record.present = TRUE
+                       AND attendance_record.is_excused IS NULL)
+                      OR
+                      (observation.status = 'JUSTIFIED_ABSENCE'
+                       AND attendance_record.present = FALSE
+                       AND attendance_record.is_excused = TRUE)
+                      OR
+                      (observation.status = 'UNJUSTIFIED_ABSENCE'
+                       AND attendance_record.present = FALSE
+                       AND attendance_record.is_excused = FALSE)
+                  )
+                ORDER BY meeting.starts_at DESC, attendance_record.id DESC
+                LIMIT 250
                 """,
                 row["id"],
                 row["legislature"],
@@ -1282,22 +1430,53 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
             for office in office_rows
         ]
 
-        attendance_snapshot_available = attendance is not None
+        attendance_published_meetings = (
+            int(attendance["published_meeting_count"]) if attendance is not None else 0
+        )
+        attendance_snapshot_available = attendance_published_meetings > 0
         attendance_total = int(attendance["record_count"]) if attendance is not None else 0
+        attendance_meeting_count = int(attendance["meeting_count"]) if attendance is not None else 0
         attendance_present = int(attendance["present_count"]) if attendance is not None else 0
         attendance_absent = int(attendance["absent_count"]) if attendance is not None else 0
         attendance_excused = int(attendance["excused_count"]) if attendance is not None else 0
         attendance_rate = (
             round(attendance_present * 100 / attendance_total) if attendance_total else None
         )
-        attendance_source = _source_from_row(attendance) if attendance is not None else None
+        attendance_records = [
+            {
+                "id": attendance_row["id"],
+                "official_meeting_id": attendance_row["official_meeting_id"],
+                "meeting_title": attendance_row["meeting_title"],
+                "meeting_date": attendance_row["meeting_date"],
+                "session_number": attendance_row["session_number"],
+                "status": attendance_row["status"],
+                "absence_reason": attendance_row["absence_reason"],
+                "verified_at": attendance_row["verified_at"],
+                "source_record_sha256": attendance_row["source_record_sha256"],
+                "source": _source_from_row(attendance_row),
+            }
+            for attendance_row in attendance_rows
+        ]
+        attendance_records_complete = len(attendance_records) == attendance_total
+        attendance_source = (
+            attendance_records[0]["source"]
+            if attendance_meeting_count == 1 and attendance_records
+            else None
+        )
         attendance_note = (
-            f"{attendance_present} presenças em {attendance_total} registos individuais "
-            "publicados e associados por mandato revisto."
+            f"{attendance_present} presenças em {attendance_total} reunião(ões) publicadas, "
+            "cada uma ligada à respetiva fonte oficial e a um mandato revisto. Uma falta "
+            "reproduz o estado da fonte nessa reunião; não prova incumprimento ou culpa."
+            + (
+                " A lista visível está limitada aos 250 registos mais recentes."
+                if not attendance_records_complete
+                else ""
+            )
             if attendance_total
             else (
-                "Existe uma fotografia parlamentar publicada, mas não contém presenças "
-                "individuais associáveis através de um mandato revisto. Isto não prova ausência."
+                f"Existem {attendance_published_meetings} reunião(ões) de presenças publicadas, "
+                "mas nenhum registo individual desta pessoa passa a ligação exata por BID e "
+                "mandato revisto. Isto não prova ausência."
                 if attendance_snapshot_available
                 else "Não existe uma fotografia de presenças publicada para esta legislatura."
             )
@@ -1340,6 +1519,7 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                 "attendance": {
                     "available": attendance_total > 0,
                     "record_count": attendance_total,
+                    "meeting_count": attendance_meeting_count,
                     "present_count": attendance_present,
                     "absent_count": attendance_absent,
                     "excused_count": attendance_excused,
@@ -1352,6 +1532,8 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                     ),
                     "note": attendance_note,
                     "source": attendance_source,
+                    "records_complete": attendance_records_complete,
+                    "records": attendance_records,
                 },
                 "attendance_rate": attendance_rate,
                 "attendance_label": attendance_note,
