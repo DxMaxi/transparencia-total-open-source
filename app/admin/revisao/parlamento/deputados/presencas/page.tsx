@@ -2,13 +2,18 @@ import Link from "next/link";
 import {
   createPoliticianAttendanceProposal,
   publishPoliticianAttendance,
+  withdrawPoliticianAttendance,
 } from "../../../actions";
 import { editorialFetch, getEditorialContext } from "@/lib/editorial-api";
-import type {
+import {
+  PARLIAMENT_WITHDRAWAL_REASON_LABELS,
+  type PoliticianAttendanceWithdrawalPreview,
   PoliticianAttendanceEditorialCandidate,
   PoliticianAttendanceEditorialCandidateList,
   PoliticianAttendancePublicationPreview,
 } from "@/lib/editorial-types";
+
+const withdrawalReasonEntries = Object.entries(PARLIAMENT_WITHDRAWAL_REASON_LABELS);
 
 const dateFormatter = new Intl.DateTimeFormat("pt-PT", {
   dateStyle: "long",
@@ -50,6 +55,18 @@ async function loadPublicationPreview(
   }
 }
 
+async function loadWithdrawalPreview(
+  caseId: string,
+): Promise<PoliticianAttendanceWithdrawalPreview | null> {
+  try {
+    return await editorialFetch<PoliticianAttendanceWithdrawalPreview>(
+      `/parliament/attendance-cases/${encodeURIComponent(caseId)}/withdrawal`,
+    );
+  } catch {
+    return null;
+  }
+}
+
 export default async function PoliticianAttendanceEditorialPage({
   searchParams,
 }: {
@@ -76,11 +93,15 @@ export default async function PoliticianAttendanceEditorialPage({
     getEditorialContext(),
   ]);
   const publicationPreviews = new Map<string, PoliticianAttendancePublicationPreview>();
+  const withdrawalPreviews = new Map<string, PoliticianAttendanceWithdrawalPreview>();
   await Promise.all(
     catalogue.items.map(async (candidate) => {
       if (candidate.existing_case?.state === "APPROVED") {
         const preview = await loadPublicationPreview(candidate.existing_case.id);
         if (preview) publicationPreviews.set(candidate.existing_case.id, preview);
+      } else if (candidate.existing_case?.state === "PUBLISHED") {
+        const preview = await loadWithdrawalPreview(candidate.existing_case.id);
+        if (preview) withdrawalPreviews.set(candidate.existing_case.id, preview);
       }
     }),
   );
@@ -89,7 +110,7 @@ export default async function PoliticianAttendanceEditorialPage({
     <div className="admin-page parliament-editorial-page">
       <header className="admin-page-heading">
         <div>
-          <p className="eyebrow">V5.40 · presenças por reunião oficial</p>
+          <p className="eyebrow">V5.41 · presenças por reunião oficial</p>
           <h1>Rever a fotografia completa de cada reunião</h1>
           <p>
             Cada proposta contém todos os registos que a Assembleia publicou para a reunião. A
@@ -109,8 +130,9 @@ export default async function PoliticianAttendanceEditorialPage({
       ) : null}
       {input.sucesso ? (
         <p className="private-message private-message--success" role="status">
-          A reunião integral e a respetiva prova foram publicadas sem criar pessoas, mandatos ou
-          filiações.
+          {input.sucesso === "reuniao-retirada"
+            ? "A reunião saiu da consulta ativa; sessão, presenças e histórico foram preservados."
+            : "A reunião integral e a respetiva prova foram publicadas sem criar pessoas, mandatos ou filiações."}
         </p>
       ) : null}
 
@@ -148,6 +170,11 @@ export default async function PoliticianAttendanceEditorialPage({
                   ? publicationPreviews.get(candidate.existing_case.id) ?? null
                   : null
               }
+              withdrawalPreview={
+                candidate.existing_case
+                  ? withdrawalPreviews.get(candidate.existing_case.id) ?? null
+                  : null
+              }
             />
           ))}
         </section>
@@ -181,10 +208,12 @@ export default async function PoliticianAttendanceEditorialPage({
 function AttendanceCandidateCard({
   candidate,
   publicationPreview,
+  withdrawalPreview,
   isAdmin,
 }: {
   candidate: PoliticianAttendanceEditorialCandidate;
   publicationPreview: PoliticianAttendancePublicationPreview | null;
+  withdrawalPreview: PoliticianAttendanceWithdrawalPreview | null;
   isAdmin: boolean;
 }) {
   const counts = candidate.materialised_counts;
@@ -267,6 +296,13 @@ function AttendanceCandidateCard({
               candidate={candidate}
               isAdmin={isAdmin}
               preview={publicationPreview}
+            />
+          ) : null}
+          {candidate.existing_case.state === "PUBLISHED" ? (
+            <AttendanceWithdrawalAction
+              candidate={candidate}
+              isAdmin={isAdmin}
+              preview={withdrawalPreview}
             />
           ) : null}
         </>
@@ -391,6 +427,162 @@ function AttendancePublicationAction({
         A operação não cria pessoas, mandatos ou filiações e será revertida por inteiro perante
         qualquer divergência.
       </p>
+    </form>
+  );
+}
+
+function AttendanceWithdrawalAction({
+  candidate,
+  preview,
+  isAdmin,
+}: {
+  candidate: PoliticianAttendanceEditorialCandidate;
+  preview: PoliticianAttendanceWithdrawalPreview | null;
+  isAdmin: boolean;
+}) {
+  if (!preview) {
+    return (
+      <section className="parliament-proposal-card">
+        <strong>Prova de retirada indisponível.</strong>
+        <p>A reunião permanece publicada; nenhuma retirada avança sem prova integral.</p>
+      </section>
+    );
+  }
+
+  return (
+    <form
+      action={withdrawPoliticianAttendance}
+      className="parliament-proposal-card parliament-publication-card admin-withdrawal-panel"
+    >
+      <input type="hidden" name="legislature" value={candidate.legislature} />
+      <input type="hidden" name="expected_case_id" value={preview.case_id} />
+      <input type="hidden" name="expected_revision" value={preview.case_revision} />
+      <input type="hidden" name="expected_version_id" value={preview.version_id} />
+      <input type="hidden" name="expected_version_sha256" value={preview.version_sha256} />
+      <input type="hidden" name="expected_snapshot_id" value={preview.snapshot_id} />
+      <input type="hidden" name="expected_source_sha256" value={preview.source.content_sha256} />
+      <input type="hidden" name="expected_snapshot_sha256" value={preview.snapshot_sha256} />
+      <input type="hidden" name="expected_mapping_sha256" value={preview.mapping_sha256 ?? ""} />
+      <input
+        type="hidden"
+        name="expected_publication_proof_sha256"
+        value={preview.publication_proof_sha256 ?? ""}
+      />
+      <input
+        type="hidden"
+        name="expected_withdrawal_proof_sha256"
+        value={preview.withdrawal_proof_sha256 ?? ""}
+      />
+      <input type="hidden" name="expected_public_review_id" value={preview.public_review_id} />
+      <input
+        type="hidden"
+        name="expected_publication_audit_event_id"
+        value={preview.publication_audit_event_id}
+      />
+      <input
+        type="hidden"
+        name="expected_publication_event_id"
+        value={preview.publication_event_id}
+      />
+      <input
+        type="hidden"
+        name="expected_publication_event_sha256"
+        value={preview.publication_event_sha256}
+      />
+      <input
+        type="hidden"
+        name="expected_public_effect_sha256"
+        value={preview.public_effect_sha256}
+      />
+      <input type="hidden" name="expected_record_count" value={preview.record_count} />
+
+      <div>
+        <p className="eyebrow">V5.41 · retirada imutável da reunião integral</p>
+        <h3>Retirar toda a reunião da consulta ativa</h3>
+        <p>{preview.withdrawal_rule}</p>
+      </div>
+      <dl>
+        <div><dt>Sessões a eliminar</dt><dd>{preview.sessions_to_delete}</dd></div>
+        <div><dt>Presenças a eliminar</dt><dd>{preview.attendance_records_to_delete}</dd></div>
+        <div><dt>Linhas preservadas</dt><dd>{preview.public_effect.attendance_records_preserved}</dd></div>
+        <div>
+          <dt>Outras reuniões públicas na legislatura</dt>
+          <dd>{preview.public_effect.remaining_public_attendance_meetings_in_legislature}</dd>
+        </div>
+      </dl>
+      <p>{preview.public_effect.message}</p>
+      <div className="admin-proof-callout">
+        <strong>SHA-256 da prova de retirada</strong>
+        <code>{preview.withdrawal_proof_sha256 ?? "dados indisponíveis"}</code>
+        <strong>SHA-256 do efeito público</strong>
+        <code>{preview.public_effect_sha256}</code>
+      </div>
+      {preview.blockers.length ? (
+        <ul className="parliament-limitations">
+          {preview.blockers.map((blocker) => <li key={blocker.code}>{blocker.detail}</li>)}
+        </ul>
+      ) : null}
+      <label>
+        Categoria permitida pela governação
+        <select name="reason_category" required defaultValue="">
+          <option value="" disabled>Selecione um fundamento</option>
+          {withdrawalReasonEntries.map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Fundamentação editorial privada
+        <textarea name="rationale" minLength={20} maxLength={1850} required />
+      </label>
+      <label>
+        Fundamentação pública factual
+        <textarea name="public_rationale" minLength={20} maxLength={500} required />
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_source_and_publication_reviewed" type="checkbox" required />
+        <span>Revi a fonte, a reunião, a publicação original e todos os SHA-256.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_complete_meeting" type="checkbox" required />
+        <span>Confirmo que a retirada abrange a reunião inteira, sem escolher deputados.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_public_effect_reviewed" type="checkbox" required />
+        <span>Revi o efeito que ficará visível ao público depois da retirada.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input
+          name="confirm_session_records_and_history_preserved"
+          type="checkbox"
+          required
+        />
+        <span>Confirmo que sessão, presenças, fonte, versão e histórico permanecem.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input
+          name="confirm_no_selective_person_or_mandate_change"
+          type="checkbox"
+          required
+        />
+        <span>Confirmo que pessoas, mandatos e filiações não serão alterados.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_absence_is_not_noncompliance" type="checkbox" required />
+        <span>Confirmo que uma falta não é apresentada como culpa ou incumprimento.</span>
+      </label>
+      <label className="admin-confirmation">
+        <input name="confirm_withdrawal" type="checkbox" required />
+        <span>Confirmo a retirada integral desta reunião da consulta ativa.</span>
+      </label>
+      {!isAdmin ? <p>A retirada exige uma conta ADMIN com MFA.</p> : null}
+      <button
+        className="button button--danger"
+        type="submit"
+        disabled={!isAdmin || !preview.eligible || !preview.withdrawal_proof_sha256}
+      >
+        Retirar reunião e preservar todo o histórico
+      </button>
     </form>
   );
 }

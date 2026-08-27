@@ -72,6 +72,9 @@ continuam a exigir autorizações separadas.
 - [x] V5.40 — publicação transacional ADMIN+MFA acrescenta a reunião integral, todas as linhas,
   revisão própria, auditoria, decisão e evento numa única transação; cada BID exige exatamente um
   mandato revisto e a ficha pública conserva a fonte de cada reunião.
+- [x] V5.41 — retirada transacional e imutável acrescenta revisão negativa, auditoria, decisão e
+  evento para a reunião inteira; sessão, presenças, identidades, mandatos e publicação original
+  permanecem e não existe retirada seletiva.
 - [x] Existe um [conjunto de issues de conclusão](https://github.com/DxMaxi/transparencia-total-open-source/issues/58) para todos os itens ainda abertos.
 
 ## B. Estabilização pública
@@ -172,11 +175,11 @@ continuam a exigir autorizações separadas.
   - [x] Proposta privada específica por `DepCargo`, DepId, CarId, círculo e período exatos.
   - [x] Publicação append-only do cargo com revisão própria e projeção pública.
   - [x] Retirada append-only específica do cargo, sem apagar a linha nem a prova anterior.
-- [ ] Presenças dependem de mandato revisto e fotografia publicada.
+- [x] Presenças dependem de mandato revisto e fotografia publicada.
   - [x] Recolha privada da reunião inteira, arquivo, SHA-256 e manifesto append-only.
   - [x] Proposta editorial integral por BID exato, sem correspondência por nome ou seleção individual.
   - [x] V5.40 — publicação transacional da reunião inteira com revisão própria.
-  - [ ] V5.41 — retirada transacional e imutável da reunião inteira, sem apagar observações,
+  - [x] V5.41 — retirada transacional e imutável da reunião inteira, sem apagar observações,
     sessão, linhas ou prova anterior.
 - [ ] Autoria de iniciativas usa relação oficial individual.
 - [ ] Votos do perfil são nominais e ligados por identificador oficial exato.

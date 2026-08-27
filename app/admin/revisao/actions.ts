@@ -16,6 +16,7 @@ import {
   type ParliamentWithdrawalReason,
   type PoliticianAttendanceEditorialProposalResult,
   type PoliticianAttendancePublicationResult,
+  type PoliticianAttendanceWithdrawalResult,
   type PoliticianOfficeEditorialProposalResult,
   type PoliticianOfficePublicationResult,
   type PoliticianOfficeWithdrawalResult,
@@ -322,6 +323,118 @@ export async function publishPoliticianAttendance(formData: FormData) {
   revalidatePath("/politicos");
   revalidatePath("/");
   const params = new URLSearchParams({ legislature, sucesso: "reuniao-publicada" });
+  redirect(`${destination}?${params.toString()}`);
+}
+
+export async function withdrawPoliticianAttendance(formData: FormData) {
+  const caseReference = evidenceId(formData, "expected_case_id");
+  const legislature = requiredText(formData, "legislature").slice(0, 20);
+  let failure: string | null = null;
+  try {
+    for (const [field, message] of [
+      [
+        "confirm_source_and_publication_reviewed",
+        "Confirme a revisão da fonte e da publicação original",
+      ],
+      ["confirm_complete_meeting", "Confirme a retirada da reunião integral"],
+      ["confirm_public_effect_reviewed", "Confirme que reviu o efeito público"],
+      [
+        "confirm_session_records_and_history_preserved",
+        "Confirme que sessão, presenças e histórico permanecem",
+      ],
+      [
+        "confirm_no_selective_person_or_mandate_change",
+        "Confirme que nenhuma pessoa ou mandato será alterado seletivamente",
+      ],
+      [
+        "confirm_absence_is_not_noncompliance",
+        "Confirme que uma falta não é tratada como incumprimento",
+      ],
+      ["confirm_withdrawal", "Confirme a retirada da reunião da consulta ativa"],
+    ] as const) {
+      if (formData.get(field) !== "on") throw new Error(message);
+    }
+    const reasonCategory = requiredText(formData, "reason_category");
+    if (!(reasonCategory in PARLIAMENT_WITHDRAWAL_REASON_LABELS)) {
+      throw new Error("Categoria de retirada inválida");
+    }
+    const expectedRecordCount = Number.parseInt(
+      requiredText(formData, "expected_record_count"),
+      10,
+    );
+    if (
+      !Number.isSafeInteger(expectedRecordCount)
+      || expectedRecordCount < 1
+      || expectedRecordCount > 500
+    ) {
+      throw new Error("A contagem integral da reunião é inválida");
+    }
+    await editorialFetch<PoliticianAttendanceWithdrawalResult>(
+      `/parliament/attendance-cases/${encodeURIComponent(caseReference)}/withdrawal`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          expected_case_id: caseReference,
+          expected_revision: expectedRevision(formData),
+          expected_version_id: evidenceId(formData, "expected_version_id"),
+          expected_version_sha256: sha256(formData, "expected_version_sha256"),
+          expected_snapshot_id: evidenceId(formData, "expected_snapshot_id"),
+          expected_source_sha256: sha256(formData, "expected_source_sha256"),
+          expected_snapshot_sha256: sha256(formData, "expected_snapshot_sha256"),
+          expected_mapping_sha256: sha256(formData, "expected_mapping_sha256"),
+          expected_publication_proof_sha256: sha256(
+            formData,
+            "expected_publication_proof_sha256",
+          ),
+          expected_withdrawal_proof_sha256: sha256(
+            formData,
+            "expected_withdrawal_proof_sha256",
+          ),
+          expected_public_review_id: evidenceId(formData, "expected_public_review_id"),
+          expected_publication_audit_event_id: evidenceId(
+            formData,
+            "expected_publication_audit_event_id",
+          ),
+          expected_publication_event_id: evidenceId(
+            formData,
+            "expected_publication_event_id",
+          ),
+          expected_publication_event_sha256: sha256(
+            formData,
+            "expected_publication_event_sha256",
+          ),
+          expected_public_effect_sha256: sha256(
+            formData,
+            "expected_public_effect_sha256",
+          ),
+          expected_record_count: expectedRecordCount,
+          rationale: requiredText(formData, "rationale"),
+          public_rationale: requiredText(formData, "public_rationale"),
+          reason_category: reasonCategory as ParliamentWithdrawalReason,
+          confirm_source_and_publication_reviewed: true,
+          confirm_complete_meeting: true,
+          confirm_public_effect_reviewed: true,
+          confirm_session_records_and_history_preserved: true,
+          confirm_no_selective_person_or_mandate_change: true,
+          confirm_absence_is_not_noncompliance: true,
+          confirm_withdrawal: true,
+        }),
+      },
+    );
+  } catch (error) {
+    failure = actionError(error);
+  }
+  const destination = "/admin/revisao/parlamento/deputados/presencas";
+  if (failure) {
+    const params = new URLSearchParams({ legislature, erro: failure });
+    redirect(`${destination}?${params.toString()}`);
+  }
+  revalidatePath("/admin/revisao");
+  revalidatePath(destination);
+  revalidatePath("/politicos");
+  revalidatePath("/sitemap.xml");
+  revalidatePath("/");
+  const params = new URLSearchParams({ legislature, sucesso: "reuniao-retirada" });
   redirect(`${destination}?${params.toString()}`);
 }
 

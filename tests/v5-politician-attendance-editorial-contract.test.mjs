@@ -92,7 +92,7 @@ test("V5.39 proves idempotence and keeps approval separate from publication", as
   assert.match(documentation, /PostgreSQL descartável/);
   assert.match(checklist, /\[x\] V5\.39 — presenças oficiais por reunião/);
   assert.match(plan, /V5_POLITICIAN_ATTENDANCE_EDITORIAL\.md/);
-  assert.match(readme, /V5\.1 a V5\.40 preparadas/);
+  assert.match(readme, /V5\.1 a V5\.41 preparadas/);
   assert.match(types, /PoliticianAttendanceEditorialCandidate/);
   assert.match(types, /PoliticianAttendanceEditorialProposalResult/);
 });

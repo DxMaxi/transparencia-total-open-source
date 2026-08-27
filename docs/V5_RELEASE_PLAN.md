@@ -11,12 +11,12 @@ reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.40 preparadas; staging remoto pendente |
+| Código V5 | V5.1 a V5.41 preparadas; staging remoto pendente |
 | Frontend público | V5.21 preparado; capacidades sem backend ou esquema pronto ficam fail-closed |
 | API pública | `0.5.0-alpha.0`; capacidades anunciadas apenas após prova read-only do esquema |
 | Painel editorial | implementado no código, não ativado em produção |
 | IA | geração, revisão, publicação e retirada implementadas; esquema remoto ainda não ativado |
-| Parlamento | matriz V5.21 e gates V5.22–V5.40 preparados; retirada de presenças e ativação editorial pendentes |
+| Parlamento | matriz V5.21 e gates V5.22–V5.41 preparados; autoria, votos individuais e ativação editorial pendentes |
 | Perfis | ciclo integral de entrada, publicação, retirada e republicação provado; domínios individuais pendentes |
 | Promessómetro | catálogo editorial inicial de 10 compromissos; vocabulário V5.20 protegido |
 | Investigador Cívico | zero contratos e zero relações na projeção pública |
@@ -242,8 +242,15 @@ Uma ação `ADMIN` com MFA repete versão, fonte, arquivo, manifesto, todos os B
 mandato revisto por registo. Sessão, linhas, revisão `PARLIAMENT_ATTENDANCE_SNAPSHOT`, auditoria,
 decisão e evento são acrescentados ou recuam em conjunto. A ficha pública identifica a fonte e o
 SHA-256 de cada reunião; uma falta continua sem equivaler a culpa ou incumprimento. A capacidade
-não foi executada em staging ou produção e permanece bloqueada até existir a retirada imutável
-V5.41.
+não foi executada em staging ou produção.
+
+O décimo oitavo gate de perfis está preparado em
+[V5.41 — retirada integral e imutável de presenças](V5_POLITICIAN_ATTENDANCE_WITHDRAWAL.md).
+Uma ação `ADMIN` com MFA volta a provar fonte, arquivo, versão, sessão, todas as linhas, BID,
+mandatos, revisão, auditoria e evento de publicação. Depois acrescenta uma revisão negativa,
+auditoria, decisão e evento de retirada na mesma transação. A reunião inteira deixa a consulta
+ativa, mas nenhuma sessão, presença, pessoa, mandato ou prova histórica é apagada ou alterada. A
+capacidade não foi executada em staging ou produção.
 
 Critérios de saída:
 

@@ -113,7 +113,7 @@ test("V5.40 exposes every published meeting with its own official proof", async 
   assert.match(publicProfile, /SourceLink source=\{record\.source\}/);
 });
 
-test("V5.40 remains operationally gated before immutable withdrawal", async () => {
+test("V5.40 publication proof remains intact after V5.41 closes withdrawal", async () => {
   const [documentation, checklist, plan, readme] = await Promise.all([
     source("docs/V5_POLITICIAN_ATTENDANCE_PUBLICATION.md"),
     source("docs/V5_RELEASE_CHECKLIST.md"),
@@ -128,7 +128,7 @@ test("V5.40 remains operationally gated before immutable withdrawal", async () =
   assert.match(documentation, /não publica dados reais/i);
   assert.match(documentation, /retirada imutável[\s\S]*V5\.41/i);
   assert.match(checklist, /\[x\] V5\.40 — publicação transacional/);
-  assert.match(checklist, /\[ \] V5\.41 — retirada transacional e imutável/);
+  assert.match(checklist, /\[x\] V5\.41 — retirada transacional e imutável/);
   assert.match(plan, /V5_POLITICIAN_ATTENDANCE_PUBLICATION\.md/);
-  assert.match(readme, /V5\.1 a V5\.40 preparadas/);
+  assert.match(readme, /V5\.1 a V5\.41 preparadas/);
 });

@@ -746,6 +746,76 @@ export type PoliticianAttendancePublicationResult = {
   publication_rule: string;
 };
 
+export type PoliticianAttendancePublicEffect = {
+  kind: "PARLIAMENT_ATTENDANCE_MEETING_HIDDEN_HISTORY_PRESERVED";
+  snapshot_reference_sha256: string;
+  exact_meeting_public_after_withdrawal: false;
+  remaining_public_attendance_meetings_in_legislature: number;
+  session_preserved: true;
+  attendance_records_preserved: number;
+  people_and_mandates_unchanged: true;
+  selective_withdrawal: false;
+  message: string;
+};
+
+export type PoliticianAttendanceWithdrawalPreview = {
+  case_id: string;
+  case_state: "PUBLISHED";
+  case_revision: number;
+  version_id: string;
+  version_sha256: string;
+  snapshot_id: string;
+  snapshot_sha256: string;
+  mapping_sha256: string | null;
+  source: PoliticianAttendanceEditorialCandidate["source"];
+  publication_proof_sha256: string | null;
+  withdrawal_proof_sha256: string | null;
+  public_review_id: string;
+  publication_audit_event_id: string;
+  publication_event_id: string;
+  publication_event_sha256: string;
+  record_count: number;
+  public_effect: PoliticianAttendancePublicEffect;
+  public_effect_sha256: string;
+  eligible: boolean;
+  blockers: Array<{ code: string; detail: string }>;
+  automatic_withdrawal: false;
+  selective_withdrawal_allowed: false;
+  sessions_to_delete: 0;
+  attendance_records_to_delete: 0;
+  people_to_delete: 0;
+  mandates_to_delete: 0;
+  absence_is_noncompliance: false;
+  withdrawal_rule: string;
+};
+
+export type PoliticianAttendanceWithdrawalResult = {
+  created: true;
+  case_id: string;
+  version_id: string;
+  state: "WITHDRAWN";
+  revision: number;
+  snapshot_id: string;
+  reason_category: ParliamentWithdrawalReason;
+  attendance_review_id: string;
+  audit_event_id: string;
+  editorial_decision_id: string;
+  withdrawal_event_id: string;
+  decision_sha256: string;
+  event_sha256: string;
+  withdrawal_proof_sha256: string;
+  public_effect: PoliticianAttendancePublicEffect;
+  public_effect_sha256: string;
+  sessions_deleted: 0;
+  attendance_records_deleted: 0;
+  people_deleted: 0;
+  mandates_deleted: 0;
+  automatic_withdrawal: false;
+  selective_withdrawal_allowed: false;
+  absence_is_noncompliance: false;
+  withdrawal_rule: string;
+};
+
 export type PoliticianOfficePublicationPreview = {
   case_id: string;
   case_state: "APPROVED";

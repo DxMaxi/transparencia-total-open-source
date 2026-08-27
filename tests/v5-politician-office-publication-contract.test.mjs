@@ -121,5 +121,5 @@ test("V5.37 documents a separate office projection without real activation", asy
   assert.match(checklist, /\[x\] V5\.37 — publicação transacional/);
   assert.match(plan, /V5_POLITICIAN_OFFICE_PUBLICATION\.md/);
   assert.match(handoff, /V5\.37 acrescenta a publicação específica/);
-  assert.match(readme, /V5\.1 a V5\.40 preparadas/);
+  assert.match(readme, /V5\.1 a V5\.41 preparadas/);
 });

@@ -23,7 +23,7 @@ definição da Open Source Initiative.
 > commit final desse fecho. A V5 começa pela governação de licença e pelo circuito editorial
 > privado; esta branch não altera os dados aprovados da V4.
 
-> **V5.1 a V5.40 preparadas; ativação remota de staging pendente:** o painel privado usa
+> **V5.1 a V5.41 preparadas; ativação remota de staging pendente:** o painel privado usa
 > login por convite,
 > MFA obrigatório, funções de administrador/revisor, comparação entre fonte atestada e JSON
 > normalizado, versões e decisões append-only. A V5.2 acrescentou propostas parlamentares privadas,
@@ -107,8 +107,10 @@ definição da Open Source Initiative.
 > V5.40 acrescenta a publicação transacional da reunião integral: exige `ADMIN` com MFA, repete
 > fonte, arquivo, versão, todos os BID e exatamente um mandato revisto por registo, acrescenta
 > sessão, linhas, revisão, auditoria, decisão e evento ou recua tudo. A ficha pública mostra cada
-> reunião com a respetiva fonte e SHA-256; não cria pessoas, mandatos ou filiações. A retirada
-> imutável V5.41 continua obrigatória antes de qualquer ativação real. A
+> reunião com a respetiva fonte e SHA-256; não cria pessoas, mandatos ou filiações. A V5.41 fecha
+> a retirada integral append-only: uma revisão negativa, auditoria, decisão e evento ocultam toda a
+> reunião ativa sem apagar sessão, presenças, fonte, versão ou publicação original. Não existe
+> retirada seletiva por deputado. A
 > ativação real continua dependente dos gates operacionais de staging. O código e os testes
 > não executam estas operações sobre staging ou
 > produção. O plano e a checklist
@@ -147,6 +149,7 @@ definição da Open Source Initiative.
 > [Retirada transacional e imutável de cargos parlamentares V5.38](docs/V5_POLITICIAN_OFFICE_WITHDRAWAL.md),
 > [Presenças parlamentares por reunião no circuito editorial V5.39](docs/V5_POLITICIAN_ATTENDANCE_EDITORIAL.md),
 > [Publicação transacional de presenças por reunião V5.40](docs/V5_POLITICIAN_ATTENDANCE_PUBLICATION.md),
+> [Retirada integral e imutável de presenças por reunião V5.41](docs/V5_POLITICIAN_ATTENDANCE_WITHDRAWAL.md),
 > [Adaptador parlamentar V5.2](docs/V5_PARLIAMENT_EDITORIAL_ADAPTER.md) e
 > [Publicação parlamentar por âmbito V5.3](docs/V5_PARLIAMENT_SCOPE_PUBLICATION.md),
 > [Retirada parlamentar imutável V5.4](docs/V5_PARLIAMENT_WITHDRAWAL.md) e
