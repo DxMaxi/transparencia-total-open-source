@@ -485,6 +485,56 @@ model ParliamentDeputyObservation {
   @@map("parliament_deputy_observations")
 }
 
+/// Fotografia privada e integral de uma página oficial de presenças a uma
+/// reunião plenária. A recolha não cria uma sessão pública nem uma revisão.
+model ParliamentAttendanceSnapshot {
+  id                         String                            @id
+  sourceDocumentId           String                            @map("source_document_id")
+  legislature                String
+  officialMeetingId          String                            @map("official_meeting_id")
+  meetingDate                DateTime                          @map("meeting_date") @db.Date
+  meetingType                String                            @map("meeting_type")
+  sessionNumber              String?                           @map("session_number")
+  parserVersion              String                            @map("parser_version")
+  normalisedSha256           String                            @map("normalised_sha256") @db.Char(64)
+  collectedAt                DateTime                          @map("collected_at")
+  recordCount                Int                               @map("record_count")
+  presentCount               Int                               @map("present_count")
+  justifiedAbsenceCount      Int                               @map("justified_absence_count")
+  unjustifiedAbsenceCount    Int                               @map("unjustified_absence_count")
+  unknownCount               Int                               @map("unknown_count")
+  createdAt                  DateTime                          @default(now()) @map("created_at")
+  sourceDocument             SourceDocument                    @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
+  observations               ParliamentAttendanceObservation[]
+
+  @@unique([sourceDocumentId, legislature, parserVersion])
+  @@index([legislature, meetingDate])
+  @@index([officialMeetingId])
+  @@map("parliament_attendance_snapshots")
+}
+
+/// Estado individual tal como escrito pela fonte. A ligação futura a uma
+/// pessoa depende exclusivamente do BID e de revisão humana explícita.
+model ParliamentAttendanceObservation {
+  id                       String                       @id
+  snapshotId               String                       @map("snapshot_id")
+  officialDeputyId         String                       @map("official_deputy_id")
+  parliamentaryName        String                       @map("parliamentary_name")
+  parliamentaryGroupLabel  String?                      @map("parliamentary_group_label")
+  status                   String
+  sourceStatusLabel        String                       @map("source_status_label")
+  sourceStatusCode         String?                      @map("source_status_code")
+  absenceReason            String?                      @map("absence_reason")
+  sourceRecordSha256       String                       @map("source_record_sha256") @db.Char(64)
+  createdAt                DateTime                     @default(now()) @map("created_at")
+  snapshot                 ParliamentAttendanceSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
+
+  @@unique([snapshotId, officialDeputyId])
+  @@index([officialDeputyId])
+  @@index([snapshotId, status])
+  @@map("parliament_attendance_observations")
+}
+
 /// Período de cargo parlamentar publicado após revisão humana específica.
 /// É distinto de um mandato e não transporta qualquer filiação partidária.
 model ParliamentaryOfficePeriod {
@@ -1457,6 +1507,7 @@ model SourceDocument {
   membershipSnapshots        ParliamentaryMembershipSnapshot[]
   parliamentSnapshots        ParliamentActivitySnapshot[]
   parliamentDeputySnapshots  ParliamentDeputySnapshot[]
+  parliamentAttendanceSnapshots ParliamentAttendanceSnapshot[]
   sessions                   ParliamentarySession[]
   attendanceRecords          AttendanceRecord[]
   initiatives                ParliamentaryInitiative[]

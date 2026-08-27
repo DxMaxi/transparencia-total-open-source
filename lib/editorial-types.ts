@@ -616,6 +616,68 @@ export type PoliticianOfficeEditorialProposalResult = {
   party_link_created: false;
 };
 
+export type PoliticianAttendanceCounts = {
+  records: number;
+  present: number;
+  justified_absence: number;
+  unjustified_absence: number;
+  unknown: number;
+};
+
+export type PoliticianAttendanceEditorialCandidate = {
+  snapshot_id: string;
+  source_document_id: string;
+  legislature: string;
+  official_meeting_id: string;
+  meeting_date: string;
+  meeting_type: string;
+  session_number: string | null;
+  parser_version: string;
+  normalised_sha256: string;
+  collected_at: string;
+  record_count: number;
+  manifest_counts: PoliticianAttendanceCounts;
+  materialised_counts: PoliticianAttendanceCounts;
+  identity_reconciliation: {
+    exact_identities: number;
+    reviewed_identities: number;
+    exact_covering_mandates: number;
+    reviewed_covering_mandates: number;
+  };
+  source: ParliamentEditorialSnapshot["source"];
+  archive: ParliamentEditorialSnapshot["archive"];
+  existing_case: PoliticianProfileEditorialCandidate["editorial_case"];
+  blocked_reasons: string[];
+  warnings: string[];
+  proposal_eligible: boolean;
+  publication_blockers: string[];
+  publication_ready: boolean;
+  public_projection_allowed: false;
+  selective_processing_allowed: false;
+  name_matching_allowed: false;
+};
+
+export type PoliticianAttendanceEditorialCandidateList = {
+  items: PoliticianAttendanceEditorialCandidate[];
+  total: number;
+  limit: number;
+  offset: number;
+  next_offset: number | null;
+  publication_performed: false;
+  selection_rule: string;
+};
+
+export type PoliticianAttendanceEditorialProposalResult = {
+  created: boolean;
+  case: EditorialCaseDetail;
+  state: "PRIVATE_PENDING_REVIEW";
+  publication_performed: false;
+  session_created: false;
+  attendance_records_created: 0;
+  public_reviews_created: 0;
+  selective_processing_allowed: false;
+};
+
 export type PoliticianOfficePublicationPreview = {
   case_id: string;
   case_state: "APPROVED";
