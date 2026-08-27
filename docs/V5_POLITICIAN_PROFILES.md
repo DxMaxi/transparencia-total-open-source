@@ -82,10 +82,12 @@ individual: uma posição coletiva pertence à consulta parlamentar, não ao his
 
 A V5.42 acrescenta uma fotografia **privada** de autoria individual por `IniId + idCadastro`
 oficiais e uma proposta editorial `PENDING`, documentadas em
-[V5_POLITICIAN_INITIATIVE_AUTHORSHIP.md](V5_POLITICIAN_INITIATIVE_AUTHORSHIP.md). A projeção pública
-continua, por desenho, com lista vazia e cobertura `UNAVAILABLE` até existirem publicação e retirada
-específicas deste domínio. Nunca tenta descobrir autores no título, na descrição, no nome ou na
-sigla partidária.
+[V5_POLITICIAN_INITIATIVE_AUTHORSHIP.md](V5_POLITICIAN_INITIATIVE_AUTHORSHIP.md). A
+[V5.43](V5_POLITICIAN_INITIATIVE_AUTHORSHIP_PUBLICATION.md) acrescenta a publicação específica,
+transacional e append-only: a ficha só mostra relações `AUTHOR` quando identidade, iniciativa,
+fontes e revisões continuam válidas. Sem relações publicadas, a cobertura permanece
+`UNAVAILABLE`; nunca tenta descobrir autores no título, na descrição, no nome ou na sigla
+partidária. A retirada específica permanece separada.
 
 ## Declarações: prova individual versus portal de pesquisa
 

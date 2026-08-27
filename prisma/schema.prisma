@@ -348,6 +348,7 @@ model Person {
   updatedAt                  DateTime                          @updatedAt @map("updated_at")
   mandates                   Mandate[]
   parliamentaryOfficePeriods ParliamentaryOfficePeriod[]
+  initiativeAuthorships      PoliticianInitiativeAuthorship[]
   membershipSnapshots        ParliamentaryMembershipSnapshot[]
   voteRecords                VoteRecord[]
   statements                 PublicStatement[]
@@ -629,6 +630,7 @@ model ParliamentaryInitiative {
   updatedAt        DateTime                    @updatedAt @map("updated_at")
   snapshot         ParliamentActivitySnapshot? @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
   sourceDocument   SourceDocument              @relation(fields: [sourceDocumentId], references: [id])
+  publishedAuthorships PoliticianInitiativeAuthorship[]
   voteEvents       VoteEvent[]
   laws             Law[]
 
@@ -673,11 +675,36 @@ model ParliamentInitiativeAuthorObservation {
   sourceRecordSha256       String                              @map("source_record_sha256") @db.Char(64)
   createdAt                DateTime                            @default(now()) @map("created_at")
   snapshot                 ParliamentInitiativeAuthorSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
+  publishedAuthorship      PoliticianInitiativeAuthorship?
 
   @@unique([snapshotId, initiativeSourceId, officialDeputyId])
   @@index([initiativeSourceId])
   @@index([officialDeputyId])
   @@map("parliament_initiative_author_observations")
+}
+
+/// Projeção pública mínima de uma autoria individual. A linha só é criada por
+/// uma ação ADMIN com MFA, depois de revisão humana e correspondência exata por
+/// IniId e idCadastro. Correções e retiradas acrescentam revisões; não alteram
+/// nem apagam esta prova histórica.
+model PoliticianInitiativeAuthorship {
+  id                    String                                @id
+  personId              String                                @map("person_id")
+  initiativeId          String                                @map("initiative_id")
+  sourceObservationId   String                                @unique @map("source_observation_id")
+  relation              String
+  sourceDocumentId      String                                @map("source_document_id")
+  sourceRecordSha256    String                                @map("source_record_sha256") @db.Char(64)
+  createdAt             DateTime                              @default(now()) @map("created_at")
+  person                Person                                @relation(fields: [personId], references: [id], onDelete: Restrict)
+  initiative            ParliamentaryInitiative               @relation(fields: [initiativeId], references: [id], onDelete: Restrict)
+  sourceObservation     ParliamentInitiativeAuthorObservation @relation(fields: [sourceObservationId], references: [id], onDelete: Restrict)
+  sourceDocument        SourceDocument                        @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
+
+  @@unique([personId, initiativeId, relation])
+  @@index([personId, createdAt])
+  @@index([initiativeId])
+  @@map("politician_initiative_authorships")
 }
 
 model VoteEvent {
@@ -1560,6 +1587,7 @@ model SourceDocument {
   parliamentDeputySnapshots  ParliamentDeputySnapshot[]
   parliamentAttendanceSnapshots ParliamentAttendanceSnapshot[]
   parliamentInitiativeAuthorSnapshots ParliamentInitiativeAuthorSnapshot[]
+  politicianInitiativeAuthorships PoliticianInitiativeAuthorship[]
   sessions                   ParliamentarySession[]
   attendanceRecords          AttendanceRecord[]
   initiatives                ParliamentaryInitiative[]

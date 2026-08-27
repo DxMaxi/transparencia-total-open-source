@@ -159,6 +159,24 @@ class PoliticianInitiativeAuthorshipEditorialRepository:
             "name_matching_allowed": False,
         }
 
+    async def get_exact_candidate(
+        self,
+        *,
+        observation_id: str,
+        connection: asyncpg.Connection | None = None,
+    ) -> dict[str, object] | None:
+        """Reconstrói uma única relação oficial pelo id imutável da observação."""
+
+        candidates, _total = await self._load_candidates(
+            legislature=None,
+            query=None,
+            observation_id=observation_id,
+            limit=1,
+            offset=0,
+            connection=connection,
+        )
+        return candidates[0] if candidates else None
+
     async def _load_candidates(
         self,
         *,
@@ -359,9 +377,6 @@ class PoliticianInitiativeAuthorshipEditorialRepository:
             publication_blockers.append(
                 "A identidade exata ainda não tem revisão pública positiva."
             )
-        publication_blockers.append(
-            "A publicação de autorias individuais pertence a uma etapa posterior da V5."
-        )
         warnings = [
             "O nome e a sigla são texto preservado da fonte e nunca servem para associar pessoa "
             "ou partido.",
@@ -420,7 +435,7 @@ class PoliticianInitiativeAuthorshipEditorialRepository:
             "warnings": warnings,
             "proposal_eligible": not blocked,
             "publication_blockers": publication_blockers,
-            "publication_ready": False,
+            "publication_ready": not blocked and identity_reviewed,
             "public_projection_allowed": False,
             "name_matching_allowed": False,
             "party_matching_allowed": False,

@@ -275,6 +275,38 @@ class PoliticianInitiativeAuthorshipEditorialProposalRequest(BaseModel):
     confirm_no_collective_position_inference: Literal[True]
 
 
+class PoliticianInitiativeAuthorshipPublicationRequest(BaseModel):
+    """Confirma uma autoria reconstruída no servidor por IniId e idCadastro exatos."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    expected_case_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    expected_version_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    expected_version_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_source_record_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_activity_snapshot_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_publication_proof_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    rationale: str = Field(min_length=20, max_length=1850)
+    public_rationale: str = Field(min_length=20, max_length=500)
+    confirm_source_reviewed: Literal[True]
+    confirm_exact_official_ids_only: Literal[True]
+    confirm_official_author_relation: Literal[True]
+    confirm_public_initiative_reviewed: Literal[True]
+    confirm_no_name_or_party_matching: Literal[True]
+    confirm_no_collective_position_inference: Literal[True]
+    confirm_append_only_publication: Literal[True]
+    confirm_publication: Literal[True]
+
+    @field_validator("rationale", "public_rationale")
+    @classmethod
+    def strip_initiative_authorship_publication_rationale(cls, value: str) -> str:
+        stripped = value.strip()
+        if len(stripped) < 20:
+            raise ValueError("A fundamentação deve ter pelo menos 20 caracteres úteis")
+        return stripped
+
+
 class PoliticianAttendancePublicationRequest(BaseModel):
     """Confirma a publicação integral de uma reunião reconstruída no servidor."""
 

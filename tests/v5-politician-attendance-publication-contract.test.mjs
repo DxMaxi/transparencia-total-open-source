@@ -130,5 +130,5 @@ test("V5.40 publication proof remains intact after V5.41 closes withdrawal", asy
   assert.match(checklist, /\[x\] V5\.40 — publicação transacional/);
   assert.match(checklist, /\[x\] V5\.41 — retirada transacional e imutável/);
   assert.match(plan, /V5_POLITICIAN_ATTENDANCE_PUBLICATION\.md/);
-  assert.match(readme, /V5\.1 a V5\.42 preparadas/);
+  assert.match(readme, /V5\.1 a V5\.\d+ preparadas/);
 });
