@@ -66,7 +66,7 @@ Antes da escrita, o serviço volta a provar catálogo, manifesto, arquivo, `Sour
 atestação, objeto PostgreSQL, URL, tamanho e SHA-256. Depois repete toda a normalização e exige
 igualdade integral com a fotografia proposta.
 
-A fotografia usa o parser `parliament-historical-votes-v1`, contém zero sessões e zero iniciativas,
+A fotografia corrigida usa o parser `parliament-historical-votes-v2`, contém zero sessões e zero iniciativas,
 e acrescenta um `SyncRun` `PARTIAL` com `historical_completeness=NOT_ASSERTED`. O histórico recebe
 apenas o evento normal de ingestão append-only. O resultado declara explicitamente:
 
@@ -76,6 +76,10 @@ apenas o evento normal de ingestão append-only. O resultado declara explicitame
 - `publishable=false`.
 
 Uma correção futura exige uma nova versão de parser e conserva a fotografia anterior.
+
+A V5.45 introduziu a versão `v2` para persistir o `actor_source_id` de cada posição individual. Não
+existe backfill: fotografias `v1` permanecem no arquivo, mas não satisfazem a prova individual da
+ficha pública.
 
 ## Porta operacional
 

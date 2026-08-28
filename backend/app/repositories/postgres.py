@@ -29,7 +29,10 @@ PUBLICATION_RULE = (
     "Apenas registos aprovados segundo a regra explícita do respetivo conjunto; "
     "a ingestão nunca equivale a publicação."
 )
-_EXACT_PERSON_VOTE_PARSER_VERSION = "parliament-activity-v5"
+_EXACT_PERSON_VOTE_PARSER_VERSIONS = (
+    "parliament-activity-v6",
+    "parliament-historical-votes-v2",
+)
 
 _PUBLISHER_CODES = {
     "PARLIAMENT": "AR",
@@ -1336,7 +1339,7 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                         LIMIT 1
                     ) review ON review.publishable = TRUE
                     WHERE snapshot.legislature = $2
-                      AND snapshot.parser_version = $3
+                       AND snapshot.parser_version = ANY($3::text[])
                       AND source.publisher = 'PARLIAMENT'
                       AND EXISTS (
                           SELECT 1 FROM source_archive_attestations vote_archive
@@ -1364,7 +1367,8 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                       ON available_event.id = available_record.vote_event_id
                     JOIN people exact_person
                       ON exact_person.id = available_record.person_id
-                     AND exact_person.source_id IS NOT NULL
+                     AND exact_person.source_id =
+                         (to_jsonb(available_record) ->> 'actor_source_id')
                     WHERE available_event.snapshot_id = published.id
                       AND available_event.source_document_id =
                           published.source_document_id
@@ -1380,7 +1384,7 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                 """,
                 row["id"],
                 row["legislature"],
-                _EXACT_PERSON_VOTE_PARSER_VERSION,
+                list(_EXACT_PERSON_VOTE_PARSER_VERSIONS),
             )
 
             vote_rows = await connection.fetch(
@@ -1400,7 +1404,7 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                         LIMIT 1
                     ) latest_review ON latest_review.publishable = TRUE
                     WHERE snapshot.legislature = $2
-                      AND snapshot.parser_version = $3
+                       AND snapshot.parser_version = ANY($3::text[])
                       AND source.publisher = 'PARLIAMENT'
                       AND EXISTS (
                           SELECT 1 FROM source_archive_attestations archive
@@ -1426,7 +1430,7 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                  AND published_snapshot.source_document_id = ve.source_document_id
                 JOIN people exact_person
                   ON exact_person.id = vr.person_id
-                 AND exact_person.source_id IS NOT NULL
+                 AND exact_person.source_id = (to_jsonb(vr) ->> 'actor_source_id')
                 JOIN source_documents sd ON sd.id = ve.source_document_id
                 WHERE vr.person_id = $1 AND vr.actor_type = 'PERSON'
                   AND ve.is_nominal = TRUE
@@ -1445,7 +1449,7 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                 """,
                 row["id"],
                 row["legislature"],
-                _EXACT_PERSON_VOTE_PARSER_VERSION,
+                list(_EXACT_PERSON_VOTE_PARSER_VERSIONS),
             )
             declaration_rows = await connection.fetch(
                 """
@@ -2032,6 +2036,10 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                         LIMIT 1
                     ) latest_review ON latest_review.publishable = TRUE
                     WHERE source.publisher = 'PARLIAMENT'
+                      AND snapshot.parser_version IN (
+                          'parliament-activity-v6',
+                          'parliament-historical-votes-v2'
+                      )
                       AND EXISTS (
                           SELECT 1
                           FROM source_archive_attestations archive
@@ -2081,6 +2089,7 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                   ON published_vote_snapshot.id = ve.snapshot_id
                 JOIN vote_records vr ON vr.vote_event_id = ve.id
                   AND vr.person_id = ps.person_id AND vr.actor_type = 'PERSON'
+                  AND (to_jsonb(vr) ->> 'actor_source_id') = p.source_id
                   AND vr.source_document_id = ve.source_document_id
                 JOIN source_documents vote_sd ON vote_sd.id = ve.source_document_id
                 LEFT JOIN LATERAL (
@@ -2811,6 +2820,19 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                            WHERE record.person_id IS NOT NULL
                        ) AS person_link_count,
                        COUNT(record.id) FILTER (
+                           WHERE record.actor_type = 'PERSON'
+                             AND record.actor_source_id IS NOT NULL
+                       ) AS exact_person_id_count,
+                       COUNT(record.id) FILTER (
+                           WHERE record.actor_type = 'PERSON'
+                             AND record.actor_source_id IS NULL
+                       ) AS unproven_person_id_count,
+                       COUNT(record.id) FILTER (
+                           WHERE record.actor_type = 'PERSON'
+                             AND record.person_id IS NOT NULL
+                             AND record.actor_source_id IS DISTINCT FROM person.source_id
+                       ) AS mismatched_person_link_count,
+                       COUNT(record.id) FILTER (
                            WHERE record.party_id IS NOT NULL
                        ) AS party_link_count
                 FROM sync_runs run
@@ -2826,6 +2848,7 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                 LEFT JOIN vote_records record
                   ON record.vote_event_id = event.id
                  AND record.source_document_id = source.id
+                LEFT JOIN people person ON person.id = record.person_id
                 WHERE run.source_name = 'PARLIAMENT_VOTES'
                   AND run.status IN ('SUCCEEDED', 'PARTIAL')
                   AND run.finished_at IS NOT NULL
@@ -2988,6 +3011,9 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                 "events_without_normalised_positions": unavailable_count,
                 "unknown_choices": int(snapshot["unknown_choice_count"]),
                 "person_links": int(snapshot["person_link_count"]),
+                "exact_person_ids": int(snapshot["exact_person_id_count"]),
+                "unproven_person_ids": int(snapshot["unproven_person_id_count"]),
+                "mismatched_person_links": int(snapshot["mismatched_person_link_count"]),
                 "party_links": int(snapshot["party_link_count"]),
             },
             "distributions": {
@@ -3019,6 +3045,13 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                 ),
                 "actor_distribution_matches_positions": (
                     sum(actor_type_counts.values()) == position_count
+                ),
+                "person_identifiers_fully_preserved": (
+                    int(snapshot["exact_person_id_count"]) == actor_type_counts["PERSON"]
+                    and int(snapshot["unproven_person_id_count"]) == 0
+                ),
+                "person_links_match_official_identifiers": (
+                    int(snapshot["mismatched_person_link_count"]) == 0
                 ),
                 "unavailable_list_matches_count": (len(unavailable_events) == unavailable_count),
                 "parser_matches_sync_code_version": parser_version == code_version,

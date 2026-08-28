@@ -11,12 +11,12 @@ reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.44 preparadas; staging remoto pendente |
+| Código V5 | V5.1 a V5.45 preparadas; staging remoto pendente |
 | Frontend público | V5.21 preparado; capacidades sem backend ou esquema pronto ficam fail-closed |
 | API pública | `0.5.0-alpha.0`; capacidades anunciadas apenas após prova read-only do esquema |
 | Painel editorial | implementado no código, não ativado em produção |
 | IA | geração, revisão, publicação e retirada implementadas; esquema remoto ainda não ativado |
-| Parlamento | matriz V5.21 e gates V5.22–V5.44 preparados; votos individuais e ativação editorial pendentes |
+| Parlamento | matriz V5.21 e gates V5.22–V5.45 preparados; ativação editorial pendente |
 | Perfis | ciclo integral de entrada, publicação, retirada e republicação provado; domínios individuais pendentes |
 | Promessómetro | catálogo editorial inicial de 10 compromissos; vocabulário V5.20 protegido |
 | Investigador Cívico | zero contratos e zero relações na projeção pública |
@@ -277,9 +277,17 @@ pessoa, iniciativa, fontes, versão e publicação original permanecem imutávei
 partido ou iniciativa e não infere voto, apoio ou posição coletiva. A capacidade não foi executada em
 staging ou produção.
 
+O vigésimo segundo gate de perfis está preparado em
+[V5.45 — prova persistida de identidade em votos nominais](V5_POLITICIAN_NOMINAL_VOTE_IDENTITY.md).
+O identificador oficial individual passa a acompanhar cada posição privada `PERSON`; novas versões
+dos parsers conservam as fotografias anteriores e não fazem backfill. O âmbito `votes` fica bloqueado
+se faltar essa prova ou se a ligação a `people.source_id` divergir. A ficha, o Investigador e as
+comparações exigem igualdade exata. A publicação e retirada humanas continuam a usar as portas
+transacionais V5.2 a V5.4. A capacidade não foi executada em staging ou produção.
+
 Critérios de saída:
 
-- fotografia `parliament-activity-v5` recolhida e atestada;
+- fotografia `parliament-activity-v6` recolhida e atestada;
 - propostas distintas para atividade e votações entram em `PENDING`;
 - diferenças por `source_id` oficial são revistas;
 - os dois âmbitos são publicados apenas após decisão `ADMIN` com MFA;
@@ -301,7 +309,8 @@ Critérios de saída:
 - presenças indicam período observado e dependem de mandato revisto;
 - autoria de iniciativas exige relação individual por identificador oficial; entrada e proposta
   privadas, publicação e retirada específica estão preparadas nas V5.42 a V5.44;
-- votos do perfil são nominais, `PERSON` e ligados por `people.source_id` exato;
+- votos do perfil são nominais, `PERSON`, conservam `actor_source_id` e exigem igualdade exata com
+  `people.source_id`, conforme a V5.45;
 - declarações individuais exigem fonte EPT, arquivo e confirmação jurídica explícita;
 - o portal geral da EPT permanece apenas uma porta de pesquisa;
 - cada área mostra `AVAILABLE`, `PARTIAL` ou `UNAVAILABLE` com fundamento e período.

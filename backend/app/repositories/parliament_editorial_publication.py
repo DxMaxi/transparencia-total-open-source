@@ -1082,6 +1082,16 @@ class ParliamentEditorialPublicationRepository:
             )
         if scope is ParliamentEditorialScope.VOTES and int(manifest_counts["votes"]) == 0:
             block("EMPTY_VOTE_COVERAGE", "Votações não podem ser publicadas com cobertura vazia")
+        if scope is ParliamentEditorialScope.VOTES and int(coverage["unproven_person_records"]):
+            block(
+                "UNPROVEN_PERSON_RECORDS",
+                "Existem posições PERSON sem o identificador oficial preservado",
+            )
+        if scope is ParliamentEditorialScope.VOTES and int(coverage["mismatched_person_links"]):
+            block(
+                "MISMATCHED_PERSON_LINKS",
+                "Existem pessoas ligadas a um identificador oficial diferente",
+            )
         if scope is ParliamentEditorialScope.VOTES and int(coverage["inconsistent_actor_links"]):
             block(
                 "INCONSISTENT_ACTOR_LINKS",

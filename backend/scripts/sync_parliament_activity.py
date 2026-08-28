@@ -7,6 +7,7 @@ import argparse
 import asyncio
 import json
 from datetime import UTC, datetime
+from typing import Any
 
 from app.core.config import get_settings
 from app.models.parliamentary import ParliamentActivityDataset
@@ -16,9 +17,38 @@ from app.services.http import OfficialHttpClient
 from app.services.parlamento import ParlamentoCollector
 from app.services.parliamentary_activity import normalise_initiatives, normalise_sessions
 
-CODE_VERSION = "parliament-activity-v5"
+CODE_VERSION = "parliament-activity-v6"
 SOURCE_NAME = "PARLIAMENT_ACTIVITY"
 MAX_SNAPSHOT_RECORDS = 250_000
+
+
+async def _exact_vote_identity_schema_is_ready(connection: Any) -> bool:
+    """Confirma read-only que a migração V5.45 está integralmente disponível."""
+
+    return bool(
+        await connection.fetchval(
+            """
+            SELECT
+                EXISTS (
+                    SELECT 1
+                    FROM pg_catalog.pg_attribute attribute
+                    WHERE attribute.attrelid = to_regclass('public.vote_records')
+                      AND attribute.attname = 'actor_source_id'
+                      AND NOT attribute.attisdropped
+                )
+                AND EXISTS (
+                    SELECT 1
+                    FROM pg_catalog.pg_constraint constraint_record
+                    WHERE constraint_record.conrelid = to_regclass('public.vote_records')
+                      AND constraint_record.conname =
+                          'vote_records_actor_source_id_not_blank'
+                )
+                AND to_regclass(
+                    'public.vote_records_person_official_id_per_event_key'
+                ) IS NOT NULL
+            """
+        )
+    )
 
 
 async def run(legislature: str) -> dict[str, object]:
@@ -33,6 +63,23 @@ async def run(legislature: str) -> dict[str, object]:
     sync_id = f"sync_parliament_activity_{started_at:%Y%m%d%H%M%S%f}"
     dataset_url: str | None = None
     try:
+        async with pool.acquire() as connection:
+            identity_schema_ready = await _exact_vote_identity_schema_is_ready(connection)
+        if not identity_schema_ready:
+            print(
+                "[atividade] recolha não iniciada: a migração V5.45 ainda não está "
+                "integralmente aplicada",
+                flush=True,
+            )
+            return {
+                "sync_id": sync_id,
+                "status": "SCHEMA_MIGRATION_REQUIRED",
+                "dataset_url": None,
+                "records_read": 0,
+                "records_written": 0,
+                "publication": "NOT_ATTEMPTED",
+            }
+
         print(f"[atividade] início da execução {sync_id}", flush=True)
         async with pool.acquire() as connection:
             await connection.execute(

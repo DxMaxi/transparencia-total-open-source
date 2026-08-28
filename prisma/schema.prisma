@@ -742,6 +742,7 @@ model VoteRecord {
   voteEventId      String         @map("vote_event_id")
   actorType        VoteActorType  @map("actor_type")
   actorLabel       String         @map("actor_label")
+  actorSourceId    String?        @map("actor_source_id")
   personId         String?        @map("person_id")
   partyId          String?        @map("party_id")
   choice           VoteChoice
@@ -752,6 +753,7 @@ model VoteRecord {
   sourceDocument   SourceDocument @relation(fields: [sourceDocumentId], references: [id])
 
   @@unique([voteEventId, actorType, actorLabel])
+  @@index([actorType, actorSourceId])
   @@index([personId, choice])
   @@index([partyId, choice])
   @@map("vote_records")

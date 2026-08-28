@@ -206,11 +206,13 @@ async def test_vote_explorer_filters_parties_only_by_exact_official_id_and_batch
     assert parsed.records[0].party_source_id == "party-official-1"
     count_query, page_query, record_query = connection.queries
     assert "party.source_id =" in count_query
-    assert "published.parser_version = 'parliament-activity-v5'" in count_query
+    assert "published.parser_version = 'parliament-activity-v6'" in count_query
+    assert "to_jsonb(record) ->> 'actor_source_id'" in count_query
     assert "record.actor_label =" not in count_query
     assert "HAVING COUNT(*) = 1" in page_query
     assert "record.vote_event_id = ANY($1::text[])" in record_query
-    assert "snapshot.parser_version = 'parliament-activity-v5'" in record_query
+    assert "snapshot.parser_version = 'parliament-activity-v6'" in record_query
+    assert "to_jsonb(record) ->> 'actor_source_id'" in record_query
     assert connection.arguments[0][1] == "%100!%!_!!%"
     assert connection.arguments[-1] == (["vote-1"],)
 

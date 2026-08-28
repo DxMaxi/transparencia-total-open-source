@@ -77,6 +77,9 @@ class VoteInspectionConnection:
             "event_without_normalised_positions_count": 342,
             "unknown_choice_count": 7,
             "person_link_count": 0,
+            "exact_person_id_count": 0,
+            "unproven_person_id_count": 0,
+            "mismatched_person_link_count": 0,
             "party_link_count": 0,
         }
 
@@ -119,6 +122,9 @@ def test_vote_staging_inspection_is_read_only_and_reports_uncertainty() -> None:
         "events_without_normalised_positions": 342,
         "unknown_choices": 7,
         "person_links": 0,
+        "exact_person_ids": 0,
+        "unproven_person_ids": 0,
+        "mismatched_person_links": 0,
         "party_links": 0,
     }
     availability = report["normalised_position_availability"]
@@ -141,6 +147,41 @@ def test_vote_staging_inspection_is_read_only_and_reports_uncertainty() -> None:
     assert "COUNT(DISTINCT event.id) + COUNT(record.id) = run.records_written" in snapshot_query
     assert "source_archive_attestations candidate" in snapshot_query
     assert "LEFT JOIN LATERAL" in snapshot_query
+    assert "record.actor_source_id" in snapshot_query
+    assert report["checks"]["person_identifiers_fully_preserved"] is True
+    assert report["checks"]["person_links_match_official_identifiers"] is True
+
+
+class VoteInspectionWithUnprovenPersonConnection(VoteInspectionConnection):
+    async def fetchrow(self, query: str, *arguments: object) -> dict[str, Any]:
+        row = await super().fetchrow(query, *arguments)
+        row["exact_person_id_count"] = 0
+        row["unproven_person_id_count"] = 1
+        return row
+
+    async def fetch(self, query: str, *arguments: object) -> list[dict[str, Any]]:
+        rows = await super().fetch(query, *arguments)
+        if "AS dimension" in query:
+            return [
+                row
+                for row in rows
+                if not (row["dimension"] == "actor_type" and row["value"] == "UNKNOWN")
+            ] + [
+                {"dimension": "actor_type", "value": "PERSON", "count": 1},
+                {"dimension": "actor_type", "value": "UNKNOWN", "count": 19_997},
+            ]
+        return rows
+
+
+def test_vote_staging_inspection_fails_preservation_check_for_unproven_person() -> None:
+    report = asyncio.run(
+        _repository(VoteInspectionWithUnprovenPersonConnection()).inspect_parliament_votes_staging(
+            legislature="XVII"
+        )
+    )
+
+    assert report["counts"]["unproven_person_ids"] == 1
+    assert report["checks"]["person_identifiers_fully_preserved"] is False
 
 
 class PublicProfileConnection:
@@ -277,7 +318,7 @@ def test_review_of_old_source_does_not_authorise_a_new_vote_snapshot() -> None:
     for query in (connection.availability_query, connection.vote_query):
         assert "entity_id = snapshot.id" in query
         assert "source_document_id = source.id" in query
-        assert "snapshot.parser_version = $3" in query
+        assert "snapshot.parser_version = ANY($3::text[])" in query
     assert "available_event.snapshot_id = published.id" in connection.availability_query
     assert "published_snapshot.id = ve.snapshot_id" in connection.vote_query
     assert "available_record.person_id = $1" in connection.availability_query
@@ -325,10 +366,10 @@ def test_v56_profile_areas_have_independent_fail_closed_publication_gates() -> N
     assert "source_archive_attestations AS archive" in connection.attendance_query
     assert "source_archive_attestations AS mandate_archive" in connection.attendance_query
 
-    assert "snapshot.parser_version = $3" in connection.availability_query
-    assert "exact_person.source_id IS NOT NULL" in connection.availability_query
-    assert "snapshot.parser_version = $3" in connection.vote_query
-    assert "exact_person.source_id IS NOT NULL" in connection.vote_query
+    assert "snapshot.parser_version = ANY($3::text[])" in connection.availability_query
+    assert "to_jsonb(available_record) ->> 'actor_source_id'" in connection.availability_query
+    assert "snapshot.parser_version = ANY($3::text[])" in connection.vote_query
+    assert "to_jsonb(vr) ->> 'actor_source_id'" in connection.vote_query
 
     assert "candidate.entity_type = 'ASSET_DECLARATION'" in connection.declaration_query
     assert "sd.publisher = 'TRANSPARENCY_ENTITY'" in connection.declaration_query

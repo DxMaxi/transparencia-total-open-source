@@ -55,11 +55,12 @@ apresentada ao cidadão, mas nunca é usada para associar uma sigla ou nome a um
 Uma posição individual só pode indicar uma pessoa associada quando existir `people.source_id`; uma
 posição coletiva continua coletiva.
 
-Para tornar essa garantia verificável também em fotografias futuras, a versão do normalizador passa
-a `parliament-activity-v5`. Nessa versão, `party_id` só é preenchido quando o registo de voto traz
-`actor_source_id` e este coincide exatamente com `parties.source_id`. A versão pública ignora
-ligações partidárias de normalizadores anteriores, que podiam ter sido criadas a partir de uma
-sigla textual exata. O histórico não é apagado nem reescrito.
+Para tornar essa garantia verificável também em fotografias futuras, a versão inicial do
+normalizador foi `parliament-activity-v5`. A V5.45 substitui-a por `parliament-activity-v6`, que
+persiste também o `actor_source_id`: `person_id` e `party_id` só são projetados quando esse valor
+coincide exatamente com `people.source_id` ou `parties.source_id`. A versão pública ignora
+ligações individuais e partidárias de normalizadores anteriores sem essa prova. O histórico não é
+apagado nem reescrito.
 
 Foi removido do perfil político o cruzamento anterior que normalizava uma sigla partidária para
 procurar posições coletivas. Até existir um identificador oficial inequívoco de ponta a ponta, essa

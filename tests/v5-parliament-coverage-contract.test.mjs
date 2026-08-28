@@ -119,7 +119,7 @@ test("the historical backfill remains a versioned editorial plan, not a publicat
   assert.match(normalization, /source_id` aparecer com normalizações divergentes/);
   assert.match(normalization, /fotografia é recalculada antes da escrita/);
   assert.match(normalization, /zero casos editoriais/);
-  assert.match(voteNormalization, /parliament-historical-votes-v1/);
+  assert.match(voteNormalization, /parliament-historical-votes-v2/);
   assert.match(voteNormalization, /sem identificador ficam como `UNKNOWN`/);
   assert.match(voteNormalization, /zero casos editoriais/);
   assert.match(voteNormalization, /zero eventos de publicação/);

@@ -9,7 +9,7 @@ from typing import Any, Literal
 import asyncpg
 
 _NUMERIC_VOTE_TITLE = re.compile(r"^\s*\d+(?:/[A-Z0-9.ª-]+)*\s*$", re.IGNORECASE)
-_EXACT_ACTOR_ID_PARSER_VERSION = "parliament-activity-v5"
+_EXACT_ACTOR_ID_PARSER_VERSION = "parliament-activity-v6"
 
 
 def _source(row: Any) -> dict[str, Any]:
@@ -267,7 +267,8 @@ class PublicParliamentRepository:
                            record.actor_type::text, record.choice::text,
                            person.source_id AS person_source_id,
                            CASE
-                             WHEN snapshot.parser_version = 'parliament-activity-v5'
+                             WHEN snapshot.parser_version = 'parliament-activity-v6'
+                              AND (to_jsonb(record) ->> 'actor_source_id') = party.source_id
                              THEN party.source_id
                              ELSE NULL
                            END AS party_source_id
@@ -275,7 +276,9 @@ class PublicParliamentRepository:
                     JOIN vote_events event ON event.id = record.vote_event_id
                     JOIN parliament_activity_snapshots snapshot
                       ON snapshot.id = event.snapshot_id
-                    LEFT JOIN people person ON person.id = record.person_id
+                    LEFT JOIN people person
+                      ON person.id = record.person_id
+                     AND person.source_id = (to_jsonb(record) ->> 'actor_source_id')
                     LEFT JOIN parties party ON party.id = record.party_id
                     WHERE record.vote_event_id = ANY($1::text[])
                       AND record.source_document_id = event.source_document_id
@@ -841,6 +844,8 @@ class PublicParliamentRepository:
         if party_source_id:
             arguments.append(party_source_id)
             conditions.append(f"published.parser_version = '{_EXACT_ACTOR_ID_PARSER_VERSION}'")
+            record_conditions.append("record.actor_type = 'PARTY'")
+            record_conditions.append("(to_jsonb(record) ->> 'actor_source_id') = party.source_id")
             record_conditions.append(f"party.source_id = ${len(arguments)}")
         if choice:
             arguments.append(choice)
@@ -903,7 +908,8 @@ class PublicParliamentRepository:
                        record.actor_type::text, record.choice::text,
                        person.source_id AS person_source_id,
                        CASE
-                         WHEN snapshot.parser_version = 'parliament-activity-v5'
+                         WHEN snapshot.parser_version = 'parliament-activity-v6'
+                          AND (to_jsonb(record) ->> 'actor_source_id') = party.source_id
                          THEN party.source_id
                          ELSE NULL
                        END AS party_source_id
@@ -911,7 +917,9 @@ class PublicParliamentRepository:
                 JOIN vote_events event ON event.id = record.vote_event_id
                 JOIN parliament_activity_snapshots snapshot
                   ON snapshot.id = event.snapshot_id
-                LEFT JOIN people person ON person.id = record.person_id
+                LEFT JOIN people person
+                  ON person.id = record.person_id
+                 AND person.source_id = (to_jsonb(record) ->> 'actor_source_id')
                 LEFT JOIN parties party ON party.id = record.party_id
                 WHERE record.vote_event_id = ANY($1::text[])
                   AND record.source_document_id = event.source_document_id
@@ -1031,7 +1039,8 @@ class PublicParliamentRepository:
             JOIN published_snapshot published ON published.id = event.snapshot_id
             JOIN parties party ON party.id = record.party_id
             WHERE record.actor_type = 'PARTY'
-              AND published.parser_version = 'parliament-activity-v5'
+              AND published.parser_version = 'parliament-activity-v6'
+              AND (to_jsonb(record) ->> 'actor_source_id') = party.source_id
               AND party.source_id IS NOT NULL
               AND party.source_id <> ''
               AND record.source_document_id = event.source_document_id

@@ -193,7 +193,11 @@ test("V5.6 profiles expose independent, fail-closed coverage areas", async () =>
   assert.match(profile, /Uma sigla ou um nome semelhante não é suficiente/);
   assert.doesNotMatch(profile, /Posições recentes do grupo/);
   assert.match(profile, /identificador oficial\s+inequívoco/);
-  assert.match(repository, /_EXACT_PERSON_VOTE_PARSER_VERSION = "parliament-activity-v5"/);
+  assert.match(repository, /_EXACT_PERSON_VOTE_PARSER_VERSIONS = \(/);
+  assert.match(repository, /"parliament-activity-v6"/);
+  assert.match(repository, /"parliament-historical-votes-v2"/);
+  assert.match(repository, /to_jsonb\(vr\) ->> 'actor_source_id'/);
+  assert.doesNotMatch(repository, /vr\.actor_source_id/);
   assert.match(repository, /candidate\.entity_type = 'MANDATE'/);
   assert.match(repository, /candidate\.entity_type = 'ASSET_DECLARATION'/);
   assert.match(repository, /sd\.publisher = 'TRANSPARENCY_ENTITY'/);

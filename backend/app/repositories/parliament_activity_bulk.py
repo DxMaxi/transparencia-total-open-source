@@ -312,6 +312,7 @@ async def _append_votes(
                     event_id,
                     record.actor_type.value,
                     record.actor_label,
+                    record.actor_source_id,
                     person_id,
                     party_id,
                     record.choice.value,
@@ -323,9 +324,9 @@ async def _append_votes(
         connection,
         """
         INSERT INTO vote_records
-            (id, vote_event_id, actor_type, actor_label,
+            (id, vote_event_id, actor_type, actor_label, actor_source_id,
              person_id, party_id, choice, source_document_id)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         ON CONFLICT (vote_event_id, actor_type, actor_label) DO NOTHING
         """,
         record_rows,

@@ -92,7 +92,8 @@ de conteúdo e política WORM ou versionamento equivalente.
 
 Um `VoteRecord` recebe `actorType=PERSON` apenas quando o dataset contém identificador explícito da
 pessoa. Texto livre sem ID permanece `UNKNOWN`; posições por grupo usam `PARTY`. A métrica de um
-perfil conta apenas `PERSON`.
+perfil conta apenas `PERSON` quando o `actor_source_id` preservado coincide exatamente com
+`people.source_id`. Corrigir o parser cria uma nova fotografia; não atualiza a anterior.
 
 ### Perfil político
 
