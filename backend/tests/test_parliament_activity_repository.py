@@ -162,8 +162,9 @@ async def test_persists_nominal_vote_only_as_person() -> None:
     assert records == 1
     insert_call = connection.fetchval.await_args_list[-1]
     assert insert_call.args[3] == VoteActorType.PERSON.value
-    assert insert_call.args[5] == "person-1"
-    assert insert_call.args[6] is None
+    assert insert_call.args[5] == "dep-1"
+    assert insert_call.args[6] == "person-1"
+    assert insert_call.args[7] is None
 
 
 @pytest.mark.asyncio
@@ -185,6 +186,7 @@ async def test_collective_label_remains_unlinked_without_official_id() -> None:
     assert insert_call.args[3] == VoteActorType.PARTY.value
     assert insert_call.args[5] is None
     assert insert_call.args[6] is None
+    assert insert_call.args[7] is None
     all_sql = "\n".join(call.args[0] for call in connection.fetchval.await_args_list)
     assert "short_name" not in all_sql
 
@@ -214,8 +216,9 @@ async def test_collective_vote_links_party_only_by_official_source_id() -> None:
     assert "short_name" not in party_lookup.args[0]
     assert party_lookup.args[1] == "party-source-1"
     insert_call = connection.fetchval.await_args_list[-1]
-    assert insert_call.args[5] is None
-    assert insert_call.args[6] == "party-1"
+    assert insert_call.args[5] == "party-source-1"
+    assert insert_call.args[6] is None
+    assert insert_call.args[7] == "party-1"
 
 
 @pytest.mark.asyncio
@@ -248,8 +251,12 @@ async def test_bulk_persistence_never_links_a_collective_label_as_party_identity
     assert party_arguments == (["party-source-1"],)
     record_statement, record_rows = connection.batches[-1]
     assert "INSERT INTO vote_records" in record_statement
+    assert record_rows[0][4] is None
     assert record_rows[0][5] is None
-    assert record_rows[1][5] == "party-1"
+    assert record_rows[0][6] is None
+    assert record_rows[1][4] == "party-source-1"
+    assert record_rows[1][5] is None
+    assert record_rows[1][6] == "party-1"
 
 
 @pytest.mark.asyncio
@@ -278,6 +285,43 @@ async def test_rejects_person_record_in_non_nominal_vote() -> None:
             "source-1",
             "snapshot-1",
         )
+
+
+def _materialised_snapshot_row(**overrides: int) -> dict[str, int]:
+    row = {
+        "session_count": 1,
+        "initiative_count": 1,
+        "vote_count": 1,
+        "vote_record_count": 1,
+        "actual_sessions": 1,
+        "actual_initiatives": 1,
+        "actual_votes": 1,
+        "actual_vote_records": 1,
+        "person_records_without_official_id": 0,
+        "mismatched_person_links": 0,
+    }
+    row.update(overrides)
+    return row
+
+
+@pytest.mark.asyncio
+async def test_materialised_snapshot_rejects_person_without_official_identifier() -> None:
+    connection = AsyncMock()
+    connection.fetchrow.return_value = _materialised_snapshot_row(
+        person_records_without_official_id=1
+    )
+
+    with pytest.raises(RuntimeError, match="não preserva o identificador oficial"):
+        await ParliamentActivityRepository._validate_materialised_snapshot(connection, "snapshot-1")
+
+
+@pytest.mark.asyncio
+async def test_materialised_snapshot_rejects_mismatched_person_identifier() -> None:
+    connection = AsyncMock()
+    connection.fetchrow.return_value = _materialised_snapshot_row(mismatched_person_links=1)
+
+    with pytest.raises(RuntimeError, match="identificador oficial diferente"):
+        await ParliamentActivityRepository._validate_materialised_snapshot(connection, "snapshot-1")
 
 
 def test_normalised_digest_is_stable_and_bound_to_parser_version() -> None:

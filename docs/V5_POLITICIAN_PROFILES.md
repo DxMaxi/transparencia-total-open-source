@@ -48,7 +48,7 @@ início de mandato.
 | Mandatos | última revisão `MANDATE` positiva, fonte oficial não noticiosa e atestação do arquivo |
 | Presenças | fotografia `PARLIAMENT_ACTIVITY_SNAPSHOT` publicada e mandato da pessoa revisto e arquivado |
 | Iniciativas | relação individual por identificador oficial; sem essa relação, `UNAVAILABLE` |
-| Votos nominais | fotografia `PARLIAMENT_VOTES_SNAPSHOT` publicada, normalizador `parliament-activity-v5`, `actor_type=PERSON` e `people.source_id` presente |
+| Votos nominais | fotografia `PARLIAMENT_VOTES_SNAPSHOT` publicada, parser exato V5.45, `actor_type=PERSON` e `actor_source_id = people.source_id` |
 | Declarações | última revisão `ASSET_DECLARATION` positiva, fonte da Entidade para a Transparência, arquivo e confirmação jurídica explícita |
 
 A ingestão não satisfaz nenhuma destas condições. Uma retirada posterior torna a respetiva área
@@ -66,13 +66,15 @@ publicadas e, ao mesmo tempo, `mandates=UNAVAILABLE`; essa combinação é delib
 
 ## Associação individual sem aproximações
 
-Os votos do perfil ficam limitados à fotografia produzida por `parliament-activity-v5`. A consulta
+Os votos do perfil ficam limitados às fotografias `parliament-activity-v6` e
+`parliament-historical-votes-v2`, documentadas na
+[V5.45](V5_POLITICIAN_NOMINAL_VOTE_IDENTITY.md). A consulta
 exige simultaneamente:
 
 1. votação nominal;
 2. posição com `actor_type=PERSON`;
-3. `person_id` já associado durante a normalização por identificador oficial exato;
-4. `people.source_id` presente;
+3. `actor_source_id` individual preservado na posição;
+4. `person_id` associado apenas quando `actor_source_id = people.source_id`;
 5. mesma fotografia e mesmo documento-fonte entre posição e votação;
 6. última revisão positiva do âmbito de votos e original atestado.
 

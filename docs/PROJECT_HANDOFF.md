@@ -182,6 +182,13 @@ duas fontes, revisões e prova de publicação e acrescenta revisão negativa, a
 evento numa transação `ADMIN` com MFA. A ligação deixa a consulta ativa, mas autoria, pessoa,
 iniciativa, fontes e publicação original permanecem. Não foi executada qualquer operação real.
 
+A V5.45 fecha a prova dos votos nominais sem duplicar o circuito editorial parlamentar. O
+`actor_source_id` oficial passa a ficar preservado em novas fotografias `parliament-activity-v6` e
+`parliament-historical-votes-v2`; não existe backfill. Persistência, painel e publicação bloqueiam
+IDs ausentes ou divergentes, e ficha, Investigador e comparações exigem igualdade exata com
+`people.source_id`. As V5.2 a V5.4 continuam responsáveis pela proposta, publicação e retirada
+humanas. Não foi executada migração, recolha ou operação sobre dados reais.
+
 A melhoria de UX iniciada em agosto de 2026 faz parte da estabilização/conclusão da **V5**. Não deve ser tratada como início de uma V6 nem como autorização para reescrever o projeto.
 
 ## 5. Baseline técnico conhecido

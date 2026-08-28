@@ -328,11 +328,28 @@ class ParliamentEditorialRepository:
                     count(record.id) FILTER (WHERE record.actor_type = 'PERSON')::int
                         AS person_records,
                     count(record.id) FILTER (
-                        WHERE record.actor_type = 'PERSON' AND record.person_id IS NOT NULL
+                        WHERE record.actor_type = 'PERSON'
+                          AND record.actor_source_id IS NOT NULL
+                    )::int AS exact_person_records,
+                    count(record.id) FILTER (
+                        WHERE record.actor_type = 'PERSON'
+                          AND record.actor_source_id IS NULL
+                    )::int AS unproven_person_records,
+                    count(record.id) FILTER (
+                        WHERE record.actor_type = 'PERSON'
+                          AND record.person_id IS NOT NULL
+                          AND record.actor_source_id = linked_person.source_id
                     )::int AS linked_person_records,
                     count(record.id) FILTER (
-                        WHERE record.actor_type = 'PERSON' AND record.person_id IS NULL
+                        WHERE record.actor_type = 'PERSON'
+                          AND record.actor_source_id IS NOT NULL
+                          AND record.person_id IS NULL
                     )::int AS unlinked_person_records,
+                    count(record.id) FILTER (
+                        WHERE record.actor_type = 'PERSON'
+                          AND record.person_id IS NOT NULL
+                          AND record.actor_source_id IS DISTINCT FROM linked_person.source_id
+                    )::int AS mismatched_person_links,
                     count(record.id) FILTER (WHERE record.actor_type = 'PARTY')::int
                         AS party_records,
                     count(record.id) FILTER (
@@ -350,11 +367,15 @@ class ParliamentEditorialRepository:
                                AND (record.person_id IS NOT NULL OR record.party_id IS NOT NULL))
                            OR (record.actor_type = 'PERSON' AND record.party_id IS NOT NULL)
                            OR (record.actor_type = 'PARTY' AND record.person_id IS NOT NULL)
+                           OR (record.actor_type = 'PERSON'
+                               AND record.person_id IS NOT NULL
+                               AND record.actor_source_id IS DISTINCT FROM linked_person.source_id)
                     )::int AS inconsistent_actor_links
                 FROM vote_events AS event
                 LEFT JOIN vote_records AS record
-                  ON record.vote_event_id = event.id
+                 ON record.vote_event_id = event.id
                  AND record.source_document_id = event.source_document_id
+                LEFT JOIN people AS linked_person ON linked_person.id = record.person_id
                 WHERE event.snapshot_id = ANY($1::text[])
                 GROUP BY event.snapshot_id
             )
@@ -367,10 +388,15 @@ class ParliamentEditorialRepository:
                 COALESCE(vote_metrics.nominal_votes, 0)::int AS nominal_votes,
                 COALESCE(vote_metrics.votes_without_records, 0)::int AS votes_without_records,
                 COALESCE(vote_metrics.person_records, 0)::int AS person_records,
+                COALESCE(vote_metrics.exact_person_records, 0)::int AS exact_person_records,
+                COALESCE(vote_metrics.unproven_person_records, 0)::int
+                    AS unproven_person_records,
                 COALESCE(vote_metrics.linked_person_records, 0)::int
                     AS linked_person_records,
                 COALESCE(vote_metrics.unlinked_person_records, 0)::int
                     AS unlinked_person_records,
+                COALESCE(vote_metrics.mismatched_person_links, 0)::int
+                    AS mismatched_person_links,
                 COALESCE(vote_metrics.party_records, 0)::int AS party_records,
                 COALESCE(vote_metrics.linked_party_records, 0)::int AS linked_party_records,
                 COALESCE(vote_metrics.unlinked_party_records, 0)::int
@@ -400,8 +426,11 @@ class ParliamentEditorialRepository:
                     "nominal_votes",
                     "votes_without_records",
                     "person_records",
+                    "exact_person_records",
+                    "unproven_person_records",
                     "linked_person_records",
                     "unlinked_person_records",
+                    "mismatched_person_links",
                     "party_records",
                     "linked_party_records",
                     "unlinked_party_records",
@@ -663,6 +692,16 @@ class ParliamentEditorialRepository:
             limitations.append(
                 f"{metrics['votes_without_records']} votação(ões) não têm posições normalizadas."
             )
+        if metrics["unproven_person_records"]:
+            limitations.append(
+                f"{metrics['unproven_person_records']} posição(ões) PERSON não preservam o "
+                "identificador oficial e ficam bloqueadas para publicação."
+            )
+        if metrics["mismatched_person_links"]:
+            limitations.append(
+                f"{metrics['mismatched_person_links']} ligação(ões) de pessoa divergem do "
+                "identificador oficial e ficam bloqueadas para publicação."
+            )
         if differences["status"] == "NO_PREVIOUS_SNAPSHOT":
             limitations.append("Não existe fotografia anterior comparável nesta legislatura.")
         if not manifest_matches:
@@ -709,8 +748,11 @@ class ParliamentEditorialRepository:
                     "nominal_votes",
                     "votes_without_records",
                     "person_records",
+                    "exact_person_records",
+                    "unproven_person_records",
                     "linked_person_records",
                     "unlinked_person_records",
+                    "mismatched_person_links",
                     "party_records",
                     "linked_party_records",
                     "unlinked_party_records",

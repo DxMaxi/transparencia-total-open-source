@@ -97,7 +97,7 @@ class ParliamentActivityRepository:
         dataset: ParliamentActivityDataset,
         *,
         archive_receipt: RawArchiveReceipt | None = None,
-        archived_by: str = "parliament-activity-v5",
+        archived_by: str = "parliament-activity-v6",
     ) -> ParliamentActivityPersistResult:
         async with self.pool.acquire() as connection, connection.transaction():
             attestation_written = False
@@ -484,9 +484,9 @@ class ParliamentActivityRepository:
                 inserted_record_id = await connection.fetchval(
                     """
                     INSERT INTO vote_records
-                        (id, vote_event_id, actor_type, actor_label,
+                        (id, vote_event_id, actor_type, actor_label, actor_source_id,
                          person_id, party_id, choice, source_document_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                     ON CONFLICT (vote_event_id, actor_type, actor_label) DO NOTHING
                     RETURNING id
                     """,
@@ -497,6 +497,7 @@ class ParliamentActivityRepository:
                     actual_event_id,
                     record.actor_type.value,
                     record.actor_label,
+                    record.actor_source_id,
                     person_id,
                     party_id,
                     record.choice.value,
@@ -523,8 +524,20 @@ class ParliamentActivityRepository:
                    (SELECT COUNT(*) FROM vote_records record
                     JOIN vote_events event ON event.id = record.vote_event_id
                     WHERE event.snapshot_id = snapshot.id
-                      AND record.source_document_id = snapshot.source_document_id)
-                       AS actual_vote_records
+                       AND record.source_document_id = snapshot.source_document_id)
+                        AS actual_vote_records,
+                   (SELECT COUNT(*) FROM vote_records record
+                    JOIN vote_events event ON event.id = record.vote_event_id
+                    WHERE event.snapshot_id = snapshot.id
+                      AND record.actor_type = 'PERSON'
+                      AND record.actor_source_id IS NULL) AS person_records_without_official_id,
+                   (SELECT COUNT(*) FROM vote_records record
+                    JOIN vote_events event ON event.id = record.vote_event_id
+                    JOIN people person ON person.id = record.person_id
+                    WHERE event.snapshot_id = snapshot.id
+                      AND record.actor_type = 'PERSON'
+                      AND record.actor_source_id IS DISTINCT FROM person.source_id)
+                        AS mismatched_person_links
             FROM parliament_activity_snapshots snapshot
             WHERE snapshot.id = $1
             """,
@@ -548,6 +561,15 @@ class ParliamentActivityRepository:
             raise RuntimeError(
                 "A materialização parlamentar não coincide com o manifesto imutável "
                 f"(esperado={expected}, observado={actual})."
+            )
+        if int(row["person_records_without_official_id"]):
+            raise RuntimeError(
+                "Uma posição PERSON não preserva o identificador oficial; "
+                "é necessária uma nova versão do parser."
+            )
+        if int(row["mismatched_person_links"]):
+            raise RuntimeError(
+                "Uma posição PERSON está ligada a um identificador oficial diferente."
             )
 
     @staticmethod

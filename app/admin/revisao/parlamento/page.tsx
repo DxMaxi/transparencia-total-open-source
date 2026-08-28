@@ -211,12 +211,24 @@ function SnapshotCard({ snapshot }: { snapshot: ParliamentEditorialSnapshot }) {
               <dd>{snapshot.coverage.nominal_votes.toLocaleString("pt-PT")}</dd>
             </div>
             <div>
-              <dt>Posições ligadas a pessoa por ID</dt>
+              <dt>Posições PERSON com ID oficial preservado</dt>
+              <dd>{snapshot.coverage.exact_person_records.toLocaleString("pt-PT")}</dd>
+            </div>
+            <div>
+              <dt>Posições PERSON sem prova do ID oficial</dt>
+              <dd>{snapshot.coverage.unproven_person_records.toLocaleString("pt-PT")}</dd>
+            </div>
+            <div>
+              <dt>Posições ligadas a pessoa pelo mesmo ID</dt>
               <dd>{snapshot.coverage.linked_person_records.toLocaleString("pt-PT")}</dd>
             </div>
             <div>
-              <dt>Posições de pessoa sem ID</dt>
+              <dt>IDs oficiais sem pessoa exata disponível</dt>
               <dd>{snapshot.coverage.unlinked_person_records.toLocaleString("pt-PT")}</dd>
+            </div>
+            <div>
+              <dt>Ligações de pessoa com ID divergente</dt>
+              <dd>{snapshot.coverage.mismatched_person_links.toLocaleString("pt-PT")}</dd>
             </div>
             <div>
               <dt>Posições coletivas ligadas a partido por ID</dt>

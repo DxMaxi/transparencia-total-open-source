@@ -396,8 +396,11 @@ export type ParliamentEditorialSnapshot = {
     nominal_votes: number;
     votes_without_records: number;
     person_records: number;
+    exact_person_records: number;
+    unproven_person_records: number;
     linked_person_records: number;
     unlinked_person_records: number;
+    mismatched_person_links: number;
     party_records: number;
     linked_party_records: number;
     unlinked_party_records: number;

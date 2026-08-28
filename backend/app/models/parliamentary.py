@@ -59,7 +59,7 @@ class ParliamentActivityDataset(BaseModel):
     legislature: str
     dataset_url: HttpUrl
     document_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
-    parser_version: str = Field(default="parliament-activity-v5", min_length=3, max_length=100)
+    parser_version: str = Field(default="parliament-activity-v6", min_length=3, max_length=100)
     sessions: list[ParliamentarySessionRecord] = Field(default_factory=list)
     initiatives: list[ParliamentaryInitiativeRecord] = Field(default_factory=list)
     votes: list[VoteEvent] = Field(default_factory=list)

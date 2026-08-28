@@ -84,6 +84,10 @@ continuam a exigir autorizações separadas.
 - [x] V5.44 — retirada ADMIN+MFA acrescenta revisão negativa, auditoria, decisão e evento numa
   transação; oculta apenas a relação ativa e preserva autoria, pessoa, iniciativa, fontes e
   publicação original.
+- [x] V5.45 — cada posição privada `PERSON` preserva o identificador oficial; uma nova fotografia
+  imutável e a projeção pública exigem igualdade exata com `people.source_id`, sem backfill.
+- [x] A V5.45 mantém o backend compatível antes da migração e suspende a recolha diária sem contacto
+  externo nem escrita enquanto a coluna, a restrição e o índice não estiverem comprovados.
 - [x] Existe um [conjunto de issues de conclusão](https://github.com/DxMaxi/transparencia-total-open-source/issues/58) para todos os itens ainda abertos.
 
 ## B. Estabilização pública
@@ -133,7 +137,7 @@ continuam a exigir autorizações separadas.
 
 ## E. Parlamento V5
 
-- [ ] Fotografia `parliament-activity-v5` recolhida e atestada em staging.
+- [ ] Fotografia `parliament-activity-v6` recolhida e atestada em staging.
 - [ ] Manifesto volta a contar reuniões, iniciativas, votações e posições.
 - [ ] Diferenças usam apenas `source_id` oficial exato.
 - [ ] Proposta `activity` criada em `PENDING`.
@@ -195,8 +199,10 @@ continuam a exigir autorizações separadas.
   - [x] V5.43 — publicação transacional específica da relação individual, sem inferência por nome,
     sigla, voto ou posição coletiva.
   - [x] V5.44 — retirada append-only específica, sem apagar relação, fonte ou publicação original.
-- [ ] Votos do perfil são nominais e ligados por identificador oficial exato.
-- [ ] Posições coletivas permanecem fora do histórico individual.
+- [x] Votos do perfil são nominais e ligados por identificador oficial exato.
+  - [x] V5.45 — `actor_source_id` é preservado e tem de coincidir com `people.source_id`.
+  - [x] Publicação e retirada permanecem nos gates parlamentares ADMIN+MFA V5.3 e V5.4.
+- [x] Posições coletivas permanecem fora do histórico individual.
 - [ ] Declaração individual exige fonte EPT, arquivo e revisão jurídica.
 - [ ] Ligação geral à EPT continua rotulada apenas como pesquisa institucional.
 - [ ] Cada área declara cobertura e intervalo observado.

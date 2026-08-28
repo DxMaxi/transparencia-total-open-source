@@ -254,7 +254,8 @@ async def test_normalizations_reuse_attested_bytes_and_remain_outside_editorial_
         )
         vote_records = await connection.fetch(
             """
-            SELECT actor_type::text AS actor_type, actor_label, person_id, party_id,
+            SELECT actor_type::text AS actor_type, actor_label, actor_source_id,
+                   person_id, party_id,
                    choice::text AS choice, source_document_id
             FROM vote_records
             WHERE vote_event_id = $1
@@ -324,7 +325,7 @@ async def test_normalizations_reuse_attested_bytes_and_remain_outside_editorial_
     assert vote_snapshot is not None
     assert vote_snapshot["source_document_id"] == archive["source_document_id"]
     assert vote_snapshot["legislature"] == "XVII"
-    assert vote_snapshot["parser_version"] == "parliament-historical-votes-v1"
+    assert vote_snapshot["parser_version"] == "parliament-historical-votes-v2"
     assert vote_snapshot["session_count"] == 0
     assert vote_snapshot["initiative_count"] == 0
     assert vote_snapshot["vote_count"] == 1
@@ -340,6 +341,7 @@ async def test_normalizations_reuse_attested_bytes_and_remain_outside_editorial_
     assert vote_event["source_document_id"] == archive["source_document_id"]
     assert {row["actor_label"] for row in vote_records} == {"PSD", "PS", "CH"}
     assert {row["actor_type"] for row in vote_records} == {"UNKNOWN"}
+    assert all(row["actor_source_id"] is None for row in vote_records)
     assert all(row["person_id"] is None and row["party_id"] is None for row in vote_records)
     assert all(row["source_document_id"] == archive["source_document_id"] for row in vote_records)
     assert vote_sync_run is not None

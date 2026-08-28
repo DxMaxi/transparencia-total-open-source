@@ -36,13 +36,15 @@ test("V5.5 never links a party or politician by a similar label", async () => {
 
   assert.match(repository, /party\.source_id = \$\{len\(arguments\)\}/);
   assert.match(repository, /party\.source_id IS NOT NULL/);
-  assert.match(repository, /published\.parser_version = 'parliament-activity-v5'/);
+  assert.match(repository, /published\.parser_version = 'parliament-activity-v6'/);
+  assert.match(repository, /to_jsonb\(record\) ->> 'actor_source_id'/);
+  assert.doesNotMatch(repository, /record\.actor_source_id/);
   assert.doesNotMatch(repository, /record\.actor_label\s*=/);
   assert.match(ingestion, /record\.actor_source_id/);
   assert.doesNotMatch(ingestion, /WHERE short_name = \$1 OR source_id = \$1/);
   assert.match(bulkIngestion, /party_source_ids/);
   assert.doesNotMatch(bulkIngestion, /short_name = ANY/);
-  assert.match(sync, /CODE_VERSION = "parliament-activity-v5"/);
+  assert.match(sync, /CODE_VERSION = "parliament-activity-v6"/);
   assert.doesNotMatch(client, /actor_label\.replace/);
   assert.doesNotMatch(client, /partyKey/);
   assert.doesNotMatch(client, /groupPositions/);
