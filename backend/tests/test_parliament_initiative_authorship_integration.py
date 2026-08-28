@@ -12,8 +12,10 @@ from app.core.config import Settings
 from app.models.archive import PrivateRawDocument
 from app.models.editorial import (
     EditorialAction,
+    ParliamentWithdrawalReason,
     PoliticianInitiativeAuthorshipEditorialProposalRequest,
     PoliticianInitiativeAuthorshipPublicationRequest,
+    PoliticianInitiativeAuthorshipWithdrawalRequest,
     StaffRole,
     StaffSession,
 )
@@ -30,6 +32,9 @@ from app.repositories.politician_initiative_authorship_editorial import (
 )
 from app.repositories.politician_initiative_authorship_publication import (
     PoliticianInitiativeAuthorshipPublicationRepository,
+)
+from app.repositories.politician_initiative_authorship_withdrawal import (
+    PoliticianInitiativeAuthorshipWithdrawalRepository,
 )
 from app.repositories.postgres import PostgresRepository
 from app.services.parliament_initiative_authorship import (
@@ -474,3 +479,158 @@ async def test_authorship_snapshot_and_pending_case_are_private_append_only_and_
     assert public_profile["initiatives"][0]["relation"] == "AUTHOR"
     assert public_profile["initiatives"][0]["number"] == "1/XVII/1"
     assert public_profile["coverage"]["initiatives"]["state"] == "AVAILABLE"
+
+    withdrawer = PoliticianInitiativeAuthorshipWithdrawalRepository(repository.pool)
+    withdrawal_preview = await withdrawer.inspect(case_id=case_id)
+    assert withdrawal_preview["eligible"] is True, withdrawal_preview["blockers"]
+    assert withdrawal_preview["withdrawal_proof_sha256"] is not None
+    assert withdrawal_preview["authorship_id"] == authorship_id
+    public_effect = withdrawal_preview["public_effect"]
+    assert isinstance(public_effect, dict)
+    assert public_effect["exact_authorship_public_after_withdrawal"] is False
+    assert public_effect["authorship_row_preserved"] is True
+    withdrawal_payload = PoliticianInitiativeAuthorshipWithdrawalRequest(
+        expected_case_id=case_id,
+        expected_revision=int(withdrawal_preview["case_revision"]),
+        expected_version_id=str(withdrawal_preview["version_id"]),
+        expected_version_sha256=str(withdrawal_preview["version_sha256"]),
+        expected_authorship_id=authorship_id,
+        expected_source_sha256=proof.content_sha256,
+        expected_source_record_sha256=str(candidate["source_record_sha256"]),
+        expected_activity_snapshot_sha256=str(withdrawal_preview["activity_snapshot_sha256"]),
+        expected_publication_proof_sha256=str(withdrawal_preview["publication_proof_sha256"]),
+        expected_withdrawal_proof_sha256=str(withdrawal_preview["withdrawal_proof_sha256"]),
+        expected_public_review_id=str(withdrawal_preview["public_review_id"]),
+        expected_publication_audit_event_id=str(withdrawal_preview["publication_audit_event_id"]),
+        expected_publication_event_id=str(withdrawal_preview["publication_event_id"]),
+        expected_publication_event_sha256=str(withdrawal_preview["publication_event_sha256"]),
+        expected_public_effect_sha256=str(withdrawal_preview["public_effect_sha256"]),
+        rationale=("O ensaio confirma uma retirada por divergência oficial sem apagar a autoria."),
+        public_rationale=(
+            "A autoria foi retirada da consulta ativa após revisão da prova oficial."
+        ),
+        reason_category=ParliamentWithdrawalReason.SOURCE_DIVERGENCE,
+        confirm_source_and_publication_reviewed=True,
+        confirm_exact_authorship=True,
+        confirm_public_effect_reviewed=True,
+        confirm_authorship_and_history_preserved=True,
+        confirm_no_identity_initiative_or_party_change=True,
+        confirm_no_vote_or_collective_position_inference=True,
+        confirm_withdrawal=True,
+    )
+
+    invalid_withdrawal_payload = withdrawal_payload.model_copy(
+        update={"expected_public_effect_sha256": "f" * 64}
+    )
+    async with repository.pool.acquire() as connection:
+        withdrawal_events_before = int(
+            await connection.fetchval(
+                "SELECT COUNT(*) FROM editorial_publication_events "
+                "WHERE case_id = $1 AND action = 'WITHDRAW'",
+                case_id,
+            )
+        )
+        negative_reviews_before = int(
+            await connection.fetchval(
+                "SELECT COUNT(*) FROM data_publication_reviews "
+                "WHERE entity_type = 'POLITICIAN_INITIATIVE_AUTHORSHIP' "
+                "AND entity_id = $1 AND publishable = FALSE",
+                authorship_id,
+            )
+        )
+    with pytest.raises(EditorialConflictError):
+        await withdrawer.withdraw(
+            case_id=case_id,
+            payload=invalid_withdrawal_payload,
+            actor=admin,
+        )
+    async with repository.pool.acquire() as connection:
+        assert (
+            int(
+                await connection.fetchval(
+                    "SELECT COUNT(*) FROM editorial_publication_events "
+                    "WHERE case_id = $1 AND action = 'WITHDRAW'",
+                    case_id,
+                )
+            )
+            == withdrawal_events_before
+        )
+        assert (
+            int(
+                await connection.fetchval(
+                    "SELECT COUNT(*) FROM data_publication_reviews "
+                    "WHERE entity_type = 'POLITICIAN_INITIATIVE_AUTHORSHIP' "
+                    "AND entity_id = $1 AND publishable = FALSE",
+                    authorship_id,
+                )
+            )
+            == negative_reviews_before
+        )
+
+    withdrawn = await withdrawer.withdraw(
+        case_id=case_id,
+        payload=withdrawal_payload,
+        actor=admin,
+    )
+    assert withdrawn["state"] == "WITHDRAWN"
+    assert withdrawn["authorships_deleted"] == 0
+    assert withdrawn["people_deleted"] == 0
+    assert withdrawn["initiatives_deleted"] == 0
+    assert withdrawn["party_links_deleted"] == 0
+    with pytest.raises(EditorialConflictError):
+        await withdrawer.withdraw(
+            case_id=case_id,
+            payload=withdrawal_payload,
+            actor=admin,
+        )
+
+    async with repository.pool.acquire() as connection:
+        assert (
+            await connection.fetchval(
+                "SELECT COUNT(*) FROM politician_initiative_authorships WHERE id = $1",
+                authorship_id,
+            )
+            == 1
+        )
+        latest_authorship_review = await connection.fetchrow(
+            """
+            SELECT id, publishable
+            FROM data_publication_reviews
+            WHERE entity_type = 'POLITICIAN_INITIATIVE_AUTHORSHIP'
+              AND entity_id = $1
+            ORDER BY reviewed_at DESC, id DESC
+            LIMIT 1
+            """,
+            authorship_id,
+        )
+        assert latest_authorship_review is not None
+        assert latest_authorship_review["publishable"] is False
+        assert (
+            await connection.fetchval(
+                "SELECT COUNT(*) FROM audit_events "
+                "WHERE entity_type = 'POLITICIAN_INITIATIVE_AUTHORSHIP' "
+                "AND entity_id = $1 AND action = 'WITHDRAWN'",
+                authorship_id,
+            )
+            == 1
+        )
+        assert (
+            await connection.fetchval(
+                "SELECT COUNT(*) FROM editorial_publication_events "
+                "WHERE case_id = $1 AND target_id = $2 AND action = 'WITHDRAW'",
+                case_id,
+                authorship_id,
+            )
+            == 1
+        )
+        with pytest.raises(asyncpg.PostgresError, match="append-only"):
+            async with connection.transaction():
+                await connection.execute(
+                    "DELETE FROM politician_initiative_authorships WHERE id = $1",
+                    authorship_id,
+                )
+
+    public_profile_after_withdrawal = await public_repository.get_public_politician(person_slug)
+    assert public_profile_after_withdrawal is not None
+    assert public_profile_after_withdrawal["initiatives"] == []
+    assert public_profile_after_withdrawal["coverage"]["initiatives"]["state"] == "UNAVAILABLE"

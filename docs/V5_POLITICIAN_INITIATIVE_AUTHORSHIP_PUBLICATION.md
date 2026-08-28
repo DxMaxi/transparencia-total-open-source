@@ -65,7 +65,7 @@ indisponíveis; nunca conclui que a pessoa não foi autora.
 - não publica propostas apenas aprovadas;
 - não transforma autoria em voto ou recomendação política;
 - não executa migrações nem operações sobre staging ou produção;
-- não inclui ainda a retirada específica, que pertence à V5.44;
+- a retirada específica é um gate posterior e separado, documentado na V5.44;
 - não afirma cobertura histórica completa dos ficheiros da Assembleia da República.
 
 Esta entrega prepara código, migração, painel e testes. A ativação real continua dependente dos gates
@@ -80,3 +80,6 @@ PostgreSQL 17 descartável; nenhuma base de dados real é necessária ou autoriz
 A fonte oficial da relação continua documentada na
 [V5.42](V5_POLITICIAN_INITIATIVE_AUTHORSHIP.md), incluindo URL oficial, data de verificação e
 SHA-256 do documento observado.
+
+A retirada append-only está documentada em
+[V5.44 — retirada imutável de autoria individual](V5_POLITICIAN_INITIATIVE_AUTHORSHIP_WITHDRAWAL.md).

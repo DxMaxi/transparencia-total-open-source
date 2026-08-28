@@ -23,7 +23,7 @@ definição da Open Source Initiative.
 > commit final desse fecho. A V5 começa pela governação de licença e pelo circuito editorial
 > privado; esta branch não altera os dados aprovados da V4.
 
-> **V5.1 a V5.43 preparadas; ativação remota de staging pendente:** o painel privado usa
+> **V5.1 a V5.44 preparadas; ativação remota de staging pendente:** o painel privado usa
 > login por convite,
 > MFA obrigatório, funções de administrador/revisor, comparação entre fonte atestada e JSON
 > normalizado, versões e decisões append-only. A V5.2 acrescentou propostas parlamentares privadas,
@@ -118,7 +118,9 @@ definição da Open Source Initiative.
 > específica: uma ação `ADMIN` com MFA volta a provar `IniId`, `idCadastro`, relação `AUTHOR`,
 > identidade, iniciativa já revista, dois arquivos e todos os hashes, acrescentando ligação,
 > revisão, auditoria, decisão e evento ou revertendo tudo. Não cria pessoas, iniciativas ou
-> filiações e a retirada continua separada. A
+> filiações. A V5.44 fecha a retirada append-only: uma revisão negativa, auditoria, decisão e
+> evento ocultam apenas a ligação ativa, preservando autoria, pessoa, iniciativa, duas fontes,
+> versão e publicação originais. Não infere voto, apoio ou posição coletiva. A
 > ativação real continua dependente dos gates operacionais de staging. O código e os testes
 > não executam estas operações sobre staging ou
 > produção. O plano e a checklist
@@ -160,6 +162,7 @@ definição da Open Source Initiative.
 > [Retirada integral e imutável de presenças por reunião V5.41](docs/V5_POLITICIAN_ATTENDANCE_WITHDRAWAL.md),
 > [Autoria individual de iniciativas no circuito editorial V5.42](docs/V5_POLITICIAN_INITIATIVE_AUTHORSHIP.md),
 > [Publicação transacional de autoria individual V5.43](docs/V5_POLITICIAN_INITIATIVE_AUTHORSHIP_PUBLICATION.md),
+> [Retirada imutável de autoria individual V5.44](docs/V5_POLITICIAN_INITIATIVE_AUTHORSHIP_WITHDRAWAL.md),
 > [Adaptador parlamentar V5.2](docs/V5_PARLIAMENT_EDITORIAL_ADAPTER.md) e
 > [Publicação parlamentar por âmbito V5.3](docs/V5_PARLIAMENT_SCOPE_PUBLICATION.md),
 > [Retirada parlamentar imutável V5.4](docs/V5_PARLIAMENT_WITHDRAWAL.md) e

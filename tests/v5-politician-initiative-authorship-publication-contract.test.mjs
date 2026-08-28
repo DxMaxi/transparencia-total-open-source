@@ -126,5 +126,5 @@ test("V5.43 documents a fail-closed projection without real activation", async (
   assert.match(documentation, /retirada específica[\s\S]*V5\.44/i);
   assert.match(checklist, /\[x\] V5\.43 — publicação ADMIN\+MFA/);
   assert.match(plan, /V5_POLITICIAN_INITIATIVE_AUTHORSHIP_PUBLICATION\.md/);
-  assert.match(readme, /V5\.1 a V5\.43 preparadas/);
+  assert.match(readme, /V5\.1 a V5\.\d+ preparadas/);
 });

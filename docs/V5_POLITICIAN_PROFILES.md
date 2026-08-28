@@ -87,7 +87,9 @@ oficiais e uma proposta editorial `PENDING`, documentadas em
 transacional e append-only: a ficha só mostra relações `AUTHOR` quando identidade, iniciativa,
 fontes e revisões continuam válidas. Sem relações publicadas, a cobertura permanece
 `UNAVAILABLE`; nunca tenta descobrir autores no título, na descrição, no nome ou na sigla
-partidária. A retirada específica permanece separada.
+partidária. A [V5.44](V5_POLITICIAN_INITIATIVE_AUTHORSHIP_WITHDRAWAL.md) acrescenta uma revisão
+negativa, auditoria, decisão e evento de retirada, sem apagar a relação ou alterar pessoa,
+iniciativa, partido, fontes ou publicação original.
 
 ## Declarações: prova individual versus portal de pesquisa
 

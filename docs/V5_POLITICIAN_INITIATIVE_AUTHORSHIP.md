@@ -71,6 +71,8 @@ proposta editorial PENDING reconstruída no servidor
 revisão humana
         ↓
 publicação específica da V5.43, novamente confirmada por ADMIN com MFA
+        ↓
+retirada append-only da V5.44, sem apagar relação, fonte ou publicação
 ```
 
 O formulário privado exige confirmação expressa de que:
@@ -88,6 +90,8 @@ validar fonte, arquivo, manifesto, iniciativa e contagens.
 
 A etapa posterior está documentada em
 [V5.43 — publicação transacional de autoria individual](V5_POLITICIAN_INITIATIVE_AUTHORSHIP_PUBLICATION.md).
+A retirada específica está documentada em
+[V5.44 — retirada imutável de autoria individual](V5_POLITICIAN_INITIATIVE_AUTHORSHIP_WITHDRAWAL.md).
 
 ## Persistência e segurança
 

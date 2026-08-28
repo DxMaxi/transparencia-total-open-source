@@ -3,7 +3,7 @@
 ## Estado de referência
 
 Este plano fixa o âmbito necessário para concluir a `v0.5.0`. Foi preparado em 13 de agosto de
-2026 e atualizado em 27 de agosto de 2026 a partir do código integrado em `main`, da produção
+2026 e atualizado em 28 de agosto de 2026 a partir do código integrado em `main`, da produção
 pública e dos princípios de governação do projeto. Não autoriza deploy, migração remota, criação de
 utilizadores, alteração de segredos, geração por IA, publicação, retirada ou tratamento de dados
 reais.
@@ -11,12 +11,12 @@ reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.43 preparadas; staging remoto pendente |
+| Código V5 | V5.1 a V5.44 preparadas; staging remoto pendente |
 | Frontend público | V5.21 preparado; capacidades sem backend ou esquema pronto ficam fail-closed |
 | API pública | `0.5.0-alpha.0`; capacidades anunciadas apenas após prova read-only do esquema |
 | Painel editorial | implementado no código, não ativado em produção |
 | IA | geração, revisão, publicação e retirada implementadas; esquema remoto ainda não ativado |
-| Parlamento | matriz V5.21 e gates V5.22–V5.43 preparados; retirada de autoria, votos individuais e ativação editorial pendentes |
+| Parlamento | matriz V5.21 e gates V5.22–V5.44 preparados; votos individuais e ativação editorial pendentes |
 | Perfis | ciclo integral de entrada, publicação, retirada e republicação provado; domínios individuais pendentes |
 | Promessómetro | catálogo editorial inicial de 10 compromissos; vocabulário V5.20 protegido |
 | Investigador Cívico | zero contratos e zero relações na projeção pública |
@@ -258,7 +258,7 @@ Dos bytes oficiais já arquivados é derivada uma fotografia privada separada da
 `IniId + idCadastro`, com manifesto, SHA-256 por relação e histórico append-only. Nome e grupo são
 apenas texto da fonte. O comparador exige uma única iniciativa do mesmo arquivo e só reconcilia uma
 pessoa pelo mesmo `people.source_id`; a proposta nasce `PENDING` e cria zero autorias públicas,
-pessoas, filiações, revisões públicas ou eventos. Publicação e retirada continuam gates separados.
+pessoas, filiações, revisões públicas ou eventos. Publicação e retirada são gates separados.
 
 O vigésimo gate de perfis está preparado em
 [V5.43 — publicação transacional de autoria individual](V5_POLITICIAN_INITIATIVE_AUTHORSHIP_PUBLICATION.md).
@@ -266,7 +266,16 @@ Uma ação `ADMIN` com MFA volta a provar versão, relação `AUTHOR`, `IniId`, 
 iniciativa pública, dois arquivos e os respetivos SHA-256. Acrescenta uma ligação mínima, revisão,
 auditoria, decisão e evento na mesma transação ou recua tudo. A ficha pública conserva a fonte da
 autoria e não infere voto, apoio ou posição partidária. A capacidade não foi executada em staging ou
-produção; a retirada permanece um gate separado.
+produção.
+
+O vigésimo primeiro gate de perfis está preparado em
+[V5.44 — retirada imutável de autoria individual](V5_POLITICIAN_INITIATIVE_AUTHORSHIP_WITHDRAWAL.md).
+Uma ação `ADMIN` com MFA reconstrói a relação exata, as duas fontes e arquivos, as revisões, a
+auditoria, o evento de publicação e o efeito público. Depois acrescenta revisão negativa, auditoria,
+decisão e evento de retirada na mesma transação. A ligação deixa a consulta ativa, mas autoria,
+pessoa, iniciativa, fontes, versão e publicação original permanecem imutáveis. Não altera identidade,
+partido ou iniciativa e não infere voto, apoio ou posição coletiva. A capacidade não foi executada em
+staging ou produção.
 
 Critérios de saída:
 
@@ -291,8 +300,7 @@ Critérios de saída:
 - cargos, círculo e observações parlamentares distinguem facto observado de período jurídico;
 - presenças indicam período observado e dependem de mandato revisto;
 - autoria de iniciativas exige relação individual por identificador oficial; entrada e proposta
-  privadas estão preparadas na V5.42 e a publicação específica na V5.43; a retirada continua
-  pendente;
+  privadas, publicação e retirada específica estão preparadas nas V5.42 a V5.44;
 - votos do perfil são nominais, `PERSON` e ligados por `people.source_id` exato;
 - declarações individuais exigem fonte EPT, arquivo e confirmação jurídica explícita;
 - o portal geral da EPT permanece apenas uma porta de pesquisa;

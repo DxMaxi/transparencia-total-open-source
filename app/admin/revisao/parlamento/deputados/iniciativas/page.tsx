@@ -3,14 +3,22 @@ import type { ReactNode } from "react";
 import {
   createPoliticianInitiativeAuthorshipProposal,
   publishPoliticianInitiativeAuthorship,
+  withdrawPoliticianInitiativeAuthorship,
 } from "../../../actions";
 import { editorialFetch, getEditorialContext } from "@/lib/editorial-api";
 import {
   STATE_LABELS,
+  PARLIAMENT_WITHDRAWAL_REASON_LABELS,
+  type ParliamentWithdrawalReason,
   type PoliticianInitiativeAuthorshipEditorialCandidate,
   type PoliticianInitiativeAuthorshipEditorialCandidateList,
   type PoliticianInitiativeAuthorshipPublicationPreview,
+  type PoliticianInitiativeAuthorshipWithdrawalPreview,
 } from "@/lib/editorial-types";
+
+const withdrawalReasonEntries = Object.entries(PARLIAMENT_WITHDRAWAL_REASON_LABELS) as Array<
+  [ParliamentWithdrawalReason, string]
+>;
 
 const dateFormatter = new Intl.DateTimeFormat("pt-PT", {
   dateStyle: "medium",
@@ -60,6 +68,18 @@ async function loadPublicationPreview(
   }
 }
 
+async function loadWithdrawalPreview(
+  caseId: string,
+): Promise<PoliticianInitiativeAuthorshipWithdrawalPreview | null> {
+  try {
+    return await editorialFetch<PoliticianInitiativeAuthorshipWithdrawalPreview>(
+      `/parliament/initiative-authorship-cases/${encodeURIComponent(caseId)}/withdrawal`,
+    );
+  } catch {
+    return null;
+  }
+}
+
 export default async function PoliticianInitiativeAuthorshipEditorialPage({
   searchParams,
 }: {
@@ -90,11 +110,18 @@ export default async function PoliticianInitiativeAuthorshipEditorialPage({
     string,
     PoliticianInitiativeAuthorshipPublicationPreview
   >();
+  const withdrawalPreviews = new Map<
+    string,
+    PoliticianInitiativeAuthorshipWithdrawalPreview
+  >();
   await Promise.all(
     catalogue.items.map(async (candidate) => {
       if (candidate.existing_case?.state === "APPROVED" && candidate.proposal_eligible) {
         const preview = await loadPublicationPreview(candidate.existing_case.id);
         if (preview) publicationPreviews.set(candidate.existing_case.id, preview);
+      } else if (candidate.existing_case?.state === "PUBLISHED") {
+        const preview = await loadWithdrawalPreview(candidate.existing_case.id);
+        if (preview) withdrawalPreviews.set(candidate.existing_case.id, preview);
       }
     }),
   );
@@ -103,7 +130,7 @@ export default async function PoliticianInitiativeAuthorshipEditorialPage({
     <div className="admin-page parliament-editorial-page">
       <header className="admin-page-heading">
         <div>
-          <p className="eyebrow">V5.42–V5.43 · autoria por prova oficial</p>
+          <p className="eyebrow">V5.42–V5.44 · autoria por prova oficial</p>
           <h1>Autoria individual de iniciativas</h1>
           <p>
             Compare a iniciativa, o autor declarado e o arquivo original. Enviar para revisão cria
@@ -127,6 +154,11 @@ export default async function PoliticianInitiativeAuthorshipEditorialPage({
       {input.sucesso === "autoria-publicada" ? (
         <p className="private-message private-message--success" role="status">
           A autoria exata foi publicada com duas fontes revistas e histórico imutável.
+        </p>
+      ) : null}
+      {input.sucesso === "autoria-retirada" ? (
+        <p className="private-message private-message--success" role="status">
+          A autoria saiu da consulta ativa; a ligação, as fontes e o histórico permanecem.
         </p>
       ) : null}
 
@@ -173,6 +205,11 @@ export default async function PoliticianInitiativeAuthorshipEditorialPage({
                   ? publicationPreviews.get(candidate.existing_case.id) ?? null
                   : null
               }
+              withdrawalPreview={
+                candidate.existing_case
+                  ? withdrawalPreviews.get(candidate.existing_case.id) ?? null
+                  : null
+              }
               isAdmin={staff.role === "ADMIN"}
               key={candidate.observation_id}
             />
@@ -210,10 +247,12 @@ export default async function PoliticianInitiativeAuthorshipEditorialPage({
 function CandidateCard({
   candidate,
   publicationPreview,
+  withdrawalPreview,
   isAdmin,
 }: {
   candidate: PoliticianInitiativeAuthorshipEditorialCandidate;
   publicationPreview: PoliticianInitiativeAuthorshipPublicationPreview | null;
+  withdrawalPreview: PoliticianInitiativeAuthorshipWithdrawalPreview | null;
   isAdmin: boolean;
 }) {
   const sourceUrl = safeOfficialSourceUrl(candidate.source.url);
@@ -327,6 +366,13 @@ function CandidateCard({
             <AuthorshipPublicationAction
               candidate={candidate}
               preview={publicationPreview}
+              isAdmin={isAdmin}
+            />
+          ) : null}
+          {candidate.existing_case.state === "PUBLISHED" ? (
+            <AuthorshipWithdrawalAction
+              candidate={candidate}
+              preview={withdrawalPreview}
               isAdmin={isAdmin}
             />
           ) : null}
@@ -484,6 +530,156 @@ function AuthorshipPublicationAction({
         disabled={!isAdmin || !preview.eligible || !preview.publication_proof_sha256}
       >
         Publicar autoria com prova
+      </button>
+    </form>
+  );
+}
+
+function AuthorshipWithdrawalAction({
+  candidate,
+  preview,
+  isAdmin,
+}: {
+  candidate: PoliticianInitiativeAuthorshipEditorialCandidate;
+  preview: PoliticianInitiativeAuthorshipWithdrawalPreview | null;
+  isAdmin: boolean;
+}) {
+  if (!preview) {
+    return (
+      <section className="parliament-proposal-card">
+        <strong>Prova de retirada indisponível.</strong>
+        <p>
+          A autoria continua publicada. A retirada permanece bloqueada até a publicação original,
+          as duas fontes, os hashes e o efeito público poderem ser reconstruídos integralmente.
+        </p>
+      </section>
+    );
+  }
+  return (
+    <form
+      action={withdrawPoliticianInitiativeAuthorship}
+      className="parliament-proposal-card parliament-publication-card admin-withdrawal-panel"
+    >
+      <input type="hidden" name="legislature" value={candidate.legislature} />
+      <input type="hidden" name="expected_case_id" value={preview.case_id} />
+      <input type="hidden" name="expected_revision" value={preview.case_revision} />
+      <input type="hidden" name="expected_version_id" value={preview.version_id} />
+      <input type="hidden" name="expected_version_sha256" value={preview.version_sha256} />
+      <input type="hidden" name="expected_authorship_id" value={preview.authorship_id} />
+      <input type="hidden" name="expected_source_sha256" value={preview.source.content_sha256} />
+      <input
+        type="hidden"
+        name="expected_source_record_sha256"
+        value={preview.source_record_sha256}
+      />
+      <input
+        type="hidden"
+        name="expected_activity_snapshot_sha256"
+        value={preview.activity_snapshot_sha256}
+      />
+      <input
+        type="hidden"
+        name="expected_publication_proof_sha256"
+        value={preview.publication_proof_sha256}
+      />
+      <input
+        type="hidden"
+        name="expected_withdrawal_proof_sha256"
+        value={preview.withdrawal_proof_sha256 ?? ""}
+      />
+      <input type="hidden" name="expected_public_review_id" value={preview.public_review_id} />
+      <input
+        type="hidden"
+        name="expected_publication_audit_event_id"
+        value={preview.publication_audit_event_id}
+      />
+      <input
+        type="hidden"
+        name="expected_publication_event_id"
+        value={preview.publication_event_id}
+      />
+      <input
+        type="hidden"
+        name="expected_publication_event_sha256"
+        value={preview.publication_event_sha256}
+      />
+      <input
+        type="hidden"
+        name="expected_public_effect_sha256"
+        value={preview.public_effect_sha256}
+      />
+      <div>
+        <p className="eyebrow">V5.44 · retirada append-only específica</p>
+        <h3>Retirar autoria da consulta ativa</h3>
+        <p>{preview.withdrawal_rule}</p>
+      </div>
+      <dl>
+        <div><dt>Autorias a apagar</dt><dd>{preview.authorships_to_delete}</dd></div>
+        <div><dt>Pessoas a apagar</dt><dd>{preview.people_to_delete}</dd></div>
+        <div><dt>Iniciativas a apagar</dt><dd>{preview.initiatives_to_delete}</dd></div>
+        <div><dt>Ligações partidárias a apagar</dt><dd>{preview.party_links_to_delete}</dd></div>
+      </dl>
+      <div className="admin-proof-callout">
+        <strong>Efeito público calculado</strong>
+        <span>{preview.public_effect.message}</span>
+        <span>
+          Autorias públicas restantes para a pessoa: {preview.public_effect.remaining_public_authorships_for_person}
+        </span>
+        <strong>SHA-256 do efeito público</strong>
+        <code>{preview.public_effect_sha256}</code>
+        <strong>SHA-256 da prova de retirada</strong>
+        <code>{preview.withdrawal_proof_sha256 ?? "dados indisponíveis"}</code>
+      </div>
+      {preview.blockers.length ? (
+        <ul className="parliament-limitations">
+          {preview.blockers.map((blocker) => <li key={blocker.code}>{blocker.detail}</li>)}
+        </ul>
+      ) : null}
+      <label>
+        Categoria pública fechada
+        <select name="reason_category" required defaultValue="">
+          <option value="" disabled>Escolher categoria verificável</option>
+          {withdrawalReasonEntries.map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Fundamentação editorial privada
+        <textarea name="rationale" minLength={20} maxLength={1850} required />
+      </label>
+      <label>
+        Fundamentação pública factual
+        <textarea name="public_rationale" minLength={20} maxLength={500} required />
+      </label>
+      <Confirmation name="confirm_source_and_publication_reviewed">
+        Voltei a comparar as duas fontes, os arquivos, a revisão e a publicação originais.
+      </Confirmation>
+      <Confirmation name="confirm_exact_authorship">
+        Confirmo que retiro apenas esta ligação AUTHOR por IniId e idCadastro exatos.
+      </Confirmation>
+      <Confirmation name="confirm_public_effect_reviewed">
+        Confirmei o efeito público e a contagem de autorias que permanecem ativas.
+      </Confirmation>
+      <Confirmation name="confirm_authorship_and_history_preserved">
+        Confirmo que a autoria, fontes, hashes, versão e publicação não serão apagados.
+      </Confirmation>
+      <Confirmation name="confirm_no_identity_initiative_or_party_change">
+        Confirmo que pessoa, iniciativa, partido e outras relações não serão alterados.
+      </Confirmation>
+      <Confirmation name="confirm_no_vote_or_collective_position_inference">
+        Confirmo que a retirada não implica voto, apoio ou posição coletiva.
+      </Confirmation>
+      <Confirmation name="confirm_withdrawal">
+        Confirmo a retirada desta autoria da consulta pública ativa.
+      </Confirmation>
+      {!isAdmin ? <p>A retirada exige uma conta ADMIN com MFA.</p> : null}
+      <button
+        className="button button--primary"
+        type="submit"
+        disabled={!isAdmin || !preview.eligible || !preview.withdrawal_proof_sha256}
+      >
+        Retirar autoria e preservar histórico
       </button>
     </form>
   );
