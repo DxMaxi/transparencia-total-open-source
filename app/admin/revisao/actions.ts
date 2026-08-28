@@ -19,6 +19,7 @@ import {
   type PoliticianAttendanceWithdrawalResult,
   type PoliticianInitiativeAuthorshipEditorialProposalResult,
   type PoliticianInitiativeAuthorshipPublicationResult,
+  type PoliticianInitiativeAuthorshipWithdrawalResult,
   type PoliticianOfficeEditorialProposalResult,
   type PoliticianOfficePublicationResult,
   type PoliticianOfficeWithdrawalResult,
@@ -374,6 +375,112 @@ export async function publishPoliticianInitiativeAuthorship(formData: FormData) 
   revalidatePath("/politicos");
   revalidatePath("/");
   const params = new URLSearchParams({ legislature, sucesso: "autoria-publicada" });
+  redirect(`${destination}?${params.toString()}`);
+}
+
+export async function withdrawPoliticianInitiativeAuthorship(formData: FormData) {
+  const caseReference = evidenceId(formData, "expected_case_id");
+  const legislature = requiredText(formData, "legislature").slice(0, 20);
+  let failure: string | null = null;
+  try {
+    for (const [field, message] of [
+      [
+        "confirm_source_and_publication_reviewed",
+        "Confirme a revisão das fontes e da publicação original",
+      ],
+      ["confirm_exact_authorship", "Confirme a autoria exata a retirar"],
+      ["confirm_public_effect_reviewed", "Confirme que reviu o efeito público"],
+      [
+        "confirm_authorship_and_history_preserved",
+        "Confirme que a autoria e o histórico permanecem",
+      ],
+      [
+        "confirm_no_identity_initiative_or_party_change",
+        "Confirme que pessoa, iniciativa e partido não serão alterados",
+      ],
+      [
+        "confirm_no_vote_or_collective_position_inference",
+        "Confirme que a retirada não infere voto ou posição coletiva",
+      ],
+      ["confirm_withdrawal", "Confirme a retirada desta autoria da consulta ativa"],
+    ] as const) {
+      if (formData.get(field) !== "on") throw new Error(message);
+    }
+    const reasonCategory = requiredText(formData, "reason_category");
+    if (!(reasonCategory in PARLIAMENT_WITHDRAWAL_REASON_LABELS)) {
+      throw new Error("Categoria de retirada inválida");
+    }
+    await editorialFetch<PoliticianInitiativeAuthorshipWithdrawalResult>(
+      `/parliament/initiative-authorship-cases/${encodeURIComponent(caseReference)}/withdrawal`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          expected_case_id: caseReference,
+          expected_revision: expectedRevision(formData),
+          expected_version_id: evidenceId(formData, "expected_version_id"),
+          expected_version_sha256: sha256(formData, "expected_version_sha256"),
+          expected_authorship_id: evidenceId(formData, "expected_authorship_id"),
+          expected_source_sha256: sha256(formData, "expected_source_sha256"),
+          expected_source_record_sha256: sha256(
+            formData,
+            "expected_source_record_sha256",
+          ),
+          expected_activity_snapshot_sha256: sha256(
+            formData,
+            "expected_activity_snapshot_sha256",
+          ),
+          expected_publication_proof_sha256: sha256(
+            formData,
+            "expected_publication_proof_sha256",
+          ),
+          expected_withdrawal_proof_sha256: sha256(
+            formData,
+            "expected_withdrawal_proof_sha256",
+          ),
+          expected_public_review_id: evidenceId(formData, "expected_public_review_id"),
+          expected_publication_audit_event_id: evidenceId(
+            formData,
+            "expected_publication_audit_event_id",
+          ),
+          expected_publication_event_id: evidenceId(
+            formData,
+            "expected_publication_event_id",
+          ),
+          expected_publication_event_sha256: sha256(
+            formData,
+            "expected_publication_event_sha256",
+          ),
+          expected_public_effect_sha256: sha256(
+            formData,
+            "expected_public_effect_sha256",
+          ),
+          rationale: requiredText(formData, "rationale"),
+          public_rationale: requiredText(formData, "public_rationale"),
+          reason_category: reasonCategory as ParliamentWithdrawalReason,
+          confirm_source_and_publication_reviewed: true,
+          confirm_exact_authorship: true,
+          confirm_public_effect_reviewed: true,
+          confirm_authorship_and_history_preserved: true,
+          confirm_no_identity_initiative_or_party_change: true,
+          confirm_no_vote_or_collective_position_inference: true,
+          confirm_withdrawal: true,
+        }),
+      },
+    );
+  } catch (error) {
+    failure = actionError(error);
+  }
+  const destination = "/admin/revisao/parlamento/deputados/iniciativas";
+  if (failure) {
+    const params = new URLSearchParams({ legislature, erro: failure });
+    redirect(`${destination}?${params.toString()}`);
+  }
+  revalidatePath("/admin/revisao");
+  revalidatePath(destination);
+  revalidatePath("/politicos");
+  revalidatePath("/sitemap.xml");
+  revalidatePath("/");
+  const params = new URLSearchParams({ legislature, sucesso: "autoria-retirada" });
   redirect(`${destination}?${params.toString()}`);
 }
 

@@ -832,6 +832,70 @@ export type PoliticianInitiativeAuthorshipPublicationResult = {
   publication_rule: string;
 };
 
+export type PoliticianInitiativeAuthorshipPublicEffect = {
+  kind: "INITIATIVE_AUTHORSHIP_HIDDEN_HISTORY_PRESERVED";
+  authorship_reference_sha256: string;
+  identity_publication_review_unchanged: boolean;
+  initiative_publication_review_unchanged: boolean;
+  exact_authorship_public_after_withdrawal: false;
+  remaining_public_authorships_for_person: number;
+  authorship_row_preserved: true;
+  message: string;
+};
+
+export type PoliticianInitiativeAuthorshipWithdrawalPreview = {
+  case_id: string;
+  case_state: "PUBLISHED";
+  case_revision: number;
+  version_id: string;
+  version_sha256: string;
+  authorship_id: string;
+  source: PoliticianInitiativeAuthorshipEditorialCandidate["source"];
+  source_record_sha256: string;
+  activity_snapshot_sha256: string;
+  publication_proof_sha256: string;
+  withdrawal_proof_sha256: string | null;
+  public_review_id: string;
+  publication_audit_event_id: string;
+  publication_event_id: string;
+  publication_event_sha256: string;
+  public_effect: PoliticianInitiativeAuthorshipPublicEffect;
+  public_effect_sha256: string;
+  eligible: boolean;
+  blockers: Array<{ code: string; detail: string }>;
+  automatic_withdrawal: false;
+  authorships_to_delete: 0;
+  people_to_delete: 0;
+  initiatives_to_delete: 0;
+  party_links_to_delete: 0;
+  withdrawal_rule: string;
+};
+
+export type PoliticianInitiativeAuthorshipWithdrawalResult = {
+  created: true;
+  case_id: string;
+  version_id: string;
+  state: "WITHDRAWN";
+  revision: number;
+  authorship_id: string;
+  reason_category: ParliamentWithdrawalReason;
+  authorship_review_id: string;
+  audit_event_id: string;
+  editorial_decision_id: string;
+  withdrawal_event_id: string;
+  decision_sha256: string;
+  event_sha256: string;
+  withdrawal_proof_sha256: string;
+  public_effect: PoliticianInitiativeAuthorshipPublicEffect;
+  public_effect_sha256: string;
+  authorships_deleted: 0;
+  people_deleted: 0;
+  initiatives_deleted: 0;
+  party_links_deleted: 0;
+  automatic_withdrawal: false;
+  withdrawal_rule: string;
+};
+
 export type PoliticianAttendancePublicationPreview = {
   case_id: string;
   case_state: "APPROVED";

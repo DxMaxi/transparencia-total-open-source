@@ -81,6 +81,9 @@ continuam a exigir autorizações separadas.
 - [x] V5.43 — publicação ADMIN+MFA acrescenta uma autoria `AUTHOR`, revisão própria, auditoria,
   decisão e evento numa transação; exige `IniId`, `idCadastro`, dois arquivos e revisões públicas
   exatos e cria zero pessoas, iniciativas ou filiações.
+- [x] V5.44 — retirada ADMIN+MFA acrescenta revisão negativa, auditoria, decisão e evento numa
+  transação; oculta apenas a relação ativa e preserva autoria, pessoa, iniciativa, fontes e
+  publicação original.
 - [x] Existe um [conjunto de issues de conclusão](https://github.com/DxMaxi/transparencia-total-open-source/issues/58) para todos os itens ainda abertos.
 
 ## B. Estabilização pública
@@ -187,11 +190,11 @@ continuam a exigir autorizações separadas.
   - [x] V5.40 — publicação transacional da reunião inteira com revisão própria.
   - [x] V5.41 — retirada transacional e imutável da reunião inteira, sem apagar observações,
     sessão, linhas ou prova anterior.
-- [ ] Autoria de iniciativas usa relação oficial individual.
+- [x] Autoria de iniciativas usa relação oficial individual.
   - [x] V5.42 — recolha privada append-only e proposta editorial por `IniId + idCadastro` exatos.
   - [x] V5.43 — publicação transacional específica da relação individual, sem inferência por nome,
     sigla, voto ou posição coletiva.
-  - [ ] Retirada append-only específica, sem apagar relação, fonte ou publicação original.
+  - [x] V5.44 — retirada append-only específica, sem apagar relação, fonte ou publicação original.
 - [ ] Votos do perfil são nominais e ligados por identificador oficial exato.
 - [ ] Posições coletivas permanecem fora do histórico individual.
 - [ ] Declaração individual exige fonte EPT, arquivo e revisão jurídica.

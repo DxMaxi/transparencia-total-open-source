@@ -307,6 +307,46 @@ class PoliticianInitiativeAuthorshipPublicationRequest(BaseModel):
         return stripped
 
 
+class PoliticianInitiativeAuthorshipWithdrawalRequest(BaseModel):
+    """Retira uma autoria exata sem alterar a ligação nem a publicação original."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    expected_case_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    expected_revision: int = Field(ge=1)
+    expected_version_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    expected_version_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_authorship_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    expected_source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_source_record_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_activity_snapshot_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_publication_proof_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_withdrawal_proof_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_public_review_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    expected_publication_audit_event_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    expected_publication_event_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    expected_publication_event_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_public_effect_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    rationale: str = Field(min_length=20, max_length=1850)
+    public_rationale: str = Field(min_length=20, max_length=500)
+    reason_category: ParliamentWithdrawalReason
+    confirm_source_and_publication_reviewed: Literal[True]
+    confirm_exact_authorship: Literal[True]
+    confirm_public_effect_reviewed: Literal[True]
+    confirm_authorship_and_history_preserved: Literal[True]
+    confirm_no_identity_initiative_or_party_change: Literal[True]
+    confirm_no_vote_or_collective_position_inference: Literal[True]
+    confirm_withdrawal: Literal[True]
+
+    @field_validator("rationale", "public_rationale")
+    @classmethod
+    def strip_initiative_authorship_withdrawal_rationale(cls, value: str) -> str:
+        stripped = value.strip()
+        if len(stripped) < 20:
+            raise ValueError("A fundamentação deve ter pelo menos 20 caracteres úteis")
+        return stripped
+
+
 class PoliticianAttendancePublicationRequest(BaseModel):
     """Confirma a publicação integral de uma reunião reconstruída no servidor."""
 

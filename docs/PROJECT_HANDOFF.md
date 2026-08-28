@@ -177,7 +177,10 @@ fazem correspondências. A V5.43 acrescenta a publicação específica da relaç
 identidade exata revista, uma iniciativa já publicada por fotografia de atividade, os dois arquivos
 e todos os SHA-256; depois acrescenta relação, revisão, auditoria, decisão e evento ou reverte tudo.
 Não cria pessoas, iniciativas ou filiações, não infere voto ou apoio e não foi executada em staging
-ou produção. A retirada específica desta autoria permanece para a V5.44.
+ou produção. A V5.44 acrescenta a retirada específica e append-only: reconstrói a autoria exata, as
+duas fontes, revisões e prova de publicação e acrescenta revisão negativa, auditoria, decisão e
+evento numa transação `ADMIN` com MFA. A ligação deixa a consulta ativa, mas autoria, pessoa,
+iniciativa, fontes e publicação original permanecem. Não foi executada qualquer operação real.
 
 A melhoria de UX iniciada em agosto de 2026 faz parte da estabilização/conclusão da **V5**. Não deve ser tratada como início de uma V6 nem como autorização para reescrever o projeto.
 
