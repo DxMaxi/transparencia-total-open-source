@@ -11,7 +11,7 @@ reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.45 preparadas; staging remoto pendente |
+| Código V5 | V5.1 a V5.46 preparadas; staging remoto pendente |
 | Frontend público | V5.21 preparado; capacidades sem backend ou esquema pronto ficam fail-closed |
 | API pública | `0.5.0-alpha.0`; capacidades anunciadas apenas após prova read-only do esquema |
 | Painel editorial | implementado no código, não ativado em produção |
@@ -313,6 +313,9 @@ Critérios de saída:
   `people.source_id`, conforme a V5.45;
 - declarações individuais exigem fonte EPT, arquivo e confirmação jurídica explícita;
 - o portal geral da EPT permanece apenas uma porta de pesquisa;
+- a [V5.46](V5_EPT_PUBLIC_INTEREST_EDITORIAL.md) admite somente metadados privados do registo
+  público de interesses, converte o identificador do titular para HMAC e cria uma proposta
+  `PENDING` sem ligação de identidade ou publicação;
 - cada área mostra `AVAILABLE`, `PARTIAL` ou `UNAVAILABLE` com fundamento e período.
 
 ### 6. Promessómetro do Programa do XXV Governo

@@ -11,6 +11,7 @@ from app.models.editorial import StaffRole, StaffSession
 from app.repositories.ai_editorial import AiEditorialRepository
 from app.repositories.ai_editorial_publication import AiEditorialPublicationRepository
 from app.repositories.editorial import EditorialNotFoundError, EditorialRepository
+from app.repositories.ept_declaration_editorial import EptDeclarationEditorialRepository
 from app.repositories.parliament_editorial import ParliamentEditorialRepository
 from app.repositories.parliament_editorial_publication import (
     ParliamentEditorialPublicationRepository,
@@ -79,6 +80,17 @@ def get_editorial_repository(
             detail="Base de dados editorial não configurada",
         )
     return EditorialRepository(repository.pool)
+
+
+def get_ept_declaration_editorial_repository(
+    repository: Annotated[PostgresRepository, Depends(get_repository)],
+) -> EptDeclarationEditorialRepository:
+    if repository.pool is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Base de dados editorial EPT não configurada",
+        )
+    return EptDeclarationEditorialRepository(repository.pool)
 
 
 def get_ai_editorial_repository(

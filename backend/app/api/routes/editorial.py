@@ -9,6 +9,7 @@ from app.api.dependencies import (
     get_ai_editorial_publication_repository,
     get_ai_editorial_repository,
     get_editorial_repository,
+    get_ept_declaration_editorial_repository,
     get_parliament_editorial_publication_repository,
     get_parliament_editorial_repository,
     get_politician_attendance_editorial_repository,
@@ -64,6 +65,7 @@ from app.models.editorial import (
     PoliticianProfileSnapshotWithdrawalRequest,
     StaffSession,
 )
+from app.models.ept_declaration import EptPublicInterestEditorialProposalRequest
 from app.repositories.ai_editorial import AiEditorialRepository
 from app.repositories.ai_editorial_publication import AiEditorialPublicationRepository
 from app.repositories.editorial import (
@@ -72,6 +74,7 @@ from app.repositories.editorial import (
     EditorialRepository,
     EditorialSourceError,
 )
+from app.repositories.ept_declaration_editorial import EptDeclarationEditorialRepository
 from app.repositories.parliament_editorial import ParliamentEditorialRepository
 from app.repositories.parliament_editorial_publication import (
     ParliamentEditorialPublicationRepository,
@@ -150,6 +153,39 @@ async def session(
     """Permite completar MFA depois de confirmar que a conta pertence à equipa."""
 
     return actor
+
+
+@router.get("/ept/public-interest-candidates")
+async def ept_public_interest_candidates(
+    repository: Annotated[
+        EptDeclarationEditorialRepository,
+        Depends(get_ept_declaration_editorial_repository),
+    ],
+    _actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+    q: Annotated[str | None, Query(min_length=2, max_length=100)] = None,
+    limit: Annotated[int, Query(ge=1, le=50)] = 20,
+    offset: Annotated[int, Query(ge=0, le=10_000)] = 0,
+) -> dict[str, object]:
+    """Lista metadados privados; não devolve HMAC nem associa pessoas por nome."""
+
+    return await repository.list_candidates(query=q, limit=limit, offset=offset)
+
+
+@router.post("/ept/public-interest-proposals", status_code=status.HTTP_201_CREATED)
+async def create_ept_public_interest_proposal(
+    payload: EptPublicInterestEditorialProposalRequest,
+    repository: Annotated[
+        EptDeclarationEditorialRepository,
+        Depends(get_ept_declaration_editorial_repository),
+    ],
+    actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> dict[str, object]:
+    """Cria um caso PENDING sem ligar identidade, rever juridicamente ou publicar."""
+
+    try:
+        return await repository.create_proposal(payload=payload, actor=actor)
+    except (EditorialConflictError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
 
 
 @router.get("/parliament/snapshots")

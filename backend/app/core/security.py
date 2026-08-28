@@ -51,6 +51,14 @@ OFFICIAL_HOSTS = frozenset(
     }
 )
 
+EPT_OFFICIAL_HOSTS = frozenset(
+    {
+        "tribunalconstitucional.pt",
+        "www.tribunalconstitucional.pt",
+        "entidadetransparencia.pt",
+    }
+)
+
 
 def normalise_host(host: str | None) -> str:
     return (host or "").strip().rstrip(".").lower()
@@ -79,6 +87,29 @@ def require_official_url(url: str, extra_hosts: Iterable[str] = ()) -> str:
     return url
 
 
+def is_individual_ept_source_url(url: str) -> bool:
+    """Aceita apenas uma prova individual nos domínios oficiais da EPT.
+
+    A página institucional geral é útil para pesquisa, mas não demonstra a
+    existência ou o conteúdo de uma declaração individual.
+    """
+
+    if not is_official_url(url):
+        return False
+    try:
+        parsed = urlparse(url)
+    except ValueError:
+        return False
+    host = normalise_host(parsed.hostname)
+    path = parsed.path.rstrip("/") or "/"
+    if host not in EPT_OFFICIAL_HOSTS or path == "/":
+        return False
+    return not (
+        host in {"tribunalconstitucional.pt", "www.tribunalconstitucional.pt"}
+        and path.casefold() == "/tc/ept"
+    )
+
+
 def sha256_text(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
@@ -98,6 +129,20 @@ def hmac_protected_identifier(value: str, pepper: str) -> str:
     if len(canonical) != 9:
         raise ValueError("O identificador fiscal protegido deve ter nove algarismos")
     return hmac.new(pepper.encode(), canonical.encode(), hashlib.sha256).hexdigest()
+
+
+def hmac_private_reference_identifier(value: str, pepper: str) -> str:
+    """Protege um identificador oficial opaco sem presumir que é um NIF.
+
+    A referência mantém semântica exata após normalização Unicode e remoção de
+    espaços exteriores. Se a fonte usar um NIF como referência, continua a
+    persistir apenas o HMAC; o texto recebido nunca é devolvido ou guardado.
+    """
+
+    canonical = unicodedata.normalize("NFKC", value).strip()
+    if not canonical or len(canonical) > 200:
+        raise ValueError("A referência oficial protegida tem de conter 1 a 200 caracteres")
+    return hmac.new(pepper.encode(), canonical.encode("utf-8"), hashlib.sha256).hexdigest()
 
 
 async def require_admin_key(x_admin_key: str | None = Header(default=None)) -> None:

@@ -1,6 +1,6 @@
 # PROJECT HANDOFF — Transparência Total / Fator Cívico
 
-Atualizado em: **2026-08-27**
+Atualizado em: **2026-08-28**
 
 Este documento existe para permitir continuidade segura entre sessões de trabalho, colaboradores e chats sem depender de memória externa ao repositório.
 
@@ -188,6 +188,15 @@ A V5.45 fecha a prova dos votos nominais sem duplicar o circuito editorial parla
 IDs ausentes ou divergentes, e ficha, Investigador e comparações exigem igualdade exata com
 `people.source_id`. As V5.2 a V5.4 continuam responsáveis pela proposta, publicação e retirada
 humanas. Não foi executada migração, recolha ou operação sobre dados reais.
+
+A V5.46 abre apenas a porta **privada** do registo público de interesses EPT. Exige documento
+individual com identificador oficial, URL, data, SHA-256 e arquivo coincidentes; converte de
+imediato o identificador do titular para HMAC com pepper e guarda zero conteúdo patrimonial,
+financeiro ou de consulta condicionada. O painel cria uma proposta `PENDING` sem ligar a pessoa por
+nome, sem `AssetDeclarationMetadata`, revisão pública ou evento de publicação. A porta genérica de
+publicação foi bloqueada e a consulta pública exige agora um futuro evento EPT específico. A
+V5.47 continua dependente de prova de identidade inequívoca e revisão jurídica independente. Não
+foi executada migração, recolha ou operação sobre dados reais.
 
 A melhoria de UX iniciada em agosto de 2026 faz parte da estabilização/conclusão da **V5**. Não deve ser tratada como início de uma V6 nem como autorização para reescrever o projeto.
 

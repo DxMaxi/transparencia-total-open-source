@@ -1470,6 +1470,14 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                     ORDER BY candidate.reviewed_at DESC, candidate.id DESC
                     LIMIT 1
                 ) review ON review.publishable = TRUE
+                JOIN LATERAL (
+                    SELECT event.action
+                    FROM editorial_publication_events event
+                    WHERE event.target_type = 'EPT_PUBLIC_INTEREST_DECLARATION'
+                      AND event.target_id = adm.id
+                    ORDER BY event.created_at DESC, event.id DESC
+                    LIMIT 1
+                ) publication_event ON publication_event.action = 'PUBLISH'
                 WHERE adm.person_id = $1
                   AND sd.publisher = 'TRANSPARENCY_ENTITY'
                   AND sd.kind <> 'NEWS_ARTICLE'
@@ -3232,10 +3240,11 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                 raise ValueError("Entidade a rever não encontrada")
             if publish and not evidence_exists:
                 raise ValueError("A publicação exige prova associada e dependências publicadas")
-            if publish and entity_type == "ASSET_DECLARATION" and not legal_basis_confirmed:
+            if publish and entity_type == "ASSET_DECLARATION":
                 raise ValueError(
-                    "A publicação de uma declaração exige confirmação da revisão jurídica "
-                    "e da base legal"
+                    "A publicação de uma declaração está bloqueada no comando genérico; "
+                    "exige a porta editorial EPT específica, identidade oficial inequívoca "
+                    "e revisão jurídica independente"
                 )
             if publish and review_source_document_id is not None:
                 archive_exists = await connection.fetchval(

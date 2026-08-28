@@ -2,7 +2,12 @@ import pytest
 from pydantic import ValidationError
 
 from app.core.config import Settings
-from app.core.security import is_official_url, require_official_url
+from app.core.security import (
+    hmac_private_reference_identifier,
+    is_individual_ept_source_url,
+    is_official_url,
+    require_official_url,
+)
 from app.models.api import PushBroadcastRequest
 
 
@@ -37,6 +42,31 @@ def test_rejects_ssrf_and_non_https_urls(url: str) -> None:
         require_official_url(url)
 
 
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://entidadetransparencia.pt/registo/DU-42",
+        "https://www.tribunalconstitucional.pt/tc/ept/declaracao/DU-42",
+    ],
+)
+def test_accepts_only_individual_ept_source_urls(url: str) -> None:
+    assert is_individual_ept_source_url(url)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://entidadetransparencia.pt/",
+        "https://entidadetransparencia.pt/?declaracao=DU-42",
+        "https://www.tribunalconstitucional.pt/tc/ept/",
+        "https://www.tribunalconstitucional.pt/tc/ept/?declaracao=DU-42",
+        "https://example.org/registo/DU-42",
+    ],
+)
+def test_rejects_general_or_non_official_ept_sources(url: str) -> None:
+    assert not is_individual_ept_source_url(url)
+
+
 @pytest.mark.parametrize("url", ["https://evil.example/phishing", "//evil.example", "javascript:x"])
 def test_push_notifications_only_open_same_origin_paths(url: str) -> None:
     with pytest.raises(ValidationError):
@@ -47,3 +77,13 @@ def test_cors_origins_accept_comma_separated_environment(monkeypatch: pytest.Mon
     monkeypatch.setenv("CORS_ORIGINS", "http://localhost:3000,https://example.org")
     settings = Settings(_env_file=None)
     assert settings.cors_origins == ["http://localhost:3000", "https://example.org"]
+
+
+def test_private_reference_identifier_is_only_a_stable_hmac() -> None:
+    pepper = "p" * 32
+    digest = hmac_private_reference_identifier("  titular-１２３  ", pepper)
+
+    assert digest == hmac_private_reference_identifier("titular-123", pepper)
+    assert len(digest) == 64
+    assert "titular" not in digest
+    assert digest != hmac_private_reference_identifier("Titular-123", pepper)

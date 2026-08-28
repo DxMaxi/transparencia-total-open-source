@@ -247,28 +247,26 @@ def test_asset_declaration_requires_explicit_legal_review_confirmation() -> None
     assert connection.commands == []
 
 
-def test_asset_declaration_records_legal_review_confirmation_in_audit_decision() -> None:
+def test_asset_declaration_cannot_bypass_dedicated_ept_gate() -> None:
     connection = PublicationConnection(
         people=[],
         source_sha256="a" * 64,
         review_entity="ASSET_DECLARATION",
     )
 
-    result = asyncio.run(
-        _repository(connection).review_publication(
-            entity_type="ASSET_DECLARATION",
-            entity_id="declaration-1",
-            publish=True,
-            reviewer_alias="revisor-legal-01",
-            rationale="Fonte, âmbito e base legal confirmados.",
-            legal_basis_confirmed=True,
+    with pytest.raises(ValueError, match="porta editorial EPT específica"):
+        asyncio.run(
+            _repository(connection).review_publication(
+                entity_type="ASSET_DECLARATION",
+                entity_id="declaration-1",
+                publish=True,
+                reviewer_alias="revisor-legal-01",
+                rationale="Fonte, âmbito e base legal confirmados.",
+                legal_basis_confirmed=True,
+            )
         )
-    )
 
-    assert result["publishable"] is True
-    assert result["legal_basis_confirmed"] is True
-    audit_command = next(item for item in connection.commands if "audit_events" in item[0])
-    assert '"legal_basis_confirmed": true' in str(audit_command[1][6])
+    assert connection.commands == []
 
 
 def test_publication_rejects_changed_source_hash_before_writing() -> None:

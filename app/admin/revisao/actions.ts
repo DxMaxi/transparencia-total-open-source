@@ -9,6 +9,7 @@ import {
   type AiEditorialWithdrawalResult,
   PARLIAMENT_WITHDRAWAL_REASON_LABELS,
   type EditorialCaseDetail,
+  type EptPublicInterestEditorialProposalResult,
   type ParliamentEditorialPublicationResult,
   type ParliamentEditorialProposalResult,
   type ParliamentEditorialScope,
@@ -198,6 +199,58 @@ export async function createPoliticianProfileProposal(formData: FormData) {
   revalidatePath("/admin/revisao/parlamento/deputados");
   redirect(
     `/admin/revisao/${created!.case.id}?sucesso=${created!.created ? "perfil-importado" : "perfil-existente"}`,
+  );
+}
+
+export async function createEptPublicInterestProposal(formData: FormData) {
+  const observationId = evidenceId(formData, "observation_id");
+  let created: EptPublicInterestEditorialProposalResult | null = null;
+  let failure: string | null = null;
+  try {
+    for (const [field, message] of [
+      ["confirm_private_only", "Confirme que a proposta permanece privada"],
+      [
+        "confirm_public_interest_register_only",
+        "Confirme que a prova contém apenas registo público de interesses",
+      ],
+      [
+        "confirm_no_income_or_asset_content",
+        "Confirme que não existem rendimentos, património ou conteúdo condicionado",
+      ],
+      ["confirm_no_name_matching", "Confirme que o nome não será usado para associação"],
+      ["confirm_identity_unlinked", "Confirme que a identidade permanece por associar"],
+      [
+        "confirm_independent_legal_review_required",
+        "Confirme que é obrigatória revisão jurídica independente",
+      ],
+    ] as const) {
+      if (formData.get(field) !== "on") throw new Error(message);
+    }
+    created = await editorialFetch<EptPublicInterestEditorialProposalResult>(
+      "/ept/public-interest-proposals",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          observation_id: observationId,
+          source_record_sha256: sha256(formData, "source_record_sha256"),
+          confirm_private_only: true,
+          confirm_public_interest_register_only: true,
+          confirm_no_income_or_asset_content: true,
+          confirm_no_name_matching: true,
+          confirm_identity_unlinked: true,
+          confirm_independent_legal_review_required: true,
+        }),
+      },
+    );
+  } catch (error) {
+    failure = actionError(error);
+  }
+  const destination = "/admin/revisao/declaracoes";
+  if (failure) redirect(failureDestination(destination, failure));
+  revalidatePath("/admin/revisao");
+  revalidatePath(destination);
+  redirect(
+    `/admin/revisao/${created!.case.id}?sucesso=${created!.created ? "ept-importado" : "ept-existente"}`,
   );
 }
 
