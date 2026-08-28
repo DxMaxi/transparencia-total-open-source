@@ -200,6 +200,8 @@ test("V5.6 profiles expose independent, fail-closed coverage areas", async () =>
   assert.doesNotMatch(repository, /vr\.actor_source_id/);
   assert.match(repository, /candidate\.entity_type = 'MANDATE'/);
   assert.match(repository, /candidate\.entity_type = 'ASSET_DECLARATION'/);
+  assert.match(repository, /event\.target_type = 'EPT_PUBLIC_INTEREST_DECLARATION'/);
+  assert.match(repository, /publication_event\.action = 'PUBLISH'/);
   assert.match(repository, /sd\.publisher = 'TRANSPARENCY_ENTITY'/);
   assert.match(models, /contract_version: Literal\["v5\.6"\]/);
   assert.match(models, /membership_observations: list\[PublishedMembershipObservation\]/);

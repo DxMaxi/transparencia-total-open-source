@@ -61,6 +61,9 @@ export default async function EditorialQueuePage({
           <Link className="button" href="/admin/revisao/parlamento/deputados/iniciativas">
             Rever autoria de iniciativas
           </Link>
+          <Link className="button" href="/admin/revisao/declaracoes">
+            Rever registos de interesses EPT
+          </Link>
           <Link className="button" href="/admin/revisao/novo">
             Criar processo manual
           </Link>

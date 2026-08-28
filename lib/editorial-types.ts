@@ -514,6 +514,65 @@ export type PoliticianProfileEditorialProposalResult = {
   mandate_created: false;
 };
 
+export type EptPublicInterestEditorialCandidate = {
+  observation_id: string;
+  source_document_id: string;
+  official_declaration_id: string;
+  official_subject_reference_sha256: string;
+  public_subject_name: string;
+  declaration_type: "INTEREST_REGISTER";
+  declared_at: string | null;
+  period_label: string | null;
+  observed_at: string;
+  source_record_sha256: string;
+  source: {
+    title: string;
+    official_identifier: string | null;
+    url: string;
+    retrieved_at: string;
+    content_sha256: string;
+    mime_type: string | null;
+  };
+  archive: null | {
+    storage_backend: string;
+    byte_size: number;
+    archived_at: string;
+    attestation_sha256: string;
+  };
+  legal_review_status: "REQUIRES_INDEPENDENT_LEGAL_REVIEW";
+  identity_link_status: "UNLINKED_PRIVATE";
+  existing_case: PoliticianProfileEditorialCandidate["editorial_case"];
+  proposal_eligible: boolean;
+  blocked_reasons: string[];
+  public_projection_allowed: false;
+  person_link_allowed: false;
+  name_matching_allowed: false;
+  income_or_asset_content_present: false;
+};
+
+export type EptPublicInterestEditorialCandidateList = {
+  items: EptPublicInterestEditorialCandidate[];
+  total: number;
+  limit: number;
+  offset: number;
+  next_offset: number | null;
+  publication_performed: false;
+  identity_link_performed: false;
+  search_rule: string;
+  legal_scope: string;
+};
+
+export type EptPublicInterestEditorialProposalResult = {
+  created: boolean;
+  case: EditorialCaseDetail;
+  state: "PRIVATE_PENDING_REVIEW";
+  publication_performed: false;
+  declaration_created: false;
+  person_link_created: false;
+  public_review_created: false;
+  independent_legal_review_completed: false;
+};
+
 export type PoliticianMandateEditorialCandidate = {
   subject_id: string;
   source_period_ordinal: number;

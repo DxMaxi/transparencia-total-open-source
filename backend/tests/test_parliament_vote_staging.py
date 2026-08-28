@@ -372,6 +372,8 @@ def test_v56_profile_areas_have_independent_fail_closed_publication_gates() -> N
     assert "to_jsonb(vr) ->> 'actor_source_id'" in connection.vote_query
 
     assert "candidate.entity_type = 'ASSET_DECLARATION'" in connection.declaration_query
+    assert "event.target_type = 'EPT_PUBLIC_INTEREST_DECLARATION'" in connection.declaration_query
+    assert "publication_event.action = 'PUBLISH'" in connection.declaration_query
     assert "sd.publisher = 'TRANSPARENCY_ENTITY'" in connection.declaration_query
     assert "source_archive_attestations declaration_archive" in connection.declaration_query
 

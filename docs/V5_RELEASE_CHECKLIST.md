@@ -204,7 +204,13 @@ continuam a exigir autorizações separadas.
   - [x] Publicação e retirada permanecem nos gates parlamentares ADMIN+MFA V5.3 e V5.4.
 - [x] Posições coletivas permanecem fora do histórico individual.
 - [ ] Declaração individual exige fonte EPT, arquivo e revisão jurídica.
-- [ ] Ligação geral à EPT continua rotulada apenas como pesquisa institucional.
+  - [x] V5.46 — entrada privada EPT limitada ao registo público de interesses, com documento
+    individual, identificador exato, arquivo, SHA-256, HMAC do titular e histórico append-only.
+  - [x] V5.46 — a proposta permanece `PENDING`, sem ligação por nome, conteúdo patrimonial,
+    revisão pública ou evento de publicação; o comando público genérico fica bloqueado.
+  - [ ] V5.47 — associação individual inequívoca, revisão jurídica independente e porta específica
+    de publicação/retirada com `ADMIN` + MFA.
+- [x] Ligação geral à EPT continua rotulada apenas como pesquisa institucional.
 - [ ] Cada área declara cobertura e intervalo observado.
 
 ## G. Promessómetro

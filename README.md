@@ -23,7 +23,7 @@ definição da Open Source Initiative.
 > commit final desse fecho. A V5 começa pela governação de licença e pelo circuito editorial
 > privado; esta branch não altera os dados aprovados da V4.
 
-> **V5.1 a V5.45 preparadas; ativação remota de staging pendente:** o painel privado usa
+> **V5.1 a V5.46 preparadas; ativação remota de staging pendente:** o painel privado usa
 > login por convite,
 > MFA obrigatório, funções de administrador/revisor, comparação entre fonte atestada e JSON
 > normalizado, versões e decisões append-only. A V5.2 acrescentou propostas parlamentares privadas,
@@ -167,6 +167,7 @@ definição da Open Source Initiative.
 > [Publicação transacional de autoria individual V5.43](docs/V5_POLITICIAN_INITIATIVE_AUTHORSHIP_PUBLICATION.md),
 > [Retirada imutável de autoria individual V5.44](docs/V5_POLITICIAN_INITIATIVE_AUTHORSHIP_WITHDRAWAL.md),
 > [Prova persistida de identidade em votos nominais V5.45](docs/V5_POLITICIAN_NOMINAL_VOTE_IDENTITY.md),
+> [circuito privado EPT para registos públicos de interesses V5.46](docs/V5_EPT_PUBLIC_INTEREST_EDITORIAL.md),
 > [Adaptador parlamentar V5.2](docs/V5_PARLIAMENT_EDITORIAL_ADAPTER.md) e
 > [Publicação parlamentar por âmbito V5.3](docs/V5_PARLIAMENT_SCOPE_PUBLICATION.md),
 > [Retirada parlamentar imutável V5.4](docs/V5_PARLIAMENT_WITHDRAWAL.md) e
