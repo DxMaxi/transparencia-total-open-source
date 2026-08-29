@@ -573,6 +573,138 @@ export type EptPublicInterestEditorialProposalResult = {
   independent_legal_review_completed: false;
 };
 
+export type EptPublicInterestGate = {
+  case_id: string;
+  case_state: EditorialState;
+  case_revision: number;
+  version_id: string;
+  version_sha256: string;
+  observation_id: string;
+  source_record_sha256: string;
+  source: {
+    url: string;
+    retrieved_at: string;
+    content_sha256: string;
+    archive_attestation_sha256: string;
+  };
+  legal_assessment: null | {
+    id: string;
+    outcome:
+      | "PERMITS_PUBLIC_INTEREST_METADATA_ONLY"
+      | "DOES_NOT_PERMIT_PUBLICATION"
+      | "REQUIRES_CHANGES";
+    document_sha256: string;
+    assessed_at: string;
+    valid_until: string | null;
+    assessment_proof_sha256: string;
+    document_private_and_encrypted: true;
+    system_issued_legal_opinion: false;
+  };
+  identity_link: null | {
+    id: string;
+    person_id: string;
+    person_source_id: string;
+    evidence_document_id: string;
+    evidence_sha256: string;
+    link_proof_sha256: string;
+    name_matching_used: false;
+    fuzzy_matching_used: false;
+    raw_identifier_persisted: false;
+  };
+  blockers: Array<{ code: string; detail: string }>;
+  publication_performed: false;
+  legal_notice: string;
+};
+
+export type EptPublicInterestPublicationPreview = EptPublicInterestGate & {
+  declaration_id: string;
+  legal_assessment_proof_sha256: string | null;
+  publication_proof_sha256: string | null;
+  public_metadata: {
+    declaration_type: "Registo público de interesses";
+    declared_at: string | null;
+    period_label: string | null;
+    public_access_status: "PUBLIC_METADATA";
+    income_or_asset_content_included: false;
+    protected_identifier_included: false;
+  };
+  eligible: boolean;
+  automatic_publication: false;
+  publication_rule: string;
+};
+
+export type EptLegalAssessmentResult = {
+  created: boolean;
+  assessment: NonNullable<EptPublicInterestGate["legal_assessment"]>;
+  publication_performed: false;
+};
+
+export type EptExactIdentityLinkResult = {
+  created: boolean;
+  identity_link: NonNullable<EptPublicInterestGate["identity_link"]>;
+  publication_performed: false;
+  raw_identifier_persisted: false;
+};
+
+export type EptPublicInterestPublicationResult = {
+  created: true;
+  case_id: string;
+  state: "PUBLISHED";
+  revision: number;
+  declaration_id: string;
+  decision_sha256: string;
+  event_sha256: string;
+  publication_review_id: string;
+  audit_event_id: string;
+  publication_proof_sha256: string;
+  automatic_publication: false;
+};
+
+export type EptPublicInterestWithdrawalPreview = {
+  case_id: string;
+  case_state: "PUBLISHED";
+  case_revision: number;
+  version_id: string;
+  version_sha256: string;
+  declaration_id: string;
+  source_sha256: string;
+  publication_proof_sha256: string;
+  withdrawal_proof_sha256: string;
+  public_review_id: string;
+  publication_audit_event_id: string;
+  publication_event_id: string;
+  publication_event_sha256: string;
+  public_effect: {
+    kind: "DECLARATION_METADATA_HIDDEN_HISTORY_PRESERVED";
+    declaration_reference_sha256: string;
+    active_public_metadata_after_withdrawal: false;
+    declaration_row_preserved: true;
+    identity_link_preserved_private: true;
+    legal_assessment_preserved_private: true;
+    message: string;
+  };
+  public_effect_sha256: string;
+  eligible: boolean;
+  blockers: Array<{ code: string; detail: string }>;
+  automatic_withdrawal: false;
+  withdrawal_rule: string;
+};
+
+export type EptPublicInterestWithdrawalResult = {
+  created: true;
+  case_id: string;
+  state: "WITHDRAWN";
+  revision: number;
+  declaration_id: string;
+  reason_category: ParliamentWithdrawalReason;
+  decision_sha256: string;
+  event_sha256: string;
+  publication_review_id: string;
+  audit_event_id: string;
+  public_effect: EptPublicInterestWithdrawalPreview["public_effect"];
+  public_effect_sha256: string;
+};
+
 export type PoliticianMandateEditorialCandidate = {
   subject_id: string;
   source_period_ordinal: number;

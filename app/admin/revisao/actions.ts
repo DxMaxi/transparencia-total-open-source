@@ -9,7 +9,11 @@ import {
   type AiEditorialWithdrawalResult,
   PARLIAMENT_WITHDRAWAL_REASON_LABELS,
   type EditorialCaseDetail,
+  type EptExactIdentityLinkResult,
+  type EptLegalAssessmentResult,
   type EptPublicInterestEditorialProposalResult,
+  type EptPublicInterestPublicationResult,
+  type EptPublicInterestWithdrawalResult,
   type ParliamentEditorialPublicationResult,
   type ParliamentEditorialProposalResult,
   type ParliamentEditorialScope,
@@ -252,6 +256,308 @@ export async function createEptPublicInterestProposal(formData: FormData) {
   redirect(
     `/admin/revisao/${created!.case.id}?sucesso=${created!.created ? "ept-importado" : "ept-existente"}`,
   );
+}
+
+export async function recordEptLegalAssessment(formData: FormData) {
+  const caseReference = evidenceId(formData, "expected_case_id");
+  const destination = "/admin/revisao/declaracoes";
+  let failure: string | null = null;
+  try {
+    for (const [field, message] of [
+      ["confirm_external_human_assessment", "Confirme que a avaliação foi feita por uma pessoa"],
+      ["confirm_independent_assessor", "Confirme a independência do avaliador"],
+      [
+        "confirm_qualification_and_conflicts_checked",
+        "Confirme qualificações e conflitos de interesses",
+      ],
+      ["confirm_public_interest_metadata_only", "Confirme o âmbito estritamente limitado"],
+      ["confirm_document_encrypted_and_private", "Confirme o arquivo privado cifrado"],
+      [
+        "confirm_system_did_not_issue_legal_opinion",
+        "Confirme que o sistema não emitiu o parecer",
+      ],
+    ] as const) {
+      if (formData.get(field) !== "on") throw new Error(message);
+    }
+    const outcome = requiredText(formData, "outcome");
+    if (![
+      "PERMITS_PUBLIC_INTEREST_METADATA_ONLY",
+      "DOES_NOT_PERMIT_PUBLICATION",
+      "REQUIRES_CHANGES",
+    ].includes(outcome)) {
+      throw new Error("Conclusão jurídica documental inválida");
+    }
+    const byteSize = Number.parseInt(requiredText(formData, "assessment_document_byte_size"), 10);
+    if (!Number.isSafeInteger(byteSize) || byteSize < 1 || byteSize > 50_000_000) {
+      throw new Error("Tamanho do documento inválido");
+    }
+    const assessedAt = new Date(requiredText(formData, "assessed_at"));
+    if (Number.isNaN(assessedAt.valueOf())) throw new Error("Data da avaliação inválida");
+    const validUntilRaw = formData.get("valid_until");
+    const validUntil = typeof validUntilRaw === "string" && validUntilRaw.trim()
+      ? new Date(validUntilRaw)
+      : null;
+    if (validUntil && Number.isNaN(validUntil.valueOf())) throw new Error("Validade inválida");
+    await editorialFetch<EptLegalAssessmentResult>(
+      `/ept/cases/${encodeURIComponent(caseReference)}/legal-assessments`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          expected_case_id: caseReference,
+          expected_revision: expectedRevision(formData),
+          expected_version_id: evidenceId(formData, "expected_version_id"),
+          expected_version_sha256: sha256(formData, "expected_version_sha256"),
+          expected_observation_id: evidenceId(formData, "expected_observation_id"),
+          expected_source_sha256: sha256(formData, "expected_source_sha256"),
+          expected_source_record_sha256: sha256(formData, "expected_source_record_sha256"),
+          outcome,
+          assessment_document_sha256: sha256(formData, "assessment_document_sha256"),
+          assessment_document_storage_backend: requiredText(
+            formData,
+            "assessment_document_storage_backend",
+          ),
+          assessment_document_storage_key: requiredText(
+            formData,
+            "assessment_document_storage_key",
+          ),
+          assessment_document_byte_size: byteSize,
+          assessment_document_mime_type: requiredText(
+            formData,
+            "assessment_document_mime_type",
+          ),
+          assessor_reference_sha256: sha256(formData, "assessor_reference_sha256"),
+          qualification_evidence_sha256: sha256(formData, "qualification_evidence_sha256"),
+          conflict_check_sha256: sha256(formData, "conflict_check_sha256"),
+          assessed_at: assessedAt.toISOString(),
+          valid_until: validUntil?.toISOString() ?? null,
+          recording_rationale: requiredText(formData, "recording_rationale"),
+          confirm_external_human_assessment: true,
+          confirm_independent_assessor: true,
+          confirm_qualification_and_conflicts_checked: true,
+          confirm_public_interest_metadata_only: true,
+          confirm_document_encrypted_and_private: true,
+          confirm_system_did_not_issue_legal_opinion: true,
+        }),
+      },
+    );
+  } catch (error) {
+    failure = actionError(error);
+  }
+  if (failure) redirect(failureDestination(destination, failure));
+  revalidatePath(destination);
+  redirect(`${destination}?sucesso=avaliacao-juridica-registada`);
+}
+
+export async function recordEptExactIdentityLink(formData: FormData) {
+  const caseReference = evidenceId(formData, "expected_case_id");
+  const destination = "/admin/revisao/declaracoes";
+  let failure: string | null = null;
+  try {
+    for (const [field, message] of [
+      ["confirm_exact_official_identifier", "Confirme o identificador oficial exato"],
+      ["confirm_second_official_source_reviewed", "Confirme a segunda fonte oficial"],
+      ["confirm_no_name_or_fuzzy_matching", "Confirme que não usou correspondência por nome"],
+      [
+        "confirm_identifier_will_only_persist_as_hmac",
+        "Confirme que o identificador só persistirá como HMAC",
+      ],
+      ["confirm_same_person", "Confirme que as duas fontes identificam a mesma pessoa"],
+    ] as const) {
+      if (formData.get(field) !== "on") throw new Error(message);
+    }
+    await editorialFetch<EptExactIdentityLinkResult>(
+      `/ept/cases/${encodeURIComponent(caseReference)}/identity-links`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          expected_case_id: caseReference,
+          expected_revision: expectedRevision(formData),
+          expected_version_id: evidenceId(formData, "expected_version_id"),
+          expected_version_sha256: sha256(formData, "expected_version_sha256"),
+          expected_observation_id: evidenceId(formData, "expected_observation_id"),
+          expected_source_sha256: sha256(formData, "expected_source_sha256"),
+          expected_source_record_sha256: sha256(formData, "expected_source_record_sha256"),
+          official_subject_identifier: requiredText(formData, "official_subject_identifier"),
+          person_id: evidenceId(formData, "person_id"),
+          expected_person_source_id: requiredText(formData, "expected_person_source_id"),
+          identity_evidence_document_id: evidenceId(
+            formData,
+            "identity_evidence_document_id",
+          ),
+          expected_identity_evidence_sha256: sha256(
+            formData,
+            "expected_identity_evidence_sha256",
+          ),
+          recording_rationale: requiredText(formData, "recording_rationale"),
+          confirm_exact_official_identifier: true,
+          confirm_second_official_source_reviewed: true,
+          confirm_no_name_or_fuzzy_matching: true,
+          confirm_identifier_will_only_persist_as_hmac: true,
+          confirm_same_person: true,
+        }),
+      },
+    );
+  } catch (error) {
+    failure = actionError(error);
+  }
+  if (failure) redirect(failureDestination(destination, failure));
+  revalidatePath(destination);
+  redirect(`${destination}?sucesso=identidade-exata-registada`);
+}
+
+export async function publishEptPublicInterest(formData: FormData) {
+  const caseReference = evidenceId(formData, "expected_case_id");
+  const destination = "/admin/revisao/declaracoes";
+  let failure: string | null = null;
+  try {
+    for (const [field, message] of [
+      ["confirm_source_and_archive_reviewed", "Confirme a fonte e o arquivo"],
+      ["confirm_exact_identity_link_reviewed", "Confirme a ligação de identidade exata"],
+      [
+        "confirm_independent_legal_assessment_reviewed",
+        "Confirme a avaliação jurídica independente",
+      ],
+      ["confirm_public_interest_metadata_only", "Confirme os metadados mínimos"],
+      [
+        "confirm_no_income_asset_or_protected_identifier",
+        "Confirme que nenhum conteúdo protegido será publicado",
+      ],
+      ["confirm_append_only_publication", "Confirme a publicação append-only"],
+      ["confirm_publication", "Confirme a publicação"],
+    ] as const) {
+      if (formData.get(field) !== "on") throw new Error(message);
+    }
+    await editorialFetch<EptPublicInterestPublicationResult>(
+      `/ept/cases/${encodeURIComponent(caseReference)}/publication`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          expected_case_id: caseReference,
+          expected_revision: expectedRevision(formData),
+          expected_version_id: evidenceId(formData, "expected_version_id"),
+          expected_version_sha256: sha256(formData, "expected_version_sha256"),
+          expected_observation_id: evidenceId(formData, "expected_observation_id"),
+          expected_source_sha256: sha256(formData, "expected_source_sha256"),
+          expected_source_record_sha256: sha256(formData, "expected_source_record_sha256"),
+          expected_declaration_id: evidenceId(formData, "expected_declaration_id"),
+          expected_person_id: evidenceId(formData, "expected_person_id"),
+          expected_identity_link_id: evidenceId(formData, "expected_identity_link_id"),
+          expected_identity_proof_sha256: sha256(
+            formData,
+            "expected_identity_proof_sha256",
+          ),
+          expected_legal_assessment_id: evidenceId(
+            formData,
+            "expected_legal_assessment_id",
+          ),
+          expected_legal_document_sha256: sha256(
+            formData,
+            "expected_legal_document_sha256",
+          ),
+          expected_legal_assessment_proof_sha256: sha256(
+            formData,
+            "expected_legal_assessment_proof_sha256",
+          ),
+          expected_publication_proof_sha256: sha256(
+            formData,
+            "expected_publication_proof_sha256",
+          ),
+          rationale: requiredText(formData, "rationale"),
+          public_rationale: requiredText(formData, "public_rationale"),
+          confirm_source_and_archive_reviewed: true,
+          confirm_exact_identity_link_reviewed: true,
+          confirm_independent_legal_assessment_reviewed: true,
+          confirm_public_interest_metadata_only: true,
+          confirm_no_income_asset_or_protected_identifier: true,
+          confirm_append_only_publication: true,
+          confirm_publication: true,
+        }),
+      },
+    );
+  } catch (error) {
+    failure = actionError(error);
+  }
+  if (failure) redirect(failureDestination(destination, failure));
+  revalidatePath(destination);
+  revalidatePath("/politicos");
+  redirect(`${destination}?sucesso=metadados-ept-publicados`);
+}
+
+export async function withdrawEptPublicInterest(formData: FormData) {
+  const caseReference = evidenceId(formData, "expected_case_id");
+  const destination = "/admin/revisao/declaracoes";
+  let failure: string | null = null;
+  try {
+    for (const [field, message] of [
+      ["confirm_source_and_publication_reviewed", "Confirme a fonte e a publicação"],
+      ["confirm_public_effect_reviewed", "Confirme o efeito público"],
+      ["confirm_declaration_and_history_preserved", "Confirme a preservação do histórico"],
+      [
+        "confirm_identity_and_legal_records_preserved",
+        "Confirme a preservação dos registos privados",
+      ],
+      ["confirm_withdrawal", "Confirme a retirada"],
+    ] as const) {
+      if (formData.get(field) !== "on") throw new Error(message);
+    }
+    const reasonCategory = requiredText(formData, "reason_category");
+    if (!(reasonCategory in PARLIAMENT_WITHDRAWAL_REASON_LABELS)) {
+      throw new Error("Motivo de retirada inválido");
+    }
+    await editorialFetch<EptPublicInterestWithdrawalResult>(
+      `/ept/cases/${encodeURIComponent(caseReference)}/withdrawal`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          expected_case_id: caseReference,
+          expected_revision: expectedRevision(formData),
+          expected_version_id: evidenceId(formData, "expected_version_id"),
+          expected_version_sha256: sha256(formData, "expected_version_sha256"),
+          expected_declaration_id: evidenceId(formData, "expected_declaration_id"),
+          expected_source_sha256: sha256(formData, "expected_source_sha256"),
+          expected_publication_proof_sha256: sha256(
+            formData,
+            "expected_publication_proof_sha256",
+          ),
+          expected_withdrawal_proof_sha256: sha256(
+            formData,
+            "expected_withdrawal_proof_sha256",
+          ),
+          expected_public_review_id: evidenceId(formData, "expected_public_review_id"),
+          expected_publication_audit_event_id: evidenceId(
+            formData,
+            "expected_publication_audit_event_id",
+          ),
+          expected_publication_event_id: evidenceId(
+            formData,
+            "expected_publication_event_id",
+          ),
+          expected_publication_event_sha256: sha256(
+            formData,
+            "expected_publication_event_sha256",
+          ),
+          expected_public_effect_sha256: sha256(
+            formData,
+            "expected_public_effect_sha256",
+          ),
+          rationale: requiredText(formData, "rationale"),
+          public_rationale: requiredText(formData, "public_rationale"),
+          reason_category: reasonCategory as ParliamentWithdrawalReason,
+          confirm_source_and_publication_reviewed: true,
+          confirm_public_effect_reviewed: true,
+          confirm_declaration_and_history_preserved: true,
+          confirm_identity_and_legal_records_preserved: true,
+          confirm_withdrawal: true,
+        }),
+      },
+    );
+  } catch (error) {
+    failure = actionError(error);
+  }
+  if (failure) redirect(failureDestination(destination, failure));
+  revalidatePath(destination);
+  revalidatePath("/politicos");
+  redirect(`${destination}?sucesso=metadados-ept-retirados`);
 }
 
 export async function createPoliticianAttendanceProposal(formData: FormData) {

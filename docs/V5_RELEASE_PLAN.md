@@ -3,7 +3,7 @@
 ## Estado de referência
 
 Este plano fixa o âmbito necessário para concluir a `v0.5.0`. Foi preparado em 13 de agosto de
-2026 e atualizado em 28 de agosto de 2026 a partir do código integrado em `main`, da produção
+2026 e atualizado em 29 de agosto de 2026 a partir do código integrado em `main`, da produção
 pública e dos princípios de governação do projeto. Não autoriza deploy, migração remota, criação de
 utilizadores, alteração de segredos, geração por IA, publicação, retirada ou tratamento de dados
 reais.
@@ -11,7 +11,7 @@ reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.46 preparadas; staging remoto pendente |
+| Código V5 | V5.1 a V5.47 preparadas; staging remoto pendente |
 | Frontend público | V5.21 preparado; capacidades sem backend ou esquema pronto ficam fail-closed |
 | API pública | `0.5.0-alpha.0`; capacidades anunciadas apenas após prova read-only do esquema |
 | Painel editorial | implementado no código, não ativado em produção |
@@ -316,6 +316,9 @@ Critérios de saída:
 - a [V5.46](V5_EPT_PUBLIC_INTEREST_EDITORIAL.md) admite somente metadados privados do registo
   público de interesses, converte o identificador do titular para HMAC e cria uma proposta
   `PENDING` sem ligação de identidade ou publicação;
+- a [V5.47](V5_EPT_LEGAL_PUBLICATION_GATE.md) exige segunda fonte oficial, avaliação jurídica
+  humana documentada, `ADMIN` com MFA e preview com hashes antes de publicar ou retirar; esta
+  porta técnica não substitui a revisão jurídica real necessária para ativar o domínio;
 - cada área mostra `AVAILABLE`, `PARTIAL` ou `UNAVAILABLE` com fundamento e período.
 
 ### 6. Promessómetro do Programa do XXV Governo

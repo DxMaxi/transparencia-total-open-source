@@ -103,6 +103,13 @@ de atividade e do mandato individual revisto. Iniciativas permanecem indisponív
 normalização não fornecer uma relação de autoria por identificador oficial. A ligação geral ao
 portal da Entidade para a Transparência é uma porta de pesquisa, não prova individual.
 
+Uma observação individual EPT permanece privada até cumprir a porta V5.47: processo aprovado,
+HMAC coincidente, segunda fonte oficial arquivada ligada ao identificador oficial da pessoa,
+avaliação jurídica humana independente registada e decisão de `ADMIN` com MFA. A base de dados
+conserva ligação e avaliação em tabelas privadas append-only. A publicação acrescenta somente
+metadados mínimos e a retirada acrescenta uma nova decisão; nenhuma das operações apaga prova ou
+histórico. O sistema verifica estes registos, mas não emite parecer jurídico.
+
 ### Estado de promessa
 
 A ingestão liga a frase e página do programa a evidência oficial. Um revisor propõe estado e

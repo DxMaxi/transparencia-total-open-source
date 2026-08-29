@@ -989,6 +989,16 @@ body:has(.private-route-frame) #conteudo { min-height: 100vh; }
 .parliament-proposal-card--existing { border-color: #b9ded8; background: #f0faf8; }
 .parliament-proposal-card .admin-confirmation { color: var(--ink-soft); font-size: 10px; font-weight: 600; letter-spacing: normal; text-transform: none; }
 .parliament-proposal-card .button { justify-self: start; }
+.ept-gate-stack { display: grid; gap: 14px; }
+.ept-gate-stack details > summary { color: var(--navy); font-size: 13px; font-weight: 760; cursor: pointer; }
+.ept-gate-stack details[open] > summary { margin-bottom: 10px; }
+.ept-gate-stack .admin-form-grid > label:not(.admin-confirmation) { display: grid; gap: 6px; color: var(--navy); font-size: 9px; font-weight: 730; letter-spacing: .04em; text-transform: uppercase; }
+.ept-gate-stack input:not([type="checkbox"]):not([type="hidden"]), .ept-gate-stack select, .ept-gate-stack textarea { min-height: 42px; padding: 10px 11px; border: 1px solid var(--line); border-radius: 9px; background: white; color: var(--ink); font: inherit; font-size: 11px; letter-spacing: normal; text-transform: none; }
+.ept-gate-stack textarea { min-height: 92px; resize: vertical; line-height: 1.55; }
+.admin-summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin: 0; }
+.admin-summary-grid > div { min-width: 0; padding: 11px; border: 1px solid var(--line); border-radius: 9px; background: white; }
+.admin-summary-grid dt { color: var(--muted); font-size: 8px; font-weight: 760; letter-spacing: .05em; text-transform: uppercase; }
+.admin-summary-grid dd { margin: 5px 0 0; color: var(--ink-soft); font-size: 10px; line-height: 1.45; }
 .parliament-publication-card { border-color: #a8d8d0; background: #f5fbfa; }
 .parliament-publication-card > dl { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 0; }
 .parliament-publication-card > dl > div { min-width: 0; padding: 10px; border: 1px solid #cfe6e2; border-radius: 9px; background: white; }
@@ -1021,7 +1031,7 @@ body:has(.private-route-frame) #conteudo { min-height: 100vh; }
   .admin-case-card { grid-template-columns: 1fr; gap: 13px; }
   .admin-proof-inline { grid-column: auto; grid-template-columns: 1fr 1fr; }
   .admin-case-card__open { grid-column: auto; grid-row: auto; justify-self: start; }
-  .admin-form-grid, .admin-decision-grid, .admin-action-section, .admin-publication-panel { grid-template-columns: 1fr; }
+  .admin-form-grid, .admin-decision-grid, .admin-action-section, .admin-publication-panel, .admin-summary-grid { grid-template-columns: 1fr; }
   .admin-field-wide { grid-column: auto; }
   .admin-history-list dl { grid-template-columns: 1fr 1fr; }
   .admin-heading-actions { justify-content: flex-start; }
