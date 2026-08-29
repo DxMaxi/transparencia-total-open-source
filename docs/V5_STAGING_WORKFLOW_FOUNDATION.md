@@ -104,6 +104,11 @@ notas de revisão ou linhas das tabelas. Para a operação de migração, o mesm
 depois da escrita e passa a exigir todas as migrações V5. Para a inspeção de prontidão, as migrações
 V5 são verificadas antes de executar o inspetor editorial read-only já existente.
 
+A V5.48 acrescenta a operação manual `stage-government-programme-catalogue`. Depois do inventário
+geral, o próprio comando volta a inspecionar em modo read-only a migração exata do catálogo, as
+três tabelas privadas, RLS e os triggers append-only. Só depois pode arquivar o PDF oficial e
+persistir candidatos `PENDING`; não existe operação equivalente no workflow de produção.
+
 ## Ordem e falha segura
 
 ```mermaid

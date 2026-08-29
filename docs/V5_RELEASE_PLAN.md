@@ -11,14 +11,14 @@ reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.47 preparadas; staging remoto pendente |
+| Código V5 | V5.1 a V5.48 preparadas; staging remoto pendente |
 | Frontend público | V5.21 preparado; capacidades sem backend ou esquema pronto ficam fail-closed |
 | API pública | `0.5.0-alpha.0`; capacidades anunciadas apenas após prova read-only do esquema |
 | Painel editorial | implementado no código, não ativado em produção |
 | IA | geração, revisão, publicação e retirada implementadas; esquema remoto ainda não ativado |
 | Parlamento | matriz V5.21 e gates V5.22–V5.45 preparados; ativação editorial pendente |
 | Perfis | ciclo integral de entrada, publicação, retirada e republicação provado; domínios individuais pendentes |
-| Promessómetro | catálogo editorial inicial de 10 compromissos; vocabulário V5.20 protegido |
+| Promessómetro | amostra pública de 10; catálogo V5.48 com 1 590 candidatos privados em 40 blocos, ainda sem consolidação humana |
 | Investigador Cívico | zero contratos e zero relações na projeção pública |
 | PWA e alertas | consentimento, revogação e cache opt-in integrados; configuração remota pendente |
 | Repositório | privado e licenciado como código disponível para uso não comercial |
@@ -334,6 +334,13 @@ Critérios de saída:
 - anúncio, aprovação jurídica, entrada em vigor, execução e resultado material são distintos;
 - cada alteração de estado acrescenta revisão, fundamento e evento temporal;
 - filtros por ministério, área, estado e data usam apenas campos revistos.
+
+A [V5.48 — catálogo integral privado do Programa do XXV Governo](V5_PROMESSOMETRO_CATALOGUE.md)
+fecha a primeira fundação: fonte oficial fixada por SHA-256, extração determinística dos 40 blocos,
+1 590 candidatos `PENDING`, cobertura por âncoras e persistência privada append-only. A contagem é
+deliberadamente apresentada como candidatos, não como promessas. Continuam pendentes a execução
+em staging, a consolidação humana, os critérios públicos, as provas de execução e a publicação
+editorial específica.
 
 ### 7. Investigador Cívico
 

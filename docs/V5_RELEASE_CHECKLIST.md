@@ -88,6 +88,10 @@ continuam a exigir autorizações separadas.
   imutável e a projeção pública exigem igualdade exata com `people.source_id`, sem backfill.
 - [x] A V5.45 mantém o backend compatível antes da migração e suspende a recolha diária sem contacto
   externo nem escrita enquanto a coluna, a restrição e o índice não estiverem comprovados.
+- [x] V5.48 — o Programa do XXV Governo fica fixado por URL, data, tamanho, 252 páginas e SHA-256;
+  um extrator determinístico reproduz 1 590 candidatos privados em 40 blocos com hashes próprios.
+- [x] V5.48 — a antiga publicação direta fica desativada; staging exige migração, RLS e triggers
+  comprovados antes do arquivo e cria zero promessas, revisões ou projeções públicas.
 - [x] Existe um [conjunto de issues de conclusão](https://github.com/DxMaxi/transparencia-total-open-source/issues/58) para todos os itens ainda abertos.
 
 ## B. Estabilização pública
@@ -219,8 +223,15 @@ continuam a exigir autorizações separadas.
 
 - [ ] Critério público para identificar um compromisso verificável aprovado.
 - [ ] Programa do XXV Governo arquivado e versionado.
+  - [x] V5.48 — versão oficial fixada em manifesto por URL, data, tamanho, páginas e SHA-256.
+  - [ ] Aplicar a migração e arquivar a versão exata no staging segregado.
 - [ ] Todos os compromissos individualizáveis catalogados.
+  - [x] V5.48 — 1 590 itens enumerados entram como candidatos privados; isto não os classifica
+    automaticamente como compromissos.
+  - [ ] Consolidar, excluir ou individualizar os candidatos por decisão humana fundamentada.
 - [ ] Página ou âncora oficial preservada por compromisso.
+  - [x] V5.48 — o candidato técnico conserva bloco, marcador e intervalo de páginas.
+  - [ ] A futura projeção pública tem de conservar o localizador depois da consolidação humana.
 - [ ] Provas de diploma, orçamento, regulamentação e execução separadas.
 - [x] Estados públicos limitados ao vocabulário editorial aprovado, com
   [compatibilidade histórica fail-closed](V5_PROMESSOMETRO_VOCABULARY.md).
@@ -228,6 +239,9 @@ continuam a exigir autorizações separadas.
 - [ ] Linha temporal pública preserva todos os estados anteriores.
 - [ ] Filtros por ministério, área, estado e data testados.
 - [ ] Uma lei publicada não é tratada automaticamente como execução material.
+
+Metodologia e limites desta fundação: [V5.48 — catálogo integral privado do Programa do XXV
+Governo](V5_PROMESSOMETRO_CATALOGUE.md).
 
 ## H. Investigador Cívico
 

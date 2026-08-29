@@ -11,6 +11,7 @@ on:
           - inventory-read-only
           - migrate-schema
           - inspect-readiness-read-only
+          - stage-government-programme-catalogue
       expected_project_ref:
         description: Project ref Supabase de staging confirmado
         required: true
@@ -118,3 +119,11 @@ jobs:
         if: ${{ inputs.operation == 'inspect-readiness-read-only' }}
         working-directory: backend
         run: python -m scripts.inspect_editorial_staging_readiness --confirm-read-only
+
+      - name: Recolher catálogo integral do Programa do Governo em privado
+        if: ${{ inputs.operation == 'stage-government-programme-catalogue' }}
+        working-directory: backend
+        run: >-
+          python -m scripts.stage_government_programme_catalogue
+          --confirm-private-staging
+          --actor-alias "github:${{ github.actor }}"

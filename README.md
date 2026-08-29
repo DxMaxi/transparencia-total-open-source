@@ -23,7 +23,7 @@ definição da Open Source Initiative.
 > commit final desse fecho. A V5 começa pela governação de licença e pelo circuito editorial
 > privado; esta branch não altera os dados aprovados da V4.
 
-> **V5.1 a V5.46 preparadas; ativação remota de staging pendente:** o painel privado usa
+> **V5.1 a V5.48 preparadas; ativação remota de staging pendente:** o painel privado usa
 > login por convite,
 > MFA obrigatório, funções de administrador/revisor, comparação entre fonte atestada e JSON
 > normalizado, versões e decisões append-only. A V5.2 acrescentou propostas parlamentares privadas,
@@ -124,6 +124,13 @@ definição da Open Source Initiative.
 > dos votos nominais: guarda o identificador oficial individual numa nova fotografia de parser,
 > exige igualdade exata com `people.source_id` e não faz backfill das linhas antigas. A publicação e
 > a retirada continuam nos gates humanos V5.2 a V5.4; posições coletivas nunca entram no perfil. A
+> V5.46 cria apenas observações privadas do registo público de interesses EPT, protege o
+> identificador do titular por HMAC e exclui conteúdo patrimonial. A V5.47 exige segunda fonte
+> oficial, ligação inequívoca por identificador, avaliação jurídica humana, `ADMIN` com MFA e uma
+> porta específica para publicar ou retirar metadados mínimos. A V5.48 substitui o publicador
+> direto da amostra do Promessómetro por um catálogo integral privado: o PDF oficial fica fixado
+> por URL, data, 252 páginas e SHA-256; 1 590 itens enumerados em 40 blocos permanecem candidatos
+> `PENDING`, sem serem automaticamente classificados como promessas ou cumprimento. A
 > ativação real continua dependente dos gates operacionais de staging. O código e os testes
 > não executam estas operações sobre staging ou
 > produção. O plano e a checklist
@@ -168,6 +175,8 @@ definição da Open Source Initiative.
 > [Retirada imutável de autoria individual V5.44](docs/V5_POLITICIAN_INITIATIVE_AUTHORSHIP_WITHDRAWAL.md),
 > [Prova persistida de identidade em votos nominais V5.45](docs/V5_POLITICIAN_NOMINAL_VOTE_IDENTITY.md),
 > [circuito privado EPT para registos públicos de interesses V5.46](docs/V5_EPT_PUBLIC_INTEREST_EDITORIAL.md),
+> [porta jurídica e publicação específica EPT V5.47](docs/V5_EPT_LEGAL_PUBLICATION_GATE.md),
+> [catálogo integral privado do Programa do XXV Governo V5.48](docs/V5_PROMESSOMETRO_CATALOGUE.md),
 > [Adaptador parlamentar V5.2](docs/V5_PARLIAMENT_EDITORIAL_ADAPTER.md) e
 > [Publicação parlamentar por âmbito V5.3](docs/V5_PARLIAMENT_SCOPE_PUBLICATION.md),
 > [Retirada parlamentar imutável V5.4](docs/V5_PARLIAMENT_WITHDRAWAL.md) e
