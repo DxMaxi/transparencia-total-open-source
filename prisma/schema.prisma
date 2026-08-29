@@ -797,6 +797,96 @@ model GovernmentProgramme {
   @@map("government_programmes")
 }
 
+/// Versão privada e imutável do catálogo extraído de bytes oficiais exatos.
+/// A criação desta fotografia nunca cria Promise, PromiseReview ou publicação.
+model GovernmentProgrammeSnapshot {
+  id                   String                               @id
+  governmentNumber     String                               @map("government_number")
+  title                String
+  sourceDocumentId     String                               @map("source_document_id")
+  sourceContentSha256  String                               @map("source_content_sha256") @db.Char(64)
+  sourceByteSize       Int                                  @map("source_byte_size")
+  sourcePageCount      Int                                  @map("source_page_count")
+  methodologyVersion   String                               @map("methodology_version")
+  parserVersion        String                               @map("parser_version")
+  layoutManifestSha256 String                               @map("layout_manifest_sha256") @db.Char(64)
+  catalogueSha256      String                               @map("catalogue_sha256") @db.Char(64)
+  candidateCount       Int                                  @map("candidate_count")
+  coverageBlockCount   Int                                  @map("coverage_block_count")
+  catalogueState       String                               @default("PRIVATE_PENDING_REVIEW") @map("catalogue_state")
+  publicationPerformed Boolean                              @default(false) @map("publication_performed")
+  observedAt           DateTime                             @map("observed_at")
+  stagedByAlias        String                               @map("staged_by_alias")
+  createdAt            DateTime                             @default(now()) @map("created_at")
+  sourceDocument       SourceDocument                       @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
+  candidates           GovernmentPromiseCandidate[]
+  coverage             GovernmentPromiseCatalogueCoverage[]
+
+  @@unique([sourceDocumentId, methodologyVersion])
+  @@index([governmentNumber, observedAt])
+  @@index([sourceContentSha256])
+  @@map("government_programme_snapshots")
+}
+
+/// Livro de cobertura privado: prova que cada bloco declarado no manifesto foi
+/// lido e quantifica os itens explícitos encontrados, sem afirmar que são promessas.
+model GovernmentPromiseCatalogueCoverage {
+  id              String                      @id
+  snapshotId      String                      @map("snapshot_id")
+  blockId         String                      @map("block_id")
+  part            String
+  area            String
+  sectionPath     String                      @map("section_path")
+  startPage       Int                         @map("start_page")
+  endPage         Int                         @map("end_page")
+  startAnchor     String                      @map("start_anchor")
+  endAnchor       String?                     @map("end_anchor")
+  extractionState String                      @default("EXTRACTED") @map("extraction_state")
+  candidateCount  Int                         @map("candidate_count")
+  blockSha256     String                      @map("block_sha256") @db.Char(64)
+  createdAt       DateTime                    @default(now()) @map("created_at")
+  snapshot        GovernmentProgrammeSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
+
+  @@unique([snapshotId, blockId])
+  @@index([snapshotId, startPage])
+  @@map("government_promise_catalogue_coverage")
+}
+
+/// Item explicitamente enumerado no programa oficial. É apenas um candidato
+/// privado; os critérios, a revisão humana e a publicação pertencem a fases distintas.
+model GovernmentPromiseCandidate {
+  id                   String                      @id
+  snapshotId           String                      @map("snapshot_id")
+  candidateKey         String                      @map("candidate_key")
+  blockId              String                      @map("block_id")
+  ordinal              Int
+  parentOrdinal        Int?                        @map("parent_ordinal")
+  hierarchyLevel       Int                         @map("hierarchy_level")
+  sourceMarker         String                      @map("source_marker")
+  area                 String
+  sectionPath          String                      @map("section_path")
+  programmePageStart   Int                         @map("programme_page_start")
+  programmePageEnd     Int                         @map("programme_page_end")
+  statementText        String                      @map("statement_text")
+  statementSha256      String                      @map("statement_sha256") @db.Char(64)
+  sourceLocatorSha256  String                      @map("source_locator_sha256") @db.Char(64)
+  identificationBasis  String                      @default("EXPLICIT_ENUMERATED_PROGRAMME_ITEM") @map("identification_basis")
+  criterionState       String                      @default("REQUIRES_HUMAN_DEFINITION") @map("criterion_state")
+  reviewState          String                      @default("PENDING") @map("review_state")
+  publicationState     String                      @default("PRIVATE_NOT_PUBLISHED") @map("publication_state")
+  publicationPerformed Boolean                     @default(false) @map("publication_performed")
+  observedAt           DateTime                    @map("observed_at")
+  createdAt            DateTime                    @default(now()) @map("created_at")
+  snapshot             GovernmentProgrammeSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
+
+  @@unique([snapshotId, candidateKey])
+  @@unique([snapshotId, blockId, ordinal])
+  @@index([snapshotId, area, programmePageStart])
+  @@index([reviewState, createdAt])
+  @@index([statementSha256])
+  @@map("government_promise_candidates")
+}
+
 model Promise {
   id                 String              @id @default(cuid())
   programmeId        String              @map("programme_id")
@@ -1696,6 +1786,7 @@ model SourceDocument {
   voteRecords                         VoteRecord[]
   laws                                Law[]
   governmentProgrammes                GovernmentProgramme[]
+  governmentProgrammeSnapshots        GovernmentProgrammeSnapshot[]
   promiseEvidence                     PromiseEvidence[]
   promiseReviews                      PromiseReview[]
   publicStatements                    PublicStatement[]

@@ -198,6 +198,18 @@ publicação foi bloqueada e a consulta pública exige agora um futuro evento EP
 V5.47 continua dependente de prova de identidade inequívoca e revisão jurídica independente. Não
 foi executada migração, recolha ou operação sobre dados reais.
 
+A V5.47 implementa essa porta técnica sem substituir a decisão jurídica: exige uma segunda fonte
+oficial arquivada ligada ao identificador exato da pessoa, HMAC coincidente, avaliação jurídica
+humana independente registada e uma ação `ADMIN` com MFA. Publicação e retirada acrescentam apenas
+metadados mínimos, revisões, decisões e eventos; a prova privada e o histórico nunca são apagados.
+
+A V5.48 inicia a substituição segura da amostra pública do Promessómetro. O PDF oficial do Programa
+do XXV Governo fica fixado por URL, data, tamanho, 252 páginas e SHA-256. Um extrator determinístico
+reproduz 1 590 itens enumerados em 40 blocos, cada um com página, hierarquia e hashes, mas guarda-os
+apenas como candidatos privados `PENDING`. A operação antiga de publicação direta foi desativada.
+Continuam pendentes a migração e ingestão em staging, a consolidação humana, os critérios públicos,
+as provas de execução e qualquer projeção pública.
+
 A melhoria de UX iniciada em agosto de 2026 faz parte da estabilização/conclusão da **V5**. Não deve ser tratada como início de uma V6 nem como autorização para reescrever o projeto.
 
 ## 5. Baseline técnico conhecido

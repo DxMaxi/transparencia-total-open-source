@@ -28,6 +28,10 @@ const environment = (overrides = {}) => ({
 });
 
 test("the staging workflow accepts only operation-specific confirmations", () => {
+  assert.equal(
+    STAGING_OPERATION_CONFIRMATIONS["stage-government-programme-catalogue"],
+    "STAGING-STAGE-GOVERNMENT-PROGRAMME",
+  );
   for (const [operation, confirmation] of Object.entries(STAGING_OPERATION_CONFIRMATIONS)) {
     const request = resolveStagingWorkflowRequest(
       environment({ REQUESTED_OPERATION: operation, REQUESTED_CONFIRMATION: confirmation }),

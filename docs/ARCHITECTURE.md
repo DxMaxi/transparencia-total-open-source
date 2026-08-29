@@ -112,9 +112,15 @@ histórico. O sistema verifica estes registos, mas não emite parecer jurídico.
 
 ### Estado de promessa
 
-A ingestão liga a frase e página do programa a evidência oficial. Um revisor propõe estado e
-justificação; outro aprova ou devolve. A alteração cria `PromiseReview` e `AuditEvent`. O frontend
-mostra o fundamento atual e o histórico.
+A ingestão V5.48 fixa o PDF oficial por URL, data, tamanho, páginas e SHA-256 e extrai apenas itens
+explicitamente enumerados. Cada item conserva bloco, hierarquia, intervalo de páginas e hashes numa
+fotografia privada append-only; permanece `PENDING` e não cria `Promise` nem `PromiseReview`.
+
+Uma fase editorial posterior consolida os candidatos segundo critérios públicos e liga separadamente
+diploma, orçamento, regulamentação, execução e resultado material. Só depois um revisor pode propor
+estado e justificação e outra decisão pode publicar. A alteração acrescenta `PromiseReview` e
+`AuditEvent`; o frontend mostra o fundamento atual e o histórico. Ausência de prova nunca equivale
+a incumprimento.
 
 ### Resumo de diploma
 
