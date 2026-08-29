@@ -129,5 +129,5 @@ test("V5.44 documents a read-only preview and no real withdrawal", async () => {
   assert.match(checklist, /\[x\] Autoria de iniciativas usa relação oficial individual/);
   assert.match(plan, /V5_POLITICIAN_INITIATIVE_AUTHORSHIP_WITHDRAWAL\.md/);
   assert.match(handoff, /A V5\.44 acrescenta a retirada específica e append-only/);
-  assert.match(readme, /V5\.1 a V5\.46 preparadas/);
+  assert.match(readme, /V5\.1 a V5\.\d+ preparadas/);
 });

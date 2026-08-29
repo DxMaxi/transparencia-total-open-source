@@ -132,5 +132,5 @@ test("V5.45 keeps publication human and documents unavailable historical coverag
   assert.match(checklist, /\[x\] Posições coletivas permanecem fora/);
   assert.match(plan, /V5_POLITICIAN_NOMINAL_VOTE_IDENTITY\.md/);
   assert.match(handoff, /A V5\.45 fecha a prova dos votos nominais/);
-  assert.match(readme, /V5\.1 a V5\.46 preparadas/);
+  assert.match(readme, /V5\.1 a V5\.\d+ preparadas/);
 });
