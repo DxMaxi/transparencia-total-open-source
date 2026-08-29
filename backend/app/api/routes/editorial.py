@@ -10,6 +10,7 @@ from app.api.dependencies import (
     get_ai_editorial_repository,
     get_editorial_repository,
     get_ept_declaration_editorial_repository,
+    get_ept_declaration_publication_gate_repository,
     get_parliament_editorial_publication_repository,
     get_parliament_editorial_repository,
     get_politician_attendance_editorial_repository,
@@ -65,7 +66,13 @@ from app.models.editorial import (
     PoliticianProfileSnapshotWithdrawalRequest,
     StaffSession,
 )
-from app.models.ept_declaration import EptPublicInterestEditorialProposalRequest
+from app.models.ept_declaration import (
+    EptExactIdentityLinkRequest,
+    EptLegalAssessmentRecordRequest,
+    EptPublicInterestEditorialProposalRequest,
+    EptPublicInterestPublicationRequest,
+    EptPublicInterestWithdrawalRequest,
+)
 from app.repositories.ai_editorial import AiEditorialRepository
 from app.repositories.ai_editorial_publication import AiEditorialPublicationRepository
 from app.repositories.editorial import (
@@ -75,6 +82,9 @@ from app.repositories.editorial import (
     EditorialSourceError,
 )
 from app.repositories.ept_declaration_editorial import EptDeclarationEditorialRepository
+from app.repositories.ept_declaration_publication import (
+    EptDeclarationPublicationGateRepository,
+)
 from app.repositories.parliament_editorial import ParliamentEditorialRepository
 from app.repositories.parliament_editorial_publication import (
     ParliamentEditorialPublicationRepository,
@@ -185,6 +195,149 @@ async def create_ept_public_interest_proposal(
     try:
         return await repository.create_proposal(payload=payload, actor=actor)
     except (EditorialConflictError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.get("/ept/cases/{case_id}/gate")
+async def ept_public_interest_gate(
+    case_id: Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,200}$")],
+    repository: Annotated[
+        EptDeclarationPublicationGateRepository,
+        Depends(get_ept_declaration_publication_gate_repository),
+    ],
+    _actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> dict[str, object]:
+    """Mostra provas e bloqueios privados sem escrever nem formular parecer jurídico."""
+
+    try:
+        return await repository.inspect_gate(case_id=case_id)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.post(
+    "/ept/cases/{case_id}/legal-assessments",
+    status_code=status.HTTP_201_CREATED,
+)
+async def record_ept_legal_assessment(
+    case_id: Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,200}$")],
+    payload: EptLegalAssessmentRecordRequest,
+    repository: Annotated[
+        EptDeclarationPublicationGateRepository,
+        Depends(get_ept_declaration_publication_gate_repository),
+    ],
+    actor: Annotated[StaffSession, Depends(require_editorial_admin)],
+) -> dict[str, object]:
+    """Regista o documento humano externo; o sistema não emite a avaliação."""
+
+    try:
+        return await repository.record_legal_assessment(
+            case_id=case_id,
+            payload=payload,
+            actor=actor,
+        )
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.post(
+    "/ept/cases/{case_id}/identity-links",
+    status_code=status.HTTP_201_CREATED,
+)
+async def record_ept_exact_identity_link(
+    case_id: Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,200}$")],
+    payload: EptExactIdentityLinkRequest,
+    repository: Annotated[
+        EptDeclarationPublicationGateRepository,
+        Depends(get_ept_declaration_publication_gate_repository),
+    ],
+    actor: Annotated[StaffSession, Depends(require_editorial_admin)],
+) -> dict[str, object]:
+    """Converte o identificador para HMAC e liga só com segunda fonte oficial exata."""
+
+    try:
+        return await repository.record_identity_link(
+            case_id=case_id,
+            payload=payload,
+            actor=actor,
+        )
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.get("/ept/cases/{case_id}/publication")
+async def ept_public_interest_publication_preview(
+    case_id: Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,200}$")],
+    repository: Annotated[
+        EptDeclarationPublicationGateRepository,
+        Depends(get_ept_declaration_publication_gate_repository),
+    ],
+    _actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> dict[str, object]:
+    """Reconstrói toda a prova específica sem escrever na projeção pública."""
+
+    try:
+        return await repository.inspect_publication(case_id=case_id)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.post(
+    "/ept/cases/{case_id}/publication",
+    status_code=status.HTTP_201_CREATED,
+)
+async def publish_ept_public_interest_metadata(
+    case_id: Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,200}$")],
+    payload: EptPublicInterestPublicationRequest,
+    repository: Annotated[
+        EptDeclarationPublicationGateRepository,
+        Depends(get_ept_declaration_publication_gate_repository),
+    ],
+    actor: Annotated[StaffSession, Depends(require_editorial_admin)],
+) -> dict[str, object]:
+    """Publica apenas metadados mínimos numa transação ADMIN com MFA."""
+
+    try:
+        return await repository.publish(case_id=case_id, payload=payload, actor=actor)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.get("/ept/cases/{case_id}/withdrawal")
+async def ept_public_interest_withdrawal_preview(
+    case_id: Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,200}$")],
+    repository: Annotated[
+        EptDeclarationPublicationGateRepository,
+        Depends(get_ept_declaration_publication_gate_repository),
+    ],
+    _actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> dict[str, object]:
+    """Simula a retirada sem apagar metadados, identidade, parecer ou histórico."""
+
+    try:
+        return await repository.inspect_withdrawal(case_id=case_id)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.post(
+    "/ept/cases/{case_id}/withdrawal",
+    status_code=status.HTTP_201_CREATED,
+)
+async def withdraw_ept_public_interest_metadata(
+    case_id: Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,200}$")],
+    payload: EptPublicInterestWithdrawalRequest,
+    repository: Annotated[
+        EptDeclarationPublicationGateRepository,
+        Depends(get_ept_declaration_publication_gate_repository),
+    ],
+    actor: Annotated[StaffSession, Depends(require_editorial_admin)],
+) -> dict[str, object]:
+    """Retira a visibilidade e acrescenta prova imutável numa transação ADMIN com MFA."""
+
+    try:
+        return await repository.withdraw(case_id=case_id, payload=payload, actor=actor)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
         raise _translate_error(exc) from exc
 
 

@@ -355,6 +355,7 @@ model Person {
   assetDeclarations          AssetDeclarationMetadata[]
   interestEntity             InterestEntity?
   protectedIdentifiers       ProtectedIdentifierDigest[]
+  eptIdentityLinks           EptExactIdentityLink[]
   judicialSubjects           JudicialCaseSubject[]
   newsMentions               NewsEntityMention[]
   coherenceSnapshots         CoherenceSnapshot[]
@@ -932,6 +933,8 @@ model EptPublicInterestObservation {
   observedAt            DateTime       @map("observed_at")
   createdAt             DateTime       @default(now()) @map("created_at")
   sourceDocument        SourceDocument @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
+  legalAssessments      EptIndependentLegalAssessment[]
+  identityLinks         EptExactIdentityLink[]
 
   @@unique([sourceDocumentId, officialDeclarationId])
   @@index([officialDeclarationId, observedAt])
@@ -939,6 +942,69 @@ model EptPublicInterestObservation {
   @@index([legalReviewStatus, identityLinkStatus, observedAt])
   @@index([sourceRecordSha256])
   @@map("ept_public_interest_observations")
+}
+
+/// Registo privado e imutável de uma avaliação jurídica feita fora do sistema.
+/// O sistema conserva apenas metadados, hashes e a localização cifrada; não se
+/// apresenta como autor do parecer nem transforma esta linha numa fonte factual.
+model EptIndependentLegalAssessment {
+  id                               String                       @id
+  observationId                    String                       @map("observation_id")
+  caseId                           String                       @map("case_id")
+  assessmentScope                  String                       @default("PUBLIC_INTEREST_METADATA_ONLY") @map("assessment_scope")
+  outcome                          String
+  assessmentDocumentSha256         String                       @map("assessment_document_sha256") @db.Char(64)
+  assessmentDocumentStorageBackend String                       @map("assessment_document_storage_backend")
+  assessmentDocumentStorageKey     String                       @map("assessment_document_storage_key")
+  assessmentDocumentByteSize       Int                          @map("assessment_document_byte_size")
+  assessmentDocumentMimeType       String                       @map("assessment_document_mime_type")
+  assessorReferenceSha256          String                       @map("assessor_reference_sha256") @db.Char(64)
+  qualificationEvidenceSha256      String                       @map("qualification_evidence_sha256") @db.Char(64)
+  conflictCheckSha256              String                       @map("conflict_check_sha256") @db.Char(64)
+  assessedAt                       DateTime                     @map("assessed_at")
+  validUntil                       DateTime?                    @map("valid_until")
+  recordedById                     String                       @map("recorded_by_id")
+  recordedByAlias                  String                       @map("recorded_by_alias")
+  createdAt                        DateTime                     @default(now()) @map("created_at")
+  observation                      EptPublicInterestObservation @relation(fields: [observationId], references: [id], onDelete: Restrict)
+  case                             EditorialCase                @relation("EptLegalAssessmentCase", fields: [caseId], references: [id], onDelete: Restrict)
+  recordedBy                       StaffProfile                 @relation("EptLegalAssessmentRecorder", fields: [recordedById], references: [id], onDelete: Restrict)
+
+  @@unique([caseId, assessmentDocumentSha256])
+  @@index([observationId, assessedAt])
+  @@index([caseId, assessedAt])
+  @@index([outcome, validUntil])
+  @@index([recordedById])
+  @@map("ept_independent_legal_assessments")
+}
+
+/// Ligação privada por identificador oficial exato. O valor original nunca é
+/// persistido: apenas o mesmo HMAC da observação EPT e a prova oficial separada.
+model EptExactIdentityLink {
+  id                    String                       @id
+  observationId         String                       @map("observation_id")
+  caseId                String                       @unique @map("case_id")
+  personId              String                       @map("person_id")
+  evidenceDocumentId    String                       @map("evidence_document_id")
+  officialSubjectDigest String                       @map("official_subject_digest") @db.Char(64)
+  personSourceId        String                       @map("person_source_id")
+  evidenceSha256        String                       @map("evidence_sha256") @db.Char(64)
+  linkProofSha256       String                       @unique @map("link_proof_sha256") @db.Char(64)
+  recordedById          String                       @map("recorded_by_id")
+  recordedByAlias       String                       @map("recorded_by_alias")
+  createdAt             DateTime                     @default(now()) @map("created_at")
+  observation           EptPublicInterestObservation @relation(fields: [observationId], references: [id], onDelete: Restrict)
+  case                  EditorialCase                @relation("EptIdentityLinkCase", fields: [caseId], references: [id], onDelete: Restrict)
+  person                Person                       @relation(fields: [personId], references: [id], onDelete: Restrict)
+  evidenceDocument      SourceDocument               @relation("EptIdentityEvidenceDocument", fields: [evidenceDocumentId], references: [id], onDelete: Restrict)
+  recordedBy            StaffProfile                 @relation("EptIdentityLinkRecorder", fields: [recordedById], references: [id], onDelete: Restrict)
+
+  @@unique([observationId, personId, evidenceDocumentId])
+  @@index([observationId, createdAt])
+  @@index([personId, createdAt])
+  @@index([evidenceDocumentId])
+  @@index([recordedById])
+  @@map("ept_exact_identity_links")
 }
 
 model AiSummary {
@@ -1459,6 +1525,8 @@ model StaffProfile {
   createdVersions   EditorialVersion[]          @relation("EditorialVersionCreator")
   decisions         EditorialDecision[]         @relation("EditorialDecisionActor")
   publicationEvents EditorialPublicationEvent[] @relation("EditorialPublicationActor")
+  eptLegalAssessments EptIndependentLegalAssessment[] @relation("EptLegalAssessmentRecorder")
+  eptIdentityLinks    EptExactIdentityLink[]           @relation("EptIdentityLinkRecorder")
 
   @@index([active, role])
   @@map("staff_profiles")
@@ -1486,6 +1554,8 @@ model EditorialCase {
   versions          EditorialVersion[]          @relation("EditorialCaseVersions")
   decisions         EditorialDecision[]
   publicationEvents EditorialPublicationEvent[]
+  eptLegalAssessments EptIndependentLegalAssessment[] @relation("EptLegalAssessmentCase")
+  eptIdentityLink     EptExactIdentityLink?            @relation("EptIdentityLinkCase")
 
   @@unique([kind, subjectType, subjectId, sourceDocumentId])
   @@index([currentState, createdAt, id])
@@ -1632,6 +1702,7 @@ model SourceDocument {
   comparisons                         StatementVoteComparison[]
   assetDeclarations                   AssetDeclarationMetadata[]
   eptPublicInterestObservations       EptPublicInterestObservation[]
+  eptIdentityEvidenceLinks             EptExactIdentityLink[]             @relation("EptIdentityEvidenceDocument")
   aiSummaries                         AiSummary[]
   localItems                          LocalTransparencyItem[]
   organisations                       Organisation[]

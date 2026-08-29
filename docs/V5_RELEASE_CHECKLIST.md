@@ -208,8 +208,10 @@ continuam a exigir autorizações separadas.
     individual, identificador exato, arquivo, SHA-256, HMAC do titular e histórico append-only.
   - [x] V5.46 — a proposta permanece `PENDING`, sem ligação por nome, conteúdo patrimonial,
     revisão pública ou evento de publicação; o comando público genérico fica bloqueado.
-  - [ ] V5.47 — associação individual inequívoca, revisão jurídica independente e porta específica
-    de publicação/retirada com `ADMIN` + MFA.
+  - [x] V5.47 — associação individual inequívoca por HMAC e segunda fonte oficial, registo privado
+    da avaliação jurídica humana e porta específica de publicação/retirada com `ADMIN` + MFA.
+  - [ ] Antes de tratar um caso real, concluir avaliação jurídica independente, avaliação de
+    impacto/privacidade e ensaio de permissões em staging; o código não substitui estas decisões.
 - [x] Ligação geral à EPT continua rotulada apenas como pesquisa institucional.
 - [ ] Cada área declara cobertura e intervalo observado.
 
@@ -278,7 +280,9 @@ continuam a exigir autorizações separadas.
 
 - [ ] DRE tem circuito de promoção público próprio.
 - [ ] BASE tem circuito de promoção público próprio.
-- [ ] EPT tem tratamento juridicamente revisto e sem equivaler portal a declaração.
+- [ ] EPT tem tratamento real juridicamente revisto e sem equivaler portal a declaração.
+  - [x] V5.46–V5.47 fecham tecnicamente a entrada, identidade, avaliação documental, publicação e
+    retirada; a ativação continua bloqueada até à revisão jurídica operacional independente.
 - [ ] Tribunal de Contas publica apenas factos adequados ao documento oficial.
 - [ ] Parlamento Europeu só atribui votos nominais com identificador inequívoco.
 - [ ] SNS declara indicador, período e cobertura territorial.

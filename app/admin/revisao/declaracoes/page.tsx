@@ -1,10 +1,14 @@
 import Link from "next/link";
 import { createEptPublicInterestProposal } from "../actions";
-import { editorialFetch } from "@/lib/editorial-api";
+import { EptGateActions } from "./ept-gate-actions";
+import { editorialFetch, getEditorialContext } from "@/lib/editorial-api";
 import {
   STATE_LABELS,
   type EptPublicInterestEditorialCandidate,
   type EptPublicInterestEditorialCandidateList,
+  type EptPublicInterestGate,
+  type EptPublicInterestPublicationPreview,
+  type EptPublicInterestWithdrawalPreview,
 } from "@/lib/editorial-types";
 
 const dateFormatter = new Intl.DateTimeFormat("pt-PT", {
@@ -27,10 +31,44 @@ function pageHref(query: string, offset: number): string {
   return `/admin/revisao/declaracoes?${params.toString()}`;
 }
 
+async function loadEptGate(caseId: string): Promise<EptPublicInterestGate | null> {
+  try {
+    return await editorialFetch<EptPublicInterestGate>(
+      `/ept/cases/${encodeURIComponent(caseId)}/gate`,
+    );
+  } catch {
+    return null;
+  }
+}
+
+async function loadEptPublication(
+  caseId: string,
+): Promise<EptPublicInterestPublicationPreview | null> {
+  try {
+    return await editorialFetch<EptPublicInterestPublicationPreview>(
+      `/ept/cases/${encodeURIComponent(caseId)}/publication`,
+    );
+  } catch {
+    return null;
+  }
+}
+
+async function loadEptWithdrawal(
+  caseId: string,
+): Promise<EptPublicInterestWithdrawalPreview | null> {
+  try {
+    return await editorialFetch<EptPublicInterestWithdrawalPreview>(
+      `/ept/cases/${encodeURIComponent(caseId)}/withdrawal`,
+    );
+  } catch {
+    return null;
+  }
+}
+
 export default async function EptDeclarationEditorialPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; offset?: string; erro?: string }>;
+  searchParams: Promise<{ q?: string; offset?: string; erro?: string; sucesso?: string }>;
 }) {
   const input = await searchParams;
   const query = (input.q?.trim() || "").slice(0, 100);
@@ -41,12 +79,39 @@ export default async function EptDeclarationEditorialPage({
   const catalogue = await editorialFetch<EptPublicInterestEditorialCandidateList>(
     `/ept/public-interest-candidates?${params.toString()}`,
   );
+  const { staff } = await getEditorialContext();
+  const gates = new Map<string, EptPublicInterestGate>();
+  const publications = new Map<string, EptPublicInterestPublicationPreview>();
+  const withdrawals = new Map<string, EptPublicInterestWithdrawalPreview>();
+  await Promise.all(
+    catalogue.items.map(async (candidate) => {
+      const existing = candidate.existing_case;
+      if (!existing) return;
+      if (existing.state === "APPROVED") {
+        const publication = await loadEptPublication(existing.id);
+        if (publication) {
+          publications.set(existing.id, publication);
+          gates.set(existing.id, publication);
+        }
+      } else if (existing.state === "PUBLISHED") {
+        const [gate, withdrawal] = await Promise.all([
+          loadEptGate(existing.id),
+          loadEptWithdrawal(existing.id),
+        ]);
+        if (gate) gates.set(existing.id, gate);
+        if (withdrawal) withdrawals.set(existing.id, withdrawal);
+      } else if (existing.state === "WITHDRAWN") {
+        const gate = await loadEptGate(existing.id);
+        if (gate) gates.set(existing.id, gate);
+      }
+    }),
+  );
 
   return (
     <div className="admin-page parliament-editorial-page">
       <header className="admin-page-heading">
         <div>
-          <p className="eyebrow">V5.46 · EPT com âmbito jurídico fechado</p>
+          <p className="eyebrow">V5.47 · EPT com porta jurídica e identidade exata</p>
           <h1>Rever registos públicos de interesses</h1>
           <p>
             Esta área recebe apenas metadados de uma prova individual já arquivada. Não recebe
@@ -70,6 +135,11 @@ export default async function EptDeclarationEditorialPage({
           {input.erro}
         </p>
       ) : null}
+      {input.sucesso ? (
+        <p className="private-message private-message--success" role="status">
+          Operação EPT concluída e registada no histórico imutável.
+        </p>
+      ) : null}
 
       <aside className="admin-private-warning">
         <strong>O portal geral não prova uma declaração individual</strong>
@@ -83,9 +153,9 @@ export default async function EptDeclarationEditorialPage({
       <aside className="admin-private-warning">
         <strong>Revisão jurídica independente continua obrigatória</strong>
         <p>
-          A aprovação editorial não autoriza uma publicação. A ligação de identidade e qualquer
-          projeção pública terão portas separadas; sem prova inequívoca, o resultado correto é
-          dados indisponíveis.
+          A aprovação editorial não autoriza uma publicação. A ligação de identidade e a projeção
+          pública têm portas separadas; sem prova inequívoca, o resultado correto é dados
+          indisponíveis.
         </p>
       </aside>
 
@@ -112,7 +182,22 @@ export default async function EptDeclarationEditorialPage({
       {catalogue.items.length ? (
         <section className="parliament-snapshot-list" aria-label="Observações privadas EPT">
           {catalogue.items.map((candidate) => (
-            <EptCandidateCard candidate={candidate} key={candidate.observation_id} />
+            <EptCandidateCard
+              candidate={candidate}
+              gate={candidate.existing_case ? (gates.get(candidate.existing_case.id) ?? null) : null}
+              publication={
+                candidate.existing_case
+                  ? (publications.get(candidate.existing_case.id) ?? null)
+                  : null
+              }
+              withdrawal={
+                candidate.existing_case
+                  ? (withdrawals.get(candidate.existing_case.id) ?? null)
+                  : null
+              }
+              isAdmin={staff.role === "ADMIN"}
+              key={candidate.observation_id}
+            />
           ))}
         </section>
       ) : (
@@ -141,7 +226,19 @@ export default async function EptDeclarationEditorialPage({
   );
 }
 
-function EptCandidateCard({ candidate }: { candidate: EptPublicInterestEditorialCandidate }) {
+function EptCandidateCard({
+  candidate,
+  gate,
+  publication,
+  withdrawal,
+  isAdmin,
+}: {
+  candidate: EptPublicInterestEditorialCandidate;
+  gate: EptPublicInterestGate | null;
+  publication: EptPublicInterestPublicationPreview | null;
+  withdrawal: EptPublicInterestWithdrawalPreview | null;
+  isAdmin: boolean;
+}) {
   return (
     <article className="parliament-snapshot-card">
       <header>
@@ -168,8 +265,18 @@ function EptCandidateCard({ candidate }: { candidate: EptPublicInterestEditorial
             <dt>Referência protegida</dt>
             <dd><code>{candidate.official_subject_reference_sha256.slice(0, 16)}…</code></dd>
           </div>
-          <div><dt>Ligação de identidade</dt><dd>Não criada</dd></div>
-          <div><dt>Revisão jurídica</dt><dd>Pendente e independente</dd></div>
+          <div>
+            <dt>Ligação de identidade</dt>
+            <dd>{gate?.identity_link ? "Ligada por HMAC e segunda fonte" : "Não criada"}</dd>
+          </div>
+          <div>
+            <dt>Revisão jurídica</dt>
+            <dd>
+              {gate?.legal_assessment
+                ? "Registo documental disponível"
+                : "Pendente e independente"}
+            </dd>
+          </div>
         </dl>
         <div className="parliament-proof-actions">
           <strong>Arquivo oficial atestado</strong>
@@ -254,6 +361,15 @@ function EptCandidateCard({ candidate }: { candidate: EptPublicInterestEditorial
           </button>
         </form>
       )}
+
+      {candidate.existing_case ? (
+        <EptGateActions
+          gate={gate}
+          publication={publication}
+          withdrawal={withdrawal}
+          isAdmin={isAdmin}
+        />
+      ) : null}
     </article>
   );
 }
