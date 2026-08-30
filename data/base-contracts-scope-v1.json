@@ -1,0 +1,17 @@
+{
+  "schema": "base-contracts-temporal-scope-manifest-v1",
+  "dataset_id": "66d72d488ca4b7cb2de28712",
+  "catalogue_api_url": "https://dados.gov.pt/api/1/datasets/66d72d488ca4b7cb2de28712/",
+  "public_dataset_url": "https://dados.gov.pt/datasets/contratos-publicos-portal-base-impic-contratos-de-2012-a-2026",
+  "producer_id": "5ae97fa2c8d8c915d5faa3bf",
+  "producer_name": "IMPIC - Instituto Dos Mercados Públicos, do Imobiliário e da Construção",
+  "licence_code": "other-pd",
+  "update_frequency": "weekly",
+  "first_year": 2012,
+  "resource_format": "ZIP",
+  "parser_version": "base-contracts-catalogue-v1",
+  "policy_version": "base-temporal-scope-v1",
+  "source_name": "BASE_CONTRACTS_CATALOGUE_PRIVATE",
+  "closed_year_rule": "Todos os anos entre 2012 e o ano civil anterior ao da recolha são históricos fechados, sem impedir correções oficiais posteriores.",
+  "rolling_year_rule": "O ano civil da recolha é provisório e nunca pode ser apresentado como cobertura anual completa."
+}

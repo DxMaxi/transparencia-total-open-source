@@ -5,6 +5,7 @@ export const STAGING_OPERATION_CONFIRMATIONS = Object.freeze({
   "migrate-schema": "STAGING-MIGRATE-SCHEMA",
   "inspect-readiness-read-only": "STAGING-INSPECT-READ-ONLY",
   "stage-government-programme-catalogue": "STAGING-STAGE-GOVERNMENT-PROGRAMME",
+  "stage-base-catalogue-scope": "STAGING-STAGE-BASE-CATALOGUE-SCOPE",
 });
 
 const PROJECT_REF_PATTERN = /^[a-z0-9]{20}$/;

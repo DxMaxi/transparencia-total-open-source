@@ -210,6 +210,13 @@ apenas como candidatos privados `PENDING`. A operação antiga de publicação d
 Continuam pendentes a migração e ingestão em staging, a consolidação humana, os critérios públicos,
 as provas de execução e qualquer projeção pública.
 
+A V5.49 define o âmbito temporal do Portal BASE antes de qualquer ingestão. O manifesto fixa o
+dataset oficial do dados.gov.pt, o produtor IMPIC, a licença e a frequência; a extração exige um ZIP
+por ano desde 2012. Em 2026, 2012–2025 são períodos históricos e 2026 permanece provisório. Os bytes
+do catálogo, SHA-256 e metadados entram apenas em tabelas privadas append-only com RLS. A operação
+manual ainda não foi executada em staging e cria zero contratos, organizações, correspondências,
+relações ou publicações.
+
 A melhoria de UX iniciada em agosto de 2026 faz parte da estabilização/conclusão da **V5**. Não deve ser tratada como início de uma V6 nem como autorização para reescrever o projeto.
 
 ## 5. Baseline técnico conhecido

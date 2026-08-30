@@ -12,6 +12,7 @@ on:
           - migrate-schema
           - inspect-readiness-read-only
           - stage-government-programme-catalogue
+          - stage-base-catalogue-scope
       expected_project_ref:
         description: Project ref Supabase de staging confirmado
         required: true
@@ -125,5 +126,13 @@ jobs:
         working-directory: backend
         run: >-
           python -m scripts.stage_government_programme_catalogue
+          --confirm-private-staging
+          --actor-alias "github:${{ github.actor }}"
+
+      - name: Preservar âmbito anual do Portal BASE em privado
+        if: ${{ inputs.operation == 'stage-base-catalogue-scope' }}
+        working-directory: backend
+        run: >-
+          python -m scripts.stage_base_catalogue_scope
           --confirm-private-staging
           --actor-alias "github:${{ github.actor }}"

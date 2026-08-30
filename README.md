@@ -23,7 +23,7 @@ definição da Open Source Initiative.
 > commit final desse fecho. A V5 começa pela governação de licença e pelo circuito editorial
 > privado; esta branch não altera os dados aprovados da V4.
 
-> **V5.1 a V5.48 preparadas; ativação remota de staging pendente:** o painel privado usa
+> **V5.1 a V5.49 preparadas; ativação remota de staging pendente:** o painel privado usa
 > login por convite,
 > MFA obrigatório, funções de administrador/revisor, comparação entre fonte atestada e JSON
 > normalizado, versões e decisões append-only. A V5.2 acrescentou propostas parlamentares privadas,
@@ -130,7 +130,11 @@ definição da Open Source Initiative.
 > porta específica para publicar ou retirar metadados mínimos. A V5.48 substitui o publicador
 > direto da amostra do Promessómetro por um catálogo integral privado: o PDF oficial fica fixado
 > por URL, data, 252 páginas e SHA-256; 1 590 itens enumerados em 40 blocos permanecem candidatos
-> `PENDING`, sem serem automaticamente classificados como promessas ou cumprimento. A
+> `PENDING`, sem serem automaticamente classificados como promessas ou cumprimento. A V5.49
+> fixa o catálogo oficial de contratos BASE antes de qualquer dump: 2012–2025 são períodos
+> históricos e 2026 permanece explicitamente provisório; URL, data, SHA-256, IDs e metadados dos
+> 15 ZIP anuais entram apenas numa fotografia privada append-only, sem recolher ou publicar
+> contratos. A
 > ativação real continua dependente dos gates operacionais de staging. O código e os testes
 > não executam estas operações sobre staging ou
 > produção. O plano e a checklist
@@ -177,6 +181,7 @@ definição da Open Source Initiative.
 > [circuito privado EPT para registos públicos de interesses V5.46](docs/V5_EPT_PUBLIC_INTEREST_EDITORIAL.md),
 > [porta jurídica e publicação específica EPT V5.47](docs/V5_EPT_LEGAL_PUBLICATION_GATE.md),
 > [catálogo integral privado do Programa do XXV Governo V5.48](docs/V5_PROMESSOMETRO_CATALOGUE.md),
+> [âmbito temporal privado do Portal BASE V5.49](docs/V5_BASE_TEMPORAL_SCOPE.md),
 > [Adaptador parlamentar V5.2](docs/V5_PARLIAMENT_EDITORIAL_ADAPTER.md) e
 > [Publicação parlamentar por âmbito V5.3](docs/V5_PARLIAMENT_SCOPE_PUBLICATION.md),
 > [Retirada parlamentar imutável V5.4](docs/V5_PARLIAMENT_WITHDRAWAL.md) e
@@ -254,6 +259,8 @@ uma fonte pública; a plataforma torna também visíveis falhas, atrasos e limit
 - API FastAPI com documentação OpenAPI, CORS restrito e endpoints de saúde.
 - Descoberta e normalização resiliente dos datasets da Assembleia da República e dos recursos
   anuais JSON/XML/ZIP do Portal BASE publicados através do dados.gov.pt.
+- Catálogo temporal BASE separado dos contratos: um manifesto revisto exige um ZIP oficial por ano,
+  preserva novas versões sem substituir as antigas e marca sempre o ano corrente como provisório.
 - Correspondência protegida por HMAC para identificadores pessoais e correspondência exata de
   entidades; não existe fuzzy matching nem publicação automática.
 - Leitura de diplomas e RSS configurável do Diário da República.
@@ -377,6 +384,7 @@ migrações anteriores continuam necessárias e são aplicadas por ordem.
 | Fotografias parlamentares | `ParliamentActivitySnapshot`, `ParliamentaryMembershipSnapshot`, `ParliamentarySession`, `ParliamentaryInitiative`, `VoteEvent` | Manifesto e factos são append-only; uma decisão humana por âmbito escolhe a fotografia pública |
 | Prova bruta | `SourceArchiveAttestation`, `AuditEvent` | Objeto privado e atestação são obrigatórios, mas nunca equivalem a revisão ou publicação |
 | Staging BASE | `BaseStagingBatch`, `BaseContractSnapshot`, `BaseContractPartySnapshot` | Append-only, privado e sem ligação automática às projeções públicas |
+| Âmbito BASE | `BaseContractCatalogueScope`, `BaseContractCatalogueResource` | Catálogo anual privado; ano corrente provisório e zero contratos/publicação |
 
 `SourceDocument` continua a ser a raiz de proveniência e `AuditEvent` o rasto de decisões. Os
 `CHECK` SQL adicionais impedem sujeitos ambíguos, arestas reflexivas, montantes negativos, métricas
@@ -556,6 +564,12 @@ JSON da legislatura em vez de codificar um URL opaco. Para uma integração cont
 `PARLAMENTO_DEPUTIES_URL` e `PARLAMENTO_VOTES_URL` explicitamente.
 
 ### Contratos públicos do Portal BASE
+
+Antes de descarregar contratos, a V5.49 fixa o âmbito temporal através do catálogo oficial. Em
+2026 são exigidos exatamente 15 recursos ZIP, um por ano de 2012 a 2026; 2026 permanece provisório.
+Uma correção oficial posterior cria outra fotografia e não substitui a anterior. A operação manual
+existe apenas no workflow protegido de staging e está descrita em
+[V5.49 — âmbito temporal privado do Portal BASE](docs/V5_BASE_TEMPORAL_SCOPE.md).
 
 O caminho normal usa os recursos anuais abertos que o IMPIC publica no dados.gov.pt. A API direta
 de grande volume do Portal BASE só deve ser configurada quando a organização tiver registo e

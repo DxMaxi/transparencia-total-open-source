@@ -109,6 +109,12 @@ geral, o próprio comando volta a inspecionar em modo read-only a migração exa
 três tabelas privadas, RLS e os triggers append-only. Só depois pode arquivar o PDF oficial e
 persistir candidatos `PENDING`; não existe operação equivalente no workflow de produção.
 
+A V5.49 acrescenta `stage-base-catalogue-scope`. A operação confirma a migração específica, RLS e
+triggers antes de arquivar o JSON oficial do catálogo. Persiste apenas a fotografia do âmbito e um
+metadado ZIP por ano; o ano corrente fica provisório. Não chama o coletor de contratos, não exige ou
+processa identificadores fiscais e não cria qualquer projeção pública. Também não existe operação
+equivalente no workflow de produção.
+
 ## Ordem e falha segura
 
 ```mermaid
