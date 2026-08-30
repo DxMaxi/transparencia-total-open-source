@@ -180,10 +180,11 @@ DECLARE
     observed_max INTEGER;
     invalid_rows INTEGER;
 BEGIN
-    target_scope_id := CASE
-        WHEN TG_TABLE_NAME = 'base_contract_catalogue_scopes' THEN NEW."id"
-        ELSE NEW."scope_id"
-    END;
+    IF TG_TABLE_NAME = 'base_contract_catalogue_scopes' THEN
+        target_scope_id := to_jsonb(NEW)->>'id';
+    ELSE
+        target_scope_id := to_jsonb(NEW)->>'scope_id';
+    END IF;
     SELECT * INTO scope_row
     FROM "base_contract_catalogue_scopes"
     WHERE "id" = target_scope_id;
