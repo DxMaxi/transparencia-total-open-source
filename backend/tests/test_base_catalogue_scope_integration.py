@@ -61,7 +61,7 @@ def _catalogue_bytes() -> bytes:
 
 @pytest.fixture
 async def repository() -> BaseCatalogueStagingRepository:
-    repo = BaseCatalogueStagingRepository(Settings())
+    repo = BaseCatalogueStagingRepository(Settings(environment="test"))
     await repo.connect()
     try:
         yield repo
