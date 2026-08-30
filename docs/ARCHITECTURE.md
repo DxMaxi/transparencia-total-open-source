@@ -136,9 +136,13 @@ lacunas, duplicados ou mudanças não revistas de dataset, produtor, licença e 
 cria zero contratos e zero relações.
 
 O recurso anual BASE é descarregado para staging, validado contra limites de tamanho e expansão ZIP
-e convertido para um contrato canónico. O matcher exato gera `ContractMatchReview=PENDING_REVIEW`.
-Um revisor confirma identidade, papel, datas e fonte da associação; outro controlo promove a aresta
-para `InterestRelationship`. A API pública nunca consulta candidatos.
+e convertido para snapshots canónicos append-only. Na V5.50, a prova de um registo específico de
+ano encerrado e de um lote normalizado coerente pode criar apenas um
+`EditorialCase=PUBLIC_CONTRACT/PENDING`; não alega cobertura integral do ZIP e não cria
+`PublicContract`, organização, correspondência ou aresta. Designações de partes são texto da
+fonte, não identidade, e os HMAC não saem do staging. Uma etapa posterior terá de provar cada organização por fonte e identificador
+oficiais próprios antes de propor qualquer `ContractMatchReview`. A API pública exige o evento
+específico de publicação mais recente e nunca consulta candidatos.
 
 ### Direito de resposta
 

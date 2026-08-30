@@ -8,6 +8,7 @@ from openai import APIError
 from app.api.dependencies import (
     get_ai_editorial_publication_repository,
     get_ai_editorial_repository,
+    get_base_contract_editorial_repository,
     get_editorial_repository,
     get_ept_declaration_editorial_repository,
     get_ept_declaration_publication_gate_repository,
@@ -39,6 +40,7 @@ from app.models.editorial import (
     AiDreRegenerationRequest,
     AiEditorialPublicationRequest,
     AiEditorialWithdrawalRequest,
+    BaseContractEditorialProposalRequest,
     EditorialAction,
     EditorialApprovalRequest,
     EditorialCaseCreateRequest,
@@ -75,6 +77,7 @@ from app.models.ept_declaration import (
 )
 from app.repositories.ai_editorial import AiEditorialRepository
 from app.repositories.ai_editorial_publication import AiEditorialPublicationRepository
+from app.repositories.base_contract_editorial import BaseContractEditorialRepository
 from app.repositories.editorial import (
     EditorialConflictError,
     EditorialNotFoundError,
@@ -163,6 +166,48 @@ async def session(
     """Permite completar MFA depois de confirmar que a conta pertence à equipa."""
 
     return actor
+
+
+@router.get("/base/contract-candidates")
+async def base_contract_candidates(
+    repository: Annotated[
+        BaseContractEditorialRepository,
+        Depends(get_base_contract_editorial_repository),
+    ],
+    _actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+    q: Annotated[str | None, Query(min_length=2, max_length=100)] = None,
+    year: Annotated[int | None, Query(ge=2012, le=2100)] = None,
+    limit: Annotated[int, Query(ge=1, le=50)] = 20,
+    cursor: Annotated[str | None, Query(min_length=1, max_length=1600)] = None,
+) -> dict[str, object]:
+    """Lista snapshots privados sem HMAC, identidade, organização ou publicação."""
+
+    try:
+        return await repository.list_candidates(
+            query=q,
+            resource_year=year,
+            limit=limit,
+            cursor=cursor,
+        )
+    except EditorialSourceError as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.post("/base/contract-proposals", status_code=status.HTTP_201_CREATED)
+async def create_base_contract_proposal(
+    payload: BaseContractEditorialProposalRequest,
+    repository: Annotated[
+        BaseContractEditorialRepository,
+        Depends(get_base_contract_editorial_repository),
+    ],
+    actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> dict[str, object]:
+    """Cria um caso PENDING; não materializa qualquer tabela pública ou de grafo."""
+
+    try:
+        return await repository.create_proposal(payload=payload, actor=actor)
+    except (EditorialConflictError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
 
 
 @router.get("/ept/public-interest-candidates")

@@ -573,6 +573,114 @@ export type EptPublicInterestEditorialProposalResult = {
   independent_legal_review_completed: false;
 };
 
+export type BaseContractEditorialCandidate = {
+  contract_snapshot_id: string;
+  source_document_id: string;
+  official_contract_id: string;
+  object: string;
+  procedure: string;
+  cpv_code: string | null;
+  base_value: string | null;
+  contract_value: string | null;
+  currency: string;
+  decision_at: string | null;
+  signed_at: string | null;
+  published_at: string | null;
+  execution_days: number | null;
+  direct_official_url: string | null;
+  parties: Array<{
+    id: string;
+    ordinal: number;
+    role: "CONTRACTING_AUTHORITY" | "CONTRACTOR" | "CO_CONTRACTOR";
+    source_name: string;
+    protected_identifier_observed: boolean;
+  }>;
+  protected_identifier_count: number;
+  protected_identifier_exposed: false;
+  source_record_sha256: string;
+  batch: {
+    id: string;
+    resource_year: number;
+    resource_title: string;
+    parser_version: string;
+    normalised_sha256: string;
+    contract_count: number;
+    party_count: number;
+    actual_contract_count: number;
+    actual_party_count: number;
+    collected_at: string;
+    sync_status: string;
+    sync_finished_at: string | null;
+    records_read: number;
+    records_written: number;
+    warnings: string[];
+    counts_match: boolean;
+  };
+  source: {
+    title: string;
+    url: string;
+    retrieved_at: string;
+    content_sha256: string;
+    mime_type: string | null;
+  };
+  archive: null | {
+    storage_backend: string;
+    byte_size: number;
+    archived_at: string;
+    attestation_sha256: string;
+  };
+  catalogue: null | {
+    scope_id: string;
+    scope_sha256: string;
+    source_sha256: string;
+    archive_attestation_sha256: string;
+    resource_id: string;
+    resource_year: number;
+    coverage_state: "HISTORICAL_CLOSED_YEAR" | "CURRENT_ROLLING_YEAR";
+    versioned_url: string;
+    stable_url: string;
+    source_modified_at: string;
+    byte_size: number;
+    metadata_sha256: string;
+  };
+  existing_case: PoliticianProfileEditorialCandidate["editorial_case"];
+  proposal_eligible: boolean;
+  blocked_reasons: string[];
+  coverage_claim: "SPECIFIC_SOURCE_RECORD_ONLY";
+  annual_source_completeness_claimed: false;
+  public_contract_creation_allowed: false;
+  organisation_creation_allowed: false;
+  identity_or_name_matching_allowed: false;
+  relationship_creation_allowed: false;
+  publication_allowed: false;
+};
+
+export type BaseContractEditorialCandidateList = {
+  items: BaseContractEditorialCandidate[];
+  total: number;
+  limit: number;
+  next_cursor: string | null;
+  filter_required: boolean;
+  publication_performed: false;
+  organisation_created: false;
+  relationship_created: false;
+  protected_identifier_exposed: false;
+  search_rule: string;
+  coverage_rule: string;
+};
+
+export type BaseContractEditorialProposalResult = {
+  created: boolean;
+  case: EditorialCaseDetail;
+  state: "PRIVATE_PENDING_REVIEW";
+  publication_performed: false;
+  public_contract_created: false;
+  organisation_created: false;
+  interest_entity_created: false;
+  match_review_created: false;
+  relationship_created: false;
+};
+
 export type EptPublicInterestGate = {
   case_id: string;
   case_state: EditorialState;

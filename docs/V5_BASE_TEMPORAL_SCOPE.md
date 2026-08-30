@@ -97,3 +97,8 @@ Continuam separados e pendentes:
 
 Uma lista vazia ou um ano ausente nunca prova que não existem contratos. Significa apenas que os
 dados necessários não estão disponíveis ou não passaram a cadeia de validação.
+
+A ligação técnica entre recurso e lote foi preparada na [V5.50 — porta editorial privada dos
+contratos BASE](V5_BASE_CONTRACT_EDITORIAL.md): a prova é reconstruída antes de criar apenas um
+caso `PENDING`. A execução em staging, a projeção pública, a prova própria das organizações e as
+relações continuam fora desse passo.

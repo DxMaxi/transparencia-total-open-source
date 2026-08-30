@@ -53,6 +53,15 @@ def arguments() -> argparse.Namespace:
         and not args.confirm_legal_basis_reviewed
     ):
         parser.error("publicar ASSET_DECLARATION exige --confirm-legal-basis-reviewed")
+    if args.entity_type in {
+        "PUBLIC_CONTRACT",
+        "INTEREST_ENTITY",
+        "INTEREST_RELATIONSHIP",
+    }:
+        parser.error(
+            "Contratos, organizações e relações não podem usar o comando genérico; "
+            "use a porta editorial BASE específica"
+        )
     if args.publish and args.entity_type == "ASSET_DECLARATION":
         parser.error(
             "ASSET_DECLARATION já não pode ser publicada pelo comando genérico; "
