@@ -553,6 +553,14 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                       ON contract_source.id = contract.source_document_id
                     WHERE contract.publication_status = 'PUBLISHED'
                       AND contract.verification_status = 'VERIFIED'
+                      AND (
+                        SELECT publication.action::text
+                        FROM editorial_publication_events publication
+                        WHERE publication.target_type = 'BASE_PUBLIC_CONTRACT'
+                          AND publication.target_id = contract.id
+                        ORDER BY publication.created_at DESC, publication.id DESC
+                        LIMIT 1
+                      ) = 'PUBLISH'
                       AND EXISTS (
                         SELECT 1
                         FROM source_archive_attestations contract_archive
@@ -573,6 +581,30 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                       AND f.verification_status = 'VERIFIED'
                       AND t.publication_status = 'PUBLISHED'
                       AND t.verification_status = 'VERIFIED'
+                      AND (
+                        SELECT publication.action::text
+                        FROM editorial_publication_events publication
+                        WHERE publication.target_type = 'BASE_INTEREST_RELATIONSHIP'
+                          AND publication.target_id = r.id
+                        ORDER BY publication.created_at DESC, publication.id DESC
+                        LIMIT 1
+                      ) = 'PUBLISH'
+                      AND (
+                        SELECT publication.action::text
+                        FROM editorial_publication_events publication
+                        WHERE publication.target_type = 'BASE_INTEREST_ENTITY'
+                          AND publication.target_id = f.id
+                        ORDER BY publication.created_at DESC, publication.id DESC
+                        LIMIT 1
+                      ) = 'PUBLISH'
+                      AND (
+                        SELECT publication.action::text
+                        FROM editorial_publication_events publication
+                        WHERE publication.target_type = 'BASE_INTEREST_ENTITY'
+                          AND publication.target_id = t.id
+                        ORDER BY publication.created_at DESC, publication.id DESC
+                        LIMIT 1
+                      ) = 'PUBLISH'
                       AND sd.publisher <> 'MEDIA'
                       AND EXISTS (
                         SELECT 1
@@ -2005,6 +2037,14 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                     WHERE contract_archive.source_document_id = contract_sd.id
                       AND contract_archive.content_sha256 = contract_sd.content_sha256
                       AND contract_archive.retrieval_url = contract_sd.url
+                      AND (
+                        SELECT publication.action::text
+                        FROM editorial_publication_events publication
+                        WHERE publication.target_type = 'BASE_PUBLIC_CONTRACT'
+                          AND publication.target_id = pc.id
+                        ORDER BY publication.created_at DESC, publication.id DESC
+                        LIMIT 1
+                      ) = 'PUBLISH'
                     LIMIT 1
                 ) contract_proof ON TRUE
                 WHERE r.publication_status = 'PUBLISHED'
@@ -2013,6 +2053,30 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                   AND f.verification_status = 'VERIFIED'
                   AND t.publication_status = 'PUBLISHED'
                   AND t.verification_status = 'VERIFIED'
+                  AND (
+                    SELECT publication.action::text
+                    FROM editorial_publication_events publication
+                    WHERE publication.target_type = 'BASE_INTEREST_RELATIONSHIP'
+                      AND publication.target_id = r.id
+                    ORDER BY publication.created_at DESC, publication.id DESC
+                    LIMIT 1
+                  ) = 'PUBLISH'
+                  AND (
+                    SELECT publication.action::text
+                    FROM editorial_publication_events publication
+                    WHERE publication.target_type = 'BASE_INTEREST_ENTITY'
+                      AND publication.target_id = f.id
+                    ORDER BY publication.created_at DESC, publication.id DESC
+                    LIMIT 1
+                  ) = 'PUBLISH'
+                  AND (
+                    SELECT publication.action::text
+                    FROM editorial_publication_events publication
+                    WHERE publication.target_type = 'BASE_INTEREST_ENTITY'
+                      AND publication.target_id = t.id
+                    ORDER BY publication.created_at DESC, publication.id DESC
+                    LIMIT 1
+                  ) = 'PUBLISH'
                   AND sd.publisher <> 'MEDIA'
                   AND EXISTS (
                       SELECT 1
@@ -3094,6 +3158,15 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
         }
         if entity_type not in allowed:
             raise ValueError("Tipo de entidade não suportado para revisão pública")
+        if entity_type in {
+            "PUBLIC_CONTRACT",
+            "INTEREST_ENTITY",
+            "INTEREST_RELATIONSHIP",
+        }:
+            raise ValueError(
+                "Contratos, organizações e relações já não podem usar a revisão genérica; "
+                "exigem a porta editorial BASE específica e prova independente por entidade"
+            )
 
         review_source_document_id: str | None = None
         async with self.pool.acquire() as connection, connection.transaction():
@@ -3642,6 +3715,14 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                 LEFT JOIN public_contract_parties p ON p.public_contract_id = c.id
                 WHERE c.publication_status = 'PUBLISHED'
                   AND c.verification_status = 'VERIFIED'
+                  AND (
+                    SELECT publication.action::text
+                    FROM editorial_publication_events publication
+                    WHERE publication.target_type = 'BASE_PUBLIC_CONTRACT'
+                      AND publication.target_id = c.id
+                    ORDER BY publication.created_at DESC, publication.id DESC
+                    LIMIT 1
+                  ) = 'PUBLISH'
                   AND EXISTS (
                     SELECT 1
                     FROM source_archive_attestations contract_archive
@@ -3668,6 +3749,32 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                   AND r.verification_status = 'VERIFIED'
                   AND f.publication_status = 'PUBLISHED'
                   AND t.publication_status = 'PUBLISHED'
+                  AND f.verification_status = 'VERIFIED'
+                  AND t.verification_status = 'VERIFIED'
+                  AND (
+                    SELECT publication.action::text
+                    FROM editorial_publication_events publication
+                    WHERE publication.target_type = 'BASE_INTEREST_RELATIONSHIP'
+                      AND publication.target_id = r.id
+                    ORDER BY publication.created_at DESC, publication.id DESC
+                    LIMIT 1
+                  ) = 'PUBLISH'
+                  AND (
+                    SELECT publication.action::text
+                    FROM editorial_publication_events publication
+                    WHERE publication.target_type = 'BASE_INTEREST_ENTITY'
+                      AND publication.target_id = f.id
+                    ORDER BY publication.created_at DESC, publication.id DESC
+                    LIMIT 1
+                  ) = 'PUBLISH'
+                  AND (
+                    SELECT publication.action::text
+                    FROM editorial_publication_events publication
+                    WHERE publication.target_type = 'BASE_INTEREST_ENTITY'
+                      AND publication.target_id = t.id
+                    ORDER BY publication.created_at DESC, publication.id DESC
+                    LIMIT 1
+                  ) = 'PUBLISH'
                   AND EXISTS (
                     SELECT 1
                     FROM source_archive_attestations relationship_archive

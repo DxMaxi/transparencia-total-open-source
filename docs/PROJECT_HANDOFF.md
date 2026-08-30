@@ -217,6 +217,14 @@ do catálogo, SHA-256 e metadados entram apenas em tabelas privadas append-only 
 manual ainda não foi executada em staging e cria zero contratos, organizações, correspondências,
 relações ou publicações.
 
+A V5.50 fecha o adaptador BASE legado que criava tabelas públicas em estado `DRAFT`. A nova página
+`/admin/revisao/contratos` só admite registos de anos encerrados com fonte, arquivo, catálogo V5.49
+e contagens do lote normalizado coincidentes; limitações ficam visíveis e não se alega cobertura
+integral do ZIP. O resultado é um caso privado `PUBLIC_CONTRACT/PENDING`. HMAC não é devolvido,
+nomes não ligam entidades e a revisão genérica recusa contratos, organizações e relações. As
+projeções públicas exigem agora o evento específico `PUBLISH`; publicação, retirada, direito de
+resposta, identidade organizacional e execução real em staging continuam pendentes.
+
 A melhoria de UX iniciada em agosto de 2026 faz parte da estabilização/conclusão da **V5**. Não deve ser tratada como início de uma V6 nem como autorização para reescrever o projeto.
 
 ## 5. Baseline técnico conhecido

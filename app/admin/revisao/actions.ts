@@ -7,6 +7,7 @@ import {
   type AiDreProposalResult,
   type AiEditorialPublicationResult,
   type AiEditorialWithdrawalResult,
+  type BaseContractEditorialProposalResult,
   PARLIAMENT_WITHDRAWAL_REASON_LABELS,
   type EditorialCaseDetail,
   type EptExactIdentityLinkResult,
@@ -255,6 +256,68 @@ export async function createEptPublicInterestProposal(formData: FormData) {
   revalidatePath(destination);
   redirect(
     `/admin/revisao/${created!.case.id}?sucesso=${created!.created ? "ept-importado" : "ept-existente"}`,
+  );
+}
+
+export async function createBaseContractProposal(formData: FormData) {
+  const destination = "/admin/revisao/contratos";
+  let created: BaseContractEditorialProposalResult | null = null;
+  let failure: string | null = null;
+  try {
+    const contractSnapshotId = evidenceId(formData, "contract_snapshot_id");
+    for (const [field, message] of [
+      ["confirm_private_only", "Confirme que a proposta permanece privada"],
+      [
+        "confirm_normalized_batch_consistency",
+        "Confirme as contagens e limitações do lote normalizado",
+      ],
+      [
+        "confirm_exact_official_contract_id",
+        "Confirme o identificador oficial exato do contrato",
+      ],
+      [
+        "confirm_no_party_identity_or_name_matching",
+        "Confirme que nomes e identificadores não serão usados para correspondência",
+      ],
+      [
+        "confirm_organisations_require_independent_sources",
+        "Confirme que cada organização exige prova oficial independente",
+      ],
+      [
+        "confirm_no_contract_or_relationship_publication",
+        "Confirme que esta operação não publica contratos ou relações",
+      ],
+    ] as const) {
+      if (formData.get(field) !== "on") throw new Error(message);
+    }
+    created = await editorialFetch<BaseContractEditorialProposalResult>(
+      "/base/contract-proposals",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          contract_snapshot_id: contractSnapshotId,
+          source_record_sha256: sha256(formData, "source_record_sha256"),
+          confirm_private_only: true,
+          confirm_normalized_batch_consistency: true,
+          confirm_exact_official_contract_id: true,
+          confirm_no_party_identity_or_name_matching: true,
+          confirm_organisations_require_independent_sources: true,
+          confirm_no_contract_or_relationship_publication: true,
+        }),
+      },
+    );
+  } catch (error) {
+    failure = actionError(error);
+  }
+  if (failure || !created) {
+    redirect(failureDestination(destination, failure ?? "A proposta não foi criada"));
+  }
+  revalidatePath("/admin/revisao");
+  revalidatePath(destination);
+  redirect(
+    `/admin/revisao/${created.case.id}?sucesso=${
+      created.created ? "contrato-base-importado" : "contrato-base-existente"
+    }`,
   );
 }
 

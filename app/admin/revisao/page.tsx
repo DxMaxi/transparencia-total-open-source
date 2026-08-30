@@ -64,6 +64,9 @@ export default async function EditorialQueuePage({
           <Link className="button" href="/admin/revisao/declaracoes">
             Rever registos de interesses EPT
           </Link>
+          <Link className="button" href="/admin/revisao/contratos">
+            Rever contratos do Portal BASE
+          </Link>
           <Link className="button" href="/admin/revisao/novo">
             Criar processo manual
           </Link>

@@ -11,7 +11,7 @@ reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.49 preparadas; staging remoto pendente |
+| Código V5 | V5.1 a V5.50 preparadas; staging remoto pendente |
 | Frontend público | V5.21 preparado; capacidades sem backend ou esquema pronto ficam fail-closed |
 | API pública | `0.5.0-alpha.0`; capacidades anunciadas apenas após prova read-only do esquema |
 | Painel editorial | implementado no código, não ativado em produção |
@@ -19,7 +19,7 @@ reais.
 | Parlamento | matriz V5.21 e gates V5.22–V5.45 preparados; ativação editorial pendente |
 | Perfis | ciclo integral de entrada, publicação, retirada e republicação provado; domínios individuais pendentes |
 | Promessómetro | amostra pública de 10; catálogo V5.48 com 1 590 candidatos privados em 40 blocos, ainda sem consolidação humana |
-| Investigador Cívico | âmbito anual BASE V5.49 preparado; zero contratos e zero relações na projeção pública |
+| Investigador Cívico | âmbito anual V5.49 e proposta privada V5.50 preparados; zero contratos e zero relações na projeção pública |
 | PWA e alertas | consentimento, revogação e cache opt-in integrados; configuração remota pendente |
 | Repositório | privado e licenciado como código disponível para uso não comercial |
 
@@ -363,6 +363,13 @@ do universo de origem: o catálogo oficial, produtor, licença, frequência e um
 validados e preservados por hash. Em 2026, os anos 2012–2025 são períodos históricos e 2026 é
 sempre provisório. Isto não executa a migração remota, não descarrega os ZIP e não cria contratos,
 organizações, correspondências, relações ou publicação.
+
+A [V5.50 — porta editorial privada dos contratos BASE](V5_BASE_CONTRACT_EDITORIAL.md) fecha a
+materialização antecipada da V4. O servidor exige a prova de um registo específico, o ano histórico
+e a coerência do lote normalizado, sem alegar cobertura integral do ZIP, e cria apenas um processo
+`PUBLIC_CONTRACT/PENDING`. Os HMAC ficam no staging; nomes são texto da fonte e nunca
+correspondência. A futura projeção pública continua pendente de fontes próprias das organizações,
+decisão `ADMIN` específica, eventos append-only, retirada e direito de resposta.
 
 ### 8. Circuito responsável de IA
 

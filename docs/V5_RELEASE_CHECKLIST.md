@@ -251,6 +251,12 @@ Governo](V5_PROMESSOMETRO_CATALOGUE.md).
   - [x] Anos civis terminados são históricos; o ano corrente permanece sempre provisório.
   - [x] Catálogo, recursos e hashes ficam privados, append-only e sem criar qualquer contrato.
 - [ ] Lotes completos arquivados e persistidos apenas em staging.
+- [x] V5.50 — proposta editorial privada por contrato BASE e identificador oficial exato.
+  - [x] Fonte, arquivo, catálogo temporal, limitações e contagens do lote normalizado são reconstruídos no servidor, sem alegar cobertura integral do ZIP.
+  - [x] HMAC fiscal nunca é devolvido pelo endpoint ou copiado para o processo editorial.
+  - [x] A proposta cria zero contratos, organizações, correspondências, relações ou eventos públicos.
+  - [x] A promoção e a revisão genéricas da V4 foram fechadas de forma explícita.
+  - [x] Projeções públicas exigem o evento específico mais recente `PUBLISH` por alvo.
 - [ ] Promoção revista para `PublicContract` implementada e testada.
 - [ ] Organizações e titulares têm fontes próprias.
 - [ ] Pepper HMAC estável configurado fora do repositório.
@@ -263,7 +269,8 @@ Governo](V5_PROMESSOMETRO_CATALOGUE.md).
 - [ ] AIPD e revisão jurídica aplicáveis concluídas.
 
 Metodologia e limites desta fundação: [V5.49 — âmbito temporal privado do Portal
-BASE](V5_BASE_TEMPORAL_SCOPE.md).
+BASE](V5_BASE_TEMPORAL_SCOPE.md) e [V5.50 — porta editorial privada dos contratos
+BASE](V5_BASE_CONTRACT_EDITORIAL.md).
 
 ## I. IA responsável
 

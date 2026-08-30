@@ -1008,6 +1008,54 @@ body:has(.private-route-frame) #conteudo { min-height: 100vh; }
 .parliament-publication-card textarea { min-height: 92px; padding: 11px; border: 1px solid var(--line); border-radius: 9px; resize: vertical; color: var(--ink); background: white; font: inherit; font-size: 11px; line-height: 1.55; letter-spacing: normal; text-transform: none; }
 .parliament-publication-card .button:disabled { cursor: not-allowed; opacity: .5; }
 
+/* O painel BASE exige leitura demorada de prova; mantém tipografia própria e não reduz a dos restantes painéis. */
+.base-contract-editorial-page .admin-filter-bar label,
+.base-contract-editorial-page .admin-form-help,
+.base-contract-editorial-page .admin-private-warning p,
+.base-contract-editorial-page .parliament-snapshot-card > header p:last-child,
+.base-contract-editorial-page .parliament-proposal-card p,
+.base-contract-editorial-page .parliament-limitations li,
+.base-contract-editorial-page .parliament-proposal-card .admin-confirmation {
+  font-size: .875rem;
+  line-height: 1.6;
+}
+.base-contract-editorial-page .admin-private-warning strong,
+.base-contract-editorial-page .parliament-proof-actions strong,
+.base-contract-editorial-page .parliament-proof-actions span,
+.base-contract-editorial-page .admin-state {
+  font-size: .8125rem;
+}
+.base-contract-editorial-page .parliament-proof-grid dt,
+.base-contract-editorial-page .admin-proof-inline dt {
+  font-size: .75rem;
+  line-height: 1.45;
+}
+.base-contract-editorial-page .parliament-proof-grid dd,
+.base-contract-editorial-page .admin-proof-inline dd {
+  overflow: visible;
+  color: var(--ink-soft);
+  font-size: .875rem;
+  line-height: 1.55;
+  text-overflow: clip;
+  white-space: normal;
+}
+.base-contract-editorial-page .parliament-proof-grid code,
+.base-contract-editorial-page .admin-proof-inline code {
+  overflow-wrap: anywhere;
+  font: .75rem/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  word-break: break-word;
+}
+.base-contract-editorial-page details.parliament-proposal-card > summary {
+  color: var(--navy);
+  cursor: pointer;
+  font-size: .9375rem;
+  font-weight: 760;
+  line-height: 1.5;
+}
+.base-contract-editorial-page details.parliament-proposal-card[open] > summary {
+  margin-bottom: 4px;
+}
+
 @media (max-width: 1050px) {
   .admin-header { grid-template-columns: auto 1fr; gap: 15px; }
   .admin-header nav { justify-content: flex-end; }

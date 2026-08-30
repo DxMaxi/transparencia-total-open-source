@@ -209,6 +209,21 @@ class ParliamentEditorialProposalRequest(BaseModel):
     confirm_no_individual_inference: Literal[True]
 
 
+class BaseContractEditorialProposalRequest(BaseModel):
+    """Seleciona um contrato BASE exato para revisão exclusivamente privada."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    contract_snapshot_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    source_record_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    confirm_private_only: Literal[True]
+    confirm_normalized_batch_consistency: Literal[True]
+    confirm_exact_official_contract_id: Literal[True]
+    confirm_no_party_identity_or_name_matching: Literal[True]
+    confirm_organisations_require_independent_sources: Literal[True]
+    confirm_no_contract_or_relationship_publication: Literal[True]
+
+
 class PoliticianProfileEditorialProposalRequest(BaseModel):
     """Confirmações para importar uma observação oficial para revisão privada."""
 
