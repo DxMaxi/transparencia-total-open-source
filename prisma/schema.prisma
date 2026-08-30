@@ -1267,6 +1267,65 @@ model BaseStagingBatch {
   @@map("base_staging_batches")
 }
 
+/// Fotografia privada do catálogo oficial anual dos contratos BASE. Define
+/// cobertura; não contém contratos e nunca participa nas projeções públicas.
+model BaseContractCatalogueScope {
+  id                String                          @id
+  sourceDocumentId  String                          @map("source_document_id")
+  syncRunId         String                          @unique @map("sync_run_id")
+  datasetId         String                          @map("dataset_id")
+  datasetTitle      String                          @map("dataset_title")
+  producerId        String                          @map("producer_id")
+  producerName      String                          @map("producer_name")
+  licenceCode       String                          @map("licence_code")
+  updateFrequency   String                          @map("update_frequency")
+  publicDatasetUrl  String                          @map("public_dataset_url")
+  parserVersion     String                          @map("parser_version")
+  policyVersion     String                          @map("policy_version")
+  firstYear         Int                             @map("first_year")
+  closedThroughYear Int                             @map("closed_through_year")
+  rollingYear       Int                             @map("rolling_year")
+  sourceSha256      String                          @map("source_sha256") @db.Char(64)
+  scopeSha256       String                          @map("scope_sha256") @db.Char(64)
+  sourceByteSize    Int                             @map("source_byte_size")
+  resourceCount     Int                             @map("resource_count")
+  retrievedAt       DateTime                        @map("retrieved_at")
+  createdAt         DateTime                        @default(now()) @map("created_at")
+  sourceDocument    SourceDocument                  @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
+  syncRun           SyncRun                         @relation(fields: [syncRunId], references: [id], onDelete: Restrict)
+  resources         BaseContractCatalogueResource[]
+
+  @@unique([sourceDocumentId, parserVersion])
+  @@index([firstYear, rollingYear, retrievedAt])
+  @@index([scopeSha256])
+  @@map("base_contract_catalogue_scopes")
+}
+
+/// Metadado privado de um único recurso ZIP anual observado no catálogo BASE.
+model BaseContractCatalogueResource {
+  id                 String                     @id
+  scopeId            String                     @map("scope_id")
+  ordinal            Int
+  sourceResourceId   String                     @map("source_resource_id")
+  resourceYear       Int                        @map("resource_year")
+  coverageState      String                     @map("coverage_state")
+  resourceTitle      String                     @map("resource_title")
+  resourceFormat     String                     @map("resource_format")
+  versionedUrl       String                     @map("versioned_url")
+  stableUrl          String                     @map("stable_url")
+  sourceModifiedAt   DateTime                   @map("source_modified_at")
+  byteSize           Int                        @map("byte_size")
+  metadataSha256     String                     @map("metadata_sha256") @db.Char(64)
+  createdAt          DateTime                   @default(now()) @map("created_at")
+  scope              BaseContractCatalogueScope @relation(fields: [scopeId], references: [id], onDelete: Restrict)
+
+  @@unique([scopeId, resourceYear])
+  @@unique([scopeId, ordinal])
+  @@unique([scopeId, sourceResourceId])
+  @@index([coverageState, resourceYear])
+  @@map("base_contract_catalogue_resources")
+}
+
 /// Versão normalizada privada de um contrato dentro de um lote BASE. O mesmo
 /// identificador oficial pode reaparecer noutro lote sem substituir o anterior.
 model BaseContractSnapshot {
@@ -1799,6 +1858,7 @@ model SourceDocument {
   organisations                       Organisation[]
   protectedIdentifiers                ProtectedIdentifierDigest[]
   baseStagingBatches                  BaseStagingBatch[]
+  baseContractCatalogueScopes         BaseContractCatalogueScope[]
   publicContracts                     PublicContract[]
   contractMatchReviews                ContractMatchReview[]
   interestRelationships               InterestRelationship[]
@@ -1857,6 +1917,7 @@ model SyncRun {
   errorMessage     String?           @map("error_message")
   codeVersion      String            @map("code_version")
   baseStagingBatch BaseStagingBatch?
+  baseContractCatalogueScope BaseContractCatalogueScope?
 
   @@index([sourceName, startedAt])
   @@index([status])

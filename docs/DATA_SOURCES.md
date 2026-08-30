@@ -7,7 +7,7 @@
 | Assembleia da República | Release candidate | Catálogos, bytes PostgreSQL, deputados, reuniões observadas, iniciativas, votações, snapshots e revisão/publicação fail-closed | Reuniões são as referidas nos eventos de votação, não a agenda completa; nem toda votação é nominal |
 | Diário da República | Funcional em staging | Extração por URL ELI, bytes exactos, arquivo atestado e snapshot privado append-only | Sem promoção pública; feed RSS só após confirmação documental |
 | Entidade para a Transparência | Funcional em staging privado, com contingência explícita | Índice canónico com bytes exactos; perante falha de rede, timeout ou HTTP 429, apenas o portal oficial alternativo é arquivado como `PARTIAL` | O portal alternativo não equivale ao índice, não recolhe declarações nem autoriza publicação; qualquer tratamento exige revisão jurídica própria |
-| Portal BASE / dados.gov.pt | Funcional em staging | Descoberta anual, JSON/XML/ZIP, arquivo, lote append-only e candidatos exactos apenas em ficheiro privado | Sem promoção pública; API directa de grande volume pode exigir registo e autorização |
+| Portal BASE / dados.gov.pt | Âmbito V5.49 preparado; ingestão funcional em staging | Catálogo anual 2012–ano corrente, JSON/XML/ZIP, arquivo, lote append-only e candidatos exatos apenas em ficheiro privado | Operação V5.49 ainda não executada em staging; sem promoção pública; API direta de grande volume pode exigir registo e autorização |
 | Tribunal de Contas | Colector privado funcional | Índice oficial preservado com URL, data, SHA-256 e recursos deduplicados | Sem publicação nem interpretação de decisões ou culpa |
 | Parlamento Europeu | Colector privado funcional | Portal de dados abertos preservado com URL, data, SHA-256 e recursos deduplicados | Sem publicação nem atribuição individual sem voto nominal explícito |
 | Portal da Transparência do SNS | Colector privado funcional | Índice oficial preservado com URL, data, SHA-256 e `SyncRun` | Não publica indicadores nem representa cobertura territorial nacional |
@@ -114,7 +114,13 @@ Portal SNS usado pelo colector:
 
 ## Portal BASE e dados.gov.pt
 
-Catálogo oficial: <https://dados.gov.pt/pt/datasets/contratos-publicos-portal-base-impic-contratos-de-2012-a-2025/>
+Catálogo oficial: <https://dados.gov.pt/pt/datasets/contratos-publicos-portal-base-impic-contratos-de-2012-a-2026/>
+
+A V5.49 separa a prova do catálogo da ingestão dos contratos. O manifesto exige o dataset e produtor
+oficiais, licença `other-pd`, frequência semanal e exatamente um ZIP por ano desde 2012. Na
+fotografia de 2026, 2012–2025 são períodos históricos e 2026 é provisório. “Histórico” não quer
+dizer definitivo: uma correção oficial posterior cria outra fotografia e preserva a anterior.
+Consulte [V5.49 — âmbito temporal privado do Portal BASE](V5_BASE_TEMPORAL_SCOPE.md).
 
 O colector aceita JSON, XML e ZIP com limites de download, tamanho descomprimido e taxa de compressão.
 Uma operação explicitamente confirmada em staging arquiva e atesta os bytes antes de carregar um

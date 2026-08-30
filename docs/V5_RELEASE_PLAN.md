@@ -3,7 +3,7 @@
 ## Estado de referência
 
 Este plano fixa o âmbito necessário para concluir a `v0.5.0`. Foi preparado em 13 de agosto de
-2026 e atualizado em 29 de agosto de 2026 a partir do código integrado em `main`, da produção
+2026 e atualizado em 30 de agosto de 2026 a partir do código integrado em `main`, da produção
 pública e dos princípios de governação do projeto. Não autoriza deploy, migração remota, criação de
 utilizadores, alteração de segredos, geração por IA, publicação, retirada ou tratamento de dados
 reais.
@@ -11,7 +11,7 @@ reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.48 preparadas; staging remoto pendente |
+| Código V5 | V5.1 a V5.49 preparadas; staging remoto pendente |
 | Frontend público | V5.21 preparado; capacidades sem backend ou esquema pronto ficam fail-closed |
 | API pública | `0.5.0-alpha.0`; capacidades anunciadas apenas após prova read-only do esquema |
 | Painel editorial | implementado no código, não ativado em produção |
@@ -19,7 +19,7 @@ reais.
 | Parlamento | matriz V5.21 e gates V5.22–V5.45 preparados; ativação editorial pendente |
 | Perfis | ciclo integral de entrada, publicação, retirada e republicação provado; domínios individuais pendentes |
 | Promessómetro | amostra pública de 10; catálogo V5.48 com 1 590 candidatos privados em 40 blocos, ainda sem consolidação humana |
-| Investigador Cívico | zero contratos e zero relações na projeção pública |
+| Investigador Cívico | âmbito anual BASE V5.49 preparado; zero contratos e zero relações na projeção pública |
 | PWA e alertas | consentimento, revogação e cache opt-in integrados; configuração remota pendente |
 | Repositório | privado e licenciado como código disponível para uso não comercial |
 
@@ -357,6 +357,12 @@ Critérios de saída:
 - grafo público explica que uma ligação não prova conflito, benefício ou ilícito;
 - direito de resposta e retirada append-only abrangem os registos publicados;
 - AIPD e revisão jurídica aplicáveis estão concluídas antes de relações pessoais reais.
+
+A [V5.49 — âmbito temporal privado do Portal BASE](V5_BASE_TEMPORAL_SCOPE.md) fecha a definição
+do universo de origem: o catálogo oficial, produtor, licença, frequência e um ZIP por ano são
+validados e preservados por hash. Em 2026, os anos 2012–2025 são períodos históricos e 2026 é
+sempre provisório. Isto não executa a migração remota, não descarrega os ZIP e não cria contratos,
+organizações, correspondências, relações ou publicação.
 
 ### 8. Circuito responsável de IA
 

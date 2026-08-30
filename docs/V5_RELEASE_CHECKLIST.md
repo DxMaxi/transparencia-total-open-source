@@ -245,7 +245,11 @@ Governo](V5_PROMESSOMETRO_CATALOGUE.md).
 
 ## H. Investigador Cívico
 
-- [ ] Âmbito temporal do Portal BASE definido.
+- [x] Âmbito temporal do Portal BASE definido.
+  - [x] V5.49 fixa dataset, produtor, licença, frequência e primeiro ano num manifesto versionado.
+  - [x] V5.49 exige um ZIP oficial por ano entre 2012 e o ano da recolha, sem lacunas ou duplicados.
+  - [x] Anos civis terminados são históricos; o ano corrente permanece sempre provisório.
+  - [x] Catálogo, recursos e hashes ficam privados, append-only e sem criar qualquer contrato.
 - [ ] Lotes completos arquivados e persistidos apenas em staging.
 - [ ] Promoção revista para `PublicContract` implementada e testada.
 - [ ] Organizações e titulares têm fontes próprias.
@@ -257,6 +261,9 @@ Governo](V5_PROMESSOMETRO_CATALOGUE.md).
 - [ ] Grafo público distingue ligação factual de acusação ou conflito.
 - [ ] Direito de resposta e retirada cobrem contratos e relações.
 - [ ] AIPD e revisão jurídica aplicáveis concluídas.
+
+Metodologia e limites desta fundação: [V5.49 — âmbito temporal privado do Portal
+BASE](V5_BASE_TEMPORAL_SCOPE.md).
 
 ## I. IA responsável
 

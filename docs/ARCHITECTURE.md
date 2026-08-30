@@ -130,6 +130,11 @@ omissões antes de aprovar.
 
 ### Contrato e relação de interesse
 
+Antes do recurso anual, a V5.49 arquiva e valida o catálogo oficial do dados.gov.pt. A fotografia
+privada conserva um recurso ZIP por ano desde 2012, marca o ano corrente como provisório e recusa
+lacunas, duplicados ou mudanças não revistas de dataset, produtor, licença e frequência. Esta etapa
+cria zero contratos e zero relações.
+
 O recurso anual BASE é descarregado para staging, validado contra limites de tamanho e expansão ZIP
 e convertido para um contrato canónico. O matcher exato gera `ContractMatchReview=PENDING_REVIEW`.
 Um revisor confirma identidade, papel, datas e fonte da associação; outro controlo promove a aresta
