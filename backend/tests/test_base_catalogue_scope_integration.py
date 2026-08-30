@@ -75,7 +75,7 @@ async def test_scope_is_private_append_only_idempotent_and_creates_no_public_dat
 ) -> None:
     manifest = load_base_catalogue_manifest()
     content = _catalogue_bytes()
-    retrieved_at = datetime(2026, 8, 30, 10, 0, tzinfo=UTC)
+    retrieved_at = datetime(2026, 8, 29, 10, 0, tzinfo=UTC)
     raw = PrivateRawDocument(
         source_url=manifest.catalogue_api_url,
         retrieved_at=retrieved_at,
