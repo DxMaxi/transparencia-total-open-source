@@ -11,6 +11,7 @@ from urllib.parse import urlencode
 
 import asyncpg
 
+from app.core.public_database_errors import is_public_database_unavailable
 from app.repositories.ai_editorial_publication import PublicAiExplanationRepository
 from app.repositories.public_parliament import PublicParliamentRepository
 from app.repositories.public_politicians import PublicPoliticianRepository
@@ -209,6 +210,8 @@ class PublicGlobalSearchRepository:
         sections: dict[str, dict[str, object]] = {}
         for task_name, outcome in resolved.items():
             if isinstance(outcome, BaseException):
+                if not is_public_database_unavailable(outcome):
+                    raise outcome
                 affected = (
                     (
                         "parliament_sessions",

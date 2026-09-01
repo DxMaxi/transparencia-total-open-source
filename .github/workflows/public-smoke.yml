@@ -22,6 +22,9 @@ jobs:
     timeout-minutes: 12
     env:
       PUBLIC_SITE_URL: https://www.transparenciatotal.pt
+      # Evita bloquear o auto-deploy corretivo do Render com o backend anterior.
+      # A API é provada pela agenda diária ou por workflow_dispatch após o redeploy.
+      PUBLIC_API_URL: ${{ github.event_name != 'deployment_status' && 'https://transparencia-total-api.onrender.com' || '' }}
       SMOKE_ATTEMPTS: "12"
       SMOKE_DELAY_MS: "20000"
       SMOKE_TIMEOUT_MS: "15000"

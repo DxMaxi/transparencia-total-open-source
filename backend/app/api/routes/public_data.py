@@ -1,10 +1,14 @@
+import logging
 from datetime import date
 from typing import Annotated, Literal
 
-import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from app.api.dependencies import get_repository
+from app.core.public_database_errors import (
+    PUBLIC_DATABASE_BOUNDARY_ERRORS,
+    is_public_database_unavailable,
+)
 from app.models.api import (
     PublicDataStatus,
     PublicInvestigatorDataset,
@@ -37,33 +41,38 @@ from app.repositories.public_politicians import (
 from app.repositories.public_search import PublicGlobalSearchRepository
 
 router = APIRouter(prefix="/public", tags=["Leitura pública"])
+logger = logging.getLogger(__name__)
 
 
 def _cache(response: Response) -> None:
     response.headers["Cache-Control"] = "public, max-age=60, stale-while-revalidate=300"
 
 
-def _unavailable(exc: RuntimeError) -> HTTPException:
+def _unavailable(
+    exc: BaseException,
+    *,
+    detail: str = "Os dados públicos estão temporariamente indisponíveis.",
+) -> HTTPException:
+    if not is_public_database_unavailable(exc):
+        raise exc
+    logger.warning(
+        "public_projection_unavailable",
+        extra={"error_type": type(exc).__name__},
+    )
     return HTTPException(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        detail=str(exc),
+        detail=detail,
     )
 
 
-def _ai_unavailable() -> HTTPException:
-    return HTTPException(
-        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+def _ai_unavailable(exc: BaseException) -> HTTPException:
+    return _unavailable(
+        exc,
         detail="As explicações públicas estão temporariamente indisponíveis.",
     )
 
 
-_AI_PUBLIC_DATABASE_ERRORS = (
-    RuntimeError,
-    OSError,
-    TimeoutError,
-    asyncpg.PostgresError,
-    asyncpg.InterfaceError,
-)
+_AI_PUBLIC_DATABASE_ERRORS = PUBLIC_DATABASE_BOUNDARY_ERRORS
 
 
 @router.get("/data-status", response_model=PublicDataStatus)
@@ -74,15 +83,9 @@ async def public_data_status(
     _cache(response)
     try:
         data = await repository.get_public_data_status()
-    except (
-        RuntimeError,
-        OSError,
-        TimeoutError,
-        asyncpg.PostgresError,
-        asyncpg.InterfaceError,
-    ) as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+    except PUBLIC_DATABASE_BOUNDARY_ERRORS as exc:
+        raise _unavailable(
+            exc,
             detail="O servi\u00e7o de dados est\u00e1 temporariamente indispon\u00edvel.",
         ) from exc
     return PublicDataStatus.model_validate(data)
@@ -98,7 +101,7 @@ async def public_politicians(
     _cache(response)
     try:
         rows = await repository.list_public_politicians(limit=limit, offset=offset)
-    except RuntimeError as exc:
+    except PUBLIC_DATABASE_BOUNDARY_ERRORS as exc:
         raise _unavailable(exc) from exc
     return [PublishedPersonSummary.model_validate(row) for row in rows]
 
@@ -159,7 +162,7 @@ async def public_politician_directory(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(exc),
         ) from exc
-    except RuntimeError as exc:
+    except PUBLIC_DATABASE_BOUNDARY_ERRORS as exc:
         raise _unavailable(exc) from exc
     return PublishedPoliticianDirectory.model_validate(result)
 
@@ -173,7 +176,7 @@ async def public_politician_profile(
     _cache(response)
     try:
         row = await repository.get_public_politician(slug)
-    except RuntimeError as exc:
+    except PUBLIC_DATABASE_BOUNDARY_ERRORS as exc:
         raise _unavailable(exc) from exc
     if row is None:
         raise HTTPException(status_code=404, detail="Perfil público não encontrado")
@@ -190,7 +193,7 @@ async def public_promises(
     _cache(response)
     try:
         rows = await repository.list_public_promises(limit=limit, offset=offset)
-    except RuntimeError as exc:
+    except PUBLIC_DATABASE_BOUNDARY_ERRORS as exc:
         raise _unavailable(exc) from exc
     return [PublishedPromise.model_validate(row) for row in rows]
 
@@ -204,7 +207,7 @@ async def public_investigator(
     _cache(response)
     try:
         row = await repository.get_public_investigator_dataset(limit=limit)
-    except RuntimeError as exc:
+    except PUBLIC_DATABASE_BOUNDARY_ERRORS as exc:
         raise _unavailable(exc) from exc
     return PublicInvestigatorDataset.model_validate(row)
 
@@ -228,7 +231,7 @@ async def public_ai_explanations(
             offset=offset,
         )
     except _AI_PUBLIC_DATABASE_ERRORS as exc:
-        raise _ai_unavailable() from exc
+        raise _ai_unavailable(exc) from exc
     return PublishedAiExplanationList.model_validate(result)
 
 
@@ -249,7 +252,7 @@ async def public_ai_publication_history(
             limit=limit
         )
     except _AI_PUBLIC_DATABASE_ERRORS as exc:
-        raise _ai_unavailable() from exc
+        raise _ai_unavailable(exc) from exc
     return [PublishedAiPublicationHistoryItem.model_validate(row) for row in rows]
 
 
@@ -267,7 +270,7 @@ async def public_ai_explanation(
             public_id=public_id
         )
     except _AI_PUBLIC_DATABASE_ERRORS as exc:
-        raise _ai_unavailable() from exc
+        raise _ai_unavailable(exc) from exc
     if row is None:
         raise HTTPException(status_code=404, detail="Explicação pública não encontrada")
     return PublishedAiExplanation.model_validate(row)
@@ -288,7 +291,7 @@ async def public_parliament_sessions(
             limit=limit,
             offset=offset,
         )
-    except RuntimeError as exc:
+    except PUBLIC_DATABASE_BOUNDARY_ERRORS as exc:
         raise _unavailable(exc) from exc
     return [PublishedParliamentarySession.model_validate(row) for row in rows]
 
@@ -338,7 +341,7 @@ async def public_parliament_explorer(
             limit=limit,
             offset=offset,
         )
-    except RuntimeError as exc:
+    except PUBLIC_DATABASE_BOUNDARY_ERRORS as exc:
         raise _unavailable(exc) from exc
     return PublishedParliamentExplorer.model_validate(result)
 
@@ -357,7 +360,7 @@ async def public_parliament_coverage(
     _cache(response)
     try:
         rows = await PublicParliamentRepository(repository.pool).list_coverage(limit=limit)
-    except RuntimeError as exc:
+    except PUBLIC_DATABASE_BOUNDARY_ERRORS as exc:
         raise _unavailable(exc) from exc
     return [PublishedParliamentCoverageRow.model_validate(row) for row in rows]
 
@@ -380,7 +383,7 @@ async def public_parliament_publication_history(
             legislature=legislature,
             limit=limit,
         )
-    except RuntimeError as exc:
+    except PUBLIC_DATABASE_BOUNDARY_ERRORS as exc:
         raise _unavailable(exc) from exc
     return [PublishedParliamentPublicationHistoryItem.model_validate(row) for row in rows]
 
@@ -403,7 +406,7 @@ async def public_parliament_initiatives(
             limit=limit,
             offset=offset,
         )
-    except RuntimeError as exc:
+    except PUBLIC_DATABASE_BOUNDARY_ERRORS as exc:
         raise _unavailable(exc) from exc
     return [PublishedParliamentaryInitiative.model_validate(row) for row in rows]
 
@@ -423,6 +426,6 @@ async def public_parliament_votes(
             limit=limit,
             offset=offset,
         )
-    except RuntimeError as exc:
+    except PUBLIC_DATABASE_BOUNDARY_ERRORS as exc:
         raise _unavailable(exc) from exc
     return [PublishedParliamentaryVote.model_validate(row) for row in rows]

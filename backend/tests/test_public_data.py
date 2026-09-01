@@ -219,7 +219,9 @@ def test_status_never_claims_live_data_without_database() -> None:
     assert response.json()["database_configured"] is False
 
 
-def test_status_database_failure_returns_controlled_503() -> None:
+def test_status_database_failure_returns_controlled_503(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     class FailingRepository:
         async def get_public_data_status(self) -> dict[str, Any]:
             raise OSError("internal database connection details")
@@ -236,6 +238,74 @@ def test_status_database_failure_returns_controlled_503() -> None:
         "O servi\u00e7o de dados est\u00e1 temporariamente indispon\u00edvel."
     )
     assert "internal database connection details" not in response.text
+    assert "public_projection_unavailable" in caplog.messages
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        RuntimeError("Base de dados não configurada"),
+        OSError("socket and host details"),
+        TimeoutError("database timeout details"),
+        asyncpg.UndefinedTableError('relation "private_table" does not exist'),
+        asyncpg.UndefinedColumnError('column "private_column" does not exist'),
+        asyncpg.ConnectionDoesNotExistError("connection state details"),
+    ],
+)
+def test_investigator_database_failure_is_sanitized_as_503(
+    failure: BaseException,
+) -> None:
+    class FailingRepository:
+        async def get_public_investigator_dataset(
+            self,
+            *,
+            limit: int,
+        ) -> dict[str, Any]:
+            assert limit == 200
+            raise failure
+
+    app.dependency_overrides[get_repository] = lambda: FailingRepository()
+    try:
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.get("/api/v1/public/investigator")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == ("Os dados públicos estão temporariamente indisponíveis.")
+    assert str(failure) not in response.text
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        ValueError("programming defect"),
+        RuntimeError("programming defect"),
+        asyncpg.PostgresSyntaxError("programming defect"),
+        asyncpg.InterfaceError("programming defect"),
+    ],
+)
+def test_investigator_programming_error_is_not_hidden_as_unavailability(
+    failure: BaseException,
+) -> None:
+    class DefectiveRepository:
+        async def get_public_investigator_dataset(
+            self,
+            *,
+            limit: int,
+        ) -> dict[str, Any]:
+            assert limit == 200
+            raise failure
+
+    app.dependency_overrides[get_repository] = lambda: DefectiveRepository()
+    try:
+        with (
+            TestClient(app) as client,
+            pytest.raises(type(failure), match="programming defect"),
+        ):
+            client.get("/api/v1/public/investigator")
+    finally:
+        app.dependency_overrides.clear()
 
 
 def test_ai_public_routes_fail_closed_when_editorial_schema_is_missing(

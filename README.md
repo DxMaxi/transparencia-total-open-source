@@ -140,7 +140,11 @@ definição da Open Source Initiative.
 > cobertura integral do ZIP anual, não expõe HMAC, não faz correspondência de nomes e não escreve
 > em contratos, organizações, nós, relações ou eventos públicos. As consultas públicas exigem um
 > evento específico de publicação, pelo que um estado técnico legado não basta. A
-> ativação real continua dependente dos gates operacionais de staging. O código e os testes
+> V5.50.1 faz as projeções públicas responderem com indisponibilidade HTTP 503 neutra perante
+> falhas operacionais PostgreSQL, sem expor detalhes internos, e o smoke diário ou manual rejeita
+> qualquer erro 500 do Investigador Cívico. Erros de programação continuam visíveis ao CI. A
+> ativação real continua
+> dependente dos gates operacionais de staging. O código e os testes
 > não executam estas operações sobre staging ou
 > produção. O plano e a checklist
 > de fecho estão em
