@@ -105,6 +105,9 @@ continuam a exigir autorizações separadas.
 - [x] Versão principal do Node fixada e igual no CI e no deployment.
 - [x] Testes de contrato impedem regressões destes comportamentos.
 - [x] Estado público distingue fontes recentes, parciais e desatualizadas pelo limite operacional.
+- [x] V5.50.1 — falhas operacionais PostgreSQL nas projeções públicas devolvem HTTP 503 neutro e
+  registado internamente; detalhes da base de dados não saem da API e erros de programação
+  continuam visíveis ao CI.
 
 ## C. Base de dados e autenticação em staging
 

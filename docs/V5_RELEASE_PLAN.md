@@ -3,7 +3,7 @@
 ## Estado de referência
 
 Este plano fixa o âmbito necessário para concluir a `v0.5.0`. Foi preparado em 13 de agosto de
-2026 e atualizado em 30 de agosto de 2026 a partir do código integrado em `main`, da produção
+2026 e atualizado em 1 de setembro de 2026 a partir do código integrado em `main`, da produção
 pública e dos princípios de governação do projeto. Não autoriza deploy, migração remota, criação de
 utilizadores, alteração de segredos, geração por IA, publicação, retirada ou tratamento de dados
 reais.
@@ -11,9 +11,9 @@ reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.50 preparadas; staging remoto pendente |
+| Código V5 | V5.1 a V5.50.1 preparadas; staging remoto pendente |
 | Frontend público | V5.21 preparado; capacidades sem backend ou esquema pronto ficam fail-closed |
-| API pública | `0.5.0-alpha.0`; capacidades anunciadas apenas após prova read-only do esquema |
+| API pública | `0.5.0-alpha.0`; capacidades anunciadas só após prova read-only e falhas operacionais devolvem 503 neutro |
 | Painel editorial | implementado no código, não ativado em produção |
 | IA | geração, revisão, publicação e retirada implementadas; esquema remoto ainda não ativado |
 | Parlamento | matriz V5.21 e gates V5.22–V5.45 preparados; ativação editorial pendente |
@@ -370,6 +370,13 @@ e a coerência do lote normalizado, sem alegar cobertura integral do ZIP, e cria
 `PUBLIC_CONTRACT/PENDING`. Os HMAC ficam no staging; nomes são texto da fonte e nunca
 correspondência. A futura projeção pública continua pendente de fontes próprias das organizações,
 decisão `ADMIN` específica, eventos append-only, retirada e direito de resposta.
+
+A V5.50.1 uniformiza a fronteira pública perante indisponibilidade operacional de PostgreSQL:
+projeções sem esquema ou ligação disponível devolvem HTTP 503 com mensagem neutra, sem expor a
+exceção. O smoke diário ou manual aceita dados aprovados ou esta indisponibilidade controlada e
+rejeita qualquer HTTP 500. Erros de SQL ou programação fora da lista explícita de indisponibilidade
+continuam a falhar no CI. A promoção executa primeiro o deployment Render apenas de código e só
+depois a verificação manual da API, evitando que o backend anterior bloqueie a própria correção.
 
 ### 8. Circuito responsável de IA
 

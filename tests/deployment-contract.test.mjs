@@ -269,3 +269,23 @@ test("Vercel and CI both enforce the deployment artifact contract", async () => 
   assert.match(vercel, /npm run verify:next-artifact/);
   assert.match(workflow, /npm run verify:next-artifact/);
 });
+
+test("Render backend deployment remains code-only and waits for checks", async () => {
+  const blueprint = await readFile(
+    new URL("../render.yaml", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(blueprint, /rootDir: backend/);
+  assert.match(blueprint, /buildCommand: pip install -r requirements\.txt/);
+  assert.match(
+    blueprint,
+    /startCommand: uvicorn app\.main:app --host 0\.0\.0\.0 --port \$PORT/,
+  );
+  assert.match(blueprint, /healthCheckPath: \/api\/v1\/health\/ready/);
+  assert.match(blueprint, /autoDeployTrigger: checksPass/);
+  assert.doesNotMatch(
+    blueprint,
+    /preDeployCommand|releaseCommand|prisma\s+migrate|db:deploy|scripts\.(publish|withdraw|sync)/i,
+  );
+});

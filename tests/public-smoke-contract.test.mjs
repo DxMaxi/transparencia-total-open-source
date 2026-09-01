@@ -31,13 +31,25 @@ test("public smoke covers every public route and deployment guard", async () => 
     assert.match(script, new RegExp(`"${pathname}"`));
     assert.match(e2e, new RegExp(`"${pathname}"`));
   }
-  assert.match(script, /Dados oficiais publicados/);
+  assert.match(script, /Dados públicos com fonte identificada/);
+  assert.match(script, /Factos que pode confirmar/);
   assert.match(script, /Ativar modo offline/);
   assert.match(script, /strict-transport-security/);
   assert.match(script, /content-security-policy/);
   assert.match(script, /PRIVATE_PATH_PREFIXES/);
   assert.match(script, /AbortSignal\.timeout/);
   assert.match(script, /__public-smoke-unknown-route__/);
+  assert.match(script, /\/api\/v1\/public\/investigator\?limit=1/);
+  assert.match(script, /investigator\.response\.status === 200/);
+  assert.match(script, /investigator\.response\.status === 503/);
+  assert.match(script, /assert\.deepEqual\(investigatorPayload/);
+  assert.match(script, /Array\.isArray\(investigatorPayload\.nodes\)/);
+  assert.match(script, /Array\.isArray\(investigatorPayload\.edges\)/);
+  assert.match(script, /Array\.isArray\(investigatorPayload\.comparisons\)/);
+  assert.match(script, /Os dados públicos estão temporariamente indisponíveis/);
+  assert.match(script, /Internal Server Error/);
+  assert.match(script, /configuredApiUrl/);
+  assert.match(script, /investigatorStatus = "not_checked"/);
 });
 
 test("public smoke runs after a successful Production deployment and on a daily schedule", async () => {
@@ -64,6 +76,11 @@ test("public smoke runs after a successful Production deployment and on a daily 
     /npx playwright test tests\/e2e\/public-site\.spec\.js --workers=1/,
   );
   assert.match(workflow, /SMOKE_ATTEMPTS: "12"/);
+  assert.match(
+    workflow,
+    /PUBLIC_API_URL:[^\n]+https:\/\/transparencia-total-api\.onrender\.com/,
+  );
+  assert.match(workflow, /github\.event_name != 'deployment_status'/);
 });
 
 test("CI verifies the built application locally in a real browser", async () => {

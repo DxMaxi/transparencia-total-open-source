@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 const siteUrl = new URL(
   process.env.PUBLIC_SITE_URL?.trim() || "https://www.transparenciatotal.pt",
 );
+const configuredApiUrl = process.env.PUBLIC_API_URL?.trim();
+const apiUrl = configuredApiUrl ? new URL(configuredApiUrl) : null;
 const attempts = Math.max(1, Number.parseInt(process.env.SMOKE_ATTEMPTS || "12", 10));
 const delayMs = Math.max(0, Number.parseInt(process.env.SMOKE_DELAY_MS || "20000", 10));
 const timeoutMs = Math.max(1000, Number.parseInt(process.env.SMOKE_TIMEOUT_MS || "15000", 10));
@@ -27,10 +29,28 @@ function target(pathname) {
   return new URL(pathname, siteUrl).href;
 }
 
+function apiTarget(pathname) {
+  assert.ok(apiUrl, "PUBLIC_API_URL is required for the API smoke");
+  return new URL(pathname, apiUrl).href;
+}
+
 async function get(pathname) {
   const response = await fetch(target(pathname), {
     headers: {
       Accept: "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+      "User-Agent": "TransparenciaTotal-PublicSmoke/1.0 (+https://www.transparenciatotal.pt)",
+    },
+    redirect: "follow",
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  const body = await response.text();
+  return { response, body };
+}
+
+async function getApi(pathname) {
+  const response = await fetch(apiTarget(pathname), {
+    headers: {
+      Accept: "application/json",
       "User-Agent": "TransparenciaTotal-PublicSmoke/1.0 (+https://www.transparenciatotal.pt)",
     },
     redirect: "follow",
@@ -63,7 +83,8 @@ async function auditPublicSite() {
 
   const home = pages.find((page) => page.pathname === "/");
   assert.ok(home);
-  assert.match(home.body, /Dados oficiais publicados\./);
+  assert.match(home.body, /Dados públicos com fonte identificada/);
+  assert.match(home.body, /Factos que pode confirmar\./);
   assert.match(home.body, /Ativar modo offline/);
 
   const requiredHeaders = {
@@ -104,8 +125,39 @@ async function auditPublicSite() {
   assert.equal(missing.response.status, 404);
   assert.match(missing.body, /Página não encontrada/);
 
+  let investigatorStatus = "not_checked";
+  if (apiUrl) {
+    const investigator = await getApi("/api/v1/public/investigator?limit=1");
+    assert.ok(
+      investigator.response.status === 200 || investigator.response.status === 503,
+      `public investigator returned ${investigator.response.status}`,
+    );
+    assert.match(
+      investigator.response.headers.get("content-type") || "",
+      /application\/json/i,
+      "public investigator did not return JSON",
+    );
+    assert.doesNotMatch(
+      investigator.body,
+      /Internal Server Error|relation\s+["']|postgresql:\/\/|database connection details/i,
+    );
+    const investigatorPayload = JSON.parse(investigator.body);
+    if (investigator.response.status === 503) {
+      assert.deepEqual(investigatorPayload, {
+        detail: "Os dados públicos estão temporariamente indisponíveis.",
+      });
+    } else {
+      assert.ok(Array.isArray(investigatorPayload.nodes));
+      assert.ok(Array.isArray(investigatorPayload.edges));
+      assert.ok(Array.isArray(investigatorPayload.comparisons));
+    }
+    investigatorStatus = investigator.response.status;
+  }
+
   return {
     origin: siteUrl.origin,
+    api_origin: apiUrl?.origin ?? null,
+    investigator_status: investigatorStatus,
     pages: pages.length,
     checked_at: new Date().toISOString(),
   };

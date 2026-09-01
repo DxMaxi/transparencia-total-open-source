@@ -293,3 +293,37 @@ def test_partial_source_failure_is_visible_and_does_not_hide_other_sections(
     assert ai_section.total is None
     assert ai_section.items == []
     assert "Dados temporariamente indisponíveis" in ai_section.coverage_note
+
+
+def test_global_search_does_not_hide_sql_programming_errors() -> None:
+    class Repository(PublicGlobalSearchRepository):
+        async def _search_politicians(self, **_arguments: object) -> dict[str, object]:
+            return _section("politicians")
+
+        async def _search_parliament(
+            self,
+            **_arguments: object,
+        ) -> dict[str, dict[str, object]]:
+            return {
+                kind: _section(kind)
+                for kind in (
+                    "parliament_sessions",
+                    "parliament_initiatives",
+                    "parliament_votes",
+                )
+            }
+
+        async def _search_promises(self, **_arguments: object) -> dict[str, object]:
+            return _section("promises")
+
+        async def _search_ai(self, **_arguments: object) -> dict[str, object]:
+            raise asyncpg.PostgresSyntaxError("programming defect")
+
+    with pytest.raises(asyncpg.PostgresSyntaxError, match="programming defect"):
+        asyncio.run(
+            Repository(object()).search(  # type: ignore[arg-type]
+                query="habitação",
+                legislature="XVII",
+                section_limit=5,
+            )
+        )

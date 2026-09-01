@@ -225,6 +225,14 @@ nomes não ligam entidades e a revisão genérica recusa contratos, organizaçõ
 projeções públicas exigem agora o evento específico `PUBLISH`; publicação, retirada, direito de
 resposta, identidade organizacional e execução real em staging continuam pendentes.
 
+A V5.50.1 fecha uma falha observada na API pública antes da ativação remota do esquema. Erros
+operacionais conhecidos de PostgreSQL devolvem agora HTTP 503 neutro em todas as projeções, sem
+devolver nomes de tabelas ou detalhes de ligação. O smoke de produção verifica expressamente o
+Investigador Cívico e rejeita HTTP 500; erros de programação continuam visíveis aos testes.
+Para evitar um ciclo com `autoDeployTrigger: checksPass`, o evento automático do Vercel verifica o
+frontend sem exigir a API anterior; depois do deployment Render apenas de código, a operação deve
+executar `Public smoke` manualmente, que então inclui o endpoint do Investigador.
+
 A melhoria de UX iniciada em agosto de 2026 faz parte da estabilização/conclusão da **V5**. Não deve ser tratada como início de uma V6 nem como autorização para reescrever o projeto.
 
 ## 5. Baseline técnico conhecido
