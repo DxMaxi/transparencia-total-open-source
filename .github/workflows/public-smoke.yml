@@ -30,7 +30,7 @@ jobs:
       SMOKE_TIMEOUT_MS: "15000"
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
       - name: Verificar frontend, API pública, PWA e cabeçalhos
