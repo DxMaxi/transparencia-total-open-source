@@ -13,6 +13,7 @@ export const EDITORIAL_KINDS = [
   "POLITICIAN_PROFILE",
   "GOVERNMENT_PROMISE",
   "PUBLIC_CONTRACT",
+  "ORGANISATION_IDENTITY",
   "INTEREST_RELATIONSHIP",
   "RIGHT_OF_REPLY",
   "AI_EXPLANATION",
@@ -21,6 +22,71 @@ export const EDITORIAL_KINDS = [
 
 export type EditorialState = (typeof EDITORIAL_STATES)[number];
 export type EditorialKind = (typeof EDITORIAL_KINDS)[number];
+
+export const MANUAL_EDITORIAL_KINDS = EDITORIAL_KINDS.filter(
+  (kind) => kind !== "ORGANISATION_IDENTITY",
+);
+
+export type BaseOrganisationIdentityCandidate = {
+  observation_id: string;
+  source_document_id: string;
+  registry_record_id: string;
+  legal_name: string;
+  kind: "PUBLIC_BODY" | "COMPANY" | "NON_PROFIT" | "EUROPEAN_BODY" | "OTHER";
+  observed_at: string;
+  source_record_sha256: string;
+  proposal_confirmation_sha256: string;
+  protected_identifier_observed: true;
+  protected_identifier_exposed: false;
+  source: {
+    title: string;
+    publisher: "IRN";
+    official_identifier: string;
+    url: string;
+    retrieved_at: string;
+    content_sha256: string;
+    mime_type: string | null;
+  };
+  archive: {
+    storage_backend: string;
+    byte_size: number;
+    archived_at: string;
+    attestation_sha256: string;
+  } | null;
+  existing_case: {
+    id: string;
+    state: EditorialState;
+    revision: number;
+    origin: "HUMAN" | "INGESTION" | "AI";
+  } | null;
+  proposal_eligible: boolean;
+  blocked_reasons: string[];
+};
+
+export type BaseOrganisationIdentityCandidateList = {
+  items: BaseOrganisationIdentityCandidate[];
+  total: number;
+  limit: number;
+  offset: number;
+  filter_required: boolean;
+  publication_performed: false;
+  organisation_created: false;
+  relationship_created: false;
+  protected_identifier_exposed: false;
+  search_rule: string;
+  coverage_rule: string;
+};
+
+export type BaseOrganisationIdentityProposalResult = {
+  created: boolean;
+  case: EditorialCaseDetail;
+  state: EditorialState;
+  publication_performed: false;
+  organisation_created: false;
+  interest_entity_created: false;
+  match_review_created: false;
+  relationship_created: false;
+};
 
 export type StaffSession = {
   staff_id: string;
@@ -2005,6 +2071,7 @@ export const KIND_LABELS: Record<EditorialKind, string> = {
   POLITICIAN_PROFILE: "Perfil político",
   GOVERNMENT_PROMISE: "Promessa do Governo",
   PUBLIC_CONTRACT: "Contrato público",
+  ORGANISATION_IDENTITY: "Identidade de organização (privada)",
   INTEREST_RELATIONSHIP: "Relação de interesses",
   RIGHT_OF_REPLY: "Direito de resposta",
   AI_EXPLANATION: "Explicação proposta por IA",

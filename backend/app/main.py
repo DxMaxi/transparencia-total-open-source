@@ -3,7 +3,10 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, Response
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import RequestResponseEndpoint
 
 from app.api.routes import (
@@ -64,6 +67,27 @@ app = FastAPI(
     redoc_url="/redoc" if settings.environment != "production" else None,
     lifespan=lifespan,
 )
+
+
+@app.exception_handler(RequestValidationError)
+async def organisation_identity_validation_error(
+    request: Request,
+    exc: RequestValidationError,
+) -> Response:
+    """Erros editoriais não refletem campos protegidos, incluindo vias genéricas."""
+
+    if request.url.path.startswith(f"{settings.api_prefix}/editorial/"):
+        return JSONResponse(
+            status_code=422,
+            content={
+                "detail": (
+                    "Pedido editorial inválido. "
+                    "Não envie identificadores fiscais, HMAC ou dados fora do âmbito privado."
+                ),
+            },
+        )
+    return await request_validation_exception_handler(request, exc)
+
 
 app.add_middleware(
     CORSMiddleware,

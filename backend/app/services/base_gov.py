@@ -627,21 +627,12 @@ class ContractMatcher:
         actors: list[PublicActorMatchKey],
     ) -> list[ContractMatchCandidate]:
         eligible = [actor for actor in actors if assess_public_actor(actor).allowed]
-        name_index: dict[str, list[PublicActorMatchKey]] = {}
         protected_index: dict[str, list[PublicActorMatchKey]] = {}
         association_id_index: dict[
             str,
             list[tuple[PublicActorMatchKey, HttpUrl]],
         ] = {}
-        association_name_index: dict[
-            str,
-            list[tuple[PublicActorMatchKey, HttpUrl]],
-        ] = {}
         for eligible_actor in eligible:
-            name_index.setdefault(
-                normalise_public_name(eligible_actor.public_name),
-                [],
-            ).append(eligible_actor)
             if (
                 self.protected_identifiers_enabled
                 and eligible_actor.protected_nif_digest is not None
@@ -660,10 +651,6 @@ class ContractMatcher:
                     association_id_index.setdefault(digest, []).append(
                         (eligible_actor, actor_association.official_evidence_url)
                     )
-                association_name_index.setdefault(
-                    normalise_public_name(actor_association.organisation_name),
-                    [],
-                ).append((eligible_actor, actor_association.official_evidence_url))
 
         matches: dict[tuple[str, str, str, str, str, str], ContractMatchCandidate] = {}
         for contract in contracts:
@@ -714,27 +701,7 @@ class ContractMatcher:
                             [],
                         )
                     ]
-                normalised_party = normalise_public_name(party.name)
-                if not candidate_matches:
-                    candidate_matches = [
-                        (
-                            actor,
-                            ContractMatchMethod.NORMALISED_NAME,
-                            Decimal("0.9500"),
-                            evidence,
-                        )
-                        for actor, evidence in association_name_index.get(normalised_party, [])
-                    ]
-                if not candidate_matches:
-                    candidate_matches = [
-                        (
-                            actor,
-                            ContractMatchMethod.NORMALISED_NAME,
-                            Decimal("0.9000"),
-                            None,
-                        )
-                        for actor in name_index.get(normalised_party, [])
-                    ]
+                # Nomes servem apenas de rótulo, nunca como prova de identidade.
                 for matched_actor, method, score, association_evidence in candidate_matches:
                     candidate = ContractMatchCandidate(
                         contract_source_id=contract.source_id,

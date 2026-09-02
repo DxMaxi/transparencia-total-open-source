@@ -67,6 +67,9 @@ export default async function EditorialQueuePage({
           <Link className="button" href="/admin/revisao/contratos">
             Rever contratos do Portal BASE
           </Link>
+          <Link className="button" href="/admin/revisao/organizacoes">
+            Rever identidades de organizações
+          </Link>
           <Link className="button" href="/admin/revisao/novo">
             Criar processo manual
           </Link>

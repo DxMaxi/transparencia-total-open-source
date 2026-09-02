@@ -10,6 +10,7 @@ from app.api.dependencies import (
     get_ai_editorial_repository,
     get_base_contract_editorial_repository,
     get_base_contract_publication_repository,
+    get_base_organisation_editorial_repository,
     get_editorial_repository,
     get_ept_declaration_editorial_repository,
     get_ept_declaration_publication_gate_repository,
@@ -36,6 +37,7 @@ from app.api.dependencies import (
     require_editorial_staff,
 )
 from app.core.config import get_settings
+from app.models.base_organisation import BaseOrganisationIdentityEditorialProposalRequest
 from app.models.editorial import (
     AiDreProposalRequest,
     AiDreRegenerationRequest,
@@ -82,6 +84,7 @@ from app.repositories.ai_editorial import AiEditorialRepository
 from app.repositories.ai_editorial_publication import AiEditorialPublicationRepository
 from app.repositories.base_contract_editorial import BaseContractEditorialRepository
 from app.repositories.base_contract_publication import BaseContractPublicationRepository
+from app.repositories.base_organisation_editorial import BaseOrganisationEditorialRepository
 from app.repositories.editorial import (
     EditorialConflictError,
     EditorialNotFoundError,
@@ -170,6 +173,42 @@ async def session(
     """Permite completar MFA depois de confirmar que a conta pertence à equipa."""
 
     return actor
+
+
+@router.get("/base/organisation-identity-candidates")
+async def base_organisation_identity_candidates(
+    repository: Annotated[
+        BaseOrganisationEditorialRepository,
+        Depends(get_base_organisation_editorial_repository),
+    ],
+    _actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+    q: Annotated[str | None, Query(min_length=2, max_length=100)] = None,
+    limit: Annotated[int, Query(ge=1, le=50)] = 20,
+    offset: Annotated[int, Query(ge=0, le=10_000)] = 0,
+) -> dict[str, object]:
+    """Consulta prova privada IRN sem NIPC, HMAC, correspondência ou publicação."""
+
+    try:
+        return await repository.list_candidates(query=q, limit=limit, offset=offset)
+    except EditorialSourceError as exc:
+        raise _translate_error(exc) from None
+
+
+@router.post("/base/organisation-identity-proposals", status_code=status.HTTP_201_CREATED)
+async def create_base_organisation_identity_proposal(
+    payload: BaseOrganisationIdentityEditorialProposalRequest,
+    repository: Annotated[
+        BaseOrganisationEditorialRepository,
+        Depends(get_base_organisation_editorial_repository),
+    ],
+    actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> dict[str, object]:
+    """Submete uma identidade para revisão; a aprovação continua exclusivamente privada."""
+
+    try:
+        return await repository.create_proposal(payload=payload, actor=actor)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from None
 
 
 @router.get("/base/contract-candidates")

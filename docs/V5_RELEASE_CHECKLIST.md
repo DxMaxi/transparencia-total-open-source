@@ -266,6 +266,9 @@ Governo](V5_PROMESSOMETRO_CATALOGUE.md).
   - [x] Publica zero partes, organizações, correspondências ou relações.
   - [x] Retirada preserva contrato, fotografia, histórico e direitos de resposta.
 - [ ] Organizações e titulares têm fontes próprias.
+  - [ ] V5.52 — validar e integrar a observação privada de identidade organizacional e a proposta editorial com fonte IRN independente.
+  - [ ] Executar o ensaio autorizado em staging com fonte individual, arquivo, pepper estável e aprovação sem efeitos públicos.
+  - [ ] Concluir publicação e retirada específicas de organizações antes de associar partes de contratos.
 - [ ] Pepper HMAC estável configurado fora do repositório.
 - [ ] Nenhum identificador fiscal em claro persiste ou aparece em logs.
 - [ ] Correspondências exatas entram apenas em `PENDING_REVIEW`.
@@ -280,7 +283,9 @@ Governo](V5_PROMESSOMETRO_CATALOGUE.md).
 Metodologia e limites desta fundação: [V5.49 — âmbito temporal privado do Portal
 BASE](V5_BASE_TEMPORAL_SCOPE.md) e [V5.50 — porta editorial privada dos contratos
 BASE](V5_BASE_CONTRACT_EDITORIAL.md) e [V5.51 — publicação e retirada específicas de contratos
-BASE](V5_BASE_CONTRACT_PUBLICATION.md).
+BASE](V5_BASE_CONTRACT_PUBLICATION.md) e [V5.52 — identidade organizacional privada com fonte
+própria](V5_BASE_ORGANISATION_IDENTITY.md). A preparação local da V5.52 não fecha os ensaios
+operacionais nem a publicação de organizações e relações.
 
 ## I. IA responsável
 

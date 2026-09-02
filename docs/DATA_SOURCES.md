@@ -8,6 +8,7 @@
 | Diário da República | Funcional em staging | Extração por URL ELI, bytes exactos, arquivo atestado e snapshot privado append-only | Sem promoção pública; feed RSS só após confirmação documental |
 | Entidade para a Transparência | Funcional em staging privado, com contingência explícita | Índice canónico com bytes exactos; perante falha de rede, timeout ou HTTP 429, apenas o portal oficial alternativo é arquivado como `PARTIAL` | O portal alternativo não equivale ao índice, não recolhe declarações nem autoriza publicação; qualquer tratamento exige revisão jurídica própria |
 | Portal BASE / dados.gov.pt | Âmbito V5.49–V5.51 preparado; ingestão funcional em staging e circuito público específico implementado apenas no código | Catálogo anual 2012–ano corrente, arquivo, lote append-only, caso privado por contrato exato e porta ADMIN+MFA de publicação/retirada com fotografia imutável | Migração e operações V5.51 ainda não executadas em staging ou produção; nenhum contrato, parte, organização ou relação foi publicado; API direta de grande volume pode exigir registo e autorização |
+| IRN / Publicações de atos societários | V5.52 preparada localmente, sem ingestão real | Observação privada com fonte individual arquivada, referência não fiscal, HMAC com pepper e proposta editorial própria | Sem recolha automática, cobertura integral, publicação de organizações ou associação de partes; avaliação jurídica e ativação de staging pendentes |
 | Tribunal de Contas | Colector privado funcional | Índice oficial preservado com URL, data, SHA-256 e recursos deduplicados | Sem publicação nem interpretação de decisões ou culpa |
 | Parlamento Europeu | Colector privado funcional | Portal de dados abertos preservado com URL, data, SHA-256 e recursos deduplicados | Sem publicação nem atribuição individual sem voto nominal explícito |
 | Portal da Transparência do SNS | Colector privado funcional | Índice oficial preservado com URL, data, SHA-256 e `SyncRun` | Não publica indicadores nem representa cobertura territorial nacional |
@@ -146,6 +147,20 @@ identificador. Texto livre com sequências fiscais suspeitas entra em quarentena
 Extrações de grande volume através da API directa do Portal BASE devem seguir o procedimento oficial
 do IMPIC. A existência de dados públicos não autoriza contornar autenticação, limites ou requisitos
 de reutilização.
+
+## IRN e identidade organizacional
+
+O [serviço de Publicações do IRN](https://registo.justica.gov.pt/Empresas/Publicacoes) constitui
+a fonte independente inicialmente prevista para a identidade de organizações. Uma pesquisa ou
+descrição do serviço não vale como registo individual. A V5.52 exige conteúdo individual
+arquivado, referência oficial não fiscal, data e SHA-256 coincidentes com a atestação.
+
+A política inicial aceita apenas a página de detalhe de publicação do portal `publicacoes.mj.pt`;
+não presume uma ligação permanente por entidade nem cobertura integral. NIPC entra apenas no
+pedido interativo protegido e fica representado por HMAC privado com pepper estável. Aprovar a
+proposta não publica organizações ou ligações. Reutilização, arquivo e dados pessoais presentes
+nos atos exigem avaliação própria antes de operação real. Consulte
+[V5.52 — identidade organizacional privada com fonte própria](V5_BASE_ORGANISATION_IDENTITY.md).
 
 ## Novas fontes locais
 
