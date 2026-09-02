@@ -23,7 +23,7 @@ definição da Open Source Initiative.
 > commit final desse fecho. A V5 começa pela governação de licença e pelo circuito editorial
 > privado; esta branch não altera os dados aprovados da V4.
 
-> **V5.1 a V5.50 preparadas; ativação remota de staging pendente:** o painel privado usa
+> **V5.1 a V5.51 preparadas; ativação remota de staging pendente:** o painel privado usa
 > login por convite,
 > MFA obrigatório, funções de administrador/revisor, comparação entre fonte atestada e JSON
 > normalizado, versões e decisões append-only. A V5.2 acrescentou propostas parlamentares privadas,
@@ -143,6 +143,10 @@ definição da Open Source Initiative.
 > V5.50.1 faz as projeções públicas responderem com indisponibilidade HTTP 503 neutra perante
 > falhas operacionais PostgreSQL, sem expor detalhes internos, e o smoke diário ou manual rejeita
 > qualquer erro 500 do Investigador Cívico. Erros de programação continuam visíveis ao CI. A
+> V5.51 acrescenta uma porta `ADMIN` + MFA que publica apenas os campos factuais do contrato BASE
+> revisto, conserva uma fotografia pública append-only e cria zero partes, organizações,
+> correspondências ou relações. A retirada preserva contrato, fotografia, histórico e direitos de
+> resposta. Nenhuma destas operações foi executada sobre dados reais. A
 > ativação real continua
 > dependente dos gates operacionais de staging. O código e os testes
 > não executam estas operações sobre staging ou
@@ -192,6 +196,7 @@ definição da Open Source Initiative.
 > [catálogo integral privado do Programa do XXV Governo V5.48](docs/V5_PROMESSOMETRO_CATALOGUE.md),
 > [âmbito temporal privado do Portal BASE V5.49](docs/V5_BASE_TEMPORAL_SCOPE.md),
 > [porta editorial privada dos contratos BASE V5.50](docs/V5_BASE_CONTRACT_EDITORIAL.md),
+> [publicação e retirada de contratos BASE V5.51](docs/V5_BASE_CONTRACT_PUBLICATION.md),
 > [Adaptador parlamentar V5.2](docs/V5_PARLIAMENT_EDITORIAL_ADAPTER.md) e
 > [Publicação parlamentar por âmbito V5.3](docs/V5_PARLIAMENT_SCOPE_PUBLICATION.md),
 > [Retirada parlamentar imutável V5.4](docs/V5_PARLIAMENT_WITHDRAWAL.md) e
@@ -396,6 +401,7 @@ migrações anteriores continuam necessárias e são aplicadas por ordem.
 | Staging BASE | `BaseStagingBatch`, `BaseContractSnapshot`, `BaseContractPartySnapshot` | Append-only, privado e sem ligação automática às projeções públicas |
 | Âmbito BASE | `BaseContractCatalogueScope`, `BaseContractCatalogueResource` | Catálogo anual privado; ano corrente provisório e zero contratos/publicação |
 | Porta editorial BASE | `BaseContractSnapshot`, `EditorialCase` | Um registo específico de ano encerrado e lote normalizado coerente cria apenas um caso `PENDING`; não alega cobertura integral do ZIP |
+| Publicação BASE | `PublicContract`, `BasePublicContractPublicationSnapshot` | Só o contrato factual revisto; fotografia append-only, zero partes/organizações/relações e retirada sem apagar histórico |
 
 `SourceDocument` continua a ser a raiz de proveniência e `AuditEvent` o rasto de decisões. Os
 `CHECK` SQL adicionais impedem sujeitos ambíguos, arestas reflexivas, montantes negativos, métricas
@@ -587,6 +593,12 @@ arquivo, recurso catalogado e contagens do lote e permite criar um caso `PENDING
 oficial exato. Não copia HMAC para a resposta, não associa partes por nome e não cria `PublicContract`,
 `Organisation`, `InterestEntity`, `ContractMatchReview` ou `InterestRelationship`. Consulte
 [V5.50 — porta editorial privada dos contratos BASE](docs/V5_BASE_CONTRACT_EDITORIAL.md).
+
+A V5.51 acrescenta a porta pública específica. Depois de aprovação privada, apenas `ADMIN` com MFA
+pode voltar a confirmar snapshot, versão, fonte e hashes e publicar os campos factuais do contrato.
+A fotografia publicada é append-only. A ação publica zero partes, organizações, candidatos ou
+relações; a retirada mantém contrato, fotografia, histórico e direitos de resposta. Consulte
+[V5.51 — publicação e retirada específicas de contratos BASE](docs/V5_BASE_CONTRACT_PUBLICATION.md).
 
 O caminho normal usa os recursos anuais abertos que o IMPIC publica no dados.gov.pt. A API direta
 de grande volume do Portal BASE só deve ser configurada quando a organização tiver registo e

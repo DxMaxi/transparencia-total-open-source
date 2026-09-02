@@ -7,7 +7,7 @@
 | Assembleia da República | Release candidate | Catálogos, bytes PostgreSQL, deputados, reuniões observadas, iniciativas, votações, snapshots e revisão/publicação fail-closed | Reuniões são as referidas nos eventos de votação, não a agenda completa; nem toda votação é nominal |
 | Diário da República | Funcional em staging | Extração por URL ELI, bytes exactos, arquivo atestado e snapshot privado append-only | Sem promoção pública; feed RSS só após confirmação documental |
 | Entidade para a Transparência | Funcional em staging privado, com contingência explícita | Índice canónico com bytes exactos; perante falha de rede, timeout ou HTTP 429, apenas o portal oficial alternativo é arquivado como `PARTIAL` | O portal alternativo não equivale ao índice, não recolhe declarações nem autoriza publicação; qualquer tratamento exige revisão jurídica própria |
-| Portal BASE / dados.gov.pt | Âmbito V5.49 e porta editorial privada V5.50 preparados; ingestão funcional em staging | Catálogo anual 2012–ano corrente, arquivo, lote append-only e caso `PENDING` por contrato exato sem materialização pública | Operações ainda não executadas em staging; sem promoção pública ou identidade organizacional; API direta de grande volume pode exigir registo e autorização |
+| Portal BASE / dados.gov.pt | Âmbito V5.49–V5.51 preparado; ingestão funcional em staging e circuito público específico implementado apenas no código | Catálogo anual 2012–ano corrente, arquivo, lote append-only, caso privado por contrato exato e porta ADMIN+MFA de publicação/retirada com fotografia imutável | Migração e operações V5.51 ainda não executadas em staging ou produção; nenhum contrato, parte, organização ou relação foi publicado; API direta de grande volume pode exigir registo e autorização |
 | Tribunal de Contas | Colector privado funcional | Índice oficial preservado com URL, data, SHA-256 e recursos deduplicados | Sem publicação nem interpretação de decisões ou culpa |
 | Parlamento Europeu | Colector privado funcional | Portal de dados abertos preservado com URL, data, SHA-256 e recursos deduplicados | Sem publicação nem atribuição individual sem voto nominal explícito |
 | Portal da Transparência do SNS | Colector privado funcional | Índice oficial preservado com URL, data, SHA-256 e `SyncRun` | Não publica indicadores nem representa cobertura territorial nacional |
@@ -127,6 +127,13 @@ encerrado, com URL anual coincidente, arquivo e lote normalizado coerente, pode 
 privado `PENDING`. As limitações da recolha ficam visíveis e não se alega cobertura integral do
 ZIP. O endpoint não devolve HMAC, não associa partes por nome e não cria contratos ou relações
 públicas. Consulte [V5.50 — porta editorial privada dos contratos BASE](V5_BASE_CONTRACT_EDITORIAL.md).
+
+A V5.51 permite que um caso aprovado publique exclusivamente os campos factuais desse contrato.
+Uma fotografia append-only liga a projeção ao snapshot, versão, fonte e hashes exatos. As partes
+continuam privadas: a ação cria zero organizações, correspondências e relações. A retirada esconde
+a projeção ativa, mas preserva contrato, fotografia, eventos e direitos de resposta. O código não
+executa a operação sobre dados reais. Consulte [V5.51 — publicação e retirada específicas de
+contratos BASE](V5_BASE_CONTRACT_PUBLICATION.md).
 
 O colector aceita JSON, XML e ZIP com limites de download, tamanho descomprimido e taxa de compressão.
 Uma operação explicitamente confirmada em staging arquiva e atesta os bytes antes de carregar um

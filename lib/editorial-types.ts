@@ -336,20 +336,23 @@ export type EditorialCaseDetail = {
 export type ParliamentEditorialScope = "activity" | "votes";
 
 export const PARLIAMENT_WITHDRAWAL_REASON_LABELS = {
-  EXTRACTION_OR_NORMALISATION_ERROR: "Erro de recolha, extração ou normalização",
+  EXTRACTION_OR_NORMALISATION_ERROR:
+    "Erro de recolha, extração ou normalização",
   SOURCE_DIVERGENCE: "Divergência reproduzível com a fonte",
   OFFICIAL_SOURCE_CORRECTION: "Correção ou substituição pela fonte oficial",
   DUPLICATE_OR_CORRUPT_DATA: "Duplicação ou corrupção de dados",
   PROVEN_IDENTITY_ERROR: "Erro de identidade demonstrado",
   DOCUMENTED_METHODOLOGY_CHANGE: "Alteração metodológica documentada",
   LEGAL_OR_AUTHORITY_ORDER: "Obrigação legal ou decisão de autoridade",
-  DATA_PROTECTION_OR_PERSONALITY_RIGHTS: "Proteção de dados ou direitos de personalidade",
+  DATA_PROTECTION_OR_PERSONALITY_RIGHTS:
+    "Proteção de dados ou direitos de personalidade",
   SECURITY_RISK: "Risco de segurança",
   THIRD_PARTY_RIGHTS: "Direitos de terceiros",
   DECLARED_SCOPE_ERROR: "Publicação fora do âmbito declarado",
 } as const;
 
-export type ParliamentWithdrawalReason = keyof typeof PARLIAMENT_WITHDRAWAL_REASON_LABELS;
+export type ParliamentWithdrawalReason =
+  keyof typeof PARLIAMENT_WITHDRAWAL_REASON_LABELS;
 
 export type ParliamentSnapshotDifference = {
   added: number;
@@ -454,9 +457,7 @@ export type PoliticianProfileEditorialCandidate = {
   full_name: string | null;
   legislature: string;
   constituency: { source_id: string | null; label: string | null };
-  parliamentary_groups: Array<
-    PoliticianProfilePeriod & { short_name: string }
-  >;
+  parliamentary_groups: Array<PoliticianProfilePeriod & { short_name: string }>;
   mandate_situations: Array<
     Omit<PoliticianProfilePeriod, "source_id"> & { description: string }
   >;
@@ -679,6 +680,123 @@ export type BaseContractEditorialProposalResult = {
   interest_entity_created: false;
   match_review_created: false;
   relationship_created: false;
+};
+
+export type BaseContractPublicationPreview = {
+  case_id: string;
+  case_state: EditorialState;
+  revision: number;
+  version_id: string;
+  version_sha256: string;
+  contract_snapshot_id: string;
+  public_contract_id: string;
+  official_contract_id: string;
+  official_contract_id_sha256: string;
+  source_record_sha256: string;
+  source: {
+    url: string;
+    retrieved_at: string;
+    content_sha256: string;
+    archive_attestation_sha256: string;
+  };
+  public_fields: {
+    official_contract_id: string;
+    object: string;
+    procedure: string;
+    cpv_code: string | null;
+    base_value: string | null;
+    contract_value: string | null;
+    currency: string;
+    decision_at: string | null;
+    signed_at: string | null;
+    published_at: string | null;
+    execution_days: number | null;
+    direct_official_url: string | null;
+  };
+  source_party_count: number;
+  protected_identifier_count: number;
+  parties_to_publish: 0;
+  organisations_to_create: 0;
+  interest_entities_to_create: 0;
+  match_reviews_to_create: 0;
+  relationships_to_create: 0;
+  coverage_claim: "SPECIFIC_SOURCE_RECORD_ONLY";
+  batch_normalised_sha256: string;
+  catalogue_scope_sha256: string;
+  publication_proof_sha256: string;
+  reuses_withdrawn_public_contract: boolean;
+  eligible: boolean;
+  blockers: Array<{ code: string; detail: string }>;
+  publication_rule: string;
+};
+
+export type BaseContractPublicationResult = {
+  case_id: string;
+  state: "PUBLISHED";
+  revision: number;
+  public_contract_id: string;
+  publication_snapshot_id: string;
+  publication_proof_sha256: string;
+  publication_event_id: string;
+  publication_event_sha256: string;
+  public_review_id: string;
+  publication_audit_event_id: string;
+  parties_published: 0;
+  organisations_created: 0;
+  match_reviews_created: 0;
+  relationships_created: 0;
+  republished: boolean;
+};
+
+export type BaseContractWithdrawalPreview = {
+  case_id: string;
+  case_state: EditorialState;
+  revision: number;
+  version_id: string;
+  version_sha256: string;
+  public_contract_id: string;
+  publication_snapshot_id: string;
+  source_sha256: string;
+  source_record_sha256: string;
+  publication_proof_sha256: string;
+  withdrawal_proof_sha256: string | null;
+  public_review_id: string;
+  publication_audit_event_id: string;
+  publication_event_id: string;
+  publication_event_sha256: string;
+  public_effect: {
+    kind: "DATA_UNAVAILABLE";
+    message: string;
+    contract_deleted: false;
+    publication_snapshot_deleted: false;
+    editorial_history_deleted: false;
+    right_of_reply_deleted: false;
+    party_deleted: false;
+    relationship_deleted: false;
+  };
+  public_effect_sha256: string;
+  eligible: boolean;
+  blockers: Array<{ code: string; detail: string }>;
+  withdrawal_rule: string;
+};
+
+export type BaseContractWithdrawalResult = {
+  case_id: string;
+  state: "WITHDRAWN";
+  revision: number;
+  public_contract_id: string;
+  publication_snapshot_id: string;
+  withdrawal_proof_sha256: string;
+  public_effect: BaseContractWithdrawalPreview["public_effect"];
+  public_effect_sha256: string;
+  withdrawal_event_id: string;
+  withdrawal_event_sha256: string;
+  public_review_id: string;
+  withdrawal_audit_event_id: string;
+  contract_deleted: false;
+  publication_snapshot_deleted: false;
+  editorial_history_deleted: false;
+  right_of_reply_deleted: false;
 };
 
 export type EptPublicInterestGate = {

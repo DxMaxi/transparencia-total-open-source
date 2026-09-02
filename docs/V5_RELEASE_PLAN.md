@@ -11,7 +11,7 @@ reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.50.1 preparadas; staging remoto pendente |
+| Código V5 | V5.1 a V5.51 preparadas; staging remoto pendente |
 | Frontend público | V5.21 preparado; capacidades sem backend ou esquema pronto ficam fail-closed |
 | API pública | `0.5.0-alpha.0`; capacidades anunciadas só após prova read-only e falhas operacionais devolvem 503 neutro |
 | Painel editorial | implementado no código, não ativado em produção |
@@ -19,7 +19,7 @@ reais.
 | Parlamento | matriz V5.21 e gates V5.22–V5.45 preparados; ativação editorial pendente |
 | Perfis | ciclo integral de entrada, publicação, retirada e republicação provado; domínios individuais pendentes |
 | Promessómetro | amostra pública de 10; catálogo V5.48 com 1 590 candidatos privados em 40 blocos, ainda sem consolidação humana |
-| Investigador Cívico | âmbito anual V5.49 e proposta privada V5.50 preparados; zero contratos e zero relações na projeção pública |
+| Investigador Cívico | V5.49–V5.51 preparam âmbito, proposta, publicação factual e retirada; zero relações e nenhuma operação real executada |
 | PWA e alertas | consentimento, revogação e cache opt-in integrados; configuração remota pendente |
 | Repositório | privado e licenciado como código disponível para uso não comercial |
 
@@ -368,8 +368,9 @@ A [V5.50 — porta editorial privada dos contratos BASE](V5_BASE_CONTRACT_EDITOR
 materialização antecipada da V4. O servidor exige a prova de um registo específico, o ano histórico
 e a coerência do lote normalizado, sem alegar cobertura integral do ZIP, e cria apenas um processo
 `PUBLIC_CONTRACT/PENDING`. Os HMAC ficam no staging; nomes são texto da fonte e nunca
-correspondência. A futura projeção pública continua pendente de fontes próprias das organizações,
-decisão `ADMIN` específica, eventos append-only, retirada e direito de resposta.
+correspondência. A V5.50, isoladamente, não publica; a porta factual `ADMIN`, os eventos append-only,
+a retirada e a preservação do direito de resposta são acrescentados pela V5.51. Fontes próprias
+das organizações e relações continuam pendentes.
 
 A V5.50.1 uniformiza a fronteira pública perante indisponibilidade operacional de PostgreSQL:
 projeções sem esquema ou ligação disponível devolvem HTTP 503 com mensagem neutra, sem expor a
@@ -377,6 +378,13 @@ exceção. O smoke diário ou manual aceita dados aprovados ou esta indisponibil
 rejeita qualquer HTTP 500. Erros de SQL ou programação fora da lista explícita de indisponibilidade
 continuam a falhar no CI. A promoção executa primeiro o deployment Render apenas de código e só
 depois a verificação manual da API, evitando que o backend anterior bloqueie a própria correção.
+
+A [V5.51 — publicação e retirada específicas de contratos BASE](V5_BASE_CONTRACT_PUBLICATION.md)
+fecha a projeção factual individual. Uma ação `ADMIN` com MFA volta a provar snapshot, lote,
+catálogo, arquivo, versão e hashes; acrescenta uma fotografia pública imutável, revisão, auditoria,
+decisão e evento na mesma transação. Publica zero partes, organizações, correspondências e relações.
+A retirada acrescenta novo histórico e preserva contrato, fotografia e direito de resposta. A
+ativação e qualquer dado real continuam dependentes de staging e dos gates operacionais finais.
 
 ### 8. Circuito responsável de IA
 

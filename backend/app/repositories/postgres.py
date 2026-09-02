@@ -553,6 +553,7 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                       ON contract_source.id = contract.source_document_id
                     WHERE contract.publication_status = 'PUBLISHED'
                       AND contract.verification_status = 'VERIFIED'
+                      AND contract.current_publication_snapshot_id IS NOT NULL
                       AND (
                         SELECT publication.action::text
                         FROM editorial_publication_events publication
@@ -2037,6 +2038,7 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                     WHERE contract_archive.source_document_id = contract_sd.id
                       AND contract_archive.content_sha256 = contract_sd.content_sha256
                       AND contract_archive.retrieval_url = contract_sd.url
+                      AND pc.current_publication_snapshot_id IS NOT NULL
                       AND (
                         SELECT publication.action::text
                         FROM editorial_publication_events publication
@@ -2172,6 +2174,7 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                 ) snapshot ON TRUE
                 WHERE c.publication_status = 'PUBLISHED'
                   AND c.verification_status = 'VERIFIED'
+                  AND c.current_publication_snapshot_id IS NOT NULL
                   AND c.comparable = TRUE
                   AND c.outcome IN ('CONSISTENT', 'INCONSISTENT', 'INCONCLUSIVE')
                   AND vr.choice IN ('FAVOR', 'AGAINST', 'ABSTENTION', 'ABSENT')
@@ -3704,15 +3707,9 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                        c.base_value, c.contract_value, c.currency, c.decision_at,
                        c.signed_at, c.published_at, c.execution_days,
                        sd.url AS source_url, sd.content_sha256 AS source_sha256,
-                       COALESCE(
-                         jsonb_agg(
-                           jsonb_build_object('name', p.source_name, 'role', p.role::text)
-                           ORDER BY p.role, p.source_name
-                         ) FILTER (WHERE p.id IS NOT NULL), '[]'::jsonb
-                       ) AS parties
+                       ARRAY[]::jsonb[] AS parties
                 FROM public_contracts c
                 JOIN source_documents sd ON sd.id = c.source_document_id
-                LEFT JOIN public_contract_parties p ON p.public_contract_id = c.id
                 WHERE c.publication_status = 'PUBLISHED'
                   AND c.verification_status = 'VERIFIED'
                   AND (
@@ -3730,7 +3727,6 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                       AND contract_archive.content_sha256 = sd.content_sha256
                       AND contract_archive.retrieval_url = sd.url
                   )
-                GROUP BY c.id, sd.id
                 ORDER BY c.published_at DESC NULLS LAST, c.source_id
                 LIMIT $1 OFFSET $2
             """,
