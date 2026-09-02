@@ -3707,7 +3707,7 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                        c.base_value, c.contract_value, c.currency, c.decision_at,
                        c.signed_at, c.published_at, c.execution_days,
                        sd.url AS source_url, sd.content_sha256 AS source_sha256,
-                       '[]'::jsonb AS parties
+                       ARRAY[]::jsonb[] AS parties
                 FROM public_contracts c
                 JOIN source_documents sd ON sd.id = c.source_document_id
                 WHERE c.publication_status = 'PUBLISHED'

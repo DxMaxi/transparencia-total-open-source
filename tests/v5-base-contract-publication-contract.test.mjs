@@ -126,7 +126,7 @@ test("V5.51 admin UI exposes exact proofs and public queries remain event-gated"
   assert.match(postgres, /contract\.publication_status = 'PUBLISHED'/);
   assert.match(postgres, /contract\.verification_status = 'VERIFIED'/);
   assert.match(postgres, /current_publication_snapshot_id IS NOT NULL/);
-  assert.match(postgres, /'\[\]'::jsonb AS parties/);
+  assert.match(postgres, /ARRAY\[\]::jsonb\[\] AS parties/);
   assert.doesNotMatch(
     postgres,
     /LEFT JOIN public_contract_parties p ON p\.public_contract_id = c\.id/,
