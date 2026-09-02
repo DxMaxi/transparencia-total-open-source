@@ -232,6 +232,21 @@ append-only e escreve zero partes, organizações, correspondências ou relaçõ
 contrato, fotografia, histórico e direitos de resposta. Identidade organizacional, grafo e execução
 real em staging continuam pendentes.
 
+A V5.52 prepara localmente uma observação privada de identidade organizacional com fonte IRN
+independente, arquivo atestado, referência não fiscal e HMAC com pepper estável. O painel recebe
+apenas dados não fiscais e cria um caso `ORGANISATION_IDENTITY/PENDING`; aprovar continua sem
+organizações públicas, partes, correspondências ou relações. A via genérica não pode criar ou
+corrigir estes casos. O legado por nomes normalizados mantém-se legível, mas não pode gerar novos
+candidatos; a coluna fiscal legada só é removida se estiver vazia. Consulte
+[V5.52 — identidade organizacional privada com fonte própria](V5_BASE_ORGANISATION_IDENTITY.md).
+
+Checkpoint de entrada da V5.52: PR #131 integrada em `main` no commit `7e32aa5`, com CI verde,
+deployment frontend e smoke públicos bem-sucedidos. A verificação read-only de 2 de setembro de
+2026 encontrou os ambientes GitHub `Preview`, `Production` e `recovery`, sem `staging`. Não foi
+executado qualquer workflow de staging nem foram reutilizados destinos de produção. O patch
+V5.52 é local e precisa de validações e integração próprias; não copiar resultados da V5.51 como
+prova do candidato atual.
+
 A V5.50.1 fecha uma falha observada na API pública antes da ativação remota do esquema. Erros
 operacionais conhecidos de PostgreSQL devolvem agora HTTP 503 neutro em todas as projeções, sem
 devolver nomes de tabelas ou detalhes de ligação. O smoke de produção verifica expressamente o

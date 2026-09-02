@@ -24,6 +24,7 @@ OFFICIAL_HOSTS = frozenset(
         "tribunalconstitucional.pt",
         "www.tribunalconstitucional.pt",
         "entidadetransparencia.pt",
+        "publicacoes.mj.pt",
         "transparencia.gov.pt",
         "www.transparencia.gov.pt",
         "base.gov.pt",
@@ -107,6 +108,19 @@ def is_individual_ept_source_url(url: str) -> bool:
     return not (
         host in {"tribunalconstitucional.pt", "www.tribunalconstitucional.pt"}
         and path.casefold() == "/tc/ept"
+    )
+
+
+def is_individual_organisation_registry_source_url(url: str) -> bool:
+    """Só o conteúdo individual do IRN, sem parâmetros que exponham NIPC.
+
+    O portal usa contexto de sessão: a URL, sozinha, não identifica um ato.
+    Exigem-se também referência não fiscal, conteúdo arquivado e respetivo SHA.
+    """
+
+    return (
+        re.fullmatch(r"https://publicacoes\.mj\.pt/(?i:DetalhePublicacao\.aspx)", url, re.ASCII)
+        is not None
     )
 
 

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { EditorialApiError, editorialFetch } from "@/lib/editorial-api";
+import { EditorialApiError, editorialFetch, getEditorialContext } from "@/lib/editorial-api";
 import {
   type AiDreProposalResult,
   type AiEditorialPublicationResult,
@@ -10,6 +10,7 @@ import {
   type BaseContractEditorialProposalResult,
   type BaseContractPublicationResult,
   type BaseContractWithdrawalResult,
+  type BaseOrganisationIdentityProposalResult,
   PARLIAMENT_WITHDRAWAL_REASON_LABELS,
   type EditorialCaseDetail,
   type EptExactIdentityLinkResult,
@@ -117,6 +118,9 @@ export async function createEditorialCase(formData: FormData) {
   let created: EditorialCaseDetail | null = null;
   let failure: string | null = null;
   try {
+    if (formData.get("kind") === "ORGANISATION_IDENTITY") {
+      throw new Error("A identidade de organização exige a sua observação oficial específica");
+    }
     if (formData.get("confirm_private_only") !== "on") {
       throw new Error("Confirme que o processo permanece privado");
     }
@@ -345,6 +349,53 @@ export async function createBaseContractProposal(formData: FormData) {
       created.created ? "contrato-base-importado" : "contrato-base-existente"
     }`,
   );
+}
+
+export async function createBaseOrganisationIdentityProposal(formData: FormData) {
+  // Validate staff and MFA here too: a server action is an independent endpoint.
+  await getEditorialContext();
+  const destination = "/admin/revisao/organizacoes";
+  let created: BaseOrganisationIdentityProposalResult | null = null;
+  let failure: "confirmacao-em-falta" | "proposta-nao-criada" | "prova-invalidada" | null = null;
+  const confirmations = [
+    "confirm_independent_official_source",
+    "confirm_private_identity_only",
+    "confirm_no_publication",
+  ] as const;
+  if (confirmations.some((field) => formData.get(field) !== "on")) {
+    failure = "confirmacao-em-falta";
+  } else {
+    try {
+      created = await editorialFetch<BaseOrganisationIdentityProposalResult>(
+        "/base/organisation-identity-proposals",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            observation_id: evidenceId(formData, "observation_id"),
+            source_record_sha256: sha256(formData, "source_record_sha256"),
+            proposal_confirmation_sha256: sha256(formData, "proposal_confirmation_sha256"),
+            confirm_independent_official_source: true,
+            confirm_private_identity_only: true,
+            confirm_no_publication: true,
+          }),
+        },
+      );
+      if (!/^[A-Za-z0-9_-]{1,200}$/.test(created.case.id)) {
+        failure = "proposta-nao-criada";
+      }
+    } catch (error) {
+      // Do not serialize an API error, user input or database detail into the URL.
+      failure = error instanceof EditorialApiError && [409, 422].includes(error.status)
+        ? "prova-invalidada"
+        : "proposta-nao-criada";
+    }
+  }
+  if (failure || !created) {
+    redirect(`${destination}?erro=${failure ?? "proposta-nao-criada"}`);
+  }
+  revalidatePath("/admin/revisao");
+  revalidatePath(destination);
+  redirect(`/admin/revisao/${encodeURIComponent(created.case.id)}?sucesso=identidade-privada`);
 }
 
 export async function publishBaseContract(formData: FormData) {

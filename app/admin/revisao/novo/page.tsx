@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createEditorialCase } from "../actions";
 import { editorialFetch } from "@/lib/editorial-api";
 import {
-  EDITORIAL_KINDS,
+  MANUAL_EDITORIAL_KINDS,
   KIND_LABELS,
   type EditorialSourceCandidate,
 } from "@/lib/editorial-types";
@@ -110,7 +110,7 @@ export default async function NewEditorialCasePage({
             <label>
               Tipo de conteúdo
               <select name="kind" defaultValue="PARLIAMENT_ACTIVITY" required>
-                {EDITORIAL_KINDS.map((kind) => (
+                {MANUAL_EDITORIAL_KINDS.map((kind) => (
                   <option value={kind} key={kind}>
                     {KIND_LABELS[kind]}
                   </option>

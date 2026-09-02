@@ -23,7 +23,7 @@ definição da Open Source Initiative.
 > commit final desse fecho. A V5 começa pela governação de licença e pelo circuito editorial
 > privado; esta branch não altera os dados aprovados da V4.
 
-> **V5.1 a V5.51 preparadas; ativação remota de staging pendente:** o painel privado usa
+> **V5.1 a V5.52 preparadas; ativação remota de staging pendente:** o painel privado usa
 > login por convite,
 > MFA obrigatório, funções de administrador/revisor, comparação entre fonte atestada e JSON
 > normalizado, versões e decisões append-only. A V5.2 acrescentou propostas parlamentares privadas,
@@ -146,7 +146,11 @@ definição da Open Source Initiative.
 > V5.51 acrescenta uma porta `ADMIN` + MFA que publica apenas os campos factuais do contrato BASE
 > revisto, conserva uma fotografia pública append-only e cria zero partes, organizações,
 > correspondências ou relações. A retirada preserva contrato, fotografia, histórico e direitos de
-> resposta. Nenhuma destas operações foi executada sobre dados reais. A
+> resposta. A V5.52 prepara uma observação privada de identidade organizacional com fonte IRN
+> própria e NIPC protegido por HMAC com pepper estável. O painel cria apenas propostas `PENDING`;
+> mesmo uma aprovação não cria organização pública, parte de contrato ou relação. A criação por
+> nomes normalizados fica bloqueada e o legado é preservado. Nenhuma destas operações foi
+> executada sobre dados reais. A
 > ativação real continua
 > dependente dos gates operacionais de staging. O código e os testes
 > não executam estas operações sobre staging ou
@@ -197,6 +201,7 @@ definição da Open Source Initiative.
 > [âmbito temporal privado do Portal BASE V5.49](docs/V5_BASE_TEMPORAL_SCOPE.md),
 > [porta editorial privada dos contratos BASE V5.50](docs/V5_BASE_CONTRACT_EDITORIAL.md),
 > [publicação e retirada de contratos BASE V5.51](docs/V5_BASE_CONTRACT_PUBLICATION.md),
+> [identidade organizacional privada com fonte própria V5.52](docs/V5_BASE_ORGANISATION_IDENTITY.md),
 > [Adaptador parlamentar V5.2](docs/V5_PARLIAMENT_EDITORIAL_ADAPTER.md) e
 > [Publicação parlamentar por âmbito V5.3](docs/V5_PARLIAMENT_SCOPE_PUBLICATION.md),
 > [Retirada parlamentar imutável V5.4](docs/V5_PARLIAMENT_WITHDRAWAL.md) e
@@ -402,6 +407,7 @@ migrações anteriores continuam necessárias e são aplicadas por ordem.
 | Âmbito BASE | `BaseContractCatalogueScope`, `BaseContractCatalogueResource` | Catálogo anual privado; ano corrente provisório e zero contratos/publicação |
 | Porta editorial BASE | `BaseContractSnapshot`, `EditorialCase` | Um registo específico de ano encerrado e lote normalizado coerente cria apenas um caso `PENDING`; não alega cobertura integral do ZIP |
 | Publicação BASE | `PublicContract`, `BasePublicContractPublicationSnapshot` | Só o contrato factual revisto; fotografia append-only, zero partes/organizações/relações e retirada sem apagar histórico |
+| Identidade organizacional privada | `BaseOrganisationIdentityObservation`, `EditorialCase` | Fonte IRN independente, HMAC apenas na observação e aprovação sem organização pública, partes ou relações |
 
 `SourceDocument` continua a ser a raiz de proveniência e `AuditEvent` o rasto de decisões. Os
 `CHECK` SQL adicionais impedem sujeitos ambíguos, arestas reflexivas, montantes negativos, métricas
@@ -599,6 +605,12 @@ pode voltar a confirmar snapshot, versão, fonte e hashes e publicar os campos f
 A fotografia publicada é append-only. A ação publica zero partes, organizações, candidatos ou
 relações; a retirada mantém contrato, fotografia, histórico e direitos de resposta. Consulte
 [V5.51 — publicação e retirada específicas de contratos BASE](docs/V5_BASE_CONTRACT_PUBLICATION.md).
+
+A V5.52 acrescenta a fonte própria de identidade organizacional, ainda privada. A observação
+arquivada do IRN pode originar um processo `ORGANISATION_IDENTITY/PENDING`; NIPC e HMAC não são
+enviados ao painel. Aprovar não publica nem associa partes. A publicação de organizações e as
+relações continuam dependentes de portas específicas. Consulte
+[V5.52 — identidade organizacional privada com fonte própria](docs/V5_BASE_ORGANISATION_IDENTITY.md).
 
 O caminho normal usa os recursos anuais abertos que o IMPIC publica no dados.gov.pt. A API direta
 de grande volume do Portal BASE só deve ser configurada quando a organização tiver registo e

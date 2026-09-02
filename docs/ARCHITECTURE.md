@@ -140,9 +140,18 @@ e convertido para snapshots canónicos append-only. Na V5.50, a prova de um regi
 ano encerrado e de um lote normalizado coerente pode criar apenas um
 `EditorialCase=PUBLIC_CONTRACT/PENDING`; não alega cobertura integral do ZIP e não cria
 `PublicContract`, organização, correspondência ou aresta. Designações de partes são texto da
-fonte, não identidade, e os HMAC não saem do staging. Uma etapa posterior terá de provar cada organização por fonte e identificador
-oficiais próprios antes de propor qualquer `ContractMatchReview`. A API pública exige o evento
+fonte, não identidade, e os HMAC não saem do staging. A V5.51 publica e retira apenas os campos
+factuais do contrato revisto, preserva uma fotografia imutável e não materializa partes ou relações.
+A API pública exige o evento
 específico de publicação mais recente e nunca consulta candidatos.
+
+A V5.52 acrescenta a prova privada de identidade por fonte IRN independente. Uma observação
+append-only conserva o HMAC fiscal exclusivamente na sua tabela; o painel recebe apenas metadados
+não fiscais, proveniência e hashes de confirmação do contexto. O servidor reconstrói a prova antes
+de criar `ORGANISATION_IDENTITY/PENDING`. Revisão e aprovação mantêm zero organizações públicas,
+partes, correspondências e relações. As vias genéricas não criam nem corrigem estes processos e
+a base recusa estados/eventos públicos. Uma correção exige nova prova e observação. A publicação
+de organizações e a associação exata às partes continuam a exigir portas independentes.
 
 ### Direito de resposta
 

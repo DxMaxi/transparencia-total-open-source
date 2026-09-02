@@ -161,7 +161,8 @@ def test_hmac_canonicalises_unicode_decimal_digits() -> None:
     )
 
 
-def test_same_normalised_name_keeps_all_candidates_private_for_review() -> None:
+@pytest.mark.parametrize("pepper", [None, TEST_PEPPER])
+def test_same_normalised_name_never_creates_candidates(pepper: str | None) -> None:
     raw = json.loads((FIXTURES / "base_contracts.json").read_text(encoding="utf-8"))
     contract = collector(pepper=TEST_PEPPER).normalise_contract(
         raw[0],
@@ -186,11 +187,9 @@ def test_same_normalised_name_keeps_all_candidates_private_for_review() -> None:
         )
     ]
 
-    matches = ContractMatcher(pepper=None).match([contract], actors)
+    matches = ContractMatcher(pepper=pepper).match([contract], actors)
 
-    assert {match.person_id for match in matches} == {"person-name-1", "person-name-2"}
-    assert all(match.method.value == "NORMALISED_NAME" for match in matches)
-    assert all(match.decision == "PENDING_REVIEW" for match in matches)
+    assert matches == []
 
 
 def test_parses_real_party_format_privately_and_keeps_hmac_matching() -> None:

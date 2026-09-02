@@ -11,6 +11,7 @@ from typing import Any, cast
 
 import asyncpg
 
+from app.models.base_organisation import safe_registry_text
 from app.models.editorial import (
     EditorialAction,
     EditorialCaseCreateRequest,
@@ -279,6 +280,10 @@ class EditorialRepository:
         payload: EditorialCaseCreateRequest,
         actor: StaffSession,
     ) -> dict[str, object]:
+        if payload.kind == EditorialCaseKind.ORGANISATION_IDENTITY:
+            raise EditorialConflictError(
+                "A identidade organizacional exige a proposta privada específica"
+            )
         case, _created = await self._create_initial_case(
             kind=payload.kind,
             subject_type=payload.subject_type,
@@ -500,7 +505,7 @@ class EditorialRepository:
         )
         source = await connection.fetchrow(
             """
-            SELECT source.id
+            SELECT source.id, source.publisher
             FROM source_documents AS source
             WHERE source.id = $1
               AND EXISTS (
@@ -515,7 +520,7 @@ class EditorialRepository:
               AND source.publisher IN (
                   'PARLIAMENT', 'DRE', 'TRANSPARENCY_ENTITY', 'BASE_GOV',
                   'COURT_OF_AUDIT', 'EUROPEAN_PARLIAMENT', 'PUBLIC_PROSECUTOR',
-                  'COURT', 'SNS', 'MUNICIPALITY', 'OTHER_OFFICIAL'
+                  'COURT', 'SNS', 'MUNICIPALITY', 'OTHER_OFFICIAL', 'JUSTICE_REGISTRY'
               )
               AND source.kind <> 'NEWS_ARTICLE'
             FOR SHARE
@@ -526,6 +531,11 @@ class EditorialRepository:
             raise EditorialSourceError(
                 "A fonte não existe ou ainda não tem arquivo SHA-256 atestado"
             )
+        if (
+            str(source["publisher"]) == "JUSTICE_REGISTRY"
+            and kind != EditorialCaseKind.ORGANISATION_IDENTITY
+        ):
+            raise EditorialSourceError("A prova IRN exige o circuito privado de identidade")
 
         existing = await connection.fetchrow(
             """
@@ -812,6 +822,14 @@ class EditorialRepository:
 
         async with self.pool.acquire() as connection, connection.transaction():
             case = await self._locked_case(connection, case_id)
+            if str(case["kind"]) == EditorialCaseKind.ORGANISATION_IDENTITY.value:
+                try:
+                    safe_registry_text(rationale, max_length=2000)
+                    safe_registry_text(actor.public_alias, max_length=80)
+                except ValueError as exc:
+                    raise EditorialConflictError(
+                        "A decisão privada não pode conter identificadores protegidos"
+                    ) from exc
             previous_state = EditorialState(str(case["current_state"]))
             revision = int(case["revision"])
             if revision != expected_revision:
@@ -1026,6 +1044,10 @@ class EditorialRepository:
         try:
             async with self.pool.acquire() as connection, connection.transaction():
                 case = await self._locked_case(connection, case_id)
+                if str(case["kind"]) == EditorialCaseKind.ORGANISATION_IDENTITY.value:
+                    raise EditorialConflictError(
+                        "A correção de identidade exige uma nova observação oficial imutável"
+                    )
                 previous_state = EditorialState(str(case["current_state"]))
                 revision = int(case["revision"])
                 if revision != payload.expected_revision:
@@ -1128,7 +1150,7 @@ class EditorialRepository:
     ) -> asyncpg.Record:
         row = await connection.fetchrow(
             """
-            SELECT id, current_version_id, current_state, revision
+            SELECT id, kind, current_version_id, current_state, revision
             FROM editorial_cases
             WHERE id = $1
             FOR UPDATE

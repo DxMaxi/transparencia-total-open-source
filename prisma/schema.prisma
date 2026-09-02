@@ -12,6 +12,7 @@ enum SourcePublisher {
   DRE
   TRANSPARENCY_ENTITY
   BASE_GOV
+  JUSTICE_REGISTRY
   COURT_OF_AUDIT
   EUROPEAN_PARLIAMENT
   PUBLIC_PROSECUTOR
@@ -36,6 +37,7 @@ enum DocumentKind {
   PARLIAMENTARY_DIARY
   ATTENDANCE
   DECLARATION
+  ORGANISATION_REGISTRY
   PUBLIC_REPORT
   MUNICIPAL_NOTICE
   OTHER
@@ -156,6 +158,7 @@ enum EditorialCaseKind {
   POLITICIAN_PROFILE
   GOVERNMENT_PROMISE
   PUBLIC_CONTRACT
+  ORGANISATION_IDENTITY
   INTEREST_RELATIONSHIP
   RIGHT_OF_REPLY
   AI_EXPLANATION
@@ -234,7 +237,7 @@ enum ContractPartyRole {
 enum MatchMethod {
   EXACT_PUBLIC_ORGANISATION_ID
   EXACT_PROTECTED_IDENTIFIER
-  NORMALISED_NAME
+  LEGACY_NORMALISED_NAME       @map("NORMALISED_NAME")
   MANUAL_OFFICIAL_EVIDENCE
 }
 
@@ -1205,7 +1208,6 @@ model Organisation {
   legalName          String             @map("legal_name")
   normalisedName     String             @map("normalised_name")
   kind               InterestEntityKind
-  publicNipc         String?            @map("public_nipc")
   officialUrl        String?            @map("official_url")
   sourceDocumentId   String             @map("source_document_id")
   verificationStatus VerificationStatus @default(PENDING_REVIEW) @map("verification_status")
@@ -1215,8 +1217,41 @@ model Organisation {
   interestEntity     InterestEntity?
 
   @@index([normalisedName])
-  @@index([publicNipc])
   @@map("organisations")
+}
+
+/// Observação privada e append-only de uma identidade organizacional presente
+/// numa publicação individual do Registo/Justiça. O identificador fiscal nunca
+/// é persistido em claro: apenas o HMAC-SHA-256 com pepper do servidor. Esta
+/// observação não cria `Organisation`, nó de grafo, parte contratual ou relação.
+model BaseOrganisationIdentityObservation {
+  id                        String             @id
+  registryRecordId          String             @map("registry_record_id")
+  legalName                 String             @map("legal_name")
+  kind                      InterestEntityKind
+  identifierScheme          String             @default("PORTUGUESE_FISCAL_IDENTIFIER") @map("identifier_scheme")
+  protectedIdentifierDigest String             @map("protected_identifier_digest") @db.Char(64)
+  identityScope             String             @default("ORGANISATION_IDENTITY_ONLY") @map("identity_scope")
+  linkStatus                String             @default("UNLINKED_PRIVATE") @map("link_status")
+  publicationEligible       Boolean            @default(false) @map("publication_eligible")
+  sourceDocumentId          String             @map("source_document_id")
+  sourceRecordSha256        String             @map("source_record_sha256") @db.Char(64)
+  observationSha256         String             @unique(map: "base_organisation_identity_observation_sha_key") @map("observation_sha256") @db.Char(64)
+  observedAt                DateTime           @map("observed_at")
+  parserVersion             String             @map("parser_version")
+  policyVersion             String             @map("policy_version")
+  createdByAlias            String             @map("created_by_alias")
+  createdAt                 DateTime           @default(now()) @map("created_at")
+  sourceDocument            SourceDocument     @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict, map: "base_organisation_identity_source_document_fkey")
+
+  @@unique([sourceDocumentId, registryRecordId], map: "base_organisation_identity_source_record_key")
+  @@unique([sourceDocumentId, protectedIdentifierDigest], map: "base_organisation_identity_source_digest_key")
+  @@unique([sourceRecordSha256], map: "base_organisation_identity_source_record_sha_key")
+  @@index([registryRecordId, observedAt], map: "base_organisation_identity_record_observed_idx")
+  @@index([kind, observedAt], map: "base_organisation_identity_kind_observed_idx")
+  @@index([protectedIdentifierDigest, observedAt], map: "base_organisation_identity_digest_observed_idx")
+  @@index([sourceDocumentId], map: "base_organisation_identity_source_document_idx")
+  @@map("base_organisation_identity_observations")
 }
 
 /// Só conserva um HMAC com segredo do servidor; nunca o NIF individual em texto simples.
@@ -1863,61 +1898,62 @@ model DataPublicationReview {
 }
 
 model SourceDocument {
-  id                                  String                                  @id @default(cuid())
-  publisher                           SourcePublisher
-  kind                                DocumentKind
-  title                               String
-  officialIdentifier                  String?                                 @map("official_identifier")
-  url                                 String
-  retrievedAt                         DateTime                                @map("retrieved_at")
-  publishedAt                         DateTime?                               @map("published_at")
-  contentSha256                       String                                  @map("content_sha256")
-  mimeType                            String?                                 @map("mime_type")
-  rawStorageKey                       String?                                 @map("raw_storage_key")
-  parserVersion                       String?                                 @map("parser_version")
-  createdAt                           DateTime                                @default(now()) @map("created_at")
-  mandates                            Mandate[]
-  parliamentaryOfficePeriods          ParliamentaryOfficePeriod[]
-  membershipSnapshots                 ParliamentaryMembershipSnapshot[]
-  parliamentSnapshots                 ParliamentActivitySnapshot[]
-  parliamentDeputySnapshots           ParliamentDeputySnapshot[]
-  parliamentAttendanceSnapshots       ParliamentAttendanceSnapshot[]
-  parliamentInitiativeAuthorSnapshots ParliamentInitiativeAuthorSnapshot[]
-  politicianInitiativeAuthorships     PoliticianInitiativeAuthorship[]
-  sessions                            ParliamentarySession[]
-  attendanceRecords                   AttendanceRecord[]
-  initiatives                         ParliamentaryInitiative[]
-  voteEvents                          VoteEvent[]
-  voteRecords                         VoteRecord[]
-  laws                                Law[]
-  governmentProgrammes                GovernmentProgramme[]
-  governmentProgrammeSnapshots        GovernmentProgrammeSnapshot[]
-  promiseEvidence                     PromiseEvidence[]
-  promiseReviews                      PromiseReview[]
-  publicStatements                    PublicStatement[]
-  comparisons                         StatementVoteComparison[]
-  assetDeclarations                   AssetDeclarationMetadata[]
-  eptPublicInterestObservations       EptPublicInterestObservation[]
-  eptIdentityEvidenceLinks            EptExactIdentityLink[]                  @relation("EptIdentityEvidenceDocument")
-  aiSummaries                         AiSummary[]
-  localItems                          LocalTransparencyItem[]
-  organisations                       Organisation[]
-  protectedIdentifiers                ProtectedIdentifierDigest[]
-  baseStagingBatches                  BaseStagingBatch[]
-  baseContractCatalogueScopes         BaseContractCatalogueScope[]
-  publicContracts                     PublicContract[]
-  baseContractPublicationSnapshots    BasePublicContractPublicationSnapshot[]
-  contractMatchReviews                ContractMatchReview[]
-  interestRelationships               InterestRelationship[]
-  judicialCases                       JudicialCase[]
-  newsArticles                        NewsArticle[]
-  newsEvidence                        NewsEvidence[]
-  citizenImpactRules                  CitizenImpactRule[]
-  citizenAlerts                       CitizenAlert[]
-  rightsOfReply                       RightOfReply[]
-  publicationReviews                  DataPublicationReview[]
-  archiveAttestations                 SourceArchiveAttestation[]
-  editorialCases                      EditorialCase[]
+  id                                   String                                  @id @default(cuid())
+  publisher                            SourcePublisher
+  kind                                 DocumentKind
+  title                                String
+  officialIdentifier                   String?                                 @map("official_identifier")
+  url                                  String
+  retrievedAt                          DateTime                                @map("retrieved_at")
+  publishedAt                          DateTime?                               @map("published_at")
+  contentSha256                        String                                  @map("content_sha256")
+  mimeType                             String?                                 @map("mime_type")
+  rawStorageKey                        String?                                 @map("raw_storage_key")
+  parserVersion                        String?                                 @map("parser_version")
+  createdAt                            DateTime                                @default(now()) @map("created_at")
+  mandates                             Mandate[]
+  parliamentaryOfficePeriods           ParliamentaryOfficePeriod[]
+  membershipSnapshots                  ParliamentaryMembershipSnapshot[]
+  parliamentSnapshots                  ParliamentActivitySnapshot[]
+  parliamentDeputySnapshots            ParliamentDeputySnapshot[]
+  parliamentAttendanceSnapshots        ParliamentAttendanceSnapshot[]
+  parliamentInitiativeAuthorSnapshots  ParliamentInitiativeAuthorSnapshot[]
+  politicianInitiativeAuthorships      PoliticianInitiativeAuthorship[]
+  sessions                             ParliamentarySession[]
+  attendanceRecords                    AttendanceRecord[]
+  initiatives                          ParliamentaryInitiative[]
+  voteEvents                           VoteEvent[]
+  voteRecords                          VoteRecord[]
+  laws                                 Law[]
+  governmentProgrammes                 GovernmentProgramme[]
+  governmentProgrammeSnapshots         GovernmentProgrammeSnapshot[]
+  promiseEvidence                      PromiseEvidence[]
+  promiseReviews                       PromiseReview[]
+  publicStatements                     PublicStatement[]
+  comparisons                          StatementVoteComparison[]
+  assetDeclarations                    AssetDeclarationMetadata[]
+  eptPublicInterestObservations        EptPublicInterestObservation[]
+  eptIdentityEvidenceLinks             EptExactIdentityLink[]                  @relation("EptIdentityEvidenceDocument")
+  aiSummaries                          AiSummary[]
+  localItems                           LocalTransparencyItem[]
+  organisations                        Organisation[]
+  baseOrganisationIdentityObservations BaseOrganisationIdentityObservation[]
+  protectedIdentifiers                 ProtectedIdentifierDigest[]
+  baseStagingBatches                   BaseStagingBatch[]
+  baseContractCatalogueScopes          BaseContractCatalogueScope[]
+  publicContracts                      PublicContract[]
+  baseContractPublicationSnapshots     BasePublicContractPublicationSnapshot[]
+  contractMatchReviews                 ContractMatchReview[]
+  interestRelationships                InterestRelationship[]
+  judicialCases                        JudicialCase[]
+  newsArticles                         NewsArticle[]
+  newsEvidence                         NewsEvidence[]
+  citizenImpactRules                   CitizenImpactRule[]
+  citizenAlerts                        CitizenAlert[]
+  rightsOfReply                        RightOfReply[]
+  publicationReviews                   DataPublicationReview[]
+  archiveAttestations                  SourceArchiveAttestation[]
+  editorialCases                       EditorialCase[]
 
   @@unique([url, contentSha256])
   @@index([publisher, kind, publishedAt])

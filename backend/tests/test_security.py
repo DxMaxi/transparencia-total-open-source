@@ -5,6 +5,7 @@ from app.core.config import Settings
 from app.core.security import (
     hmac_private_reference_identifier,
     is_individual_ept_source_url,
+    is_individual_organisation_registry_source_url,
     is_official_url,
     require_official_url,
 )
@@ -65,6 +66,36 @@ def test_accepts_only_individual_ept_source_urls(url: str) -> None:
 )
 def test_rejects_general_or_non_official_ept_sources(url: str) -> None:
     assert not is_individual_ept_source_url(url)
+
+
+@pytest.mark.parametrize("path", ["DetalhePublicacao.aspx", "detalhepublicacao.aspx"])
+def test_accepts_individual_irn_content(path: str) -> None:
+    url = f"https://publicacoes.mj.pt/{path}"
+    assert is_official_url(url)
+    assert is_individual_organisation_registry_source_url(url)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://publicacoes.mj.pt/pesquisa.aspx",
+        "https://publicacoes.mj.pt/Index.aspx",
+        "https://publicacoes.mj.pt/DetalhePublicacao.aspx?nipc=123456789",
+        "https://publicacoes.mj.pt/DetalhePublicacao.aspx#123456789",
+        "https://publicacoes.mj.pt:443/DetalhePublicacao.aspx",
+        "http://publicacoes.mj.pt/DetalhePublicacao.aspx",
+        "https://publicacoes.mj.pt.evil.example/DetalhePublicacao.aspx",
+        "https://user:pass@publicacoes.mj.pt/DetalhePublicacao.aspx",
+        "https://publicacoes.mj.pt/%44etalhePublicacao.aspx",
+        "https://publicacoes.mj.pt/DetalhePublicacao.aspx\n",
+        "https://publıcacoes.mj.pt/DetalhePublicacao.aspx",
+        "https://publicacoes.mj.pt/DetalhePublıcacao.aspx",
+        "HTTPS://publicacoes.mj.pt/DetalhePublicacao.aspx",
+        "https://PUBLICACOES.MJ.PT/DetalhePublicacao.aspx",
+    ],
+)
+def test_rejects_generic_or_sensitive_irn_urls(url: str) -> None:
+    assert not is_individual_organisation_registry_source_url(url)
 
 
 @pytest.mark.parametrize("url", ["https://evil.example/phishing", "//evil.example", "javascript:x"])

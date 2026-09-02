@@ -501,7 +501,8 @@ function EditorialActions({
     );
   }
 
-  const canCorrect = [
+  const isOrganisationIdentity = item.kind === "ORGANISATION_IDENTITY";
+  const canCorrect = !isOrganisationIdentity && [
     "IN_REVIEW",
     "APPROVED",
     "REJECTED",
@@ -509,6 +510,17 @@ function EditorialActions({
   ].includes(item.current_state);
   return (
     <section className="admin-actions-stack">
+      {isOrganisationIdentity ? (
+        <aside className="admin-private-warning">
+          <strong>A identidade permanece privada, mesmo depois de aprovada</strong>
+          <p>
+            Este processo não cria uma organização pública, uma parte de contrato, uma
+            correspondência ou uma relação de interesses. Uma correção exige nova observação
+            da fonte oficial, preservando esta prova e todas as decisões anteriores.
+          </p>
+          <Link href="/admin/revisao/organizacoes">Voltar às provas de identidade</Link>
+        </aside>
+      ) : null}
       {item.current_state === "IN_REVIEW" ? (
         <div className="admin-decision-grid">
           <form
@@ -516,7 +528,7 @@ function EditorialActions({
             className="admin-decision-card admin-decision-card--approve"
           >
             {sharedFields}
-            <h2>Aprovar para futura publicação</h2>
+            <h2>{isOrganisationIdentity ? "Aprovar prova privada de identidade" : "Aprovar para futura publicação"}</h2>
             <p>A aprovação continua privada e não altera o site público.</p>
             <label>
               Fundamentação
@@ -541,7 +553,11 @@ function EditorialActions({
           >
             {sharedFields}
             <h2>Rejeitar proposta</h2>
-            <p>A versão mantém-se no histórico e poderá ser corrigida.</p>
+            <p>
+              {isOrganisationIdentity
+                ? "A prova mantém-se no histórico. Uma nova observação é necessária para a corrigir."
+                : "A versão mantém-se no histórico e poderá ser corrigida."}
+            </p>
             <label>
               Fundamentação
               <textarea

@@ -26,6 +26,7 @@ class EditorialCaseKind(StrEnum):
     POLITICIAN_PROFILE = "POLITICIAN_PROFILE"
     GOVERNMENT_PROMISE = "GOVERNMENT_PROMISE"
     PUBLIC_CONTRACT = "PUBLIC_CONTRACT"
+    ORGANISATION_IDENTITY = "ORGANISATION_IDENTITY"
     INTEREST_RELATIONSHIP = "INTEREST_RELATIONSHIP"
     RIGHT_OF_REPLY = "RIGHT_OF_REPLY"
     AI_EXPLANATION = "AI_EXPLANATION"
@@ -155,6 +156,13 @@ class EditorialCaseCreateRequest(BaseModel):
     source_document_id: str = Field(min_length=1, max_length=200)
     normalized_data: dict[str, Any]
     confirm_private_only: Literal[True]
+
+    @field_validator("kind")
+    @classmethod
+    def require_dedicated_identity_proposal(cls, value: EditorialCaseKind) -> EditorialCaseKind:
+        if value == EditorialCaseKind.ORGANISATION_IDENTITY:
+            raise ValueError("A identidade organizacional exige a proposta privada específica")
+        return value
 
     @field_validator("subject_id", "source_document_id")
     @classmethod
