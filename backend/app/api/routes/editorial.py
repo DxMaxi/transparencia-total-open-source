@@ -9,6 +9,7 @@ from app.api.dependencies import (
     get_ai_editorial_publication_repository,
     get_ai_editorial_repository,
     get_base_contract_editorial_repository,
+    get_base_contract_publication_repository,
     get_editorial_repository,
     get_ept_declaration_editorial_repository,
     get_ept_declaration_publication_gate_repository,
@@ -41,6 +42,8 @@ from app.models.editorial import (
     AiEditorialPublicationRequest,
     AiEditorialWithdrawalRequest,
     BaseContractEditorialProposalRequest,
+    BaseContractPublicationRequest,
+    BaseContractWithdrawalRequest,
     EditorialAction,
     EditorialApprovalRequest,
     EditorialCaseCreateRequest,
@@ -78,6 +81,7 @@ from app.models.ept_declaration import (
 from app.repositories.ai_editorial import AiEditorialRepository
 from app.repositories.ai_editorial_publication import AiEditorialPublicationRepository
 from app.repositories.base_contract_editorial import BaseContractEditorialRepository
+from app.repositories.base_contract_publication import BaseContractPublicationRepository
 from app.repositories.editorial import (
     EditorialConflictError,
     EditorialNotFoundError,
@@ -207,6 +211,76 @@ async def create_base_contract_proposal(
     try:
         return await repository.create_proposal(payload=payload, actor=actor)
     except (EditorialConflictError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.get("/base/cases/{case_id}/publication")
+async def base_contract_publication_preview(
+    case_id: Annotated[str, Path(min_length=1, max_length=200)],
+    repository: Annotated[
+        BaseContractPublicationRepository,
+        Depends(get_base_contract_publication_repository),
+    ],
+    _actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> dict[str, object]:
+    """Reconstrói a prova sem escrever contrato, parte, organização ou relação."""
+
+    try:
+        return await repository.inspect_publication(case_id=case_id)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.post("/base/cases/{case_id}/publication")
+async def publish_base_contract(
+    case_id: Annotated[str, Path(min_length=1, max_length=200)],
+    payload: BaseContractPublicationRequest,
+    repository: Annotated[
+        BaseContractPublicationRepository,
+        Depends(get_base_contract_publication_repository),
+    ],
+    actor: Annotated[StaffSession, Depends(require_editorial_admin)],
+) -> dict[str, object]:
+    """Publica um contrato exato; as partes continuam privadas e sem identidade."""
+
+    try:
+        return await repository.publish(case_id=case_id, payload=payload, actor=actor)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.get("/base/cases/{case_id}/withdrawal")
+async def base_contract_withdrawal_preview(
+    case_id: Annotated[str, Path(min_length=1, max_length=200)],
+    repository: Annotated[
+        BaseContractPublicationRepository,
+        Depends(get_base_contract_publication_repository),
+    ],
+    _actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> dict[str, object]:
+    """Calcula o efeito público preservando o contrato e o histórico."""
+
+    try:
+        return await repository.inspect_withdrawal(case_id=case_id)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.post("/base/cases/{case_id}/withdrawal")
+async def withdraw_base_contract(
+    case_id: Annotated[str, Path(min_length=1, max_length=200)],
+    payload: BaseContractWithdrawalRequest,
+    repository: Annotated[
+        BaseContractPublicationRepository,
+        Depends(get_base_contract_publication_repository),
+    ],
+    actor: Annotated[StaffSession, Depends(require_editorial_admin)],
+) -> dict[str, object]:
+    """Retira da consulta ativa sem apagar prova ou direito de resposta."""
+
+    try:
+        return await repository.withdraw(case_id=case_id, payload=payload, actor=actor)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
         raise _translate_error(exc) from exc
 
 

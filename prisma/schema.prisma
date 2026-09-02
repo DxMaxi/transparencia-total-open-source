@@ -1008,21 +1008,21 @@ model AssetDeclarationMetadata {
 /// património, moradas, contactos, NIF ou qualquer conteúdo da declaração.
 /// Também não liga automaticamente o titular a uma `Person`.
 model EptPublicInterestObservation {
-  id                    String         @id
-  officialDeclarationId String         @map("official_declaration_id")
-  officialSubjectDigest String         @map("official_subject_digest") @db.Char(64)
-  publicSubjectName     String         @map("public_subject_name")
-  declarationType       String         @default("INTEREST_REGISTER") @map("declaration_type")
-  declaredAt            DateTime?      @map("declared_at")
-  periodLabel           String?        @map("period_label")
-  publicAccessScope     String         @default("PUBLIC_INTEREST_REGISTER") @map("public_access_scope")
-  legalReviewStatus     String         @default("REQUIRES_INDEPENDENT_LEGAL_REVIEW") @map("legal_review_status")
-  identityLinkStatus    String         @default("UNLINKED_PRIVATE") @map("identity_link_status")
-  sourceDocumentId      String         @map("source_document_id")
-  sourceRecordSha256    String         @map("source_record_sha256") @db.Char(64)
-  observedAt            DateTime       @map("observed_at")
-  createdAt             DateTime       @default(now()) @map("created_at")
-  sourceDocument        SourceDocument @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
+  id                    String                          @id
+  officialDeclarationId String                          @map("official_declaration_id")
+  officialSubjectDigest String                          @map("official_subject_digest") @db.Char(64)
+  publicSubjectName     String                          @map("public_subject_name")
+  declarationType       String                          @default("INTEREST_REGISTER") @map("declaration_type")
+  declaredAt            DateTime?                       @map("declared_at")
+  periodLabel           String?                         @map("period_label")
+  publicAccessScope     String                          @default("PUBLIC_INTEREST_REGISTER") @map("public_access_scope")
+  legalReviewStatus     String                          @default("REQUIRES_INDEPENDENT_LEGAL_REVIEW") @map("legal_review_status")
+  identityLinkStatus    String                          @default("UNLINKED_PRIVATE") @map("identity_link_status")
+  sourceDocumentId      String                          @map("source_document_id")
+  sourceRecordSha256    String                          @map("source_record_sha256") @db.Char(64)
+  observedAt            DateTime                        @map("observed_at")
+  createdAt             DateTime                        @default(now()) @map("created_at")
+  sourceDocument        SourceDocument                  @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
   legalAssessments      EptIndependentLegalAssessment[]
   identityLinks         EptExactIdentityLink[]
 
@@ -1303,21 +1303,21 @@ model BaseContractCatalogueScope {
 
 /// Metadado privado de um único recurso ZIP anual observado no catálogo BASE.
 model BaseContractCatalogueResource {
-  id                 String                     @id
-  scopeId            String                     @map("scope_id")
-  ordinal            Int
-  sourceResourceId   String                     @map("source_resource_id")
-  resourceYear       Int                        @map("resource_year")
-  coverageState      String                     @map("coverage_state")
-  resourceTitle      String                     @map("resource_title")
-  resourceFormat     String                     @map("resource_format")
-  versionedUrl       String                     @map("versioned_url")
-  stableUrl          String                     @map("stable_url")
-  sourceModifiedAt   DateTime                   @map("source_modified_at")
-  byteSize           Int                        @map("byte_size")
-  metadataSha256     String                     @map("metadata_sha256") @db.Char(64)
-  createdAt          DateTime                   @default(now()) @map("created_at")
-  scope              BaseContractCatalogueScope @relation(fields: [scopeId], references: [id], onDelete: Restrict)
+  id               String                     @id
+  scopeId          String                     @map("scope_id")
+  ordinal          Int
+  sourceResourceId String                     @map("source_resource_id")
+  resourceYear     Int                        @map("resource_year")
+  coverageState    String                     @map("coverage_state")
+  resourceTitle    String                     @map("resource_title")
+  resourceFormat   String                     @map("resource_format")
+  versionedUrl     String                     @map("versioned_url")
+  stableUrl        String                     @map("stable_url")
+  sourceModifiedAt DateTime                   @map("source_modified_at")
+  byteSize         Int                        @map("byte_size")
+  metadataSha256   String                     @map("metadata_sha256") @db.Char(64)
+  createdAt        DateTime                   @default(now()) @map("created_at")
+  scope            BaseContractCatalogueScope @relation(fields: [scopeId], references: [id], onDelete: Restrict)
 
   @@unique([scopeId, resourceYear])
   @@unique([scopeId, ordinal])
@@ -1329,23 +1329,24 @@ model BaseContractCatalogueResource {
 /// Versão normalizada privada de um contrato dentro de um lote BASE. O mesmo
 /// identificador oficial pode reaparecer noutro lote sem substituir o anterior.
 model BaseContractSnapshot {
-  id                String                      @id
-  batchId           String                      @map("batch_id")
-  sourceId          String                      @map("source_id")
-  object            String
-  procedure         PublicContractProcedure     @default(UNKNOWN)
-  cpvCode           String?                     @map("cpv_code")
-  baseValue         Decimal?                    @map("base_value") @db.Decimal(20, 2)
-  contractValue     Decimal?                    @map("contract_value") @db.Decimal(20, 2)
-  currency          String                      @default("EUR")
-  decisionAt        DateTime?                   @map("decision_at")
-  signedAt          DateTime?                   @map("signed_at")
-  publishedAt       DateTime?                   @map("published_at")
-  executionDays     Int?                        @map("execution_days")
-  directOfficialUrl String?                     @map("direct_official_url")
-  createdAt         DateTime                    @default(now()) @map("created_at")
-  batch             BaseStagingBatch            @relation(fields: [batchId], references: [id], onDelete: Restrict)
-  parties           BaseContractPartySnapshot[]
+  id                         String                                  @id
+  batchId                    String                                  @map("batch_id")
+  sourceId                   String                                  @map("source_id")
+  object                     String
+  procedure                  PublicContractProcedure                 @default(UNKNOWN)
+  cpvCode                    String?                                 @map("cpv_code")
+  baseValue                  Decimal?                                @map("base_value") @db.Decimal(20, 2)
+  contractValue              Decimal?                                @map("contract_value") @db.Decimal(20, 2)
+  currency                   String                                  @default("EUR")
+  decisionAt                 DateTime?                               @map("decision_at")
+  signedAt                   DateTime?                               @map("signed_at")
+  publishedAt                DateTime?                               @map("published_at")
+  executionDays              Int?                                    @map("execution_days")
+  directOfficialUrl          String?                                 @map("direct_official_url")
+  createdAt                  DateTime                                @default(now()) @map("created_at")
+  batch                      BaseStagingBatch                        @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  parties                    BaseContractPartySnapshot[]
+  publicPublicationSnapshots BasePublicContractPublicationSnapshot[]
 
   @@unique([batchId, sourceId])
   @@index([sourceId])
@@ -1372,32 +1373,75 @@ model BaseContractPartySnapshot {
 }
 
 model PublicContract {
-  id                 String                  @id @default(cuid())
-  sourceId           String                  @unique @map("source_id")
-  object             String
-  procedure          PublicContractProcedure @default(UNKNOWN)
-  cpvCode            String?                 @map("cpv_code")
-  baseValue          Decimal?                @map("base_value") @db.Decimal(20, 2)
-  contractValue      Decimal?                @map("contract_value") @db.Decimal(20, 2)
-  currency           String                  @default("EUR")
-  decisionAt         DateTime?               @map("decision_at")
-  signedAt           DateTime?               @map("signed_at")
-  publishedAt        DateTime?               @map("published_at")
-  executionDays      Int?                    @map("execution_days")
-  sourceDocumentId   String                  @map("source_document_id")
-  verificationStatus VerificationStatus      @default(INGESTED) @map("verification_status")
-  publicationStatus  PublicationStatus       @default(UNDER_REVIEW) @map("publication_status")
-  createdAt          DateTime                @default(now()) @map("created_at")
-  updatedAt          DateTime                @updatedAt @map("updated_at")
-  sourceDocument     SourceDocument          @relation(fields: [sourceDocumentId], references: [id])
-  parties            PublicContractParty[]
-  graphRelationships InterestRelationship[]
-  matchReviews       ContractMatchReview[]
+  id                           String                                  @id @default(cuid())
+  sourceId                     String                                  @unique @map("source_id")
+  object                       String
+  procedure                    PublicContractProcedure                 @default(UNKNOWN)
+  cpvCode                      String?                                 @map("cpv_code")
+  baseValue                    Decimal?                                @map("base_value") @db.Decimal(20, 2)
+  contractValue                Decimal?                                @map("contract_value") @db.Decimal(20, 2)
+  currency                     String                                  @default("EUR")
+  decisionAt                   DateTime?                               @map("decision_at")
+  signedAt                     DateTime?                               @map("signed_at")
+  publishedAt                  DateTime?                               @map("published_at")
+  executionDays                Int?                                    @map("execution_days")
+  sourceDocumentId             String                                  @map("source_document_id")
+  currentPublicationSnapshotId String?                                 @unique @map("current_publication_snapshot_id")
+  verificationStatus           VerificationStatus                      @default(INGESTED) @map("verification_status")
+  publicationStatus            PublicationStatus                       @default(UNDER_REVIEW) @map("publication_status")
+  createdAt                    DateTime                                @default(now()) @map("created_at")
+  updatedAt                    DateTime                                @updatedAt @map("updated_at")
+  sourceDocument               SourceDocument                          @relation(fields: [sourceDocumentId], references: [id])
+  currentPublicationSnapshot   BasePublicContractPublicationSnapshot?  @relation("PublicContractCurrentPublication", fields: [currentPublicationSnapshotId], references: [id], onDelete: Restrict)
+  publicationSnapshots         BasePublicContractPublicationSnapshot[] @relation("PublicContractPublicationHistory")
+  parties                      PublicContractParty[]
+  graphRelationships           InterestRelationship[]
+  matchReviews                 ContractMatchReview[]
 
   @@index([procedure, publishedAt])
   @@index([contractValue])
   @@index([publicationStatus, verificationStatus])
   @@map("public_contracts")
+}
+
+/// Fotografia imutável dos campos exatos que passaram a consulta pública.
+/// Uma correção ou uma nova recolha acrescenta outra linha; a projeção
+/// PublicContract apenas aponta para a fotografia atualmente aplicável.
+model BasePublicContractPublicationSnapshot {
+  id                     String                  @id
+  publicContractId       String                  @map("public_contract_id")
+  contractSnapshotId     String                  @unique @map("contract_snapshot_id")
+  editorialCaseId        String                  @map("editorial_case_id")
+  editorialVersionId     String                  @unique @map("editorial_version_id")
+  sourceDocumentId       String                  @map("source_document_id")
+  sourceId               String                  @map("source_id")
+  object                 String
+  procedure              PublicContractProcedure @default(UNKNOWN)
+  cpvCode                String?                 @map("cpv_code")
+  baseValue              Decimal?                @map("base_value") @db.Decimal(20, 2)
+  contractValue          Decimal?                @map("contract_value") @db.Decimal(20, 2)
+  currency               String                  @default("EUR")
+  decisionAt             DateTime?               @map("decision_at")
+  signedAt               DateTime?               @map("signed_at")
+  publishedAt            DateTime?               @map("published_at")
+  executionDays          Int?                    @map("execution_days")
+  directOfficialUrl      String?                 @map("direct_official_url")
+  sourceRecordSha256     String                  @map("source_record_sha256") @db.Char(64)
+  publicationProofSha256 String                  @unique @map("publication_proof_sha256") @db.Char(64)
+  createdByAlias         String                  @map("created_by_alias")
+  createdAt              DateTime                @default(now()) @map("created_at")
+  publicContract         PublicContract          @relation("PublicContractPublicationHistory", fields: [publicContractId], references: [id], onDelete: Restrict)
+  currentForContract     PublicContract?         @relation("PublicContractCurrentPublication")
+  contractSnapshot       BaseContractSnapshot    @relation(fields: [contractSnapshotId], references: [id], onDelete: Restrict)
+  editorialCase          EditorialCase           @relation(fields: [editorialCaseId], references: [id], onDelete: Restrict)
+  editorialVersion       EditorialVersion        @relation(fields: [editorialVersionId], references: [id], onDelete: Restrict)
+  sourceDocument         SourceDocument          @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
+
+  @@index([publicContractId, createdAt])
+  @@index([sourceId, createdAt])
+  @@index([sourceDocumentId])
+  @@index([editorialCaseId, createdAt])
+  @@map("base_public_contract_publication_snapshots")
 }
 
 model PublicContractParty {
@@ -1663,19 +1707,19 @@ model RightOfReply {
 /// Identidade interna mínima de um administrador ou revisor. O email e os
 /// fatores de autenticação permanecem no Supabase Auth e não são duplicados.
 model StaffProfile {
-  id                String                      @id @default(cuid())
-  authUserId        String                      @unique @map("auth_user_id") @db.Uuid
-  publicAlias       String                      @unique @map("public_alias")
-  role              StaffRole
-  active            Boolean                     @default(true)
-  createdAt         DateTime                    @default(now()) @map("created_at")
-  updatedAt         DateTime                    @updatedAt @map("updated_at")
-  createdCases      EditorialCase[]             @relation("EditorialCaseCreator")
-  createdVersions   EditorialVersion[]          @relation("EditorialVersionCreator")
-  decisions         EditorialDecision[]         @relation("EditorialDecisionActor")
-  publicationEvents EditorialPublicationEvent[] @relation("EditorialPublicationActor")
+  id                  String                          @id @default(cuid())
+  authUserId          String                          @unique @map("auth_user_id") @db.Uuid
+  publicAlias         String                          @unique @map("public_alias")
+  role                StaffRole
+  active              Boolean                         @default(true)
+  createdAt           DateTime                        @default(now()) @map("created_at")
+  updatedAt           DateTime                        @updatedAt @map("updated_at")
+  createdCases        EditorialCase[]                 @relation("EditorialCaseCreator")
+  createdVersions     EditorialVersion[]              @relation("EditorialVersionCreator")
+  decisions           EditorialDecision[]             @relation("EditorialDecisionActor")
+  publicationEvents   EditorialPublicationEvent[]     @relation("EditorialPublicationActor")
   eptLegalAssessments EptIndependentLegalAssessment[] @relation("EptLegalAssessmentRecorder")
-  eptIdentityLinks    EptExactIdentityLink[]           @relation("EptIdentityLinkRecorder")
+  eptIdentityLinks    EptExactIdentityLink[]          @relation("EptIdentityLinkRecorder")
 
   @@index([active, role])
   @@map("staff_profiles")
@@ -1684,27 +1728,28 @@ model StaffProfile {
 /// Processo editorial privado. Apenas o estado e o apontador da versão atual
 /// são projeções mutáveis; versões, decisões e eventos são sempre append-only.
 model EditorialCase {
-  id                String                      @id @default(cuid())
-  kind              EditorialCaseKind
-  subjectType       String                      @map("subject_type")
-  subjectId         String                      @map("subject_id")
-  sourceDocumentId  String                      @map("source_document_id")
-  origin            EditorialOrigin
-  createdById       String?                     @map("created_by_id")
-  createdByAlias    String                      @map("created_by_alias")
-  currentVersionId  String?                     @unique @map("current_version_id")
-  currentState      EditorialState              @default(PENDING) @map("current_state")
-  revision          Int                         @default(0)
-  createdAt         DateTime                    @default(now()) @map("created_at")
-  updatedAt         DateTime                    @updatedAt @map("updated_at")
-  sourceDocument    SourceDocument              @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
-  createdBy         StaffProfile?               @relation("EditorialCaseCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  currentVersion    EditorialVersion?           @relation("EditorialCurrentVersion", fields: [currentVersionId], references: [id], onDelete: Restrict)
-  versions          EditorialVersion[]          @relation("EditorialCaseVersions")
-  decisions         EditorialDecision[]
-  publicationEvents EditorialPublicationEvent[]
-  eptLegalAssessments EptIndependentLegalAssessment[] @relation("EptLegalAssessmentCase")
-  eptIdentityLink     EptExactIdentityLink?            @relation("EptIdentityLinkCase")
+  id                               String                                  @id @default(cuid())
+  kind                             EditorialCaseKind
+  subjectType                      String                                  @map("subject_type")
+  subjectId                        String                                  @map("subject_id")
+  sourceDocumentId                 String                                  @map("source_document_id")
+  origin                           EditorialOrigin
+  createdById                      String?                                 @map("created_by_id")
+  createdByAlias                   String                                  @map("created_by_alias")
+  currentVersionId                 String?                                 @unique @map("current_version_id")
+  currentState                     EditorialState                          @default(PENDING) @map("current_state")
+  revision                         Int                                     @default(0)
+  createdAt                        DateTime                                @default(now()) @map("created_at")
+  updatedAt                        DateTime                                @updatedAt @map("updated_at")
+  sourceDocument                   SourceDocument                          @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
+  createdBy                        StaffProfile?                           @relation("EditorialCaseCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  currentVersion                   EditorialVersion?                       @relation("EditorialCurrentVersion", fields: [currentVersionId], references: [id], onDelete: Restrict)
+  versions                         EditorialVersion[]                      @relation("EditorialCaseVersions")
+  decisions                        EditorialDecision[]
+  publicationEvents                EditorialPublicationEvent[]
+  eptLegalAssessments              EptIndependentLegalAssessment[]         @relation("EptLegalAssessmentCase")
+  eptIdentityLink                  EptExactIdentityLink?                   @relation("EptIdentityLinkCase")
+  baseContractPublicationSnapshots BasePublicContractPublicationSnapshot[]
 
   @@unique([kind, subjectType, subjectId, sourceDocumentId])
   @@index([currentState, createdAt, id])
@@ -1717,23 +1762,24 @@ model EditorialCase {
 /// Conteúdo normalizado privado e imutável. Uma correção cria a versão seguinte
 /// e mantém a anterior ligada por `previousVersionId`.
 model EditorialVersion {
-  id                String                      @id @default(cuid())
-  caseId            String                      @map("case_id")
-  versionNumber     Int                         @map("version_number")
-  normalizedJson    Json                        @map("normalized_json")
-  normalizedSha256  String                      @map("normalized_sha256") @db.Char(64)
-  previousVersionId String?                     @unique @map("previous_version_id")
-  origin            EditorialOrigin
-  createdById       String?                     @map("created_by_id")
-  createdByAlias    String                      @map("created_by_alias")
-  createdAt         DateTime                    @default(now()) @map("created_at")
-  case              EditorialCase               @relation("EditorialCaseVersions", fields: [caseId], references: [id], onDelete: Restrict)
-  currentForCase    EditorialCase?              @relation("EditorialCurrentVersion")
-  previousVersion   EditorialVersion?           @relation("EditorialVersionChain", fields: [previousVersionId], references: [id], onDelete: Restrict)
-  nextVersions      EditorialVersion[]          @relation("EditorialVersionChain")
-  createdBy         StaffProfile?               @relation("EditorialVersionCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  decisions         EditorialDecision[]
-  publicationEvents EditorialPublicationEvent[]
+  id                               String                                  @id @default(cuid())
+  caseId                           String                                  @map("case_id")
+  versionNumber                    Int                                     @map("version_number")
+  normalizedJson                   Json                                    @map("normalized_json")
+  normalizedSha256                 String                                  @map("normalized_sha256") @db.Char(64)
+  previousVersionId                String?                                 @unique @map("previous_version_id")
+  origin                           EditorialOrigin
+  createdById                      String?                                 @map("created_by_id")
+  createdByAlias                   String                                  @map("created_by_alias")
+  createdAt                        DateTime                                @default(now()) @map("created_at")
+  case                             EditorialCase                           @relation("EditorialCaseVersions", fields: [caseId], references: [id], onDelete: Restrict)
+  currentForCase                   EditorialCase?                          @relation("EditorialCurrentVersion")
+  previousVersion                  EditorialVersion?                       @relation("EditorialVersionChain", fields: [previousVersionId], references: [id], onDelete: Restrict)
+  nextVersions                     EditorialVersion[]                      @relation("EditorialVersionChain")
+  createdBy                        StaffProfile?                           @relation("EditorialVersionCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  decisions                        EditorialDecision[]
+  publicationEvents                EditorialPublicationEvent[]
+  baseContractPublicationSnapshots BasePublicContractPublicationSnapshot[]
 
   @@unique([caseId, versionNumber])
   @@unique([caseId, normalizedSha256])
@@ -1817,19 +1863,19 @@ model DataPublicationReview {
 }
 
 model SourceDocument {
-  id                                  String                               @id @default(cuid())
+  id                                  String                                  @id @default(cuid())
   publisher                           SourcePublisher
   kind                                DocumentKind
   title                               String
-  officialIdentifier                  String?                              @map("official_identifier")
+  officialIdentifier                  String?                                 @map("official_identifier")
   url                                 String
-  retrievedAt                         DateTime                             @map("retrieved_at")
-  publishedAt                         DateTime?                            @map("published_at")
-  contentSha256                       String                               @map("content_sha256")
-  mimeType                            String?                              @map("mime_type")
-  rawStorageKey                       String?                              @map("raw_storage_key")
-  parserVersion                       String?                              @map("parser_version")
-  createdAt                           DateTime                             @default(now()) @map("created_at")
+  retrievedAt                         DateTime                                @map("retrieved_at")
+  publishedAt                         DateTime?                               @map("published_at")
+  contentSha256                       String                                  @map("content_sha256")
+  mimeType                            String?                                 @map("mime_type")
+  rawStorageKey                       String?                                 @map("raw_storage_key")
+  parserVersion                       String?                                 @map("parser_version")
+  createdAt                           DateTime                                @default(now()) @map("created_at")
   mandates                            Mandate[]
   parliamentaryOfficePeriods          ParliamentaryOfficePeriod[]
   membershipSnapshots                 ParliamentaryMembershipSnapshot[]
@@ -1852,7 +1898,7 @@ model SourceDocument {
   comparisons                         StatementVoteComparison[]
   assetDeclarations                   AssetDeclarationMetadata[]
   eptPublicInterestObservations       EptPublicInterestObservation[]
-  eptIdentityEvidenceLinks             EptExactIdentityLink[]             @relation("EptIdentityEvidenceDocument")
+  eptIdentityEvidenceLinks            EptExactIdentityLink[]                  @relation("EptIdentityEvidenceDocument")
   aiSummaries                         AiSummary[]
   localItems                          LocalTransparencyItem[]
   organisations                       Organisation[]
@@ -1860,6 +1906,7 @@ model SourceDocument {
   baseStagingBatches                  BaseStagingBatch[]
   baseContractCatalogueScopes         BaseContractCatalogueScope[]
   publicContracts                     PublicContract[]
+  baseContractPublicationSnapshots    BasePublicContractPublicationSnapshot[]
   contractMatchReviews                ContractMatchReview[]
   interestRelationships               InterestRelationship[]
   judicialCases                       JudicialCase[]
@@ -1905,18 +1952,18 @@ model SourceArchiveAttestation {
 }
 
 model SyncRun {
-  id               String            @id @default(cuid())
-  sourceName       String            @map("source_name")
-  datasetUrl       String?           @map("dataset_url")
-  status           SyncStatus        @default(RUNNING)
-  startedAt        DateTime          @default(now()) @map("started_at")
-  finishedAt       DateTime?         @map("finished_at")
-  recordsRead      Int               @default(0) @map("records_read")
-  recordsWritten   Int               @default(0) @map("records_written")
-  warnings         Json?
-  errorMessage     String?           @map("error_message")
-  codeVersion      String            @map("code_version")
-  baseStagingBatch BaseStagingBatch?
+  id                         String                      @id @default(cuid())
+  sourceName                 String                      @map("source_name")
+  datasetUrl                 String?                     @map("dataset_url")
+  status                     SyncStatus                  @default(RUNNING)
+  startedAt                  DateTime                    @default(now()) @map("started_at")
+  finishedAt                 DateTime?                   @map("finished_at")
+  recordsRead                Int                         @default(0) @map("records_read")
+  recordsWritten             Int                         @default(0) @map("records_written")
+  warnings                   Json?
+  errorMessage               String?                     @map("error_message")
+  codeVersion                String                      @map("code_version")
+  baseStagingBatch           BaseStagingBatch?
   baseContractCatalogueScope BaseContractCatalogueScope?
 
   @@index([sourceName, startedAt])

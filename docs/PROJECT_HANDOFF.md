@@ -1,6 +1,6 @@
 # PROJECT HANDOFF — Transparência Total / Fator Cívico
 
-Atualizado em: **2026-08-28**
+Atualizado em: **2026-09-02**
 
 Este documento existe para permitir continuidade segura entre sessões de trabalho, colaboradores e chats sem depender de memória externa ao repositório.
 
@@ -222,8 +222,15 @@ A V5.50 fecha o adaptador BASE legado que criava tabelas públicas em estado `DR
 e contagens do lote normalizado coincidentes; limitações ficam visíveis e não se alega cobertura
 integral do ZIP. O resultado é um caso privado `PUBLIC_CONTRACT/PENDING`. HMAC não é devolvido,
 nomes não ligam entidades e a revisão genérica recusa contratos, organizações e relações. As
-projeções públicas exigem agora o evento específico `PUBLISH`; publicação, retirada, direito de
-resposta, identidade organizacional e execução real em staging continuam pendentes.
+projeções públicas exigem agora o evento específico `PUBLISH`. Nesta etapa ainda não existia
+publicação; identidade organizacional, grafo e execução real em staging continuam pendentes.
+
+A V5.51 acrescenta a publicação e retirada específicas do contrato factual. `ADMIN` com MFA tem de
+reconfirmar snapshot, versão, fonte e hashes; a transação conserva uma fotografia pública
+append-only e escreve zero partes, organizações, correspondências ou relações. A API força
+`parties=[]` e a base bloqueia mutações de partes até existir uma porta própria. A retirada preserva
+contrato, fotografia, histórico e direitos de resposta. Identidade organizacional, grafo e execução
+real em staging continuam pendentes.
 
 A V5.50.1 fecha uma falha observada na API pública antes da ativação remota do esquema. Erros
 operacionais conhecidos de PostgreSQL devolvem agora HTTP 503 neutro em todas as projeções, sem

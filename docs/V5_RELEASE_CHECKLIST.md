@@ -260,7 +260,11 @@ Governo](V5_PROMESSOMETRO_CATALOGUE.md).
   - [x] A proposta cria zero contratos, organizações, correspondências, relações ou eventos públicos.
   - [x] A promoção e a revisão genéricas da V4 foram fechadas de forma explícita.
   - [x] Projeções públicas exigem o evento específico mais recente `PUBLISH` por alvo.
-- [ ] Promoção revista para `PublicContract` implementada e testada.
+- [x] V5.51 — promoção revista para `PublicContract` implementada e testada.
+  - [x] Exige caso aprovado, reconstrução integral da prova, `ADMIN` e MFA.
+  - [x] Conserva uma fotografia pública append-only ligada ao snapshot e versão exatos.
+  - [x] Publica zero partes, organizações, correspondências ou relações.
+  - [x] Retirada preserva contrato, fotografia, histórico e direitos de resposta.
 - [ ] Organizações e titulares têm fontes próprias.
 - [ ] Pepper HMAC estável configurado fora do repositório.
 - [ ] Nenhum identificador fiscal em claro persiste ou aparece em logs.
@@ -269,11 +273,14 @@ Governo](V5_PROMESSOMETRO_CATALOGUE.md).
 - [ ] Relações exigem dois nós publicados, fonte, tipo e datas.
 - [ ] Grafo público distingue ligação factual de acusação ou conflito.
 - [ ] Direito de resposta e retirada cobrem contratos e relações.
+  - [x] Contratos `PublicContract` cobertos pela V5.51.
+  - [ ] Organizações e relações aguardam os respetivos circuitos específicos.
 - [ ] AIPD e revisão jurídica aplicáveis concluídas.
 
 Metodologia e limites desta fundação: [V5.49 — âmbito temporal privado do Portal
 BASE](V5_BASE_TEMPORAL_SCOPE.md) e [V5.50 — porta editorial privada dos contratos
-BASE](V5_BASE_CONTRACT_EDITORIAL.md).
+BASE](V5_BASE_CONTRACT_EDITORIAL.md) e [V5.51 — publicação e retirada específicas de contratos
+BASE](V5_BASE_CONTRACT_PUBLICATION.md).
 
 ## I. IA responsável
 
@@ -311,6 +318,8 @@ BASE](V5_BASE_CONTRACT_EDITORIAL.md).
 
 - [ ] DRE tem circuito de promoção público próprio.
 - [ ] BASE tem circuito de promoção público próprio.
+  - [x] Contrato factual individual, fotografia imutável e retirada na V5.51.
+  - [ ] Organizações, correspondências exatas privadas e relações aguardam portas próprias.
 - [ ] EPT tem tratamento real juridicamente revisto e sem equivaler portal a declaração.
   - [x] V5.46–V5.47 fecham tecnicamente a entrada, identidade, avaliação documental, publicação e
     retirada; a ativação continua bloqueada até à revisão jurídica operacional independente.

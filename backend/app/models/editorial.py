@@ -224,6 +224,76 @@ class BaseContractEditorialProposalRequest(BaseModel):
     confirm_no_contract_or_relationship_publication: Literal[True]
 
 
+class BaseContractPublicationRequest(EditorialDecisionRequest):
+    """Publicação explícita de um contrato BASE já aprovado e reconstruído."""
+
+    public_rationale: str = Field(min_length=20, max_length=500)
+    expected_case_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    expected_version_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    expected_version_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_contract_snapshot_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    expected_public_contract_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    expected_official_contract_id_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_source_record_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_publication_proof_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    confirm_source_reviewed: Literal[True]
+    confirm_exact_official_contract_id: Literal[True]
+    confirm_no_party_publication: Literal[True]
+    confirm_no_identity_or_name_matching: Literal[True]
+    confirm_no_organisation_match_or_relationship_creation: Literal[True]
+    confirm_append_only_publication: Literal[True]
+    confirm_publication: Literal[True]
+
+    @field_validator("rationale", "public_rationale")
+    @classmethod
+    def strip_base_public_rationale(cls, value: str) -> str:
+        stripped = value.strip()
+        if len(stripped) < 20:
+            raise ValueError("A fundamentação deve ter pelo menos 20 caracteres úteis")
+        validate_normalized_data({"rationale": stripped})
+        if re.search(r"\bhmac(?:-sha-?256)?\b", stripped, re.IGNORECASE):
+            raise ValueError("A fundamentação não pode expor um HMAC protegido")
+        return stripped
+
+
+class BaseContractWithdrawalRequest(EditorialDecisionRequest):
+    """Retirada explícita que conserva contrato, fotografia e direito de resposta."""
+
+    rationale: str = Field(min_length=20, max_length=1850)
+    public_rationale: str = Field(min_length=20, max_length=500)
+    reason_category: ParliamentWithdrawalReason
+    expected_case_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    expected_version_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    expected_version_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_public_contract_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    expected_publication_snapshot_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    expected_source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_source_record_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_publication_proof_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_withdrawal_proof_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_public_review_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    expected_publication_audit_event_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    expected_publication_event_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,200}$")
+    expected_publication_event_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    expected_public_effect_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    confirm_no_selective_removal: Literal[True]
+    confirm_public_effect_reviewed: Literal[True]
+    confirm_history_and_right_of_reply_preserved: Literal[True]
+    confirm_withdrawal: Literal[True]
+
+    @field_validator("rationale", "public_rationale")
+    @classmethod
+    def strip_base_withdrawal_public_rationale(cls, value: str) -> str:
+        stripped = value.strip()
+        if len(stripped) < 20:
+            raise ValueError("A fundamentação deve ter pelo menos 20 caracteres úteis")
+        validate_normalized_data({"rationale": stripped})
+        if re.search(r"\bhmac(?:-sha-?256)?\b", stripped, re.IGNORECASE):
+            raise ValueError("A fundamentação não pode expor um HMAC protegido")
+        return stripped
+
+
 class PoliticianProfileEditorialProposalRequest(BaseModel):
     """Confirmações para importar uma observação oficial para revisão privada."""
 
