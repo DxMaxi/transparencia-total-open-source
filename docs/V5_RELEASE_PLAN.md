@@ -3,8 +3,7 @@
 ## Estado de referência
 
 Este plano fixa o âmbito necessário para concluir a `v0.5.0`. Foi preparado em 13 de agosto de
-2026 e atualizado em 2 de setembro de 2026 a partir do código integrado em `main`, do candidato
-local V5.52, da produção
+2026 e atualizado em 3 de setembro de 2026 a partir do código V5.52 integrado em `main`, da produção
 pública e dos princípios de governação do projeto. Não autoriza deploy, migração remota, criação de
 utilizadores, alteração de segredos, geração por IA, publicação, retirada ou tratamento de dados
 reais.
@@ -12,7 +11,7 @@ reais.
 | Camada | Estado observado |
 |---|---|
 | Última release fechada | `v0.4.0` |
-| Código V5 | V5.1 a V5.51 integradas; V5.52 preparada localmente; staging remoto pendente |
+| Código V5 | V5.1 a V5.52 integradas; staging remoto pendente |
 | Frontend público | V5.21 preparado; capacidades sem backend ou esquema pronto ficam fail-closed |
 | API pública | `0.5.0-alpha.0`; capacidades anunciadas só após prova read-only e falhas operacionais devolvem 503 neutro |
 | Painel editorial | implementado no código, não ativado em produção |
@@ -22,7 +21,14 @@ reais.
 | Promessómetro | amostra pública de 10; catálogo V5.48 com 1 590 candidatos privados em 40 blocos, ainda sem consolidação humana |
 | Investigador Cívico | V5.49–V5.51 preparam âmbito, proposta, publicação factual e retirada; V5.52 acrescenta identidade organizacional privada; zero relações e nenhuma operação real executada |
 | PWA e alertas | consentimento, revogação e cache opt-in integrados; configuração remota pendente |
-| Repositório | privado e licenciado como código disponível para uso não comercial |
+| Repositório | público, confirmado em 03-09-2026; licença não comercial; decisão e privacidade do histórico por reconciliar |
+
+A V5.52 foi integrada pela [PR #132](https://github.com/DxMaxi/transparencia-total-open-source/pull/132)
+em `eb43279`, com CI aprovado. A consulta atual do GitHub não prova quem alterou a visibilidade nem
+quando: a auditoria V5.19 e as issues #58/#76 ainda não registam a resolução do contacto histórico.
+Não se interpreta o estado público como uma validação de privacidade. O
+[checkpoint operacional de 03-09-2026](V5_OPERATIONAL_READINESS.md) separa o site acessível, a
+recolha parlamentar suspensa e o próximo circuito de publicação de organizações.
 
 ## O que significa concluir a V5
 

@@ -266,7 +266,7 @@ Governo](V5_PROMESSOMETRO_CATALOGUE.md).
   - [x] Publica zero partes, organizações, correspondências ou relações.
   - [x] Retirada preserva contrato, fotografia, histórico e direitos de resposta.
 - [ ] Organizações e titulares têm fontes próprias.
-  - [ ] V5.52 — validar e integrar a observação privada de identidade organizacional e a proposta editorial com fonte IRN independente.
+  - [x] V5.52 — observação privada de identidade organizacional e proposta editorial com fonte IRN independente integradas pela PR #132 (`eb43279`), com CI aprovado.
   - [ ] Executar o ensaio autorizado em staging com fonte individual, arquivo, pepper estável e aprovação sem efeitos públicos.
   - [ ] Concluir publicação e retirada específicas de organizações antes de associar partes de contratos.
 - [ ] Pepper HMAC estável configurado fora do repositório.
@@ -284,7 +284,7 @@ Metodologia e limites desta fundação: [V5.49 — âmbito temporal privado do P
 BASE](V5_BASE_TEMPORAL_SCOPE.md) e [V5.50 — porta editorial privada dos contratos
 BASE](V5_BASE_CONTRACT_EDITORIAL.md) e [V5.51 — publicação e retirada específicas de contratos
 BASE](V5_BASE_CONTRACT_PUBLICATION.md) e [V5.52 — identidade organizacional privada com fonte
-própria](V5_BASE_ORGANISATION_IDENTITY.md). A preparação local da V5.52 não fecha os ensaios
+própria](V5_BASE_ORGANISATION_IDENTITY.md). A integração da V5.52 não fecha os ensaios
 operacionais nem a publicação de organizações e relações.
 
 ## I. IA responsável
@@ -354,9 +354,10 @@ operacionais nem a publicação de organizações e relações.
 
 ## M. Publicação do código e release
 
-- [x] História Git integral pesquisada por segredos, dumps e identificadores protegidos; a
-  [auditoria sanitizada](V5_RELEASE_PRIVACY_AUDIT.md) mantém a publicação pública bloqueada por um
-  contacto pessoal ainda presente em diffs históricos.
+- [x] História Git integral pesquisada por segredos, dumps e identificadores protegidos no checkpoint V5.19;
+  a [auditoria sanitizada](V5_RELEASE_PRIVACY_AUDIT.md) identificou um contacto pessoal histórico.
+  Em 03-09-2026 o GitHub já apresenta o repositório como público; resolução/aceitação do risco e
+  nova verificação não estão documentadas nas fontes consultadas. Não equivale a gate aprovado.
 - [ ] Todas as credenciais anteriormente expostas confirmadas como revogadas.
 - [ ] Licenças do software, conteúdo e fontes verificadas.
 - [ ] Comunicação pública usa `source-available` enquanto vigorar PolyForm Noncommercial.

@@ -65,7 +65,7 @@ test("tracked civic JSON files contain no clear protected identifiers or secrets
   assert.deepEqual(findings, []);
 });
 
-test("the release records the sanitized history audit and keeps public visibility blocked", async () => {
+test("the release preserves the historical audit and unresolved privacy gates", async () => {
   const [audit, checklist, technicalAudit] = await Promise.all([
     read("docs/V5_RELEASE_PRIVACY_AUDIT.md"),
     read("docs/V5_RELEASE_CHECKLIST.md"),
@@ -76,9 +76,14 @@ test("the release records the sanitized history audit and keeps public visibilit
   assert.match(audit, /cinco alertas `generic-api-key`/i);
   assert.match(audit, /um endereço Gmail\s+pessoal permanece em diffs históricos/i);
   assert.match(audit, /a visibilidade pública do repositório continua bloqueada/i);
+  assert.match(audit, /Nota posterior — 3 de setembro de 2026/);
+  assert.match(audit, /private=false.*visibility=public/);
+  assert.match(audit, /não converte o resultado histórico em `PASS`/);
   assert.match(audit, /não autoriza reescrever commits, tags ou branches/i);
   assert.doesNotMatch(audit, /[a-z0-9._%+-]+@gmail\.com/i);
   assert.match(checklist, /\[x\] História Git integral pesquisada por segredos/);
+  assert.match(checklist, /\[ \] Visibilidade pública do repositório autorizada separadamente/);
+  assert.match(checklist, /nova verificação não estão documentadas/);
   assert.match(checklist, /V5_RELEASE_PRIVACY_AUDIT\.md/);
   assert.match(technicalAudit, /V5_RELEASE_PRIVACY_AUDIT\.md/);
 });

@@ -1,5 +1,15 @@
 # V5.19 — auditoria de privacidade e segredos do candidato
 
+## Nota posterior — 3 de setembro de 2026
+
+A consulta read-only da API do GitHub passou a devolver `private=false` e `visibility=public`.
+As issues #58 e #76 consultadas nessa data não registam a resolução ou aceitação do contacto
+histórico identificado abaixo. O estado público não permite inferir a data/autor da alteração ou
+uma nova aprovação de privacidade. Não foi repetida a auditoria integral nem alterada a história
+ou a visibilidade. Este registo acrescenta contexto; não converte o resultado histórico em `PASS`.
+
+Os resultados e limites seguintes referem-se ao checkpoint original de 24-08-2026.
+
 ## Âmbito e limites
 
 Esta auditoria foi executada em 24 de agosto de 2026 sobre o commit

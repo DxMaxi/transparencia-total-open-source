@@ -7,7 +7,6 @@ import argparse
 import asyncio
 import json
 from datetime import UTC, datetime
-from typing import Any
 
 from app.core.config import get_settings
 from app.models.parliamentary import ParliamentActivityDataset
@@ -15,40 +14,14 @@ from app.repositories.official_index_staging import OfficialIndexStagingReposito
 from app.repositories.parliament_activity import ParliamentActivityRepository
 from app.services.http import OfficialHttpClient
 from app.services.parlamento import ParlamentoCollector
+from app.services.parliament_readiness import (
+    exact_vote_identity_schema_is_ready as _exact_vote_identity_schema_is_ready,
+)
 from app.services.parliamentary_activity import normalise_initiatives, normalise_sessions
 
 CODE_VERSION = "parliament-activity-v6"
 SOURCE_NAME = "PARLIAMENT_ACTIVITY"
 MAX_SNAPSHOT_RECORDS = 250_000
-
-
-async def _exact_vote_identity_schema_is_ready(connection: Any) -> bool:
-    """Confirma read-only que a migração V5.45 está integralmente disponível."""
-
-    return bool(
-        await connection.fetchval(
-            """
-            SELECT
-                EXISTS (
-                    SELECT 1
-                    FROM pg_catalog.pg_attribute attribute
-                    WHERE attribute.attrelid = to_regclass('public.vote_records')
-                      AND attribute.attname = 'actor_source_id'
-                      AND NOT attribute.attisdropped
-                )
-                AND EXISTS (
-                    SELECT 1
-                    FROM pg_catalog.pg_constraint constraint_record
-                    WHERE constraint_record.conrelid = to_regclass('public.vote_records')
-                      AND constraint_record.conname =
-                          'vote_records_actor_source_id_not_blank'
-                )
-                AND to_regclass(
-                    'public.vote_records_person_official_id_per_event_key'
-                ) IS NOT NULL
-            """
-        )
-    )
 
 
 async def run(legislature: str) -> dict[str, object]:

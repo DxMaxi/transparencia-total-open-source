@@ -1,6 +1,6 @@
 # PROJECT HANDOFF — Transparência Total / Fator Cívico
 
-Atualizado em: **2026-09-02**
+Atualizado em: **2026-09-03**
 
 Este documento existe para permitir continuidade segura entre sessões de trabalho, colaboradores e chats sem depender de memória externa ao repositório.
 
@@ -76,8 +76,8 @@ de explicações DRE com IA. A capacidade pública é anunciada apenas quando o 
 sem essa prova, API e frontend apresentam indisponibilidade controlada. A V5.16–V5.18 endureceu as
 escritas públicas, consentimento e revogação push, cache PWA, acessibilidade, E2E, CSP, pesquisa
 global e desempenho móvel. A V5.19 acrescentou a auditoria sanitizada de dados e história Git; um
-contacto pessoal permanece apenas em diffs históricos e bloqueia a visibilidade pública até haver
-decisão própria. A V5.20 substitui os estados públicos antigos do Promessómetro pelo vocabulário
+contacto pessoal foi identificado em diffs históricos, exigindo decisão própria sobre visibilidade.
+A V5.20 substitui os estados públicos antigos do Promessómetro pelo vocabulário
 aprovado e mantém qualquer valor legado fora da projeção até nova revisão humana. A V5.21 expõe a
 última cobertura parlamentar publicada por legislatura, âmbito, período e fotografia, sempre com
 fonte e hashes, e fixa o preenchimento histórico como uma fila editorial separada. Um recurso num
@@ -232,7 +232,7 @@ append-only e escreve zero partes, organizações, correspondências ou relaçõ
 contrato, fotografia, histórico e direitos de resposta. Identidade organizacional, grafo e execução
 real em staging continuam pendentes.
 
-A V5.52 prepara localmente uma observação privada de identidade organizacional com fonte IRN
+A V5.52 integra uma observação privada de identidade organizacional com fonte IRN
 independente, arquivo atestado, referência não fiscal e HMAC com pepper estável. O painel recebe
 apenas dados não fiscais e cria um caso `ORGANISATION_IDENTITY/PENDING`; aprovar continua sem
 organizações públicas, partes, correspondências ou relações. A via genérica não pode criar ou
@@ -243,9 +243,20 @@ candidatos; a coluna fiscal legada só é removida se estiver vazia. Consulte
 Checkpoint de entrada da V5.52: PR #131 integrada em `main` no commit `7e32aa5`, com CI verde,
 deployment frontend e smoke públicos bem-sucedidos. A verificação read-only de 2 de setembro de
 2026 encontrou os ambientes GitHub `Preview`, `Production` e `recovery`, sem `staging`. Não foi
-executado qualquer workflow de staging nem foram reutilizados destinos de produção. O patch
-V5.52 é local e precisa de validações e integração próprias; não copiar resultados da V5.51 como
-prova do candidato atual.
+executado qualquer workflow de staging nem foram reutilizados destinos de produção.
+
+Checkpoint posterior de 03-09-2026: PR #132 integrada em `eb43279`, CI #33679101110 aprovado,
+deployment automático frontend bem-sucedido e Public smoke #33751408883 aprovado. A V5.52 teve
+680 testes backend e 152 contratos frontend aprovados; nenhuma migração remota foi executada.
+O monitor operacional #33749323293 continua a exigir atenção: a recolha parlamentar diária
+termina em `SCHEMA_MIGRATION_REQUIRED`, enquanto o último SyncRun conserva uma falha anterior.
+A V5.52.1 separa estes estados sem alterar o histórico, o esquema ou a política de alerta.
+Consulte [diagnóstico e próximos passos](V5_OPERATIONAL_READINESS.md).
+
+Na mesma consulta, o GitHub apresentou `private=false` e `visibility=public`. Isto contradiz o
+estado ainda descrito na auditoria V5.19 e na issue #76, que não registam resolução posterior do
+contacto histórico. Não se confirmou a data/autor da alteração, não se repetiu a auditoria integral
+e não se alterou a visibilidade ou a história. A decisão foi colocada ao responsável do projeto.
 
 A V5.50.1 fecha uma falha observada na API pública antes da ativação remota do esquema. Erros
 operacionais conhecidos de PostgreSQL devolvem agora HTTP 503 neutro em todas as projeções, sem
