@@ -120,6 +120,12 @@ acusação ou conclusão automática.
 
 ## Verificações e passagem para operação
 
+A [PR #132](https://github.com/DxMaxi/transparencia-total-open-source/pull/132) foi integrada em
+`eb43279` em 2 de setembro de 2026. O
+[CI de main](https://github.com/DxMaxi/transparencia-total-open-source/actions/runs/33679101110)
+aprovou backend e frontend com os runtimes do projeto. A integração e o deployment frontend não
+executaram a migração nem ativaram este domínio sobre dados reais.
+
 Validação local do candidato em 2 de setembro de 2026:
 
 - 31 migrações aplicadas de raiz numa base PostgreSQL 17.11 descartável neste computador.

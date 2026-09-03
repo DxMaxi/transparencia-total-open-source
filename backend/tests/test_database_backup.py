@@ -192,3 +192,26 @@ def test_restore_records_stale_sources_without_falsifying_them(tmp_path: Path) -
 
     assert attestation["outcome"] == "PASS_WITH_OPERATIONAL_WARNING"
     assert attestation["checks"]["operational_status"] == "ATTENTION_REQUIRED"
+
+
+def test_restore_rejects_a_failed_operational_check(tmp_path: Path) -> None:
+    ciphertext = tmp_path / "backup.dump.age"
+    ciphertext.write_bytes(b"age-encrypted-backup")
+    manifest = _manifest(ciphertext)
+
+    with pytest.raises(BackupEvidenceError, match="relatório operacional restaurado inválido"):
+        build_restore_attestation(
+            manifest=manifest,
+            ciphertext_path=ciphertext,
+            object_key=OBJECT_KEY,
+            restored_inventory=_inventory(offset_seconds=120),
+            archive_report={"status": "VERIFIED", "checked": 32, "corrupt": 0},
+            operational_report={"status": "CHECK_FAILED"},
+            started_at=COMPLETED_AT + timedelta(days=40),
+            completed_at=COMPLETED_AT + timedelta(days=40, minutes=3),
+            repository="DxMaxi/transparencia-total-open-source",
+            workflow_run_id="31300000002",
+            expected_ciphertext_sha256=manifest["backup"]["ciphertext_sha256"],
+            expected_manifest_sha256="c" * 64,
+            manifest_file_sha256="c" * 64,
+        )
