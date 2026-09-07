@@ -1,6 +1,6 @@
 # PROJECT HANDOFF — Transparência Total / Fator Cívico
 
-Atualizado em: **2026-09-03**
+Atualizado em: **2026-09-07**
 
 Este documento existe para permitir continuidade segura entre sessões de trabalho, colaboradores e chats sem depender de memória externa ao repositório.
 
@@ -253,10 +253,23 @@ termina em `SCHEMA_MIGRATION_REQUIRED`, enquanto o último SyncRun conserva uma 
 A V5.52.1 separa estes estados sem alterar o histórico, o esquema ou a política de alerta.
 Consulte [diagnóstico e próximos passos](V5_OPERATIONAL_READINESS.md).
 
-Na mesma consulta, o GitHub apresentou `private=false` e `visibility=public`. Isto contradiz o
-estado ainda descrito na auditoria V5.19 e na issue #76, que não registam resolução posterior do
-contacto histórico. Não se confirmou a data/autor da alteração, não se repetiu a auditoria integral
-e não se alterou a visibilidade ou a história. A decisão foi colocada ao responsável do projeto.
+A V5.53 acrescenta um processo separado `ORGANISATION_PUBLICATION`. Aprovar a identidade V5.52
+continua sem publicar; a projeção mínima nasce novamente `PENDING` e só um `ADMIN` com MFA pode
+publicar ou retirar depois de outra revisão humana. A fotografia pública usa um identificador não
+fiscal, fonte IRN e hashes, enquanto NIPC, HMAC, observação privada, partes e relações ficam fora da
+API. A retirada preserva fotografia, decisões e direitos de resposta. Triggers impedem mutação,
+`TRUNCATE`, ligações ao grafo e commits sem revisão/auditoria/evento coerentes. Todas as migrações,
+incluindo a V5.53, foram aplicadas desde zero apenas numa base PostgreSQL 17 local descartável;
+nenhuma operação remota ou real foi executada. Consulte
+[V5.53 — publicação e retirada específicas de organizações](V5_BASE_ORGANISATION_PUBLICATION.md).
+
+O próximo circuito é a V5.54: uma parte de contrato só pode gerar candidato privado por prova
+oficial/HMAC exato e nunca por nome. A V5.53 não autoriza essa associação nem cria relações.
+
+Na mesma consulta, o GitHub apresentou `private=false` e `visibility=public`. Em 07-09-2026 o
+responsável confirmou expressamente que esta alteração foi intencional. A autorização de
+visibilidade não resolve automaticamente o contacto pessoal existente na história, não equivale a
+uma nova auditoria integral e não autoriza reescrever commits ou branches.
 
 A V5.50.1 fecha uma falha observada na API pública antes da ativação remota do esquema. Erros
 operacionais conhecidos de PostgreSQL devolvem agora HTTP 503 neutro em todas as projeções, sem

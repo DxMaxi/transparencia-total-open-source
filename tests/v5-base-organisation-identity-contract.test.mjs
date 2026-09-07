@@ -100,7 +100,10 @@ test("V5.52 exposes neither generic identity creation nor JSON correction or pub
     read("app/admin/revisao/actions.ts"), read("app/admin/revisao/page.tsx"), read("package.json"),
   ]);
   assert.match(types, /ORGANISATION_IDENTITY: "Identidade de organização \(privada\)"/);
-  assert.match(types, /MANUAL_EDITORIAL_KINDS = EDITORIAL_KINDS\.filter\([^]*kind !== "ORGANISATION_IDENTITY"/);
+  assert.match(
+    types,
+    /MANUAL_EDITORIAL_KINDS = EDITORIAL_KINDS\.filter\([^]*"ORGANISATION_IDENTITY"[^]*"ORGANISATION_PUBLICATION"/,
+  );
   assert.match(manual, /MANUAL_EDITORIAL_KINDS\.map/);
   assert.match(actions, /formData\.get\("kind"\) === "ORGANISATION_IDENTITY"/);
   assert.match(detail, /const canCorrect = !isOrganisationIdentity &&/);

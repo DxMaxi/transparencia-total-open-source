@@ -1526,6 +1526,37 @@ body:has(.private-route-frame) #conteudo { min-height: 100vh; }
 }
 
 .header-search-button { color: var(--navy); }
+
+/* V5.53: diretório mínimo de organizações, sem abrir o grafo de interesses. */
+.organisation-directory, .organisation-detail { display: grid; gap: 34px; padding-bottom: 90px; }
+.organisation-coverage { display: grid; gap: 6px; padding: 18px 22px; border-left: 4px solid var(--teal); background: white; }
+.organisation-coverage strong { color: var(--navy); font-size: 18px; }
+.organisation-coverage p { margin: 0; color: var(--muted); line-height: 1.6; }
+.organisation-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; }
+.organisation-card { display: grid; align-content: start; gap: 12px; padding: 23px; }
+.organisation-card h2 { margin: 0; color: var(--navy); font-size: 21px; line-height: 1.25; }
+.organisation-card p { margin: 0; color: var(--ink-soft); }
+.organisation-card code, .organisation-proof code, .organisation-history code, .organisation-replies code { overflow-wrap: anywhere; color: var(--muted); font-size: 12px; }
+.organisation-card .button { width: fit-content; margin-top: 8px; }
+.organisation-pagination { display: flex; justify-content: space-between; gap: 16px; }
+.organisation-detail > a { width: fit-content; color: var(--teal); font-weight: 720; }
+.organisation-detail-grid { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(280px,.7fr); gap: 18px; align-items: start; }
+.organisation-proof, .organisation-limits { padding: 26px; }
+.organisation-proof h2, .organisation-limits h2, .organisation-history h2, .organisation-replies h2, .organisation-reply > h2 { margin: 0 0 18px; color: var(--navy); }
+.organisation-proof dl { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 13px; margin: 0; }
+.organisation-proof dl > div { min-width: 0; padding: 13px; border-radius: 9px; background: var(--canvas); }
+.organisation-proof dt { color: var(--muted); font-size: 12px; font-weight: 760; text-transform: uppercase; }
+.organisation-proof dd { margin: 5px 0 0; overflow-wrap: anywhere; line-height: 1.55; }
+.organisation-proof a { color: var(--teal); font-weight: 700; }
+.organisation-limits ul { display: grid; gap: 10px; margin: 0; padding-left: 20px; color: var(--ink-soft); line-height: 1.6; }
+.organisation-history, .organisation-replies, .organisation-reply { display: grid; gap: 14px; }
+.organisation-history ol { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.organisation-history li, .organisation-replies article { display: grid; gap: 9px; padding: 20px; }
+.organisation-history p, .organisation-replies p, .organisation-reply > p { margin: 0; color: var(--ink-soft); line-height: 1.65; }
+.organisation-history span, .organisation-replies span { color: var(--muted); font-size: 14px; }
+.organisation-replies a { width: fit-content; color: var(--teal); font-weight: 700; }
+@media (max-width: 900px) { .organisation-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .organisation-detail-grid { grid-template-columns: 1fr; } }
+@media (max-width: 620px) { .organisation-grid, .organisation-proof dl { grid-template-columns: 1fr; } }
 .global-search-page { padding-bottom: 90px; }
 .global-search-heading { max-width: 920px; }
 .global-search-box { display: grid; grid-template-columns: minmax(260px,.7fr) minmax(460px,1.3fr); gap: 34px; align-items: end; margin-bottom: 46px; padding: 28px; }

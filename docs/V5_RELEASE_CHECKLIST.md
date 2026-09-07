@@ -92,6 +92,9 @@ continuam a exigir autorizações separadas.
   um extrator determinístico reproduz 1 590 candidatos privados em 40 blocos com hashes próprios.
 - [x] V5.48 — a antiga publicação direta fica desativada; staging exige migração, RLS e triggers
   comprovados antes do arquivo e cria zero promessas, revisões ou projeções públicas.
+- [x] V5.53 — publicação e retirada específicas de organizações implementadas com dois processos
+  editoriais, fotografia imutável, direito de resposta e zero ligações automáticas; ativação remota
+  pendente.
 - [x] Existe um [conjunto de issues de conclusão](https://github.com/DxMaxi/transparencia-total-open-source/issues/58) para todos os itens ainda abertos.
 
 ## B. Estabilização pública
@@ -267,8 +270,10 @@ Governo](V5_PROMESSOMETRO_CATALOGUE.md).
   - [x] Retirada preserva contrato, fotografia, histórico e direitos de resposta.
 - [ ] Organizações e titulares têm fontes próprias.
   - [x] V5.52 — observação privada de identidade organizacional e proposta editorial com fonte IRN independente integradas pela PR #132 (`eb43279`), com CI aprovado.
+  - [x] V5.53 — projeção mínima da organização exige uma segunda revisão humana, `ADMIN` com MFA,
+    fonte IRN exata e fotografia append-only; não publica NIPC/HMAC nem cria grafo.
   - [ ] Executar o ensaio autorizado em staging com fonte individual, arquivo, pepper estável e aprovação sem efeitos públicos.
-  - [ ] Concluir publicação e retirada específicas de organizações antes de associar partes de contratos.
+  - [x] Concluir publicação e retirada específicas de organizações antes de associar partes de contratos.
 - [ ] Pepper HMAC estável configurado fora do repositório.
 - [ ] Nenhum identificador fiscal em claro persiste ou aparece em logs.
 - [ ] Correspondências exatas entram apenas em `PENDING_REVIEW`.
@@ -277,15 +282,17 @@ Governo](V5_PROMESSOMETRO_CATALOGUE.md).
 - [ ] Grafo público distingue ligação factual de acusação ou conflito.
 - [ ] Direito de resposta e retirada cobrem contratos e relações.
   - [x] Contratos `PublicContract` cobertos pela V5.51.
-  - [ ] Organizações e relações aguardam os respetivos circuitos específicos.
+  - [x] Organizações cobertas pela V5.53 com ligação exata à fotografia e preservação após retirada.
+  - [ ] Relações aguardam o respetivo circuito específico.
 - [ ] AIPD e revisão jurídica aplicáveis concluídas.
 
 Metodologia e limites desta fundação: [V5.49 — âmbito temporal privado do Portal
 BASE](V5_BASE_TEMPORAL_SCOPE.md) e [V5.50 — porta editorial privada dos contratos
 BASE](V5_BASE_CONTRACT_EDITORIAL.md) e [V5.51 — publicação e retirada específicas de contratos
 BASE](V5_BASE_CONTRACT_PUBLICATION.md) e [V5.52 — identidade organizacional privada com fonte
-própria](V5_BASE_ORGANISATION_IDENTITY.md). A integração da V5.52 não fecha os ensaios
-operacionais nem a publicação de organizações e relações.
+própria](V5_BASE_ORGANISATION_IDENTITY.md) e [V5.53 — publicação e retirada específicas de
+organizações](V5_BASE_ORGANISATION_PUBLICATION.md). A implementação da V5.53 não fecha os ensaios
+operacionais, a associação de partes ou a publicação de relações.
 
 ## I. IA responsável
 
@@ -356,12 +363,12 @@ operacionais nem a publicação de organizações e relações.
 
 - [x] História Git integral pesquisada por segredos, dumps e identificadores protegidos no checkpoint V5.19;
   a [auditoria sanitizada](V5_RELEASE_PRIVACY_AUDIT.md) identificou um contacto pessoal histórico.
-  Em 03-09-2026 o GitHub já apresenta o repositório como público; resolução/aceitação do risco e
-  nova verificação não estão documentadas nas fontes consultadas. Não equivale a gate aprovado.
+  Em 07-09-2026 o responsável confirmou que a visibilidade pública foi intencional. Esta decisão
+  não resolve nem aceita automaticamente o contacto histórico; nova verificação não está documentada.
 - [ ] Todas as credenciais anteriormente expostas confirmadas como revogadas.
 - [ ] Licenças do software, conteúdo e fontes verificadas.
 - [ ] Comunicação pública usa `source-available` enquanto vigorar PolyForm Noncommercial.
-- [ ] Visibilidade pública do repositório autorizada separadamente.
+- [x] Visibilidade pública do repositório autorizada separadamente pelo responsável em 07-09-2026.
 - [ ] CI final verde no commit candidato.
 - [ ] Smoke público desktop e móvel aprovado.
 - [ ] Zero falhas críticas conhecidas abertas.

@@ -1,77 +1,97 @@
-# V5.52.1 — diagnóstico operacional seguro e próximo incremento
+# V5.53 — publicação organizacional segura e prontidão operacional
 
-## Estado observado em 3 de setembro de 2026
+## Estado de referência em 7 de setembro de 2026
 
-A V5.52 está integrada pela [PR #132](https://github.com/DxMaxi/transparencia-total-open-source/pull/132)
-em `eb43279`. O [CI de main](https://github.com/DxMaxi/transparencia-total-open-source/actions/runs/33679101110)
-e o [smoke público](https://github.com/DxMaxi/transparencia-total-open-source/actions/runs/33751408883)
-passaram. Uma verificação local read-only das 13 páginas públicas também passou; o Investigador
-Cívico respondeu 503 com a mensagem neutra esperada. Isto comprova indisponibilidade controlada,
-não disponibilidade do módulo, atualização integral dos dados ou conclusão da V5.
+A V5.52 e a correção de diagnóstico V5.52.1 estão integradas em `main`. O site público continua
+acessível, mas a recolha parlamentar e a ativação editorial remota mantêm os respetivos gates
+fail-closed. A existência deste código não prova que as migrações foram aplicadas em staging ou
+produção, que existem utilizadores editoriais, nem que qualquer organização real foi publicada.
 
-O [monitor operacional](https://github.com/DxMaxi/transparencia-total-open-source/actions/runs/33749323293)
-falhou corretamente porque `PARLIAMENT_ACTIVITY` não está operacional. A
-[recolha diária](https://github.com/DxMaxi/transparencia-total-open-source/actions/runs/33732422886)
-terminou essa etapa em `SCHEMA_MIGRATION_REQUIRED`: falta a porta V5.45 de identidade nominal.
-Como esta recusa ocorre antes de escrever um SyncRun, o registo mais recente continua a ser uma
-falha de 28-08-2026. Não se deve descrever essa falha histórica como uma nova tentativa, nem
-interpretar o sucesso global do workflow como uma recolha parlamentar concluída.
+A migração V5.53 foi aplicada desde zero, juntamente com todas as migrações anteriores, numa base
+PostgreSQL 17 local marcada como descartável e com a forma mínima de `auth.users`. Não foi usada
+uma ligação remota, não foram alterados segredos e não foi executada qualquer operação sobre dados
+reais.
 
-## Correção do diagnóstico
+## O que a V5.53 acrescenta
 
-- Recolha e monitor partilham a mesma consulta de prontidão V5.45, sem enfraquecer a recusa.
-- O monitor consulta o catálogo e o último SyncRun numa transação `REPEATABLE READ, READ ONLY`,
-  com limites de tempo de ligação e consulta. Não altera sequer registos de monitorização.
-- `status=SCHEMA_MIGRATION_REQUIRED` identifica o bloqueio atual. `last_run_status`, `observed_at`,
-  contagens e `stale` continuam a descrever a última execução registada.
-- `blocking_reason`, `required_migration` e `ingestion_readiness` explicam a ação pendente. A
-  prontidão indicada cobre apenas os três objetos V5.45 já exigidos pela recolha; não certifica
-  todos os schemas, permissões, qualidade da fonte ou possibilidade de publicação.
-- O estado global permanece `ATTENTION_REQUIRED` e a saída continua não zero. Uma migração
-  presente também não torna um registo antigo ou falhado saudável.
-- O monitor seleciona apenas a existência de `error_message`, nunca o seu texto. Os logs novos
-  não copiam URLs parametrizados, conteúdo fiscal ou detalhes de ligação de erros anteriores.
-  Não apaga a mensagem interna nem limpa retroativamente logs já emitidos.
-- Falhas na própria verificação produzem `CHECK_FAILED`, mensagem fechada e saída não zero.
-  Esse estado não é aceite como prova operacional num ensaio de restauro.
+A aprovação de `ORGANISATION_IDENTITY` continua privada. Um segundo processo,
+`ORGANISATION_PUBLICATION`, nasce em `PENDING` e referencia a versão, decisão, fonte e observação
+privada exatas. Só depois de uma revisão humana própria um `ADMIN` com MFA pode publicar a projeção
+mínima autorizada.
 
-Não foram alterados workflows, horários, secrets, dados reais ou schemas remotos. Não foi
-executada novamente uma recolha. A correção melhora o diagnóstico, não resolve a migração em falta.
+A publicação acrescenta, na mesma transação:
 
-## Testes necessários
+- um identificador público aleatório e não fiscal;
+- uma fotografia pública imutável;
+- uma revisão de necessidade e proporcionalidade;
+- um evento de auditoria, uma decisão e um evento de publicação coerentes;
+- a projeção pública atual, sem NIPC, HMAC, observação privada, partes de contratos ou relações.
 
-Os testes unitários cobrem o bloqueio mesmo após sucesso recente, ausência de SyncRun, falhas e
-frescura independentes do schema, compatibilidade da política anterior, erros sanitizados e
-fecho da ligação. Os testes PostgreSQL confirmam a transação read-only, recusa de escrita,
-contagem de SyncRun inalterada e recusa de cada um dos três objetos V5.45 em falta. A simulação de
-objetos ausentes ocorre somente numa base local marcada como descartável e termina em rollback.
+O HMAC serve apenas para serializar internamente operações sobre a mesma identidade exata. Não é
+devolvido pelos endpoints, não entra na fotografia, no HTML, na auditoria pública ou nos eventos.
+Uma designação, sigla ou referência de ato nunca é usada como correspondência aproximada.
 
-Validação local do candidato em 03-09-2026: 31 migrações de raiz após o bootstrap Supabase mínimo,
-706 testes backend aprovados e 152 contratos frontend aprovados. A primeira repetição da suite
-numa base de um ensaio anterior detetou quatro colisões de fixtures; a prova integral foi repetida
-numa base nova, sem eliminar o ensaio anterior nem alterar os testes para aceitar duplicados.
-Python local 3.12.13 e Node local 26.1.0 não substituem o CI em Python 3.13.15/Node 24.
+## Consulta pública e retirada
 
-## Próximo desenvolvimento: V5.53
+A API disponibiliza lista, ficha e histórico próprios em `/public/organisations`. O frontend usa
+`/organizacoes` e `/organizacoes/[public_id]`, sempre sem cache e sem fallback para tabelas antigas.
+Quando o esquema ou a ligação não estão disponíveis, a consulta devolve HTTP 503 neutro. Uma ficha
+retirada deixa de expor os campos correntes, mas o histórico conserva ação, data, fundamento e
+hashes sem reexpor a identidade privada.
 
-Publicação e retirada de organizações exigem um processo novo `ORGANISATION_PUBLICATION`, ligado
-à versão e aprovação exatas da identidade. O caso `ORGANISATION_IDENTITY` permanece sempre
-privado, incluindo depois de uma futura publicação/retirada da projeção autorizada.
+O direito de resposta aceita uma organização apenas quando o identificador público e o SHA-256 da
+fotografia correspondem a uma fotografia imutável existente. A resposta permanece anexada mesmo
+depois de retirada a ficha e, quando publicada, continua consultável no histórico com o hash da
+fotografia respondida. A receção nunca publica automaticamente a resposta.
 
-Critérios mínimos antes de integração:
+A retirada exige `ADMIN`, MFA, confirmação otimista da prova e um fundamento previsto na
+governação. Acrescenta nova revisão, auditoria, decisão e evento; não apaga organização,
+fotografia, fonte, processo, decisão anterior ou direito de resposta. Uma republicação exige nova
+fonte/identidade revista, nova fotografia e reutiliza o identificador público apenas quando o HMAC
+privado é exatamente igual.
 
-1. Nova autorização nasce `PENDING` e exige revisão humana própria do âmbito público.
-2. Publicação `ADMIN` com MFA acrescenta fotografia imutável, revisão, auditoria e evento próprio;
-   zero partes contratuais, nós do grafo ou relações são criados implicitamente.
-3. O identificador público é não fiscal. Referência de um ato não é confundida com identificador
-   único da entidade e nomes iguais nunca justificam fusão.
-4. HMAC e prova interna não aparecem na API, HTML, auditoria ou fotografia pública.
-5. Retirada acrescenta eventos e preserva fontes, versões e direitos de resposta, sem reexpor
-   automaticamente campos retirados por privacidade.
-6. Projeção pública declara explicitamente a fonte IRN, sem fallback que a atribua ao Parlamento.
-7. Concorrência, rollback, RLS, privilégios, correções e vias SQL alternativas ficam testados numa
-   base descartável; o grafo existente não é reativado por esta entrega.
+## Barreiras na base de dados
 
-O presente patch não implementa a V5.53. Destino separado de staging, autenticação/MFA, avaliação
-jurídica, migrações autorizadas e ensaios com dados reais continuam por comprovar. O estado público
-atual do repositório também exige reconciliação com a [auditoria de privacidade](V5_RELEASE_PRIVACY_AUDIT.md).
+- O preflight recusa conversão silenciosa de organizações `VERIFIED` legadas.
+- Triggers reconstroem a projeção a partir da fonte IRN arquivada e das duas aprovações humanas.
+- Projeção, fotografia, decisão, revisão, auditoria e evento têm de ficar coerentes no commit.
+- Fotografias, auditorias, revisões e eventos não admitem eliminação ou `TRUNCATE` por esta via.
+- A publicação não pode criar `InterestEntity`, parte contratual, correspondência ou relação.
+- A tabela de fotografias tem RLS e nenhum privilégio para `PUBLIC`, `anon` ou `authenticated`.
+- Concorrência e falhas tardias recuam a transação inteira.
+
+## Evidência de validação local
+
+Em 7 de setembro de 2026, a fotografia candidata foi validada sem ligações remotas nem dados
+reais:
+
+- 32 migrações aplicadas desde zero em PostgreSQL 17 descartável;
+- 717 testes de backend aprovados;
+- 156 testes de frontend e contratos aprovados;
+- `ruff`, formatação Python, `mypy` estrito, TypeScript e ESLint aprovados;
+- esquema Prisma, sincronização de dependências e política Python 3.13.15 aprovados;
+- build de produção do frontend e verificação dos artefactos aprovadas.
+
+Estas verificações provam a consistência do candidato local. Não substituem o inventário, a
+migração, o ensaio sintético nem a autorização próprios de staging.
+
+## O que continua por provar fora do código
+
+- aplicar primeiro o inventário e as migrações no projeto de staging correto;
+- configurar autenticação editorial e MFA sem reutilizar produção;
+- configurar e provar um pepper HMAC estável fora do repositório;
+- executar um ensaio sintético completo em staging, incluindo publicação e retirada;
+- obter a avaliação jurídica/AIPD aplicável antes de usar identificadores protegidos reais;
+- executar backup cifrado e restauro isolado após a futura migração autorizada;
+- só depois decidir e executar a ativação em produção.
+
+## Próximo desenvolvimento: V5.54
+
+A associação de uma parte de contrato a uma organização não é autorizada pela V5.53. A próxima
+porta deve exigir o identificador oficial exato/HMAC privado, duas publicações ativas e as provas
+das duas fontes. O resultado tem de nascer como candidato privado `PENDING_REVIEW`; não pode usar
+nomes, fuzzy matching ou criar uma relação pública. Só uma entrega posterior, com fonte e revisão
+próprias, poderá materializar uma ligação factual no grafo.
+
+Metodologia detalhada: [V5.52 — identidade organizacional privada](V5_BASE_ORGANISATION_IDENTITY.md)
+e [V5.53 — publicação e retirada de organizações](V5_BASE_ORGANISATION_PUBLICATION.md).

@@ -15,6 +15,7 @@ export interface OfficialSource {
     | "DRE"
     | "EPT"
     | "BASE"
+    | "IRN"
     | "TCONTAS"
     | "PE"
     | "MP"

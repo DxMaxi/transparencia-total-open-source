@@ -13,6 +13,7 @@ from app.repositories.ai_editorial_publication import AiEditorialPublicationRepo
 from app.repositories.base_contract_editorial import BaseContractEditorialRepository
 from app.repositories.base_contract_publication import BaseContractPublicationRepository
 from app.repositories.base_organisation_editorial import BaseOrganisationEditorialRepository
+from app.repositories.base_organisation_publication import BaseOrganisationPublicationRepository
 from app.repositories.editorial import EditorialNotFoundError, EditorialRepository
 from app.repositories.ept_declaration_editorial import EptDeclarationEditorialRepository
 from app.repositories.ept_declaration_publication import (
@@ -119,6 +120,17 @@ def get_base_organisation_editorial_repository(
             detail="Base de dados editorial de organizações não configurada",
         )
     return BaseOrganisationEditorialRepository(repository.pool)
+
+
+def get_base_organisation_publication_repository(
+    repository: Annotated[PostgresRepository, Depends(get_repository)],
+) -> BaseOrganisationPublicationRepository:
+    if repository.pool is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Base de dados de publicação organizacional não configurada",
+        )
+    return BaseOrganisationPublicationRepository(repository.pool)
 
 
 def get_ept_declaration_editorial_repository(

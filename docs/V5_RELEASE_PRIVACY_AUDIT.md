@@ -1,5 +1,13 @@
 # V5.19 — auditoria de privacidade e segredos do candidato
 
+## Decisão posterior — 7 de setembro de 2026
+
+O responsável do projeto confirmou expressamente que tornou o repositório público de forma
+intencional. Esta decisão fecha apenas a autorização separada de visibilidade. Não demonstra uma
+nova pesquisa integral da história, não remove o contacto pessoal descrito abaixo e não constitui,
+por si só, aceitação explícita desse risco específico. O resultado histórico de privacidade
+permanece `FAIL` até existir uma decisão própria sobre o contacto e uma nova verificação.
+
 ## Nota posterior — 3 de setembro de 2026
 
 A consulta read-only da API do GitHub passou a devolver `private=false` e `visibility=public`.
@@ -89,16 +97,17 @@ pessoal permanece em diffs históricos de:
 - `backend/app/core/config.py`.
 
 O endereço não é repetido neste documento. Este achado não é uma chave revogável, mas torna-se
-público se a história Git for publicada sem alteração. Por isso:
+público se a história Git for publicada sem alteração. Por isso, no checkpoint original:
 
-- a visibilidade pública do repositório continua bloqueada;
+- a visibilidade pública do repositório permaneceu bloqueada;
 - esta auditoria não autoriza reescrever commits, tags ou branches;
 - uma reescrita exige decisão explícita, cópia de segurança das referências, inspeção de metadata
   de autor e coordenação de um force-push;
 - aceitar conscientemente a exposição também exige uma decisão explícita do titular.
 
-Eliminar a referência no commit atual não elimina a ocorrência histórica. Nenhuma caixa relativa
-à publicação pública pode ser fechada enquanto este ponto não tiver uma decisão e nova verificação.
+Eliminar a referência no commit atual não elimina a ocorrência histórica. A autorização de
+visibilidade dada em 07-09-2026 pode ser registada separadamente, mas a caixa de privacidade da
+história não pode ser fechada sem uma decisão específica e nova verificação.
 
 ## Gate automático acrescentado
 
@@ -121,7 +130,7 @@ Também não substitui a pesquisa de toda a história com uma ferramenta dedicad
 | Credenciais no working tree versionado | PASS com falsos positivos revistos | não prova revogação externa |
 | Credenciais na história Git | PASS com falsos positivos revistos | repetir após qualquer reescrita |
 | Privacidade do contacto na história | FAIL | email pessoal histórico exige decisão |
-| Tornar o repositório público | NÃO AUTORIZADO | depende de resolver o FAIL anterior e de autorização própria |
+| Visibilidade pública do repositório | AUTORIZADA em 07-09-2026 | não resolve o FAIL de privacidade histórico |
 
 ## Referências
 

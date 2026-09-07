@@ -159,6 +159,7 @@ enum EditorialCaseKind {
   GOVERNMENT_PROMISE
   PUBLIC_CONTRACT
   ORGANISATION_IDENTITY
+  ORGANISATION_PUBLICATION
   INTEREST_RELATIONSHIP
   RIGHT_OF_REPLY
   AI_EXPLANATION
@@ -1215,6 +1216,10 @@ model Organisation {
   updatedAt          DateTime           @updatedAt @map("updated_at")
   sourceDocument     SourceDocument     @relation(fields: [sourceDocumentId], references: [id])
   interestEntity     InterestEntity?
+  publicationStatus PublicationStatus @default(DRAFT) @map("publication_status")
+  currentPublicationSnapshotId String? @unique(map: "organisations_current_publication_snapshot_key") @map("current_publication_snapshot_id")
+  currentPublicationSnapshot BasePublicOrganisationPublicationSnapshot? @relation("OrganisationCurrentPublication", fields: [currentPublicationSnapshotId], references: [id], onDelete: Restrict, map: "organisations_publication_snapshot_fk")
+  publicationSnapshots BasePublicOrganisationPublicationSnapshot[] @relation("OrganisationPublicationHistory")
 
   @@index([normalisedName])
   @@map("organisations")
@@ -1243,6 +1248,7 @@ model BaseOrganisationIdentityObservation {
   createdByAlias            String             @map("created_by_alias")
   createdAt                 DateTime           @default(now()) @map("created_at")
   sourceDocument            SourceDocument     @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict, map: "base_organisation_identity_source_document_fkey")
+  publicationSnapshots BasePublicOrganisationPublicationSnapshot[]
 
   @@unique([sourceDocumentId, registryRecordId], map: "base_organisation_identity_source_record_key")
   @@unique([sourceDocumentId, protectedIdentifierDigest], map: "base_organisation_identity_source_digest_key")
@@ -1477,6 +1483,42 @@ model BasePublicContractPublicationSnapshot {
   @@index([sourceDocumentId])
   @@index([editorialCaseId, createdAt])
   @@map("base_public_contract_publication_snapshots")
+}
+
+/// Fotografia imutável. As referências editoriais são privadas; a API projeta só os campos públicos.
+model BasePublicOrganisationPublicationSnapshot {
+  id String @id
+  organisationId String @map("organisation_id")
+  identityObservationId String @map("identity_observation_id")
+  identityCaseId String @map("identity_case_id")
+  identityVersionId String @unique(map: "base_org_publication_identity_version_key") @map("identity_version_id")
+  identityDecisionId String @map("identity_decision_id")
+  editorialCaseId String @map("editorial_case_id")
+  editorialVersionId String @unique(map: "base_org_publication_editorial_version_key") @map("editorial_version_id")
+  sourceDocumentId String @map("source_document_id")
+  legalName String @map("legal_name")
+  kind InterestEntityKind
+  registryRecordId String @map("registry_record_id")
+  officialUrl String @map("official_url")
+  sourceRecordSha256 String @map("source_record_sha256") @db.Char(64)
+  publicationProofSha256 String @unique(map: "base_org_publication_proof_key") @map("publication_proof_sha256") @db.Char(64)
+  publicRecordSha256 String @unique(map: "base_org_publication_record_key") @map("public_record_sha256") @db.Char(64)
+  createdByAlias String @map("created_by_alias")
+  createdAt DateTime @default(now()) @map("created_at")
+  organisation Organisation @relation("OrganisationPublicationHistory", fields: [organisationId], references: [id], onDelete: Restrict, map: "base_org_publication_organisation_fk")
+  currentForOrganisation Organisation? @relation("OrganisationCurrentPublication")
+  identityObservation BaseOrganisationIdentityObservation @relation(fields: [identityObservationId], references: [id], onDelete: Restrict, map: "base_org_publication_observation_fk")
+  identityCase EditorialCase @relation("OrganisationIdentityCase", fields: [identityCaseId], references: [id], onDelete: Restrict, map: "base_org_publication_identity_case_fk")
+  identityVersion EditorialVersion @relation("OrganisationIdentityVersion", fields: [identityVersionId], references: [id], onDelete: Restrict, map: "base_org_publication_identity_version_fk")
+  identityDecision EditorialDecision @relation(fields: [identityDecisionId], references: [id], onDelete: Restrict, map: "base_org_publication_identity_decision_fk")
+  editorialCase EditorialCase @relation("OrganisationPublicationCase", fields: [editorialCaseId], references: [id], onDelete: Restrict, map: "base_org_publication_editorial_case_fk")
+  editorialVersion EditorialVersion @relation("OrganisationPublicationVersion", fields: [editorialVersionId], references: [id], onDelete: Restrict, map: "base_org_publication_editorial_version_fk")
+  sourceDocument SourceDocument @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict, map: "base_org_publication_source_fk")
+  @@index([organisationId, createdAt], map: "base_public_org_snapshot_org_idx")
+  @@index([identityObservationId], map: "base_public_org_snapshot_observation_idx")
+  @@index([editorialCaseId], map: "base_public_org_snapshot_case_idx")
+  @@index([sourceDocumentId], map: "base_public_org_snapshot_source_idx")
+  @@map("base_public_organisation_publication_snapshots")
 }
 
 model PublicContractParty {
@@ -1785,6 +1827,8 @@ model EditorialCase {
   eptLegalAssessments              EptIndependentLegalAssessment[]         @relation("EptLegalAssessmentCase")
   eptIdentityLink                  EptExactIdentityLink?                   @relation("EptIdentityLinkCase")
   baseContractPublicationSnapshots BasePublicContractPublicationSnapshot[]
+  organisationIdentitySnapshots BasePublicOrganisationPublicationSnapshot[] @relation("OrganisationIdentityCase")
+  organisationPublicationSnapshots BasePublicOrganisationPublicationSnapshot[] @relation("OrganisationPublicationCase")
 
   @@unique([kind, subjectType, subjectId, sourceDocumentId])
   @@index([currentState, createdAt, id])
@@ -1815,6 +1859,8 @@ model EditorialVersion {
   decisions                        EditorialDecision[]
   publicationEvents                EditorialPublicationEvent[]
   baseContractPublicationSnapshots BasePublicContractPublicationSnapshot[]
+  organisationIdentitySnapshots BasePublicOrganisationPublicationSnapshot[] @relation("OrganisationIdentityVersion")
+  organisationPublicationSnapshot BasePublicOrganisationPublicationSnapshot? @relation("OrganisationPublicationVersion")
 
   @@unique([caseId, versionNumber])
   @@unique([caseId, normalizedSha256])
@@ -1841,6 +1887,7 @@ model EditorialDecision {
   case            EditorialCase           @relation(fields: [caseId], references: [id], onDelete: Restrict)
   version         EditorialVersion        @relation(fields: [versionId], references: [id], onDelete: Restrict)
   actor           StaffProfile            @relation("EditorialDecisionActor", fields: [actorId], references: [id], onDelete: Restrict)
+  organisationIdentitySnapshots BasePublicOrganisationPublicationSnapshot[]
 
   @@unique([caseId, caseRevision])
   @@index([caseId, createdAt, id])
@@ -1938,6 +1985,7 @@ model SourceDocument {
   localItems                           LocalTransparencyItem[]
   organisations                        Organisation[]
   baseOrganisationIdentityObservations BaseOrganisationIdentityObservation[]
+  baseOrganisationPublicationSnapshots BasePublicOrganisationPublicationSnapshot[]
   protectedIdentifiers                 ProtectedIdentifierDigest[]
   baseStagingBatches                   BaseStagingBatch[]
   baseContractCatalogueScopes          BaseContractCatalogueScope[]

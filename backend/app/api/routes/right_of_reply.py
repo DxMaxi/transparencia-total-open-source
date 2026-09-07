@@ -31,6 +31,11 @@ async def submit_right_of_reply(
     receipt = build_right_of_reply_receipt(payload)
     try:
         await repository.save_right_of_reply(payload, receipt)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail="A organização ou fotografia pública indicada não existe.",
+        ) from exc
     except (
         RuntimeError,
         OSError,

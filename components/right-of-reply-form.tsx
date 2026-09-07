@@ -12,7 +12,11 @@ type Receipt = {
   notice: string;
 };
 
-export function RightOfReplyForm() {
+export function RightOfReplyForm({
+  initialTarget,
+}: {
+  initialTarget?: { type: "ORGANISATION"; id: string; sha256: string };
+} = {}) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<Receipt | null>(null);
@@ -23,7 +27,9 @@ export function RightOfReplyForm() {
     setReceipt(null);
     const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
     if (!apiUrl) {
-      setError("O canal de resposta está temporariamente indisponível. Consulte a página de contacto.");
+      setError(
+        "O canal de resposta está temporariamente indisponível. Consulte a página de contacto.",
+      );
       return;
     }
     const formElement = event.currentTarget;
@@ -68,12 +74,21 @@ export function RightOfReplyForm() {
         <div className="reply-fields">
           <label>
             Tipo de registo
-            <select name="target_type" required defaultValue="POLITICIAN_PROFILE">
+            {initialTarget ? (
+              <input type="hidden" name="target_type" value={initialTarget.type} />
+            ) : null}
+            <select
+              name={initialTarget ? undefined : "target_type"}
+              required
+              disabled={Boolean(initialTarget)}
+              defaultValue={initialTarget?.type ?? "POLITICIAN_PROFILE"}
+            >
               <option value="POLITICIAN_PROFILE">Perfil de titular de cargo público</option>
               <option value="PARLIAMENTARY_INITIATIVE">Iniciativa parlamentar</option>
               <option value="PARLIAMENTARY_VOTE">Votação parlamentar</option>
               <option value="GOVERNMENT_PROMISE">Compromisso do Governo</option>
               <option value="PUBLIC_CONTRACT">Contrato público</option>
+              <option value="ORGANISATION">Organização publicada</option>
               <option value="INTEREST_RELATIONSHIP">Ligação de interesses</option>
               <option value="STATEMENT_VOTE_COMPARISON">Discurso vs. voto</option>
               <option value="JUDICIAL_CASE">Processo judicial/ético</option>
@@ -82,7 +97,14 @@ export function RightOfReplyForm() {
           </label>
           <label>
             Identificador público do registo
-            <input name="target_id" required maxLength={128} placeholder="Ex.: BASE-12345" />
+            <input
+              name="target_id"
+              required
+              maxLength={128}
+              placeholder="Ex.: BASE-12345"
+              defaultValue={initialTarget?.id}
+              readOnly={Boolean(initialTarget)}
+            />
           </label>
           <label className="reply-field-wide">
             SHA-256 da versão contestada
@@ -94,6 +116,8 @@ export function RightOfReplyForm() {
               pattern="[0-9a-f]{64}"
               placeholder="64 caracteres hexadecimais"
               className="hash-input"
+              defaultValue={initialTarget?.sha256}
+              readOnly={Boolean(initialTarget)}
             />
           </label>
           <label>
@@ -134,8 +158,12 @@ export function RightOfReplyForm() {
         <button className="button button--primary" type="submit" disabled={pending}>
           {pending ? "A registar…" : "Registar resposta auditável"}
         </button>
-        {error && <p className="form-message form-message--error" role="alert">{error}</p>}
-        {receipt && (
+        {error ? (
+          <p className="form-message form-message--error" role="alert">
+            {error}
+          </p>
+        ) : null}
+        {receipt ? (
           <div className="reply-receipt" role="status">
             <CheckIcon />
             <div>
@@ -157,7 +185,7 @@ export function RightOfReplyForm() {
               )}
             </div>
           </div>
-        )}
+        ) : null}
       </form>
 
       <aside className="reply-process card">
@@ -171,7 +199,8 @@ export function RightOfReplyForm() {
           <li><b>4</b><span><strong>Nova versão</strong> Retificações futuras acrescentam histórico.</span></li>
         </ol>
         <p>
-          A receção não confirma o mérito da resposta. Rejeições e decisões editoriais ficam igualmente registadas para auditoria interna.
+          A receção não confirma o mérito da resposta. Rejeições e decisões
+          editoriais ficam igualmente registadas para auditoria interna.
         </p>
         {CONTACT_EMAIL ? (
           <p>

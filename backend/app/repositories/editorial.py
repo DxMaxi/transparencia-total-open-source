@@ -280,7 +280,10 @@ class EditorialRepository:
         payload: EditorialCaseCreateRequest,
         actor: StaffSession,
     ) -> dict[str, object]:
-        if payload.kind == EditorialCaseKind.ORGANISATION_IDENTITY:
+        if payload.kind in {
+            EditorialCaseKind.ORGANISATION_IDENTITY,
+            EditorialCaseKind.ORGANISATION_PUBLICATION,
+        }:
             raise EditorialConflictError(
                 "A identidade organizacional exige a proposta privada específica"
             )
@@ -531,10 +534,10 @@ class EditorialRepository:
             raise EditorialSourceError(
                 "A fonte não existe ou ainda não tem arquivo SHA-256 atestado"
             )
-        if (
-            str(source["publisher"]) == "JUSTICE_REGISTRY"
-            and kind != EditorialCaseKind.ORGANISATION_IDENTITY
-        ):
+        if str(source["publisher"]) == "JUSTICE_REGISTRY" and kind not in {
+            EditorialCaseKind.ORGANISATION_IDENTITY,
+            EditorialCaseKind.ORGANISATION_PUBLICATION,
+        }:
             raise EditorialSourceError("A prova IRN exige o circuito privado de identidade")
 
         existing = await connection.fetchrow(
@@ -822,7 +825,7 @@ class EditorialRepository:
 
         async with self.pool.acquire() as connection, connection.transaction():
             case = await self._locked_case(connection, case_id)
-            if str(case["kind"]) == EditorialCaseKind.ORGANISATION_IDENTITY.value:
+            if str(case["kind"]) in {"ORGANISATION_IDENTITY", "ORGANISATION_PUBLICATION"}:
                 try:
                     safe_registry_text(rationale, max_length=2000)
                     safe_registry_text(actor.public_alias, max_length=80)
@@ -1044,7 +1047,7 @@ class EditorialRepository:
         try:
             async with self.pool.acquire() as connection, connection.transaction():
                 case = await self._locked_case(connection, case_id)
-                if str(case["kind"]) == EditorialCaseKind.ORGANISATION_IDENTITY.value:
+                if str(case["kind"]) in {"ORGANISATION_IDENTITY", "ORGANISATION_PUBLICATION"}:
                     raise EditorialConflictError(
                         "A correção de identidade exige uma nova observação oficial imutável"
                     )

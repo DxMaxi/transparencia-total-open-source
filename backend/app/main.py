@@ -18,6 +18,7 @@ from app.api.routes import (
     open_data,
     parliament,
     public_data,
+    public_organisations,
     push,
     right_of_reply,
     transparency,
@@ -151,6 +152,7 @@ app.include_router(base_gov.router, prefix=settings.api_prefix)
 app.include_router(right_of_reply.router, prefix=settings.api_prefix)
 app.include_router(open_data.router, prefix=settings.api_prefix)
 app.include_router(public_data.router, prefix=settings.api_prefix)
+app.include_router(public_organisations.router, prefix=settings.api_prefix)
 app.include_router(v4_rollout.router, prefix=settings.api_prefix)
 
 

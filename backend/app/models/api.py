@@ -463,6 +463,7 @@ class RightOfReplyRequest(BaseModel):
         "PARLIAMENTARY_VOTE",
         "GOVERNMENT_PROMISE",
         "PUBLIC_CONTRACT",
+        "ORGANISATION",
         "INTEREST_RELATIONSHIP",
         "STATEMENT_VOTE_COMPARISON",
         "JUDICIAL_CASE",

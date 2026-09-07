@@ -14,6 +14,7 @@ export const EDITORIAL_KINDS = [
   "GOVERNMENT_PROMISE",
   "PUBLIC_CONTRACT",
   "ORGANISATION_IDENTITY",
+  "ORGANISATION_PUBLICATION",
   "INTEREST_RELATIONSHIP",
   "RIGHT_OF_REPLY",
   "AI_EXPLANATION",
@@ -24,7 +25,7 @@ export type EditorialState = (typeof EDITORIAL_STATES)[number];
 export type EditorialKind = (typeof EDITORIAL_KINDS)[number];
 
 export const MANUAL_EDITORIAL_KINDS = EDITORIAL_KINDS.filter(
-  (kind) => kind !== "ORGANISATION_IDENTITY",
+  (kind) => !["ORGANISATION_IDENTITY", "ORGANISATION_PUBLICATION"].includes(kind),
 );
 
 export type BaseOrganisationIdentityCandidate = {
@@ -86,6 +87,51 @@ export type BaseOrganisationIdentityProposalResult = {
   interest_entity_created: false;
   match_review_created: false;
   relationship_created: false;
+};
+
+export type OrganisationProofPreview = {
+  case_id: string;
+  version_id: string;
+  revision: number;
+  proof_sha256: string;
+  eligible: boolean;
+  blockers: string[];
+  identity_remains_private: true;
+  zero_graph: true;
+};
+
+export type OrganisationPublicationProposalPreview = OrganisationProofPreview & {
+  public_fields: Pick<BaseOrganisationIdentityCandidate, "legal_name" | "kind" | "registry_record_id">;
+  source: BaseOrganisationIdentityCandidate["source"];
+  archive: BaseOrganisationIdentityCandidate["archive"];
+  existing_case_id: string | null;
+  publication_performed: false;
+};
+
+export type OrganisationPublicationPreview = OrganisationProofPreview & {
+  public_fields: Pick<BaseOrganisationIdentityCandidate, "legal_name" | "kind" | "registry_record_id"> & {
+    id: string;
+    official_url: string;
+  };
+  source: BaseOrganisationIdentityCandidate["source"];
+  archive: BaseOrganisationIdentityCandidate["archive"];
+};
+
+export type OrganisationWithdrawalPreview = OrganisationProofPreview & {
+  public_id: string;
+  public_record_sha256: string;
+  history_preserved: true;
+};
+
+export type OrganisationPublicationResult = {
+  case_id: string;
+  state: "PUBLISHED" | "WITHDRAWN";
+  public_id: string;
+  event_id: string;
+  public_record_sha256?: string;
+  history_preserved?: true;
+  identity_remains_private: true;
+  zero_graph: true;
 };
 
 export type StaffSession = {
@@ -2072,6 +2118,7 @@ export const KIND_LABELS: Record<EditorialKind, string> = {
   GOVERNMENT_PROMISE: "Promessa do Governo",
   PUBLIC_CONTRACT: "Contrato público",
   ORGANISATION_IDENTITY: "Identidade de organização (privada)",
+  ORGANISATION_PUBLICATION: "Publicação de organização (âmbito próprio)",
   INTEREST_RELATIONSHIP: "Relação de interesses",
   RIGHT_OF_REPLY: "Direito de resposta",
   AI_EXPLANATION: "Explicação proposta por IA",

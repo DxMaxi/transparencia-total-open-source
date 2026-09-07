@@ -162,6 +162,7 @@ Em 2 de setembro de 2026, a inspeção read-only do GitHub encontrou os ambiente
 destinos ou segredos de produção para ultrapassar esse bloqueio. Nenhum workflow de staging foi
 executado nesta entrega.
 
-A publicação e retirada de organizações, a associação exata às partes dos contratos e as relações
-auditáveis são portas posteriores, independentes e ainda por concluir. Esta fundação não fecha a
-V5 nem a checklist operacional do Investigador Cívico.
+A publicação e retirada de organizações permanecem fora desta fundação e são tratadas pelo circuito
+separado [V5.53](V5_BASE_ORGANISATION_PUBLICATION.md). A associação exata às partes dos contratos
+e as relações auditáveis continuam portas posteriores e independentes. Nem a V5.52 nem a V5.53,
+isoladamente, fecham a checklist operacional do Investigador Cívico.

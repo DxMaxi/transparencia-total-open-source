@@ -325,6 +325,15 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
         if self.pool is None:
             raise RuntimeError("Base de dados não configurada")
         async with self.pool.acquire() as connection, connection.transaction():
+            if payload.target_type == "ORGANISATION" and not await connection.fetchval(
+                """SELECT EXISTS(
+                     SELECT 1 FROM base_public_organisation_publication_snapshots
+                     WHERE organisation_id=$1 AND public_record_sha256=$2
+                   )""",
+                payload.target_id,
+                payload.original_record_sha256,
+            ):
+                raise ValueError("A organização ou fotografia pública indicada não existe")
             await connection.execute(
                 """
                 INSERT INTO rights_of_reply
