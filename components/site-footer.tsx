@@ -25,6 +25,7 @@ export function SiteFooter() {
           <a href="/atividade-parlamentar">Atividade parlamentar</a>
           <a href="/promessas">Promessómetro</a>
           <a href="/explicacoes">Explicações com IA</a>
+          <a href="/organizacoes">Organizações publicadas</a>
           <a href="/contacto">Contacto</a>
         </div>
         <div>

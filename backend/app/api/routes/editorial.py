@@ -11,6 +11,7 @@ from app.api.dependencies import (
     get_base_contract_editorial_repository,
     get_base_contract_publication_repository,
     get_base_organisation_editorial_repository,
+    get_base_organisation_publication_repository,
     get_editorial_repository,
     get_ept_declaration_editorial_repository,
     get_ept_declaration_publication_gate_repository,
@@ -37,7 +38,12 @@ from app.api.dependencies import (
     require_editorial_staff,
 )
 from app.core.config import get_settings
-from app.models.base_organisation import BaseOrganisationIdentityEditorialProposalRequest
+from app.models.base_organisation import (
+    BaseOrganisationIdentityEditorialProposalRequest,
+    OrganisationPublicationProposalRequest,
+    OrganisationPublicationRequest,
+    OrganisationWithdrawalRequest,
+)
 from app.models.editorial import (
     AiDreProposalRequest,
     AiDreRegenerationRequest,
@@ -85,6 +91,7 @@ from app.repositories.ai_editorial_publication import AiEditorialPublicationRepo
 from app.repositories.base_contract_editorial import BaseContractEditorialRepository
 from app.repositories.base_contract_publication import BaseContractPublicationRepository
 from app.repositories.base_organisation_editorial import BaseOrganisationEditorialRepository
+from app.repositories.base_organisation_publication import BaseOrganisationPublicationRepository
 from app.repositories.editorial import (
     EditorialConflictError,
     EditorialNotFoundError,
@@ -207,6 +214,100 @@ async def create_base_organisation_identity_proposal(
 
     try:
         return await repository.create_proposal(payload=payload, actor=actor)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from None
+
+
+@router.get("/base/organisation-identity-cases/{identity_case_id}/publication-proposal")
+async def base_organisation_publication_proposal_preview(
+    identity_case_id: Annotated[str, Path(min_length=1, max_length=200)],
+    repository: Annotated[
+        BaseOrganisationPublicationRepository,
+        Depends(get_base_organisation_publication_repository),
+    ],
+    _actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> dict[str, object]:
+    """Reconstrói campos mínimos; não publica nem devolve a identidade protegida."""
+    try:
+        return await repository.inspect_proposal(identity_case_id=identity_case_id)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from None
+
+
+@router.post("/base/organisation-publication-proposals", status_code=status.HTTP_201_CREATED)
+async def create_base_organisation_publication_proposal(
+    payload: OrganisationPublicationProposalRequest,
+    repository: Annotated[
+        BaseOrganisationPublicationRepository,
+        Depends(get_base_organisation_publication_repository),
+    ],
+    actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> dict[str, object]:
+    """Abre um segundo processo PENDING, mantendo a identidade original privada."""
+    try:
+        return await repository.create_proposal(payload=payload, actor=actor)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from None
+
+
+@router.get("/base/organisation-cases/{case_id}/publication")
+async def base_organisation_publication_preview(
+    case_id: Annotated[str, Path(min_length=1, max_length=200)],
+    repository: Annotated[
+        BaseOrganisationPublicationRepository,
+        Depends(get_base_organisation_publication_repository),
+    ],
+    _actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> dict[str, object]:
+    try:
+        return await repository.inspect_publication(case_id=case_id)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from None
+
+
+@router.post("/base/organisation-cases/{case_id}/publication")
+async def publish_base_organisation(
+    case_id: Annotated[str, Path(min_length=1, max_length=200)],
+    payload: OrganisationPublicationRequest,
+    repository: Annotated[
+        BaseOrganisationPublicationRepository,
+        Depends(get_base_organisation_publication_repository),
+    ],
+    actor: Annotated[StaffSession, Depends(require_editorial_admin)],
+) -> dict[str, object]:
+    try:
+        return await repository.publish(case_id=case_id, payload=payload, actor=actor)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from None
+
+
+@router.get("/base/organisation-cases/{case_id}/withdrawal")
+async def base_organisation_withdrawal_preview(
+    case_id: Annotated[str, Path(min_length=1, max_length=200)],
+    repository: Annotated[
+        BaseOrganisationPublicationRepository,
+        Depends(get_base_organisation_publication_repository),
+    ],
+    _actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> dict[str, object]:
+    try:
+        return await repository.inspect_withdrawal(case_id=case_id)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from None
+
+
+@router.post("/base/organisation-cases/{case_id}/withdrawal")
+async def withdraw_base_organisation(
+    case_id: Annotated[str, Path(min_length=1, max_length=200)],
+    payload: OrganisationWithdrawalRequest,
+    repository: Annotated[
+        BaseOrganisationPublicationRepository,
+        Depends(get_base_organisation_publication_repository),
+    ],
+    actor: Annotated[StaffSession, Depends(require_editorial_admin)],
+) -> dict[str, object]:
+    try:
+        return await repository.withdraw(case_id=case_id, payload=payload, actor=actor)
     except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
         raise _translate_error(exc) from None
 

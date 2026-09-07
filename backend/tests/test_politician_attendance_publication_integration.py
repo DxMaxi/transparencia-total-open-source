@@ -92,9 +92,11 @@ async def test_admin_publishes_whole_attendance_meeting_or_nothing(
     repository: ParliamentAttendanceRepository,
 ) -> None:
     assert repository.pool is not None
-    suffix = uuid.uuid4().hex[:12]
-    meeting_bid = str(700_000_000_000 + int(suffix, 16) % 200_000_000_000)
-    deputy_seed = 20_000_000_000 + int(suffix, 16) % 1_000_000_000
+    entropy = uuid.uuid4().hex[:12]
+    # Os rótulos sintéticos nunca podem formar acidentalmente nove algarismos fiscais.
+    suffix = entropy.translate(str.maketrans("0123456789", "ghijklmnop"))
+    meeting_bid = str(700_000_000_000 + int(entropy, 16) % 200_000_000_000)
+    deputy_seed = 20_000_000_000 + int(entropy, 16) % 1_000_000_000
     source_url = (
         "https://www.parlamento.pt/DeputadoGP/Paginas/"
         f"DetalheReuniaoPlenaria.aspx?BID={meeting_bid}"

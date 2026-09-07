@@ -6,6 +6,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 
+from app.models.editorial import ParliamentWithdrawalReason
+
 OrganisationIdentityKind = Literal["PUBLIC_BODY", "COMPANY", "NON_PROFIT", "EUROPEAN_BODY", "OTHER"]
 _FISCAL_SEQUENCE = re.compile(r"\d(?:[\W_]*\d){8}")
 _DIGEST = re.compile(r"[0-9a-fA-F]{64}")
@@ -84,3 +86,53 @@ class BaseOrganisationIdentityEditorialProposalRequest(BaseModel):
     confirm_independent_official_source: Literal[True]
     confirm_private_identity_only: Literal[True]
     confirm_no_publication: Literal[True]
+
+
+class OrganisationProofRequest(BaseModel):
+    """Referências fechadas; o servidor reconstrói todos os campos da proposta."""
+
+    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
+
+    expected_case_id: str = Field(pattern=r"^editorial_case_[0-9a-f]{32}$")
+    expected_version_id: str = Field(pattern=r"^editorial_version_[0-9a-f]{32}$")
+    expected_revision: int = Field(ge=0)
+    expected_proof_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    confirm_identity_remains_private: Literal[True]
+    confirm_zero_graph: Literal[True]
+
+
+class OrganisationPublicationProposalRequest(OrganisationProofRequest):
+    confirm_separate_review: Literal[True]
+    confirm_no_publication: Literal[True]
+
+
+class OrganisationPublicationRequest(OrganisationProofRequest):
+    rationale: str = Field(min_length=20, max_length=2000)
+    public_rationale: str = Field(min_length=20, max_length=1000)
+    confirm_official_source: Literal[True]
+    confirm_public_interest_and_minimisation: Literal[True]
+    confirm_publication: Literal[True]
+
+    @field_validator("rationale", "public_rationale")
+    @classmethod
+    def validate_rationale(cls, value: str) -> str:
+        normalized = safe_registry_text(value, max_length=2000)
+        if len(normalized) < 20:
+            raise ValueError("A fundamentação exige pelo menos vinte caracteres úteis")
+        return normalized
+
+
+class OrganisationWithdrawalRequest(OrganisationProofRequest):
+    reason: ParliamentWithdrawalReason
+    rationale: str = Field(min_length=20, max_length=2000)
+    public_rationale: str = Field(min_length=20, max_length=1000)
+    confirm_preserve_history_and_replies: Literal[True]
+    confirm_withdrawal: Literal[True]
+
+    @field_validator("rationale", "public_rationale")
+    @classmethod
+    def validate_rationale(cls, value: str) -> str:
+        normalized = safe_registry_text(value, max_length=2000)
+        if len(normalized) < 20:
+            raise ValueError("A fundamentação exige pelo menos vinte caracteres úteis")
+        return normalized

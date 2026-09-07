@@ -3,6 +3,8 @@ import {
   approveEditorialCase,
   correctEditorialCase,
   publishBaseContract,
+  createOrganisationPublicationProposal,
+  publishOrganisation,
   publishAiExplanation,
   publishParliamentCase,
   regenerateAiDreProposal,
@@ -10,6 +12,7 @@ import {
   startEditorialReview,
   withdrawAiExplanation,
   withdrawBaseContract,
+  withdrawOrganisation,
   withdrawParliamentCase,
 } from "../actions";
 import { AiEditorialComparison } from "../ai-comparison";
@@ -23,6 +26,9 @@ import {
   type AiEditorialWithdrawalPreview,
   type BaseContractPublicationPreview,
   type BaseContractWithdrawalPreview,
+  type OrganisationPublicationPreview,
+  type OrganisationPublicationProposalPreview,
+  type OrganisationWithdrawalPreview,
   type EditorialCaseDetail,
   type ParliamentEditorialPublicationPreview,
   type ParliamentEditorialWithdrawalPreview,
@@ -105,6 +111,15 @@ function successMessage(value: string | undefined): string {
   if (value === "base-withdrawn") {
     return "O contrato saiu da consulta ativa sem apagar a fotografia, o histórico ou o direito de resposta.";
   }
+  if (value === "organisation-proposed") {
+    return "A projeção mínima da organização foi criada em privado e aguarda revisão humana própria.";
+  }
+  if (value === "organisation-published") {
+    return "A organização foi publicada com fonte oficial e fotografia imutável, sem criar ligações no grafo.";
+  }
+  if (value === "organisation-withdrawn") {
+    return "A organização saiu da consulta ativa; a fotografia, as decisões e os direitos de resposta permanecem.";
+  }
   return "A decisão foi acrescentada ao histórico imutável.";
 }
 
@@ -146,6 +161,9 @@ export default async function EditorialCasePage({
   const isBaseContractCase =
     item.kind === "PUBLIC_CONTRACT" &&
     item.subject_type === "BASE_CONTRACT_SNAPSHOT";
+  const isOrganisationIdentity = item.kind === "ORGANISATION_IDENTITY";
+  const isOrganisationPublication = item.kind === "ORGANISATION_PUBLICATION"
+    && item.subject_type === "BASE_ORGANISATION_IDENTITY_VERSION";
   const [
     parliamentPublication,
     parliamentWithdrawal,
@@ -154,6 +172,9 @@ export default async function EditorialCasePage({
     aiWithdrawal,
     basePublication,
     baseWithdrawal,
+    organisationProposal,
+    organisationPublication,
+    organisationWithdrawal,
   ] = await Promise.all([
     isParliamentPublicationCase && item.current_state === "APPROVED"
       ? editorialFetch<ParliamentEditorialPublicationPreview>(
@@ -195,6 +216,18 @@ export default async function EditorialCasePage({
           `/base/cases/${encodeURIComponent(caseId)}/withdrawal`,
         )
       : Promise.resolve(null),
+    isOrganisationIdentity && item.current_state === "APPROVED"
+      ? editorialFetch<OrganisationPublicationProposalPreview>(
+          `/base/organisation-identity-cases/${encodeURIComponent(caseId)}/publication-proposal`,
+        ) : Promise.resolve(null),
+    isOrganisationPublication && item.current_state === "APPROVED"
+      ? editorialFetch<OrganisationPublicationPreview>(
+          `/base/organisation-cases/${encodeURIComponent(caseId)}/publication`,
+        ) : Promise.resolve(null),
+    isOrganisationPublication && item.current_state === "PUBLISHED"
+      ? editorialFetch<OrganisationWithdrawalPreview>(
+          `/base/organisation-cases/${encodeURIComponent(caseId)}/withdrawal`,
+        ) : Promise.resolve(null),
   ]);
   const currentVersion = item.versions.find((version) => version.is_current);
   if (!currentVersion) throw new Error("O processo não tem versão atual");
@@ -330,6 +363,9 @@ export default async function EditorialCasePage({
         aiWithdrawal={aiWithdrawal}
         basePublication={basePublication}
         baseWithdrawal={baseWithdrawal}
+        organisationProposal={organisationProposal}
+        organisationPublication={organisationPublication}
+        organisationWithdrawal={organisationWithdrawal}
         normalizedData={currentVersion.normalized_data}
         parliamentPublication={parliamentPublication}
         parliamentWithdrawal={parliamentWithdrawal}
@@ -448,6 +484,9 @@ function EditorialActions({
   aiWithdrawal,
   basePublication,
   baseWithdrawal,
+  organisationProposal,
+  organisationPublication,
+  organisationWithdrawal,
   normalizedData,
   parliamentPublication,
   parliamentWithdrawal,
@@ -459,6 +498,9 @@ function EditorialActions({
   aiWithdrawal: AiEditorialWithdrawalPreview | null;
   basePublication: BaseContractPublicationPreview | null;
   baseWithdrawal: BaseContractWithdrawalPreview | null;
+  organisationProposal: OrganisationPublicationProposalPreview | null;
+  organisationPublication: OrganisationPublicationPreview | null;
+  organisationWithdrawal: OrganisationWithdrawalPreview | null;
   normalizedData: Record<string, unknown>;
   parliamentPublication: ParliamentEditorialPublicationPreview | null;
   parliamentWithdrawal: ParliamentEditorialWithdrawalPreview | null;
@@ -502,7 +544,8 @@ function EditorialActions({
   }
 
   const isOrganisationIdentity = item.kind === "ORGANISATION_IDENTITY";
-  const canCorrect = !isOrganisationIdentity && [
+  const isOrganisationPublication = item.kind === "ORGANISATION_PUBLICATION";
+  const canCorrect = !isOrganisationIdentity && !isOrganisationPublication && [
     "IN_REVIEW",
     "APPROVED",
     "REJECTED",
@@ -607,6 +650,10 @@ function EditorialActions({
         <BaseContractWithdrawalAction preview={baseWithdrawal} staff={staff} />
       ) : null}
 
+      {organisationProposal ? <OrganisationProposalAction preview={organisationProposal} /> : null}
+      {organisationPublication ? <OrganisationPublicationAction preview={organisationPublication} staff={staff} /> : null}
+      {organisationWithdrawal ? <OrganisationWithdrawalAction preview={organisationWithdrawal} staff={staff} /> : null}
+
       {aiSourceEvidence &&
       ["IN_REVIEW", "APPROVED", "REJECTED", "WITHDRAWN"].includes(
         item.current_state,
@@ -646,6 +693,53 @@ function EditorialActions({
       ) : null}
     </section>
   );
+}
+
+function OrganisationProofFields({ preview }: { preview: OrganisationPublicationProposalPreview | OrganisationPublicationPreview | OrganisationWithdrawalPreview }) {
+  return <>
+    <input type="hidden" name="case_id" value={preview.case_id} />
+    <input type="hidden" name="expected_version_id" value={preview.version_id} />
+    <input type="hidden" name="expected_revision" value={preview.revision} />
+    <input type="hidden" name="expected_proof_sha256" value={preview.proof_sha256} />
+    <label className="admin-confirmation"><input name="confirm_identity_remains_private" type="checkbox" required /><span>A identidade fiscal e o respetivo processo permanecem privados.</span></label>
+    <label className="admin-confirmation"><input name="confirm_zero_graph" type="checkbox" required /><span>Esta operação não cria contratos, partes, correspondências ou relações.</span></label>
+  </>;
+}
+
+function OrganisationProposalAction({ preview }: { preview: OrganisationPublicationProposalPreview }) {
+  return <section className="admin-publication-panel">
+    <div className="admin-publication-summary"><div><p className="eyebrow">V5.53 · processo separado</p><h2>Preparar publicação mínima da organização</h2><p>A aprovação da identidade não publica. Esta ação cria uma nova proposta PENDING para os campos apresentados.</p></div>
+      <dl><div><dt>Designação</dt><dd>{preview.public_fields.legal_name}</dd></div><div><dt>Referência do ato</dt><dd>{preview.public_fields.registry_record_id}</dd></div><div><dt>Efeitos no grafo</dt><dd>Zero</dd></div></dl></div>
+    {preview.blockers.length ? <ul className="parliament-limitations">{preview.blockers.map((item) => <li key={item}>{item}</li>)}</ul> : null}
+    {preview.existing_case_id ? <Link className="button" href={`/admin/revisao/${encodeURIComponent(preview.existing_case_id)}`}>Abrir processo já criado</Link> :
+      <form action={createOrganisationPublicationProposal} className="admin-publication-form"><OrganisationProofFields preview={preview} />
+        <label className="admin-confirmation"><input name="confirm_separate_review" type="checkbox" required /><span>Confirmo que os campos públicos terão revisão humana própria.</span></label>
+        <label className="admin-confirmation"><input name="confirm_no_publication" type="checkbox" required /><span>Esta ação apenas cria uma proposta privada.</span></label>
+        <button className="button button--primary" type="submit" disabled={!preview.eligible}>Criar processo de publicação</button></form>}
+  </section>;
+}
+
+function OrganisationPublicationAction({ preview, staff }: { preview: OrganisationPublicationPreview; staff: StaffSession }) {
+  return <section className="admin-publication-panel"><div className="admin-publication-summary"><div><p className="eyebrow">Publicação específica</p><h2>{preview.public_fields.legal_name}</h2><p>Só estes campos e as provas públicas serão apresentados. O NIPC e o HMAC nunca entram na fotografia.</p></div><dl><div><dt>Categoria</dt><dd>{preview.public_fields.kind}</dd></div><div><dt>Referência não fiscal</dt><dd>{preview.public_fields.registry_record_id}</dd></div><div><dt>Identificador público</dt><dd><code>{preview.public_fields.id}</code></dd></div></dl></div>
+    {preview.blockers.length ? <ul className="parliament-limitations">{preview.blockers.map((item) => <li key={item}>{item}</li>)}</ul> : null}
+    {staff.role === "ADMIN" && staff.assurance_level === "aal2" ? <form action={publishOrganisation} className="admin-publication-form"><OrganisationProofFields preview={preview} />
+      <label>Fundamentação interna<textarea name="rationale" minLength={20} maxLength={2000} required /></label><label>Resumo público factual<textarea name="public_rationale" minLength={20} maxLength={1000} required /></label>
+      <label className="admin-confirmation"><input name="confirm_official_source" type="checkbox" required /><span>Revi a fonte oficial, a data, o arquivo e os SHA-256.</span></label>
+      <label className="admin-confirmation"><input name="confirm_public_interest_and_minimisation" type="checkbox" required /><span>Avaliei interesse público, necessidade e minimização destes campos.</span></label>
+      <label className="admin-confirmation"><input name="confirm_publication" type="checkbox" required /><span>Confirmo esta publicação explícita e imutável.</span></label>
+      <button className="button button--primary" type="submit" disabled={!preview.eligible}>Publicar organização</button></form> : <p className="private-message">Só um administrador com MFA pode publicar.</p>}
+  </section>;
+}
+
+function OrganisationWithdrawalAction({ preview, staff }: { preview: OrganisationWithdrawalPreview; staff: StaffSession }) {
+  return <section className="admin-publication-panel"><div className="admin-publication-summary"><div><p className="eyebrow">Retirada específica</p><h2>Retirar da consulta ativa</h2><p>A fotografia, as decisões, os hashes e os direitos de resposta permanecem no histórico.</p></div><code>{preview.public_record_sha256}</code></div>
+    {staff.role === "ADMIN" && staff.assurance_level === "aal2" ? <form action={withdrawOrganisation} className="admin-publication-form"><OrganisationProofFields preview={preview} />
+      <label>Fundamento previsto na governação<select name="reason" defaultValue="" required><option value="" disabled>Selecione</option>{Object.entries(PARLIAMENT_WITHDRAWAL_REASON_LABELS).map(([value,label]) => <option value={value} key={value}>{label}</option>)}</select></label>
+      <label>Fundamentação interna<textarea name="rationale" minLength={20} maxLength={2000} required /></label><label>Resumo público factual<textarea name="public_rationale" minLength={20} maxLength={1000} required /></label>
+      <label className="admin-confirmation"><input name="confirm_preserve_history_and_replies" type="checkbox" required /><span>Confirmo a preservação do histórico e dos direitos de resposta.</span></label>
+      <label className="admin-confirmation"><input name="confirm_withdrawal" type="checkbox" required /><span>Confirmo a retirada sem eliminação seletiva.</span></label>
+      <button className="button button--danger" type="submit" disabled={!preview.eligible}>Retirar organização</button></form> : <p className="private-message">Só um administrador com MFA pode retirar.</p>}
+  </section>;
 }
 
 function AiRegenerationAction({

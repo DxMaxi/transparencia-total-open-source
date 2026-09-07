@@ -7,6 +7,7 @@ const navItems = [
   { href: "/politicos", label: "Políticos" },
   { href: "/atividade-parlamentar", label: "Parlamento" },
   { href: "/promessas", label: "Promessómetro" },
+  { href: "/organizacoes", label: "Organizações" },
   { href: "/explicacoes", label: "Explicações IA" },
   { href: "/guia-cidadao", label: "Guia do Cidadão" },
   { href: "/metodologia", label: "Metodologia" },

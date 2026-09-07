@@ -11,6 +11,7 @@ import {
   type BaseContractPublicationResult,
   type BaseContractWithdrawalResult,
   type BaseOrganisationIdentityProposalResult,
+  type OrganisationPublicationResult,
   PARLIAMENT_WITHDRAWAL_REASON_LABELS,
   type EditorialCaseDetail,
   type EptExactIdentityLinkResult,
@@ -118,8 +119,13 @@ export async function createEditorialCase(formData: FormData) {
   let created: EditorialCaseDetail | null = null;
   let failure: string | null = null;
   try {
-    if (formData.get("kind") === "ORGANISATION_IDENTITY") {
-      throw new Error("A identidade de organização exige a sua observação oficial específica");
+    if (
+      formData.get("kind") === "ORGANISATION_IDENTITY" ||
+      formData.get("kind") === "ORGANISATION_PUBLICATION"
+    ) {
+      throw new Error(
+        "Os processos de organização exigem o respetivo circuito oficial específico",
+      );
     }
     if (formData.get("confirm_private_only") !== "on") {
       throw new Error("Confirme que o processo permanece privado");
@@ -396,6 +402,76 @@ export async function createBaseOrganisationIdentityProposal(formData: FormData)
   revalidatePath("/admin/revisao");
   revalidatePath(destination);
   redirect(`/admin/revisao/${encodeURIComponent(created.case.id)}?sucesso=identidade-privada`);
+}
+
+function organisationProof(formData: FormData, id: string) {
+  return {
+    expected_case_id: id,
+    expected_version_id: evidenceId(formData, "expected_version_id"),
+    expected_revision: expectedRevision(formData),
+    expected_proof_sha256: sha256(formData, "expected_proof_sha256"),
+    confirm_identity_remains_private: true,
+    confirm_zero_graph: true,
+  };
+}
+
+export async function createOrganisationPublicationProposal(formData: FormData) {
+  const id = caseId(formData);
+  const destination = `/admin/revisao/${encodeURIComponent(id)}`;
+  let created: { case: EditorialCaseDetail; created: boolean } | null = null;
+  let failure: string | null = null;
+  try {
+    for (const field of ["confirm_identity_remains_private", "confirm_zero_graph", "confirm_separate_review", "confirm_no_publication"]) {
+      if (formData.get(field) !== "on") throw new Error("Confirme todos os limites do novo processo");
+    }
+    created = await editorialFetch<{ case: EditorialCaseDetail; created: boolean }>("/base/organisation-publication-proposals", {
+      method: "POST",
+      body: JSON.stringify({ ...organisationProof(formData, id), confirm_separate_review: true, confirm_no_publication: true }),
+    });
+  } catch (error) { failure = actionError(error); }
+  if (failure || !created) redirect(failureDestination(destination, failure ?? "Proposta não criada"));
+  revalidatePath("/admin/revisao");
+  redirect(`/admin/revisao/${encodeURIComponent(created.case.id)}?sucesso=organisation-proposed`);
+}
+
+export async function publishOrganisation(formData: FormData) {
+  const id = caseId(formData);
+  const destination = `/admin/revisao/${encodeURIComponent(id)}`;
+  let failure: string | null = null;
+  try {
+    for (const field of ["confirm_identity_remains_private", "confirm_zero_graph", "confirm_official_source", "confirm_public_interest_and_minimisation", "confirm_publication"]) {
+      if (formData.get(field) !== "on") throw new Error("Confirme a fonte, a minimização e os limites da publicação");
+    }
+    await editorialFetch<OrganisationPublicationResult>(`/base/organisation-cases/${encodeURIComponent(id)}/publication`, {
+      method: "POST", body: JSON.stringify({ ...organisationProof(formData, id),
+        rationale: requiredText(formData, "rationale"), public_rationale: requiredText(formData, "public_rationale"),
+        confirm_official_source: true, confirm_public_interest_and_minimisation: true, confirm_publication: true }),
+    });
+  } catch (error) { failure = actionError(error); }
+  if (failure) redirect(failureDestination(destination, failure));
+  revalidatePath(destination); revalidatePath("/organizacoes");
+  redirect(`${destination}?sucesso=organisation-published`);
+}
+
+export async function withdrawOrganisation(formData: FormData) {
+  const id = caseId(formData);
+  const destination = `/admin/revisao/${encodeURIComponent(id)}`;
+  let failure: string | null = null;
+  try {
+    for (const field of ["confirm_identity_remains_private", "confirm_zero_graph", "confirm_preserve_history_and_replies", "confirm_withdrawal"]) {
+      if (formData.get(field) !== "on") throw new Error("Confirme a preservação do histórico e a retirada");
+    }
+    const reason = requiredText(formData, "reason");
+    if (!(reason in PARLIAMENT_WITHDRAWAL_REASON_LABELS)) throw new Error("Fundamento de retirada inválido");
+    await editorialFetch<OrganisationPublicationResult>(`/base/organisation-cases/${encodeURIComponent(id)}/withdrawal`, {
+      method: "POST", body: JSON.stringify({ ...organisationProof(formData, id), reason,
+        rationale: requiredText(formData, "rationale"), public_rationale: requiredText(formData, "public_rationale"),
+        confirm_preserve_history_and_replies: true, confirm_withdrawal: true }),
+    });
+  } catch (error) { failure = actionError(error); }
+  if (failure) redirect(failureDestination(destination, failure));
+  revalidatePath(destination); revalidatePath("/organizacoes");
+  redirect(`${destination}?sucesso=organisation-withdrawn`);
 }
 
 export async function publishBaseContract(formData: FormData) {
