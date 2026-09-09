@@ -3,13 +3,15 @@ import { readFile, readdir, writeFile } from "node:fs/promises";
 import pg from "pg";
 import { resolveDisposableDatabaseTarget } from "./bootstrap-supabase-test-database.mjs";
 import { matchesMigrationChecksum } from "./migration-checksum.mjs";
+import { resolveProductionMigrationTarget } from "./production-migration-target.mjs";
 
 // Fingerprints stay on the ephemeral runner. Only aggregate outcomes are published.
 const quote = (value) => `"${value.replaceAll('"', '""')}"`;
 const [operation, snapshotPath, reportPath] = process.argv.slice(2);
 assert.ok(["capture", "verify"].includes(operation));
 assert.ok(snapshotPath);
-const target = resolveDisposableDatabaseTarget();
+const production = process.env.ENVIRONMENT === "production";
+const target = production ? resolveProductionMigrationTarget() : resolveDisposableDatabaseTarget();
 const client = new pg.Client({ connectionString: target.connectionString });
 await client.connect();
 try {
@@ -73,7 +75,7 @@ try {
     await writeFile(reportPath, JSON.stringify({
       outcome: "PASS", checked_at: new Date().toISOString(),
       commit: process.env.GITHUB_SHA ?? null, workflow_run_id: process.env.GITHUB_RUN_ID ?? null,
-      production_target_used: false, original_tables_verified: tables.length,
+      production_target_used: production, original_tables_verified: tables.length,
       original_rows_verified: tables.reduce((sum, table) => sum + Number(table.count), 0),
       original_content_preserved: true, migration_checksums_verified: migrations.length,
       retired_empty_columns_verified: tables.flatMap((table) =>

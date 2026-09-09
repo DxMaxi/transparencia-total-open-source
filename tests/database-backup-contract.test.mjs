@@ -3,8 +3,30 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { createHash } from "node:crypto";
 import { matchesMigrationChecksum } from "../scripts/migration-checksum.mjs";
+import { resolveProductionMigrationTarget } from "../scripts/production-migration-target.mjs";
 
 const root = new URL("../", import.meta.url);
+
+test("production migration refuses other projects, transaction pooling and missing authorization", () => {
+  const base = {
+    ENVIRONMENT: "production",
+    CONFIRM_PRODUCTION_SCHEMA_MIGRATION: "MIGRAR-V5",
+    EXPECTED_SUPABASE_PROJECT_REF: "kxvgungbqalofbqytwbn",
+    DATABASE_URL: "postgresql://postgres:test-only@db.kxvgungbqalofbqytwbn.supabase.co:5432/postgres?sslmode=require",
+  };
+  assert.equal(resolveProductionMigrationTarget(base).databaseName, "postgres");
+  assert.throws(() => resolveProductionMigrationTarget({ ...base, CONFIRM_PRODUCTION_SCHEMA_MIGRATION: "" }));
+  for (const url of [
+    "postgresql://postgres:test-only@localhost:5432/postgres?sslmode=require",
+    "postgresql://postgres:test-only@db.otherproject.supabase.co:5432/postgres?sslmode=require",
+    "postgresql://postgres.otherproject:test-only@aws-0-eu-central-1.pooler.supabase.com:5432/postgres?sslmode=require",
+    base.DATABASE_URL.replace(":5432/", ":6543/"),
+    base.DATABASE_URL.replace("sslmode=require", "sslmode=disable"),
+  ]) assert.throws(() => resolveProductionMigrationTarget({ ...base, DATABASE_URL: url }));
+  assert.equal(resolveProductionMigrationTarget({ ...base,
+    DATABASE_URL: "postgresql://postgres.kxvgungbqalofbqytwbn:test-only@aws-0-eu-central-1.pooler.supabase.com:5432/postgres?sslmode=require",
+  }).databaseName, "postgres");
+});
 
 test("migration checksums allow historical line endings but reject changed SQL", () => {
   const sql = 'CREATE TABLE "example" (id INT);\n';

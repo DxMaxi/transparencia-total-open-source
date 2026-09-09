@@ -123,3 +123,14 @@ O helper recusa qualquer destino diferente das duas bases localhost fixadas no w
 Como o dump portátil exclui ACLs, o helper repõe a recusa de privilégios browser antes de terminar.
 As impressões de conteúdo e a cópia intermediária cifrada são eliminadas; só resultados agregados
 são guardados nos artefactos. A ausência de COMMIT perante falha mantém o restauro atómico.
+
+
+A comparação de checksums admite somente LF/CRLF e até duas quebras finais, sem alterar qualquer
+byte de conteúdo SQL. As sete diferenças V4 observadas no backup de 09-09 foram reconciliadas
+contra o histórico Git; todas eram exclusivamente quebras de linha. O histórico Prisma fica intacto.
+
+O workflow `production-schema-migration.yml` é manual, exige o commit exato de `main`, confirmação
+`MIGRAR-V5` e um ensaio de menos de 24 horas com as duas provas aprovadas. Verifica repositório,
+evento, commit e ausência de diferenças nas migrações antes de usar o secret de produção. O destino
+é limitado ao projeto Supabase confirmado, com TLS e porta de sessão. Compara o conteúdo antes e
+depois e conserva apenas a prova agregada; não convida contas nem publica conteúdo editorial.

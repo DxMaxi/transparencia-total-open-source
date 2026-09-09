@@ -1,0 +1,76 @@
+name: Verified production schema migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_commit:
+        description: Commit completo de main revisto para esta operação
+        required: true
+        type: string
+      restore_run_id:
+        description: Ensaio bem-sucedido com migrações e segundo restauro V5 (menos de 24 horas)
+        required: true
+        type: string
+      confirmation:
+        description: Escreva MIGRAR-V5 para aplicar apenas o esquema no projeto confirmado
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: transparencia-total-production-schema
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    if: ${{ github.repository == 'DxMaxi/transparencia-total-open-source' && github.ref == 'refs/heads/main' && inputs.expected_commit == github.sha && inputs.confirmation == 'MIGRAR-V5' }}
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - name: Verificar as provas antes de utilizar a ligação de produção
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REHEARSAL_RUN_ID: ${{ inputs.restore_run_id }}
+        run: |
+          set -euo pipefail
+          [[ "$REHEARSAL_RUN_ID" =~ ^[0-9]+$ ]]
+          proof_dir="$RUNNER_TEMP/production-migration-proof"
+          mkdir -p "$proof_dir"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$REHEARSAL_RUN_ID" > "$proof_dir/run.json"
+          gh run download "$REHEARSAL_RUN_ID" --name "migration-rehearsal-$REHEARSAL_RUN_ID" --dir "$proof_dir/migration"
+          gh run download "$REHEARSAL_RUN_ID" --name "v5-roundtrip-$REHEARSAL_RUN_ID" --dir "$proof_dir/roundtrip"
+          proof_sha="$(node scripts/verify-production-release-proof.mjs "$proof_dir/run.json" "$proof_dir/migration/migration-rehearsal.json" "$proof_dir/roundtrip/v5-roundtrip.json")"
+          git fetch origin "$proof_sha" --depth=1
+          git diff --exit-code "$proof_sha" HEAD -- prisma/migrations
+      - run: npm ci
+      - name: Aplicar esquema e verificar preservação dos dados
+        shell: bash
+        env:
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+          ENVIRONMENT: production
+          CONFIRM_PRODUCTION_SCHEMA_MIGRATION: MIGRAR-V5
+          EXPECTED_SUPABASE_PROJECT_REF: kxvgungbqalofbqytwbn
+        run: |
+          set -euo pipefail
+          node scripts/verify-restored-migration.mjs capture "$RUNNER_TEMP/production-original-fingerprints.json"
+          npm run db:deploy
+          node scripts/verify-restored-migration.mjs verify "$RUNNER_TEMP/production-original-fingerprints.json" "$RUNNER_TEMP/production-migration.json"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: production-migration-${{ github.run_id }}
+          path: ${{ runner.temp }}/production-migration.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Eliminar impressões privadas do runner
+        if: ${{ always() }}
+        run: rm -f "$RUNNER_TEMP/production-original-fingerprints.json"
