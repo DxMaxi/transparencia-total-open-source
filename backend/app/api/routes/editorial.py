@@ -9,6 +9,7 @@ from app.api.dependencies import (
     get_ai_editorial_publication_repository,
     get_ai_editorial_repository,
     get_base_contract_editorial_repository,
+    get_base_contract_organisation_match_repository,
     get_base_contract_publication_repository,
     get_base_organisation_editorial_repository,
     get_base_organisation_publication_repository,
@@ -38,6 +39,9 @@ from app.api.dependencies import (
     require_editorial_staff,
 )
 from app.core.config import get_settings
+from app.models.base_contract_organisation_match import (
+    BaseContractOrganisationMatchCandidateRequest,
+)
 from app.models.base_organisation import (
     BaseOrganisationIdentityEditorialProposalRequest,
     OrganisationPublicationProposalRequest,
@@ -89,6 +93,9 @@ from app.models.ept_declaration import (
 from app.repositories.ai_editorial import AiEditorialRepository
 from app.repositories.ai_editorial_publication import AiEditorialPublicationRepository
 from app.repositories.base_contract_editorial import BaseContractEditorialRepository
+from app.repositories.base_contract_organisation_match import (
+    BaseContractOrganisationMatchRepository,
+)
 from app.repositories.base_contract_publication import BaseContractPublicationRepository
 from app.repositories.base_organisation_editorial import BaseOrganisationEditorialRepository
 from app.repositories.base_organisation_publication import BaseOrganisationPublicationRepository
@@ -352,6 +359,46 @@ async def create_base_contract_proposal(
         return await repository.create_proposal(payload=payload, actor=actor)
     except (EditorialConflictError, EditorialSourceError) as exc:
         raise _translate_error(exc) from exc
+
+
+@router.get("/base/contract-organisation-match-candidates")
+async def base_contract_organisation_match_candidates(
+    public_contract_id: Annotated[
+        str,
+        Query(pattern=r"^base_contract_[0-9a-f]{64}$"),
+    ],
+    repository: Annotated[
+        BaseContractOrganisationMatchRepository,
+        Depends(get_base_contract_organisation_match_repository),
+    ],
+    _actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> dict[str, object]:
+    """Compara HMAC apenas no servidor e devolve zero identificadores protegidos."""
+
+    try:
+        return await repository.inspect(public_contract_id=public_contract_id)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from None
+
+
+@router.post(
+    "/base/contract-organisation-match-candidates",
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_base_contract_organisation_match_candidate(
+    payload: BaseContractOrganisationMatchCandidateRequest,
+    repository: Annotated[
+        BaseContractOrganisationMatchRepository,
+        Depends(get_base_contract_organisation_match_repository),
+    ],
+    actor: Annotated[StaffSession, Depends(require_editorial_staff)],
+) -> dict[str, object]:
+    """Cria apenas um candidato privado PENDING_REVIEW, sem parte ou relação pública."""
+
+    try:
+        return await repository.create(payload=payload, actor=actor)
+    except (EditorialConflictError, EditorialNotFoundError, EditorialSourceError) as exc:
+        raise _translate_error(exc) from None
 
 
 @router.get("/base/cases/{case_id}/publication")

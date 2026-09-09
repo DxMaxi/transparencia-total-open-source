@@ -11,6 +11,9 @@ from app.models.editorial import StaffRole, StaffSession
 from app.repositories.ai_editorial import AiEditorialRepository
 from app.repositories.ai_editorial_publication import AiEditorialPublicationRepository
 from app.repositories.base_contract_editorial import BaseContractEditorialRepository
+from app.repositories.base_contract_organisation_match import (
+    BaseContractOrganisationMatchRepository,
+)
 from app.repositories.base_contract_publication import BaseContractPublicationRepository
 from app.repositories.base_organisation_editorial import BaseOrganisationEditorialRepository
 from app.repositories.base_organisation_publication import BaseOrganisationPublicationRepository
@@ -109,6 +112,17 @@ def get_base_contract_publication_repository(
             detail="Base de dados de publicação BASE não configurada",
         )
     return BaseContractPublicationRepository(repository.pool)
+
+
+def get_base_contract_organisation_match_repository(
+    repository: Annotated[PostgresRepository, Depends(get_repository)],
+) -> BaseContractOrganisationMatchRepository:
+    if repository.pool is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Base de dados de correspondências privadas BASE não configurada",
+        )
+    return BaseContractOrganisationMatchRepository(repository.pool)
 
 
 def get_base_organisation_editorial_repository(

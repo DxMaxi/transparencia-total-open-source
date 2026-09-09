@@ -1,0 +1,36 @@
+{
+  "attestation_sha256": "0ecec84bfc698d9236f95d79314a3d5c10a8bdb3fd6b2fdf78c3cfd0ddc06c55",
+  "backup": {
+    "ciphertext_sha256": "8631568b0d3b966488a3d336a5dc0cfaa0d637b2b4bb25944a8e4b723073959a",
+    "manifest_canonical_sha256": "0ed0642efab3e54640bd6dbe0c90be1cefc1f0172121ae7e699bcb593984584b",
+    "manifest_file_sha256": "cab5428fc036cd6f1bf1838c11d2b407fc05ddfeba1c449de1a906010c152c63",
+    "object_key": "database/daily/2026/09/08/transparencia-total-20260908T093855Z-34211076816-1.dump.age"
+  },
+  "checks": {
+    "archive_integrity": "PASS",
+    "archive_objects_checked": 134,
+    "ciphertext_sha256": "PASS",
+    "migration_count": 13,
+    "migrations": "PASS",
+    "operational_status": "ATTENTION_REQUIRED",
+    "row_count": 519445,
+    "table_count": 54,
+    "table_counts": "PASS"
+  },
+  "created_at": "2026-09-09T01:56:26Z",
+  "outcome": "PASS_WITH_OPERATIONAL_WARNING",
+  "provenance": {
+    "repository": "DxMaxi/transparencia-total-open-source",
+    "workflow": ".github/workflows/database-restore-drill.yml",
+    "workflow_run_id": "34301070176"
+  },
+  "restore": {
+    "completed_at": "2026-09-09T01:56:26Z",
+    "production_target_used": false,
+    "rpo_seconds_at_drill_start": 57988.0,
+    "rto_seconds": 84.0,
+    "started_at": "2026-09-09T01:55:02Z",
+    "target": "ISOLATED_EPHEMERAL_POSTGRESQL"
+  },
+  "schema_version": "transparencia-total.database-restore/v1"
+}
