@@ -8,6 +8,7 @@ import {
   type AiEditorialPublicationResult,
   type AiEditorialWithdrawalResult,
   type BaseContractEditorialProposalResult,
+  type BaseContractOrganisationMatchCandidateResult,
   type BaseContractPublicationResult,
   type BaseContractWithdrawalResult,
   type BaseOrganisationIdentityProposalResult,
@@ -354,6 +355,120 @@ export async function createBaseContractProposal(formData: FormData) {
     `/admin/revisao/${created.case.id}?sucesso=${
       created.created ? "contrato-base-importado" : "contrato-base-existente"
     }`,
+  );
+}
+
+const BASE_PUBLIC_CONTRACT_ID = /^base_contract_[0-9a-f]{64}$/;
+const CONTRACT_ORGANISATION_MATCH_PATH =
+  "/admin/revisao/contratos/correspondencias";
+
+function exactBasePublicContractId(value: FormDataEntryValue | null): string | null {
+  if (typeof value !== "string") return null;
+  const candidate = value.trim();
+  return BASE_PUBLIC_CONTRACT_ID.test(candidate) ? candidate : null;
+}
+
+function contractOrganisationMatchDestination(
+  publicContractId: string,
+  state: { erro?: string; sucesso?: string } = {},
+): string {
+  const params = new URLSearchParams({ public_contract_id: publicContractId });
+  if (state.erro) params.set("erro", state.erro);
+  if (state.sucesso) params.set("sucesso", state.sucesso);
+  return `${CONTRACT_ORGANISATION_MATCH_PATH}?${params.toString()}`;
+}
+
+export async function createBaseContractOrganisationMatchCandidate(
+  formData: FormData,
+) {
+  // Uma Server Action é um endpoint autónomo: confirma novamente sessão e MFA.
+  await getEditorialContext();
+  const publicContractId = exactBasePublicContractId(
+    formData.get("expected_public_contract_id"),
+  );
+  if (!publicContractId) {
+    redirect(`${CONTRACT_ORGANISATION_MATCH_PATH}?erro=identificador-invalido`);
+  }
+
+  let created: BaseContractOrganisationMatchCandidateResult | null = null;
+  let failure: "confirmacao-em-falta" | "prova-invalidada" | "operacao-nao-concluida" | null =
+    null;
+  const confirmations = [
+    "confirm_exact_protected_identifier",
+    "confirm_two_active_publications",
+    "confirm_independent_official_sources",
+    "confirm_private_pending_review_only",
+    "confirm_no_name_or_fuzzy_matching",
+    "confirm_no_public_party_match_or_relationship",
+  ] as const;
+
+  if (confirmations.some((field) => formData.get(field) !== "on")) {
+    failure = "confirmacao-em-falta";
+  } else {
+    try {
+      const rationale = requiredText(formData, "rationale");
+      if (rationale.length < 20 || rationale.length > 1000) {
+        throw new Error("Fundamentação privada inválida");
+      }
+      created =
+        await editorialFetch<BaseContractOrganisationMatchCandidateResult>(
+          "/base/contract-organisation-match-candidates",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              expected_public_contract_id: publicContractId,
+              expected_contract_publication_snapshot_id: evidenceId(
+                formData,
+                "expected_contract_publication_snapshot_id",
+              ),
+              expected_contract_party_snapshot_id: evidenceId(
+                formData,
+                "expected_contract_party_snapshot_id",
+              ),
+              expected_organisation_id: evidenceId(
+                formData,
+                "expected_organisation_id",
+              ),
+              expected_organisation_publication_snapshot_id: evidenceId(
+                formData,
+                "expected_organisation_publication_snapshot_id",
+              ),
+              expected_candidate_proof_sha256: sha256(
+                formData,
+                "expected_candidate_proof_sha256",
+              ),
+              rationale,
+              confirm_exact_protected_identifier: true,
+              confirm_two_active_publications: true,
+              confirm_independent_official_sources: true,
+              confirm_private_pending_review_only: true,
+              confirm_no_name_or_fuzzy_matching: true,
+              confirm_no_public_party_match_or_relationship: true,
+            }),
+          },
+        );
+    } catch (error) {
+      failure =
+        error instanceof EditorialApiError &&
+        [404, 409, 422].includes(error.status)
+          ? "prova-invalidada"
+          : "operacao-nao-concluida";
+    }
+  }
+
+  if (failure || !created) {
+    redirect(
+      contractOrganisationMatchDestination(publicContractId, {
+        erro: failure ?? "operacao-nao-concluida",
+      }),
+    );
+  }
+  revalidatePath("/admin/revisao");
+  revalidatePath(CONTRACT_ORGANISATION_MATCH_PATH);
+  redirect(
+    contractOrganisationMatchDestination(publicContractId, {
+      sucesso: created.created ? "candidato-criado" : "candidato-existente",
+    }),
   );
 }
 

@@ -95,3 +95,12 @@ próprias, poderá materializar uma ligação factual no grafo.
 
 Metodologia detalhada: [V5.52 — identidade organizacional privada](V5_BASE_ORGANISATION_IDENTITY.md)
 e [V5.53 — publicação e retirada de organizações](V5_BASE_ORGANISATION_PUBLICATION.md).
+
+## Continuação em 9 de setembro de 2026 — V5.54 e produção
+
+O responsável autorizou expressamente a conclusão da V5 pública em produção nesta data.
+Esta autorização substitui restrições históricas de autorização destas notas; não substitui
+a prova de restauro, revisão humana ou requisitos jurídicos aplicáveis a dados reais.
+A V5.54 fecha o candidato privado por igualdade exata. A V5.55 continua a ser a porta de
+decisão e ligação factual. Ver [metodologia](V5_BASE_CONTRACT_ORGANISATION_MATCHING.md) e
+[estado de entrega e continuidade](V5_DELIVERY_2026-09-09.md).

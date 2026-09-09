@@ -940,3 +940,5 @@ apresentado como software *open-source* enquanto vigorar uma restrição de uso 
 Um lançamento de produção deve identificar o responsável real, manter política editorial pública,
 procedimento de correção e arquivo verificável dos documentos recolhidos. Uma revisão plural é
 recomendada antes de publicar avaliações substantivas ou relações entre pessoas e entidades.
+
+Continuação V5.1 a V5.54: [candidatos privados por igualdade exata](docs/V5_BASE_CONTRACT_ORGANISATION_MATCHING.md). [Entrega em produção e continuidade](docs/V5_DELIVERY_2026-09-09.md).

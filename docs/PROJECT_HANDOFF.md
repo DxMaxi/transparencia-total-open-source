@@ -444,3 +444,12 @@ Ordem recomendada:
 6. `docs/AUDIT_2026-08-15.md` quando o trabalho tocar em resiliência, CI, segurança ou release
 
 Depois deve inspecionar o código atual e não assumir que um documento de handoff substitui o estado real do repositório.
+
+## Continuação em 9 de setembro de 2026 — V5.54 e produção
+
+O responsável autorizou expressamente a conclusão da V5 pública em produção nesta data.
+Esta autorização substitui restrições históricas de autorização destas notas; não substitui
+a prova de restauro, revisão humana ou requisitos jurídicos aplicáveis a dados reais.
+A V5.54 fecha o candidato privado por igualdade exata. A V5.55 continua a ser a porta de
+decisão e ligação factual. Ver [metodologia](V5_BASE_CONTRACT_ORGANISATION_MATCHING.md) e
+[estado de entrega e continuidade](V5_DELIVERY_2026-09-09.md).

@@ -1220,6 +1220,7 @@ model Organisation {
   currentPublicationSnapshotId String? @unique(map: "organisations_current_publication_snapshot_key") @map("current_publication_snapshot_id")
   currentPublicationSnapshot BasePublicOrganisationPublicationSnapshot? @relation("OrganisationCurrentPublication", fields: [currentPublicationSnapshotId], references: [id], onDelete: Restrict, map: "organisations_publication_snapshot_fk")
   publicationSnapshots BasePublicOrganisationPublicationSnapshot[] @relation("OrganisationPublicationHistory")
+  contractMatchCandidates BaseContractOrganisationMatchCandidate[]
 
   @@index([normalisedName])
   @@map("organisations")
@@ -1249,6 +1250,7 @@ model BaseOrganisationIdentityObservation {
   createdAt                 DateTime           @default(now()) @map("created_at")
   sourceDocument            SourceDocument     @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict, map: "base_organisation_identity_source_document_fkey")
   publicationSnapshots BasePublicOrganisationPublicationSnapshot[]
+  contractMatchCandidates BaseContractOrganisationMatchCandidate[]
 
   @@unique([sourceDocumentId, registryRecordId], map: "base_organisation_identity_source_record_key")
   @@unique([sourceDocumentId, protectedIdentifierDigest], map: "base_organisation_identity_source_digest_key")
@@ -1406,6 +1408,7 @@ model BaseContractPartySnapshot {
   protectedIdentifierDigest String?              @map("protected_identifier_digest")
   createdAt                 DateTime             @default(now()) @map("created_at")
   contractSnapshot          BaseContractSnapshot @relation(fields: [contractSnapshotId], references: [id], onDelete: Restrict)
+  organisationMatchCandidates BaseContractOrganisationMatchCandidate[]
 
   @@unique([contractSnapshotId, ordinal])
   @@index([role])
@@ -1438,6 +1441,7 @@ model PublicContract {
   parties                      PublicContractParty[]
   graphRelationships           InterestRelationship[]
   matchReviews                 ContractMatchReview[]
+  organisationMatchCandidates BaseContractOrganisationMatchCandidate[]
 
   @@index([procedure, publishedAt])
   @@index([contractValue])
@@ -1477,6 +1481,7 @@ model BasePublicContractPublicationSnapshot {
   editorialCase          EditorialCase           @relation(fields: [editorialCaseId], references: [id], onDelete: Restrict)
   editorialVersion       EditorialVersion        @relation(fields: [editorialVersionId], references: [id], onDelete: Restrict)
   sourceDocument         SourceDocument          @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
+  organisationMatchCandidates BaseContractOrganisationMatchCandidate[]
 
   @@index([publicContractId, createdAt])
   @@index([sourceId, createdAt])
@@ -1514,11 +1519,58 @@ model BasePublicOrganisationPublicationSnapshot {
   editorialCase EditorialCase @relation("OrganisationPublicationCase", fields: [editorialCaseId], references: [id], onDelete: Restrict, map: "base_org_publication_editorial_case_fk")
   editorialVersion EditorialVersion @relation("OrganisationPublicationVersion", fields: [editorialVersionId], references: [id], onDelete: Restrict, map: "base_org_publication_editorial_version_fk")
   sourceDocument SourceDocument @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict, map: "base_org_publication_source_fk")
+  contractMatchCandidates BaseContractOrganisationMatchCandidate[]
   @@index([organisationId, createdAt], map: "base_public_org_snapshot_org_idx")
   @@index([identityObservationId], map: "base_public_org_snapshot_observation_idx")
   @@index([editorialCaseId], map: "base_public_org_snapshot_case_idx")
   @@index([sourceDocumentId], map: "base_public_org_snapshot_source_idx")
   @@map("base_public_organisation_publication_snapshots")
+}
+
+/// Candidato privado e imutável entre uma parte BASE e uma organização já
+/// publicada. A igualdade é feita apenas entre HMAC protegidos nas tabelas de
+/// origem; o digest não é duplicado nem exposto. Esta linha não é uma relação
+/// pública, uma decisão editorial final ou uma parte pública do contrato.
+model BaseContractOrganisationMatchCandidate {
+  id                                String          @id
+  publicContractId                  String          @map("public_contract_id")
+  contractPublicationSnapshotId    String          @map("contract_publication_snapshot_id")
+  contractPartySnapshotId          String          @map("contract_party_snapshot_id")
+  organisationId                   String          @map("organisation_id")
+  organisationPublicationSnapshotId String         @map("organisation_publication_snapshot_id")
+  organisationIdentityObservationId String         @map("organisation_identity_observation_id")
+  contractSourceDocumentId         String          @map("contract_source_document_id")
+  organisationSourceDocumentId     String          @map("organisation_source_document_id")
+  method                            MatchMethod     @default(EXACT_PROTECTED_IDENTIFIER)
+  decision                          MatchDecision   @default(PENDING_REVIEW)
+  contractSourceRecordSha256       String          @map("contract_source_record_sha256") @db.Char(64)
+  organisationSourceRecordSha256   String          @map("organisation_source_record_sha256") @db.Char(64)
+  candidateProofSha256             String          @unique(map: "base_contract_org_candidate_proof_key") @map("candidate_proof_sha256") @db.Char(64)
+  rationale                         String
+  createdById                       String          @map("created_by_id")
+  createdByAlias                    String          @map("created_by_alias")
+  createdAt                         DateTime        @default(now()) @map("created_at")
+  publicContract                    PublicContract @relation(fields: [publicContractId], references: [id], onDelete: Restrict, map: "base_contract_org_candidate_contract_fk")
+  contractPublicationSnapshot      BasePublicContractPublicationSnapshot @relation(fields: [contractPublicationSnapshotId], references: [id], onDelete: Restrict, map: "base_contract_org_candidate_contract_publication_fk")
+  contractPartySnapshot            BaseContractPartySnapshot @relation(fields: [contractPartySnapshotId], references: [id], onDelete: Restrict, map: "base_contract_org_candidate_party_fk")
+  organisation                     Organisation @relation(fields: [organisationId], references: [id], onDelete: Restrict, map: "base_contract_org_candidate_organisation_fk")
+  organisationPublicationSnapshot  BasePublicOrganisationPublicationSnapshot @relation(fields: [organisationPublicationSnapshotId], references: [id], onDelete: Restrict, map: "base_contract_org_candidate_organisation_publication_fk")
+  organisationIdentityObservation  BaseOrganisationIdentityObservation @relation(fields: [organisationIdentityObservationId], references: [id], onDelete: Restrict, map: "base_contract_org_candidate_identity_observation_fk")
+  contractSourceDocument           SourceDocument @relation("BaseContractOrganisationContractSource", fields: [contractSourceDocumentId], references: [id], onDelete: Restrict, map: "base_contract_org_candidate_contract_source_fk")
+  organisationSourceDocument       SourceDocument @relation("BaseContractOrganisationOrganisationSource", fields: [organisationSourceDocumentId], references: [id], onDelete: Restrict, map: "base_contract_org_candidate_organisation_source_fk")
+  createdBy                         StaffProfile @relation(fields: [createdById], references: [id], onDelete: Restrict, map: "base_contract_org_candidate_staff_fk")
+
+  @@unique([contractPublicationSnapshotId, contractPartySnapshotId, organisationPublicationSnapshotId], map: "base_contract_org_candidate_exact_pair_key")
+  @@index([publicContractId, createdAt], map: "base_contract_org_candidate_contract_idx")
+  @@index([contractPartySnapshotId], map: "base_contract_org_candidate_party_idx")
+  @@index([organisationId, createdAt], map: "base_contract_org_candidate_organisation_idx")
+  @@index([organisationPublicationSnapshotId], map: "base_contract_org_candidate_org_publication_idx")
+  @@index([organisationIdentityObservationId], map: "base_contract_org_candidate_observation_idx")
+  @@index([contractSourceDocumentId], map: "base_contract_org_candidate_contract_source_idx")
+  @@index([organisationSourceDocumentId], map: "base_contract_org_candidate_org_source_idx")
+  @@index([createdById], map: "base_contract_org_candidate_staff_idx")
+  @@index([decision, createdAt], map: "base_contract_org_candidate_queue_idx")
+  @@map("base_contract_organisation_match_candidates")
 }
 
 model PublicContractParty {
@@ -1797,6 +1849,7 @@ model StaffProfile {
   publicationEvents   EditorialPublicationEvent[]     @relation("EditorialPublicationActor")
   eptLegalAssessments EptIndependentLegalAssessment[] @relation("EptLegalAssessmentRecorder")
   eptIdentityLinks    EptExactIdentityLink[]          @relation("EptIdentityLinkRecorder")
+  baseContractOrganisationMatchCandidates BaseContractOrganisationMatchCandidate[]
 
   @@index([active, role])
   @@map("staff_profiles")
@@ -1992,6 +2045,8 @@ model SourceDocument {
   publicContracts                      PublicContract[]
   baseContractPublicationSnapshots     BasePublicContractPublicationSnapshot[]
   contractMatchReviews                 ContractMatchReview[]
+  baseContractOrganisationContractEvidence BaseContractOrganisationMatchCandidate[] @relation("BaseContractOrganisationContractSource")
+  baseContractOrganisationOrganisationEvidence BaseContractOrganisationMatchCandidate[] @relation("BaseContractOrganisationOrganisationSource")
   interestRelationships                InterestRelationship[]
   judicialCases                        JudicialCase[]
   newsArticles                         NewsArticle[]

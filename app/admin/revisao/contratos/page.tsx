@@ -135,6 +135,9 @@ export default async function BaseContractEditorialPage({
           </p>
         </div>
         <div className="admin-heading-actions">
+          <Link href="/admin/revisao/contratos/correspondencias">
+            Preparar correspondências privadas
+          </Link>
           <Link href="/admin/revisao">Voltar à fila editorial</Link>
           <a
             href="https://www.base.gov.pt/Base4/pt/pesquisa/?type=contratos"

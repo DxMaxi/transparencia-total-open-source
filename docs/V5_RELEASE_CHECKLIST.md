@@ -276,7 +276,8 @@ Governo](V5_PROMESSOMETRO_CATALOGUE.md).
   - [x] Concluir publicação e retirada específicas de organizações antes de associar partes de contratos.
 - [ ] Pepper HMAC estável configurado fora do repositório.
 - [ ] Nenhum identificador fiscal em claro persiste ou aparece em logs.
-- [ ] Correspondências exatas entram apenas em `PENDING_REVIEW`.
+- [x] V5.54 — correspondências exatas entram apenas em `PENDING_REVIEW`, com duas publicações ativas, fontes independentes e zero efeito público.
+- [ ] Ativar e comprovar o circuito V5.54 em ambiente remoto antes de tratar dados reais.
 - [ ] Não existe fuzzy matching.
 - [ ] Relações exigem dois nós publicados, fonte, tipo e datas.
 - [ ] Grafo público distingue ligação factual de acusação ou conflito.

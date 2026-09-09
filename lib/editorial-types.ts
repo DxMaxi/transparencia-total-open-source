@@ -794,6 +794,95 @@ export type BaseContractEditorialProposalResult = {
   relationship_created: false;
 };
 
+export type BaseContractOrganisationMatchSourceProof = {
+  title: string;
+  url: string;
+  retrieved_at: string;
+  content_sha256: string;
+  source_record_sha256: string;
+  archive_attestation_sha256: string;
+};
+
+export type BaseContractOrganisationMatchCandidate = {
+  contract_publication_snapshot_id: string;
+  contract_party_snapshot_id: string;
+  contract_party: {
+    ordinal: number;
+    role: "CONTRACTING_AUTHORITY" | "CONTRACTOR" | "CO_CONTRACTOR";
+    source_name: string;
+    protected_identifier_observed: true;
+  };
+  organisation_id: string;
+  organisation_publication_snapshot_id: string;
+  organisation: {
+    legal_name: string;
+    kind: "PUBLIC_BODY" | "COMPANY" | "NON_PROFIT" | "EUROPEAN_BODY" | "OTHER";
+    registry_record_id: string;
+    official_url: string;
+  };
+  contract_source: BaseContractOrganisationMatchSourceProof;
+  organisation_source: BaseContractOrganisationMatchSourceProof;
+  candidate_proof_sha256: string;
+  method: "EXACT_PROTECTED_IDENTIFIER";
+  decision: "PENDING_REVIEW";
+  existing_candidate: {
+    id: string;
+    decision: "PENDING_REVIEW";
+    created_by_alias: string;
+    created_at: string;
+  } | null;
+  eligible: boolean;
+  blockers: Array<{ code: string; detail: string }>;
+  protected_identifier_exposed: false;
+  name_or_fuzzy_matching_used: false;
+  public_party_created: false;
+  match_review_created: false;
+  public_relationship_created: false;
+};
+
+export type BaseContractOrganisationMatchCandidateList = {
+  public_contract: {
+    id: string;
+    official_contract_id: string;
+    object: string;
+    publication_snapshot_id: string;
+    source: {
+      title: string;
+      url: string;
+      retrieved_at: string;
+      content_sha256: string;
+    };
+  };
+  items: BaseContractOrganisationMatchCandidate[];
+  party_count: number;
+  protected_party_count: number;
+  exact_matched_party_count: number;
+  candidate_pair_count: number;
+  protected_identifier_exposed: false;
+  name_or_fuzzy_matching_used: false;
+  public_relation_created: false;
+  creation_rule: string;
+};
+
+export type BaseContractOrganisationMatchCandidateResult = {
+  created: boolean;
+  id: string;
+  public_contract_id: string;
+  contract_party_snapshot_id: string;
+  organisation_id: string;
+  method: "EXACT_PROTECTED_IDENTIFIER";
+  decision: "PENDING_REVIEW";
+  candidate_proof_sha256: string;
+  created_by_alias: string;
+  created_at: string;
+  protected_identifier_exposed: false;
+  name_or_fuzzy_matching_used: false;
+  public_party_created: false;
+  match_review_created: false;
+  public_relationship_created: false;
+  creation_rule: string;
+};
+
 export type BaseContractPublicationPreview = {
   case_id: string;
   case_state: EditorialState;
