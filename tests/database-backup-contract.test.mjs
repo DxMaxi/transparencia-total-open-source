@@ -39,7 +39,7 @@ test("restore drill is manual, isolated and checks proof before decrypting", asy
     "utf8",
   );
   const verifyIndex = workflow.indexOf("verify_database_backup_ciphertext");
-  const decryptIndex = workflow.indexOf("age --decrypt");
+  const decryptIndex = workflow.indexOf("bash scripts/restore-public-backup-isolated.sh");
   const scopeCheckIndex = workflow.indexOf("verify_b2_application_key_scope");
   const downloadIndex = workflow.indexOf("aws s3api get-object");
   const ageInstallIndex = workflow.indexOf("sudo apt-get install --yes age");
@@ -70,14 +70,14 @@ test("restore drill is manual, isolated and checks proof before decrypting", asy
   assert.match(workflow, /não contém uma identidade privada age válida/);
   assert.match(workflow, /não corresponde ao destinatário usado no backup/);
   assert.match(workflow, /trap 'rm -f "\$identity_file"' EXIT/);
-  assert.equal(workflow.match(/unset BACKUP_AGE_IDENTITY/g)?.length, 2);
+  assert.equal(workflow.match(/unset BACKUP_AGE_IDENTITY/g)?.length, 3);
   assert.doesNotMatch(workflow, /echo[^\n]*\$derived_recipient/);
   assert.ok(scopeCheckIndex >= 0 && scopeCheckIndex < downloadIndex);
   assert.ok(ageInstallIndex >= 0 && ageInstallIndex < identityCheckIndex);
   assert.ok(identityCheckIndex >= 0 && identityCheckIndex < downloadIndex);
   assert.ok(identityCheckIndex < decryptIndex);
   assert.ok(verifyIndex >= 0 && verifyIndex < decryptIndex);
-  assert.match(workflow, /pg_restore --dbname "\$PGDATABASE"/);
+  assert.match(workflow, /restore-public-backup-isolated.sh/);
   assert.doesNotMatch(workflow, /BACKUP_AGE_IDENTITY" == \*"AGE-SECRET-KEY-/);
   assert.doesNotMatch(workflow, /PRODUCTION_DATABASE_URL/);
   assert.doesNotMatch(workflow, /schedule:\s*\n/);

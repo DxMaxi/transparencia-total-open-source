@@ -44,6 +44,8 @@ try {
     await writeFile(snapshotPath, JSON.stringify(tables), { mode: 0o600 });
   } else {
     assert.ok(reportPath);
+    const { rows: [browserRoles] } = await client.query("SELECT count(*)::text AS count FROM pg_roles WHERE rolname IN ('anon','authenticated')");
+    assert.equal(browserRoles.count, "2", "Faltam os dois papéis browser para provar isolamento");
     const migrationRoot = new URL("../prisma/migrations/", import.meta.url);
     const expected = (await readdir(migrationRoot, { withFileTypes: true }))
       .filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
