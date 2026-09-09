@@ -320,14 +320,14 @@ jobs:
           identity_file="$RUNNER_TEMP/database-restore-age-identity.txt"
           printf '%s\n' "$BACKUP_AGE_IDENTITY" > "$identity_file"
           unset BACKUP_AGE_IDENTITY
-          docker run --rm --network host -i -e PGDATABASE postgres:17 psql --set ON_ERROR_STOP=1 >/dev/null <<'SQL'
+          docker run --rm --network host -i -e PGDATABASE postgres:17 psql --dbname "$PGDATABASE" --set ON_ERROR_STOP=1 >/dev/null <<'SQL'
           INSERT INTO auth.users(id) VALUES ('00000000-0000-4000-8000-000000000005');
           INSERT INTO public.staff_profiles(id,auth_user_id,public_alias,role,active,updated_at)
           VALUES ('restore-drill-inert-staff','00000000-0000-4000-8000-000000000005','restore-drill-inert-staff','ADMIN',false,NOW());
           CREATE DATABASE transparencia_v5_roundtrip_test;
           SQL
           node scripts/verify-restored-migration.mjs capture "$RUNNER_TEMP/v5-roundtrip-fingerprints.json"
-          docker run --rm --network host -e PGDATABASE postgres:17 pg_dump --format=custom --schema=public --no-owner --no-privileges \
+          docker run --rm --network host -e PGDATABASE postgres:17 pg_dump --dbname "$PGDATABASE" --format=custom --schema=public --no-owner --no-privileges \
             | age --recipient "$BACKUP_AGE_RECIPIENT" > "$RUNNER_TEMP/v5-roundtrip.dump.age"
           export PGDATABASE=postgresql://postgres:restore-drill-only@localhost:5432/transparencia_v5_roundtrip_test
           bash scripts/restore-public-backup-isolated.sh "$RUNNER_TEMP/v5-roundtrip.dump.age" "$identity_file"
