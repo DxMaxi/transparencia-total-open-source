@@ -22,6 +22,14 @@ try {
         GROUP BY table_name ORDER BY table_name`)).rows
     : JSON.parse(await readFile(snapshotPath, "utf8"));
   for (const table of tables) {
+    // V5 deliberately retires this legacy column, but only when every value is NULL.
+    // No other dropped column is exempt from the original-content comparison.
+    if (operation === "capture" && table.name === "organisations" && table.columns.includes("public_nipc")) {
+      const { rows: [legacy] } = await client.query('SELECT count(*)::text AS count FROM public.organisations WHERE public_nipc IS NOT NULL');
+      assert.equal(legacy.count, "0", "Identificadores legados exigem investigação antes da migração");
+      table.retired_empty_columns = ["public_nipc"];
+      table.columns = table.columns.filter((column) => column !== "public_nipc");
+    }
     const { rows: [result] } = await client.query(`SELECT count(*)::text AS count,
       md5(coalesce(string_agg(fingerprint, '' ORDER BY fingerprint COLLATE "C"), '')) AS fingerprint
       FROM (SELECT md5(row_to_json(original)::text) AS fingerprint
@@ -66,6 +74,8 @@ try {
       production_target_used: false, original_tables_verified: tables.length,
       original_rows_verified: tables.reduce((sum, table) => sum + Number(table.count), 0),
       original_content_preserved: true, migration_checksums_verified: migrations.length,
+      retired_empty_columns_verified: tables.flatMap((table) =>
+        (table.retired_empty_columns ?? []).map((column) => `${table.name}.${column}`)),
       browser_privileges_safe: true, row_level_security_verified: true,
       authentication_proven: false,
     }, null, 2) + "\n", { mode: 0o600 });
