@@ -1,8 +1,19 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { createHash } from "node:crypto";
+import { matchesMigrationChecksum } from "../scripts/migration-checksum.mjs";
 
 const root = new URL("../", import.meta.url);
+
+test("migration checksums allow historical line endings but reject changed SQL", () => {
+  const sql = 'CREATE TABLE "example" (id INT);\n';
+  const hash = (value) => createHash("sha256").update(value).digest("hex");
+  assert.equal(matchesMigrationChecksum(Buffer.from(sql + "\n"), hash(sql)), true);
+  assert.equal(matchesMigrationChecksum(Buffer.from(sql), hash(sql.replaceAll("\n", "\r\n"))), true);
+  assert.equal(matchesMigrationChecksum(Buffer.from(sql), hash(sql.replace("INT", "TEXT"))), false);
+  assert.equal(matchesMigrationChecksum(Buffer.from(sql), hash(sql + "DROP TABLE example;")), false);
+});
 
 test("daily backup encrypts before B2 and never persists a plaintext dump", async () => {
   const workflow = await readFile(

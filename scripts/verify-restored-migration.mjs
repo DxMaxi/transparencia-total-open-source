@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import pg from "pg";
 import { resolveDisposableDatabaseTarget } from "./bootstrap-supabase-test-database.mjs";
+import { matchesMigrationChecksum } from "./migration-checksum.mjs";
 
 // Fingerprints stay on the ephemeral runner. Only aggregate outcomes are published.
 const quote = (value) => `"${value.replaceAll('"', '""')}"`;
@@ -54,7 +54,7 @@ try {
     assert.deepEqual(migrations.map((row) => row.migration_name), expected);
     for (const migration of migrations) {
       const bytes = await readFile(new URL(`${migration.migration_name}/migration.sql`, migrationRoot));
-      assert.equal(migration.checksum, createHash("sha256").update(bytes).digest("hex"),
+      assert.ok(matchesMigrationChecksum(bytes, migration.checksum),
         `Checksum de migração divergente: ${migration.migration_name}`);
     }
     const { rows: unsafeTables } = await client.query(`SELECT c.relname FROM pg_class c
