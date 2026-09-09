@@ -10,8 +10,16 @@ ciphertext="$1"
 identity_file="$2"
 emit_section() {
   age --decrypt --identity "$identity_file" "$ciphertext" \
-    | docker run --rm --network host -i postgres:17 pg_restore \
-        --file=- --section="$1" --clean --if-exists --no-owner --no-privileges --exit-on-error
+    | {
+        section_status=0
+        docker run --rm --network host -i postgres:17 pg_restore \
+          --file=- --section="$1" --clean --if-exists --no-owner --no-privileges --exit-on-error \
+          || section_status=$?
+        # pg_restore may finish a section before EOF. Drain the ciphertext stream
+        # so age still authenticates every chunk; never waive SIGPIPE/integrity errors.
+        cat >/dev/null
+        exit "$section_status"
+      }
 }
 (
   # COMMIT is emitted only after every decrypt/restore producer succeeds.
