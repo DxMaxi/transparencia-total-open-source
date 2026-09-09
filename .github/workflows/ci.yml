@@ -30,15 +30,17 @@ jobs:
       - run: npm run build:next
       - run: npm run verify:next-artifact
       - name: Instalar Chromium para E2E local
-        run: npx playwright install --with-deps chromium
-      - name: Verificar a interface construída num navegador real
+        run: |
+          bash scripts/prepare-ubuntu-apt.sh
+          npx playwright install --with-deps chromium
+      - name: Verificar a interface construÃ­da num navegador real
         run: npx playwright test tests/e2e/public-site.spec.js --workers=1
         env:
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
           PLAYWRIGHT_START_SERVER: "1"
-      - name: Aplicar orçamento móvel repetível
+      - name: Aplicar orÃ§amento mÃ³vel repetÃ­vel
         run: npm run performance:mobile
-      - name: Guardar diagnóstico Lighthouse apenas quando falhar
+      - name: Guardar diagnÃ³stico Lighthouse apenas quando falhar
         if: failure()
         uses: actions/upload-artifact@v7
         with:
@@ -46,7 +48,7 @@ jobs:
           path: .sites-runtime/lighthouse/
           if-no-files-found: ignore
           retention-days: 7
-      - name: Guardar diagnóstico E2E apenas quando falhar
+      - name: Guardar diagnÃ³stico E2E apenas quando falhar
         if: failure()
         uses: actions/upload-artifact@v7
         with:
@@ -88,7 +90,7 @@ jobs:
       - name: Verificar paridade do runtime Python
         run: python backend/scripts/check_python_runtime_policy.py --check-interpreter
       - run: npm ci
-      - name: Preparar contrato Supabase apenas na base descartável
+      - name: Preparar contrato Supabase apenas na base descartÃ¡vel
         run: npm run db:test:bootstrap-supabase
         env:
           ENVIRONMENT: test

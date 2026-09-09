@@ -34,7 +34,7 @@ jobs:
           python-version-file: .python-version
           cache: pip
 
-      - name: Validar destino europeu e configuração
+      - name: Validar destino europeu e configuraÃ§Ã£o
         shell: bash
         env:
           DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
@@ -50,7 +50,7 @@ jobs:
           test "$B2_S3_ENDPOINT" = "https://s3.${B2_S3_REGION}.backblazeb2.com"
           [[ "$BACKUP_AGE_RECIPIENT" =~ ^age1[0-9a-z]+$ ]]
 
-      - name: Confirmar privilégio mínimo da chave B2
+      - name: Confirmar privilÃ©gio mÃ­nimo da chave B2
         working-directory: backend
         env:
           B2_KEY_ID: ${{ secrets.B2_BACKUP_KEY_ID }}
@@ -62,10 +62,11 @@ jobs:
           --prefix "database/"
           --s3-endpoint "$B2_S3_ENDPOINT"
 
-      - name: Preparar ferramentas compatíveis
+      - name: Preparar ferramentas compatÃ­veis
         shell: bash
         run: |
           set -euo pipefail
+          bash scripts/prepare-ubuntu-apt.sh
           sudo apt-get update
           sudo apt-get install --yes age
           python -m pip install --upgrade pip
@@ -74,7 +75,7 @@ jobs:
           docker --version
           docker pull postgres:17
 
-      - name: Inventariar produção antes da cópia
+      - name: Inventariar produÃ§Ã£o antes da cÃ³pia
         working-directory: backend
         env:
           DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
@@ -83,7 +84,7 @@ jobs:
           python -m scripts.capture_database_inventory
           --output "$RUNNER_TEMP/database-inventory-before.json"
 
-      - name: Criar cópia lógica cifrada sem plaintext em disco
+      - name: Criar cÃ³pia lÃ³gica cifrada sem plaintext em disco
         id: backup
         shell: bash
         working-directory: backend
@@ -130,7 +131,7 @@ jobs:
             echo "age_version=$age_version"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Inventariar produção depois da cópia
+      - name: Inventariar produÃ§Ã£o depois da cÃ³pia
         working-directory: backend
         env:
           DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
@@ -139,7 +140,7 @@ jobs:
           python -m scripts.capture_database_inventory
           --output "$RUNNER_TEMP/database-inventory-after.json"
 
-      - name: Construir manifesto e bloquear cópia inconsistente
+      - name: Construir manifesto e bloquear cÃ³pia inconsistente
         working-directory: backend
         env:
           CIPHERTEXT: ${{ steps.backup.outputs.ciphertext }}
@@ -245,7 +246,7 @@ jobs:
             echo "ciphertext_size=$ciphertext_size"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Registar prova não sensível
+      - name: Registar prova nÃ£o sensÃ­vel
         shell: bash
         run: |
           {
@@ -256,11 +257,11 @@ jobs:
             echo "- SHA-256 cifrado: \`${{ steps.upload.outputs.ciphertext_sha256 }}\`"
             echo "- Tamanho cifrado: ${{ steps.upload.outputs.ciphertext_size }} bytes"
             echo "- SHA-256 do manifesto: \`${{ steps.upload.outputs.manifest_sha256 }}\`"
-            echo "- Object Lock: COMPLIANCE até ${{ steps.backup.outputs.retain_until }}"
-            echo "- Plaintext persistido: não"
+            echo "- Object Lock: COMPLIANCE atÃ© ${{ steps.backup.outputs.retain_until }}"
+            echo "- Plaintext persistido: nÃ£o"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Remover ficheiros temporários
+      - name: Remover ficheiros temporÃ¡rios
         if: ${{ always() }}
         shell: bash
         run: |
