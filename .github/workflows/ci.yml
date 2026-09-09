@@ -106,3 +106,9 @@ jobs:
       - run: ruff format --check backend
       - run: mypy --config-file backend/pyproject.toml backend/app
       - run: pytest backend
+      - name: Provar restauro cifrado da V5 com dados sintéticos e referências Auth
+        run: |
+          bash scripts/prepare-ubuntu-apt.sh
+          sudo apt-get update
+          sudo apt-get install --yes age
+          bash scripts/test-v5-backup-roundtrip.sh

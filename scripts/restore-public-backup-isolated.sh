@@ -3,7 +3,7 @@
 set -euo pipefail
 test "$#" -eq 2
 case "${PGDATABASE:-}" in
-  postgresql://postgres:restore-drill-only@localhost:5432/transparencia_restore_test|postgresql://postgres:restore-drill-only@localhost:5432/transparencia_v5_roundtrip_test) ;;
+  postgresql://postgres:restore-drill-only@localhost:5432/transparencia_restore_test|postgresql://postgres:restore-drill-only@localhost:5432/transparencia_v5_roundtrip_test|postgresql://postgres:postgres@localhost:5432/transparencia_v5_roundtrip_test) ;;
   *) echo "O restauro recusa qualquer destino fora dos dois PostgreSQL efémeros." >&2; exit 1 ;;
 esac
 ciphertext="$1"
