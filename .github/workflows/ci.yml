@@ -30,7 +30,9 @@ jobs:
       - run: npm run build:next
       - run: npm run verify:next-artifact
       - name: Instalar Chromium para E2E local
-        run: npx playwright install --with-deps chromium
+        run: |
+          bash scripts/prepare-ubuntu-apt.sh
+          npx playwright install --with-deps chromium
       - name: Verificar a interface construída num navegador real
         run: npx playwright test tests/e2e/public-site.spec.js --workers=1
         env:
@@ -104,3 +106,9 @@ jobs:
       - run: ruff format --check backend
       - run: mypy --config-file backend/pyproject.toml backend/app
       - run: pytest backend
+      - name: Provar restauro cifrado da V5 com dados sintéticos e referências Auth
+        run: |
+          bash scripts/prepare-ubuntu-apt.sh
+          sudo apt-get update
+          sudo apt-get install --yes age
+          bash scripts/test-v5-backup-roundtrip.sh

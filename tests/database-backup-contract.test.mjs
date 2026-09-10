@@ -1,8 +1,41 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { createHash } from "node:crypto";
+import { matchesMigrationChecksum } from "../scripts/migration-checksum.mjs";
+import { resolveProductionMigrationTarget } from "../scripts/production-migration-target.mjs";
 
 const root = new URL("../", import.meta.url);
+
+test("production migration refuses other projects, transaction pooling and missing authorization", () => {
+  const base = {
+    ENVIRONMENT: "production",
+    CONFIRM_PRODUCTION_SCHEMA_MIGRATION: "MIGRAR-V5",
+    EXPECTED_SUPABASE_PROJECT_REF: "kxvgungbqalofbqytwbn",
+    DATABASE_URL: "postgresql://postgres:test-only@db.kxvgungbqalofbqytwbn.supabase.co:5432/postgres?sslmode=require",
+  };
+  assert.equal(resolveProductionMigrationTarget(base).databaseName, "postgres");
+  assert.throws(() => resolveProductionMigrationTarget({ ...base, CONFIRM_PRODUCTION_SCHEMA_MIGRATION: "" }));
+  for (const url of [
+    "postgresql://postgres:test-only@localhost:5432/postgres?sslmode=require",
+    "postgresql://postgres:test-only@db.otherproject.supabase.co:5432/postgres?sslmode=require",
+    "postgresql://postgres.otherproject:test-only@aws-0-eu-central-1.pooler.supabase.com:5432/postgres?sslmode=require",
+    base.DATABASE_URL.replace(":5432/", ":6543/"),
+    base.DATABASE_URL.replace("sslmode=require", "sslmode=disable"),
+  ]) assert.throws(() => resolveProductionMigrationTarget({ ...base, DATABASE_URL: url }));
+  assert.equal(resolveProductionMigrationTarget({ ...base,
+    DATABASE_URL: "postgresql://postgres.kxvgungbqalofbqytwbn:test-only@aws-0-eu-central-1.pooler.supabase.com:5432/postgres?sslmode=require",
+  }).databaseName, "postgres");
+});
+
+test("migration checksums allow historical line endings but reject changed SQL", () => {
+  const sql = 'CREATE TABLE "example" (id INT);\n';
+  const hash = (value) => createHash("sha256").update(value).digest("hex");
+  assert.equal(matchesMigrationChecksum(Buffer.from(sql + "\n"), hash(sql)), true);
+  assert.equal(matchesMigrationChecksum(Buffer.from(sql), hash(sql.replaceAll("\n", "\r\n"))), true);
+  assert.equal(matchesMigrationChecksum(Buffer.from(sql), hash(sql.replace("INT", "TEXT"))), false);
+  assert.equal(matchesMigrationChecksum(Buffer.from(sql), hash(sql + "DROP TABLE example;")), false);
+});
 
 test("daily backup encrypts before B2 and never persists a plaintext dump", async () => {
   const workflow = await readFile(
@@ -39,7 +72,7 @@ test("restore drill is manual, isolated and checks proof before decrypting", asy
     "utf8",
   );
   const verifyIndex = workflow.indexOf("verify_database_backup_ciphertext");
-  const decryptIndex = workflow.indexOf("age --decrypt");
+  const decryptIndex = workflow.indexOf("bash scripts/restore-public-backup-isolated.sh");
   const scopeCheckIndex = workflow.indexOf("verify_b2_application_key_scope");
   const downloadIndex = workflow.indexOf("aws s3api get-object");
   const ageInstallIndex = workflow.indexOf("sudo apt-get install --yes age");
@@ -70,14 +103,14 @@ test("restore drill is manual, isolated and checks proof before decrypting", asy
   assert.match(workflow, /não contém uma identidade privada age válida/);
   assert.match(workflow, /não corresponde ao destinatário usado no backup/);
   assert.match(workflow, /trap 'rm -f "\$identity_file"' EXIT/);
-  assert.equal(workflow.match(/unset BACKUP_AGE_IDENTITY/g)?.length, 2);
+  assert.equal(workflow.match(/unset BACKUP_AGE_IDENTITY/g)?.length, 3);
   assert.doesNotMatch(workflow, /echo[^\n]*\$derived_recipient/);
   assert.ok(scopeCheckIndex >= 0 && scopeCheckIndex < downloadIndex);
   assert.ok(ageInstallIndex >= 0 && ageInstallIndex < identityCheckIndex);
   assert.ok(identityCheckIndex >= 0 && identityCheckIndex < downloadIndex);
   assert.ok(identityCheckIndex < decryptIndex);
   assert.ok(verifyIndex >= 0 && verifyIndex < decryptIndex);
-  assert.match(workflow, /pg_restore --dbname "\$PGDATABASE"/);
+  assert.match(workflow, /restore-public-backup-isolated.sh/);
   assert.doesNotMatch(workflow, /BACKUP_AGE_IDENTITY" == \*"AGE-SECRET-KEY-/);
   assert.doesNotMatch(workflow, /PRODUCTION_DATABASE_URL/);
   assert.doesNotMatch(workflow, /schedule:\s*\n/);

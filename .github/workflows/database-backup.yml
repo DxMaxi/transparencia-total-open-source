@@ -66,6 +66,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          bash scripts/prepare-ubuntu-apt.sh
           sudo apt-get update
           sudo apt-get install --yes age
           python -m pip install --upgrade pip

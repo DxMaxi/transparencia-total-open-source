@@ -15,6 +15,11 @@ on:
         description: SHA-256 do ficheiro de manifesto indicado pelo backup
         required: true
         type: string
+      rehearse_migrations:
+        description: Ensaiar migrações pendentes sobre a cópia restaurada
+        required: false
+        default: false
+        type: boolean
       confirmation:
         description: Escreva RESTAURO para confirmar o ensaio isolado
         required: true
@@ -41,7 +46,7 @@ jobs:
       AWS_DEFAULT_REGION: ${{ vars.B2_S3_REGION }}
       AWS_REGION: ${{ vars.B2_S3_REGION }}
       AWS_EC2_METADATA_DISABLED: "true"
-      RESTORE_DATABASE_URL: postgresql://postgres:restore-drill-only@localhost:5432/transparencia_restore
+      RESTORE_DATABASE_URL: postgresql://postgres:restore-drill-only@localhost:5432/transparencia_restore_test
       PYTHONUNBUFFERED: "1"
     services:
       postgres:
@@ -49,11 +54,11 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: restore-drill-only
-          POSTGRES_DB: transparencia_restore
+          POSTGRES_DB: transparencia_restore_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d transparencia_restore"
+          --health-cmd "pg_isready -U postgres -d transparencia_restore_test"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -115,6 +120,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          bash scripts/prepare-ubuntu-apt.sh
           sudo apt-get update
           sudo apt-get install --yes age
           python -m pip install --upgrade pip
@@ -197,12 +203,7 @@ jobs:
           printf '%s\n' "$BACKUP_AGE_IDENTITY" > "$identity_file"
           unset BACKUP_AGE_IDENTITY
           chmod 600 "$identity_file"
-          age --decrypt --identity "$identity_file" \
-            "$CIPHERTEXT" \
-            | docker run --rm --network host -i -e PGDATABASE postgres:17 \
-                pg_restore --dbname "$PGDATABASE" \
-                  --clean --if-exists --no-owner --no-privileges \
-                  --exit-on-error --single-transaction
+          bash scripts/restore-public-backup-isolated.sh "$CIPHERTEXT" "$identity_file"
           rm -f "$identity_file"
 
       - name: Verificar arquivo oficial restaurado
@@ -283,10 +284,85 @@ jobs:
             echo "rto=$rto"
           } >> "$GITHUB_OUTPUT"
 
+      - uses: actions/setup-node@v6
+        if: ${{ inputs.rehearse_migrations }}
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Ensaiar migrações apenas sobre a cópia isolada
+        if: ${{ inputs.rehearse_migrations }}
+        shell: bash
+        env:
+          DATABASE_URL: ${{ env.RESTORE_DATABASE_URL }}
+          ENVIRONMENT: test
+          CONFIRM_DISPOSABLE_DATABASE: "true"
+        run: |
+          set -euo pipefail
+          npm ci
+          node scripts/bootstrap-supabase-test-database.mjs
+          node scripts/verify-restored-migration.mjs capture "$RUNNER_TEMP/original-data-fingerprints.json"
+          npm run db:deploy
+          node scripts/verify-restored-migration.mjs verify "$RUNNER_TEMP/original-data-fingerprints.json" "$RUNNER_TEMP/migration-rehearsal.json"
+
+      - name: Provar um segundo restauro com esquema V5 e referência editorial a Auth
+        if: ${{ inputs.rehearse_migrations }}
+        shell: bash
+        env:
+          DATABASE_URL: ${{ env.RESTORE_DATABASE_URL }}
+          PGDATABASE: ${{ env.RESTORE_DATABASE_URL }}
+          ENVIRONMENT: test
+          CONFIRM_DISPOSABLE_DATABASE: "true"
+          BACKUP_AGE_IDENTITY: ${{ secrets.BACKUP_AGE_IDENTITY }}
+        run: |
+          set -euo pipefail
+          umask 077
+          identity_file="$RUNNER_TEMP/database-restore-age-identity.txt"
+          printf '%s\n' "$BACKUP_AGE_IDENTITY" > "$identity_file"
+          unset BACKUP_AGE_IDENTITY
+          docker run --rm --network host -i -e PGDATABASE postgres:17 psql --dbname "$PGDATABASE" --set ON_ERROR_STOP=1 >/dev/null <<'SQL'
+          INSERT INTO auth.users(id) VALUES ('00000000-0000-4000-8000-000000000005');
+          INSERT INTO public.staff_profiles(id,auth_user_id,public_alias,role,active,updated_at)
+          VALUES ('restore-drill-inert-staff','00000000-0000-4000-8000-000000000005','restore-drill-inert-staff','ADMIN',false,NOW());
+          CREATE DATABASE transparencia_v5_roundtrip_test;
+          SQL
+          node scripts/verify-restored-migration.mjs capture "$RUNNER_TEMP/v5-roundtrip-fingerprints.json"
+          docker run --rm --network host -e PGDATABASE postgres:17 pg_dump --dbname "$PGDATABASE" --format=custom --schema=public --no-owner --no-privileges \
+            | age --recipient "$BACKUP_AGE_RECIPIENT" > "$RUNNER_TEMP/v5-roundtrip.dump.age"
+          export PGDATABASE=postgresql://postgres:restore-drill-only@localhost:5432/transparencia_v5_roundtrip_test
+          bash scripts/restore-public-backup-isolated.sh "$RUNNER_TEMP/v5-roundtrip.dump.age" "$identity_file"
+          export DATABASE_URL="$PGDATABASE"
+          node scripts/bootstrap-supabase-test-database.mjs
+          node scripts/verify-restored-migration.mjs verify "$RUNNER_TEMP/v5-roundtrip-fingerprints.json" "$RUNNER_TEMP/v5-roundtrip.json"
+          rm -f "$identity_file" "$RUNNER_TEMP/v5-roundtrip.dump.age" "$RUNNER_TEMP/v5-roundtrip-fingerprints.json"
+
+      - name: Conservar prova agregada do restauro V5
+        if: ${{ inputs.rehearse_migrations }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: v5-roundtrip-${{ github.run_id }}
+          path: ${{ runner.temp }}/v5-roundtrip.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Conservar apenas a prova agregada das migrações
+        if: ${{ inputs.rehearse_migrations }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: migration-rehearsal-${{ github.run_id }}
+          path: ${{ runner.temp }}/migration-rehearsal.json
+          if-no-files-found: error
+          retention-days: 90
+
       - name: Remover chave e cópia antes de publicar a atestação
         shell: bash
         run: |
           rm -f \
+            "$RUNNER_TEMP/v5-roundtrip.dump.age" \
+            "$RUNNER_TEMP/v5-roundtrip-fingerprints.json" \
+            "$RUNNER_TEMP/v5-roundtrip.json" \
+            "$RUNNER_TEMP/original-data-fingerprints.json" \
+            "$RUNNER_TEMP/migration-rehearsal.json" \
             "$RUNNER_TEMP/database-restore-age-identity.txt" \
             "${{ steps.prepare.outputs.ciphertext }}" \
             "${{ steps.prepare.outputs.manifest }}" \
@@ -295,6 +371,7 @@ jobs:
             "$RUNNER_TEMP/database-restore-operational-report.json"
 
       - name: Conservar apenas a atestação não sensível
+        if: ${{ always() && steps.attest.outcome == 'success' }}
         id: artifact
         uses: actions/upload-artifact@v7
         with:
@@ -324,6 +401,11 @@ jobs:
         shell: bash
         run: |
           rm -f \
+            "$RUNNER_TEMP/v5-roundtrip.dump.age" \
+            "$RUNNER_TEMP/v5-roundtrip-fingerprints.json" \
+            "$RUNNER_TEMP/v5-roundtrip.json" \
+            "$RUNNER_TEMP/original-data-fingerprints.json" \
+            "$RUNNER_TEMP/migration-rehearsal.json" \
             "$RUNNER_TEMP/database-restore-age-identity.txt" \
             "${{ steps.prepare.outputs.ciphertext }}" \
             "${{ steps.prepare.outputs.manifest }}" \

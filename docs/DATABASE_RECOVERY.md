@@ -101,3 +101,36 @@ medições desse ensaio, não garantias permanentes; cada ensaio trimestral deve
 sem substituir o histórico.
 
 Referência operacional do provedor: [Backups da base de dados no Supabase](https://supabase.com/docs/guides/platform/backups).
+
+
+## Ensaio V5 sobre uma cópia real (setembro de 2026)
+
+O dispatch `rehearse_migrations=true` acrescenta duas provas à verificação normal do backup:
+
+1. Aplicar as migrações pendentes no PostgreSQL local efémero, comparar contagens e impressões
+   de todas as colunas originais, conferir cada checksum de migração e verificar RLS/privilégios.
+   A única coluna retirada admitida é `organisations.public_nipc`, depois de provar que não tem
+   nenhum valor; qualquer outro desaparecimento ou alteração de conteúdo faz falhar o ensaio.
+2. Acrescentar um perfil editorial inativo exclusivamente sintético, cifrar uma cópia do esquema
+   V5 e restaurá-la numa segunda base efémera. Conferir novamente dados, migrações e isolamento.
+
+O backup cobre `public`, sem contas, sessões, palavras-passe nem fatores MFA de Supabase Auth.
+O restauro isolado cria em `auth.users` somente UUIDs inertes necessários às referências de staff.
+Esses placeholders não são contas funcionais e não provam recuperação de autenticação. A
+reconstituição das contas e associação aos perfis tem de ser tratada separadamente num desastre.
+O helper recusa qualquer destino diferente das duas bases localhost fixadas no workflow.
+
+Como o dump portátil exclui ACLs, o helper repõe a recusa de privilégios browser antes de terminar.
+As impressões de conteúdo e a cópia intermediária cifrada são eliminadas; só resultados agregados
+são guardados nos artefactos. A ausência de COMMIT perante falha mantém o restauro atómico.
+
+
+A comparação de checksums admite somente LF/CRLF e até duas quebras finais, sem alterar qualquer
+byte de conteúdo SQL. As sete diferenças V4 observadas no backup de 09-09 foram reconciliadas
+contra o histórico Git; todas eram exclusivamente quebras de linha. O histórico Prisma fica intacto.
+
+O workflow `production-schema-migration.yml` é manual, exige o commit exato de `main`, confirmação
+`MIGRAR-V5` e um ensaio de menos de 24 horas com as duas provas aprovadas. Verifica repositório,
+evento, commit e ausência de diferenças nas migrações antes de usar o secret de produção. O destino
+é limitado ao projeto Supabase confirmado, com TLS e porta de sessão. Compara o conteúdo antes e
+depois e conserva apenas a prova agregada; não convida contas nem publica conteúdo editorial.
