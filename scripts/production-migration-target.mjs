@@ -1,3 +1,9 @@
+import { fileURLToPath } from "node:url";
+
+export const productionCaPath = fileURLToPath(new URL(
+  "../config/certificates/supabase-prod-ca-2021.crt", import.meta.url,
+));
+
 export function resolveProductionMigrationTarget(environment = process.env) {
   const expectedRef = "kxvgungbqalofbqytwbn";
   if (environment.ENVIRONMENT !== "production" ||
@@ -28,6 +34,12 @@ export function resolveProductionMigrationTarget(environment = process.env) {
   if (!["require", "verify-full", "verify-ca"].includes(url.searchParams.get("sslmode"))) {
     throw new Error("A migração exige TLS obrigatório.");
   }
+  const allowedOptions = new Set(["schema", "sslmode", "connection_limit", "pool_timeout", "connect_timeout"]);
+  if ([...url.searchParams.keys()].some((key) => !allowedOptions.has(key))) {
+    throw new Error("Opção de ligação não autorizada na migração de produção.");
+  }
+  url.searchParams.set("sslmode", "verify-full");
+  url.searchParams.set("sslrootcert", productionCaPath);
   url.searchParams.delete("schema");
   return { connectionString: url.toString(), databaseName: "postgres" };
 }
