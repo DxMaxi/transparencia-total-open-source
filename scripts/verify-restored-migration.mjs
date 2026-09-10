@@ -12,8 +12,16 @@ assert.ok(["capture", "verify"].includes(operation));
 assert.ok(snapshotPath);
 const production = process.env.ENVIRONMENT === "production";
 const target = production ? resolveProductionMigrationTarget() : resolveDisposableDatabaseTarget();
-const client = new pg.Client({ connectionString: target.connectionString });
+const client = new pg.Client({
+  connectionString: target.connectionString,
+  connectionTimeoutMillis: 30_000,
+  statement_timeout: 120_000,
+  query_timeout: 130_000,
+  application_name: "tt-schema-verification",
+});
+console.log(`Verificação ${operation}: a estabelecer ligação validada.`);
 await client.connect();
+console.log("Ligação estabelecida; a verificar a transação de leitura.");
 try {
   await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
   const tables = operation === "capture"
@@ -24,6 +32,7 @@ try {
         GROUP BY table_name ORDER BY table_name`)).rows
     : JSON.parse(await readFile(snapshotPath, "utf8"));
   for (const table of tables) {
+    console.log(`Verificação ${operation}: tabela ${table.name}.`);
     // V5 deliberately retires this legacy column, but only when every value is NULL.
     // No other dropped column is exempt from the original-content comparison.
     if (operation === "capture" && table.name === "organisations" && table.columns.includes("public_nipc")) {
