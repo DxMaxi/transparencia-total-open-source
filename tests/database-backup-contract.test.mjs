@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { createHash } from "node:crypto";
+import { createHash, X509Certificate } from "node:crypto";
 import { matchesMigrationChecksum } from "../scripts/migration-checksum.mjs";
 import { resolveProductionMigrationTarget } from "../scripts/production-migration-target.mjs";
 
@@ -18,7 +18,8 @@ test("production migration refuses other projects, transaction pooling and missi
   const enforced = resolveProductionMigrationTarget({ ...base,
     DATABASE_URL: base.DATABASE_URL.replace("?sslmode=require", "?schema=public"),
   });
-  assert.equal(new URL(enforced.connectionString).searchParams.get("sslmode"), "require");
+  assert.equal(new URL(enforced.connectionString).searchParams.get("sslmode"), "verify-full");
+  assert.match(new URL(enforced.connectionString).searchParams.get("sslrootcert"), /supabase-prod-ca-2021\.crt$/);
   assert.equal(new URL(enforced.connectionString).searchParams.has("schema"), false);
   assert.throws(() => resolveProductionMigrationTarget({ ...base, CONFIRM_PRODUCTION_SCHEMA_MIGRATION: "" }));
   for (const url of [
@@ -30,10 +31,20 @@ test("production migration refuses other projects, transaction pooling and missi
     base.DATABASE_URL.replace("sslmode=require", "sslmode=prefer"),
     base.DATABASE_URL + "&sslmode=disable",
     base.DATABASE_URL + "&ssl=false",
+    base.DATABASE_URL + "&host=localhost",
+    base.DATABASE_URL + "&sslaccept=accept_invalid_certs",
   ]) assert.throws(() => resolveProductionMigrationTarget({ ...base, DATABASE_URL: url }));
   assert.equal(resolveProductionMigrationTarget({ ...base,
     DATABASE_URL: "postgresql://postgres.kxvgungbqalofbqytwbn:test-only@aws-0-eu-central-1.pooler.supabase.com:5432/postgres?sslmode=require",
   }).databaseName, "postgres");
+});
+
+test("production trusts the official pinned Supabase CA", async () => {
+  const certificate = new X509Certificate(await readFile(new URL("config/certificates/supabase-prod-ca-2021.crt", root)));
+  assert.equal(certificate.ca, true);
+  assert.equal(certificate.fingerprint256.replaceAll(":", "").toLowerCase(),
+    "807025ad50d4ed219d2c9c7d299c004f824eb00cf7f65afef607d07b72e6cafa");
+  assert.ok(Date.parse(certificate.validTo) > Date.now());
 });
 
 test("migration checksums allow historical line endings but reject changed SQL", () => {
