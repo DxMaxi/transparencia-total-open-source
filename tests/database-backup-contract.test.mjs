@@ -15,6 +15,11 @@ test("production migration refuses other projects, transaction pooling and missi
     DATABASE_URL: "postgresql://postgres:test-only@db.kxvgungbqalofbqytwbn.supabase.co:5432/postgres?sslmode=require",
   };
   assert.equal(resolveProductionMigrationTarget(base).databaseName, "postgres");
+  const enforced = resolveProductionMigrationTarget({ ...base,
+    DATABASE_URL: base.DATABASE_URL.replace("?sslmode=require", "?schema=public"),
+  });
+  assert.equal(new URL(enforced.connectionString).searchParams.get("sslmode"), "require");
+  assert.equal(new URL(enforced.connectionString).searchParams.has("schema"), false);
   assert.throws(() => resolveProductionMigrationTarget({ ...base, CONFIRM_PRODUCTION_SCHEMA_MIGRATION: "" }));
   for (const url of [
     "postgresql://postgres:test-only@localhost:5432/postgres?sslmode=require",
@@ -22,6 +27,9 @@ test("production migration refuses other projects, transaction pooling and missi
     "postgresql://postgres.otherproject:test-only@aws-0-eu-central-1.pooler.supabase.com:5432/postgres?sslmode=require",
     base.DATABASE_URL.replace(":5432/", ":6543/"),
     base.DATABASE_URL.replace("sslmode=require", "sslmode=disable"),
+    base.DATABASE_URL.replace("sslmode=require", "sslmode=prefer"),
+    base.DATABASE_URL + "&sslmode=disable",
+    base.DATABASE_URL + "&ssl=false",
   ]) assert.throws(() => resolveProductionMigrationTarget({ ...base, DATABASE_URL: url }));
   assert.equal(resolveProductionMigrationTarget({ ...base,
     DATABASE_URL: "postgresql://postgres.kxvgungbqalofbqytwbn:test-only@aws-0-eu-central-1.pooler.supabase.com:5432/postgres?sslmode=require",
