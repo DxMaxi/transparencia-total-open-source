@@ -55,9 +55,9 @@ test("MFA preserves the installed SDK image URL instead of encoding a second pre
   try {
     process.env.NEXT_PUBLIC_API_URL = "https://api.example.test";
     globalThis.fetch = async () => new Response("{}", { status: 200 });
-    const module = { exports: {} };
-    new Function("require", "module", "exports", output)(mockedRequire, module, module.exports);
-    module.exports.AdminMfaSetup({ configured: true, next: "/admin/revisao" });
+    const componentModule = { exports: {} };
+    new Function("require", "module", "exports", output)(mockedRequire, componentModule, componentModule.exports);
+    componentModule.exports.AdminMfaSetup({ configured: true, next: "/admin/revisao" });
     const state = await preparedState.promise;
     assert.equal(state.qrCode, enrolled.data.totp.qr_code);
     assert.ok(state.qrCode.slice(state.qrCode.indexOf(",") + 1).startsWith("<svg"));
