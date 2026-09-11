@@ -5,6 +5,7 @@ test "${RUNNER_OS:-}" = Linux
 test -n "${RUNNER_TEMP:-}"
 export ENVIRONMENT=test CONFIRM_DISPOSABLE_DATABASE=true
 export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/transparencia_total_test
+node --test tests/database-fingerprint.integration.test.mjs
 identity_file="$RUNNER_TEMP/synthetic-roundtrip.key"
 ciphertext="$RUNNER_TEMP/synthetic-roundtrip.dump.age"
 fingerprints="$RUNNER_TEMP/synthetic-roundtrip-fingerprints.json"

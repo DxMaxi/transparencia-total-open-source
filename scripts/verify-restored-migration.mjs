@@ -4,9 +4,9 @@ import pg from "pg";
 import { resolveDisposableDatabaseTarget } from "./bootstrap-supabase-test-database.mjs";
 import { matchesMigrationChecksum } from "./migration-checksum.mjs";
 import { resolveProductionMigrationTarget } from "./production-migration-target.mjs";
+import { tableFingerprintQuery } from "./database-fingerprint.mjs";
 
 // Fingerprints stay on the ephemeral runner. Only aggregate outcomes are published.
-const quote = (value) => `"${value.replaceAll('"', '""')}"`;
 const [operation, snapshotPath, reportPath] = process.argv.slice(2);
 assert.ok(["capture", "verify"].includes(operation));
 assert.ok(snapshotPath);
@@ -25,7 +25,8 @@ console.log("Ligação estabelecida; a verificar a transação de leitura.");
 try {
   await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
   const tables = operation === "capture"
-    ? (await client.query(`SELECT table_name AS name, array_agg(column_name::text ORDER BY ordinal_position) AS columns
+    ? (await client.query(`SELECT table_name AS name, array_agg(column_name::text ORDER BY ordinal_position) AS columns,
+        coalesce(array_agg(column_name::text ORDER BY ordinal_position) FILTER (WHERE data_type='bytea'), '{}'::text[]) AS bytea_columns
         FROM information_schema.columns WHERE table_schema = 'public'
         AND table_name <> '_prisma_migrations'
         AND table_name IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public')
@@ -41,10 +42,7 @@ try {
       table.retired_empty_columns = ["public_nipc"];
       table.columns = table.columns.filter((column) => column !== "public_nipc");
     }
-    const { rows: [result] } = await client.query(`SELECT count(*)::text AS count,
-      md5(coalesce(string_agg(fingerprint, '' ORDER BY fingerprint COLLATE "C"), '')) AS fingerprint
-      FROM (SELECT md5(row_to_json(original)::text) AS fingerprint
-        FROM (SELECT ${table.columns.map(quote).join(",")} FROM public.${quote(table.name)}) original) fingerprints`);
+    const { rows: [result] } = await client.query(tableFingerprintQuery(table));
     if (operation === "capture") Object.assign(table, result);
     else {
       assert.equal(result.count, table.count, `Contagem alterada: ${table.name}`);
