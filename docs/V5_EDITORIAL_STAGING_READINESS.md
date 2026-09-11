@@ -144,7 +144,8 @@ coletiva partidária nunca é convertida num voto individual.
 Parar sem promover dados se ocorrer qualquer uma destas situações:
 
 - token `HS256`, emissor, audiência ou `kid` inesperados;
-- `aal1` aceite numa rota editorial;
+- `aal1` aceite numa operação editorial privada; a consulta inicial de elegibilidade da sessão
+  é a exceção deliberada para preparar o MFA e não permite consultar processos;
 - conta inativa ainda aceite;
 - privilégio efetivo de `anon` ou `authenticated` numa tabela ou função editorial;
 - default global ou específico de `public` que conceda a um papel browser acesso a um objeto

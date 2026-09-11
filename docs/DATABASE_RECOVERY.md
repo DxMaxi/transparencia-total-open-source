@@ -3,7 +3,14 @@
 Este runbook descreve o estado real e o ensaio necessário para recuperar o PostgreSQL do projeto.
 Não inclui credenciais e não promete uma capacidade que ainda não tenha sido testada.
 
-## Estado atual
+## Estado e leitura deste runbook
+
+Os números da secção seguinte são a prova histórica de agosto, não o volume atual. As provas
+recentes e a situação da migração V5 estão no [registo de entrega](V5_DELIVERY_2026-09-09.md).
+Um ensaio que autorize a migração protegida deve ter menos de 24 horas; uma prova antiga não
+substitui esse requisito. A agenda de backup não garante a hora efetiva de execução nem o RPO.
+
+## Baseline histórica — 9 de agosto de 2026
 
 - Provedor: Supabase/PostgreSQL, projeto de produção `ACTIVE_HEALTHY`, plano Free confirmado em
   9 de agosto de 2026.

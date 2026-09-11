@@ -2,13 +2,17 @@
 
 ## Matriz atual
 
+“Implementado” descreve o contrato de código, não prova uma operação remota nem cobertura
+publicada. Os ensaios por ambiente e as lacunas correntes constam da
+[checklist V5](V5_RELEASE_CHECKLIST.md). Os checkpoints V4 conservam os resultados da sua data.
+
 | Fonte | Estado técnico | Implementado | Limite conhecido |
 |---|---|---|---|
 | Assembleia da República | Release candidate | Catálogos, bytes PostgreSQL, deputados, reuniões observadas, iniciativas, votações, snapshots e revisão/publicação fail-closed | Reuniões são as referidas nos eventos de votação, não a agenda completa; nem toda votação é nominal |
 | Diário da República | Funcional em staging | Extração por URL ELI, bytes exactos, arquivo atestado e snapshot privado append-only | Sem promoção pública; feed RSS só após confirmação documental |
 | Entidade para a Transparência | Funcional em staging privado, com contingência explícita | Índice canónico com bytes exactos; perante falha de rede, timeout ou HTTP 429, apenas o portal oficial alternativo é arquivado como `PARTIAL` | O portal alternativo não equivale ao índice, não recolhe declarações nem autoriza publicação; qualquer tratamento exige revisão jurídica própria |
-| Portal BASE / dados.gov.pt | Âmbito V5.49–V5.51 preparado; ingestão funcional em staging e circuito público específico implementado apenas no código | Catálogo anual 2012–ano corrente, arquivo, lote append-only, caso privado por contrato exato e porta ADMIN+MFA de publicação/retirada com fotografia imutável | Migração e operações V5.51 ainda não executadas em staging ou produção; nenhum contrato, parte, organização ou relação foi publicado; API direta de grande volume pode exigir registo e autorização |
-| IRN / Publicações de atos societários | V5.52 preparada localmente, sem ingestão real | Observação privada com fonte individual arquivada, referência não fiscal, HMAC com pepper e proposta editorial própria | Sem recolha automática, cobertura integral, publicação de organizações ou associação de partes; avaliação jurídica e ativação de staging pendentes |
+| Portal BASE / dados.gov.pt | Âmbito V5.49–V5.54 implementado; esquema aplicado em produção em 11-09-2026 | Catálogo anual 2012–ano corrente, arquivo, lote append-only, caso privado por contrato exato, publicação/retirada factual e candidatos privados de correspondência | Ensaios remotos e ativação editorial pendentes; a migração não publica contratos, partes, organizações ou relações; API direta de grande volume pode exigir registo e autorização |
+| IRN / Publicações de atos societários | V5.52–V5.54 implementadas, sem prova de ingestão real | Observação privada, fonte individual arquivada, HMAC privado; publicação/retirada específica de organizações e candidatos exatos privados | Sem recolha automática, cobertura integral ou relações públicas; avaliação jurídica e ensaios remotos pendentes |
 | Tribunal de Contas | Colector privado funcional | Índice oficial preservado com URL, data, SHA-256 e recursos deduplicados | Sem publicação nem interpretação de decisões ou culpa |
 | Parlamento Europeu | Colector privado funcional | Portal de dados abertos preservado com URL, data, SHA-256 e recursos deduplicados | Sem publicação nem atribuição individual sem voto nominal explícito |
 | Portal da Transparência do SNS | Colector privado funcional | Índice oficial preservado com URL, data, SHA-256 e `SyncRun` | Não publica indicadores nem representa cobertura territorial nacional |

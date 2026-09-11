@@ -101,7 +101,8 @@ se as provas imutáveis deixarem de coincidir.
 
 ## Boletins
 
-O gerador de boletins deve receber apenas resumos `APPROVED`, ordenar por publicação e agrupar por
+O circuito de boletins previsto deve receber apenas versões efetivamente publicadas e vigentes;
+uma aprovação `APPROVED` isolada não autoriza divulgação. Deve ordenar por publicação e agrupar por
 tema através de taxonomia editorial versionada. Cada boletim inclui período, critérios, lista de
 diplomas, exclusões e links individuais. O balanço de mandato não converte número de diplomas em
 avaliação de desempenho.

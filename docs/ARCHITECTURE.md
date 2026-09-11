@@ -23,8 +23,9 @@ sem converter ausência de dados em conclusões e sem permitir que um modelo de 
 O App Router renderiza as páginas públicas. Os componentes interativos limitam-se a navegação,
 filtros e formulários explícitos. O manifesto não regista automaticamente o service worker. O modo
 offline e os alertas têm escolhas separadas; pedir alertas não ativa a cache pública, e nenhuma
-permissão é pedida sem consentimento. O frontend conhece apenas a chave VAPID pública, nunca a chave
-privada, e não acede diretamente à base de dados.
+permissão é pedida sem consentimento. O frontend conhece a chave VAPID pública e a chave publicável
+Supabase para autenticação; nunca recebe chaves privadas, de serviço ou da base de dados.
+As consultas editoriais passam pela API, que verifica a autorização.
 As leituras seguem a política de timeout, cache e observabilidade sem dados pessoais descrita em
 [PUBLIC_API_RESILIENCE.md](PUBLIC_API_RESILIENCE.md), preservando indisponibilidade explícita.
 
@@ -66,7 +67,7 @@ idempotentes:
 3. calcular hash e guardar original imutável;
 4. normalizar para tabelas de staging;
 5. comparar contagens e campos obrigatórios;
-6. promover a versão;
+6. submeter a revisão humana e, após aprovação, a uma decisão explícita de publicação;
 7. criar alertas apenas após promoção.
 
 Cada execução abre um `SyncRun`. Falha parcial conserva avisos e não substitui a última versão
@@ -151,7 +152,10 @@ não fiscais, proveniência e hashes de confirmação do contexto. O servidor re
 de criar `ORGANISATION_IDENTITY/PENDING`. Revisão e aprovação mantêm zero organizações públicas,
 partes, correspondências e relações. As vias genéricas não criam nem corrigem estes processos e
 a base recusa estados/eventos públicos. Uma correção exige nova prova e observação. A publicação
-de organizações e a associação exata às partes continuam a exigir portas independentes.
+de organizações e a associação exata às partes exigem portas independentes: V5.53 implementa
+publicação/retirada de organizações; V5.54 cria apenas candidatos privados de correspondência
+exata, em `PENDING_REVIEW`, sem divulgar HMAC nem criar relações públicas. A publicação de
+relações factuais V5.55 continua pendente. Implementação não comprova ativação editorial remota.
 
 ### Direito de resposta
 
@@ -178,8 +182,9 @@ candidatos e notas internas não fazem parte das projeções SQL.
 ## Segurança
 
 - SSRF mitigado por allowlist e revalidação de redirecionamento.
-- Endpoints de escrita sensíveis protegidos por chave administrativa; em produção,
-  substituir por OIDC, RBAC e rotação.
+- O circuito editorial V5 exige JWT Supabase validado, perfil staff ativo, função autorizada
+  e MFA `aal2`. A consulta inicial de elegibilidade da sessão aceita `aal1` para preparar o MFA.
+  A chave administrativa legada não substitui esta autorização editorial.
 - Segredos apenas em variáveis do backend.
 - CORS enumerado, sem cookies cross-origin.
 - Cabeçalhos CSP mínimos bloqueiam objetos, `base-uri` externa e enquadramento; qualquer política

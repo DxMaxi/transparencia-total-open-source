@@ -1,5 +1,13 @@
 # Publicação
 
+## Instalação existente e estado da V5
+
+A instalação deste projeto usa Vercel, API Render e PostgreSQL/Auth Supabase. O `render.yaml`
+é uma alternativa para uma instalação nova com PostgreSQL Render; não representa a base existente
+e não deve ser aplicado para substituir a ligação Supabase de produção. Fly.io é outra alternativa.
+Consulte o [índice documental](README.md) e a [checklist V5](V5_RELEASE_CHECKLIST.md) antes de
+anunciar uma versão pública concluída. Um deployment saudável não fecha os requisitos editoriais.
+
 ## Topologia recomendada
 
 - Vercel: Next.js e CDN.
@@ -14,6 +22,9 @@
 2. Altere o contacto em `OFFICIAL_USER_AGENT`.
 3. Identifique o responsável real nas variáveis legais públicas; não publique placeholders.
 4. Crie `ADMIN_API_KEY` aleatória com pelo menos 32 bytes.
+   Esta chave serve apenas operações legadas que ainda a aceitem. O painel V5 exige Supabase Auth,
+   convite, perfil staff ativo, função autorizada e MFA `aal2`. Configure o URL público e o redirect
+   exato de confirmação no Auth; o responsável configura o seu segundo fator diretamente.
 5. Documente retenção, capacidade de recuperação e alertas do PostgreSQL. Se o plano não tiver
    backup, registe expressamente esse risco e não anuncie recuperação garantida. Siga o
    [runbook de recuperação](DATABASE_RECOVERY.md) e a
@@ -30,6 +41,8 @@
    adaptador do preview incluído no projeto.
 4. Configure:
    - `NEXT_PUBLIC_API_URL=https://api.example.org`
+   - `NEXT_PUBLIC_SUPABASE_URL=…` para o projeto Auth autorizado.
+   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=…` (chave publicável, nunca `service_role` ou segredo).
    - `NEXT_PUBLIC_VAPID_PUBLIC_KEY=…` apenas quando os alertas estiverem ativados; esta é a chave
      pública e não autoriza envios.
    - `NEXT_PUBLIC_CONTACT_EMAIL=contacto@seudominio.pt` apenas depois de a caixa institucional
@@ -39,13 +52,15 @@
    - `NEXT_PUBLIC_LEGAL_TAX_ID=…` (se aplicável)
    - `NEXT_PUBLIC_LEGAL_REGISTRATION=…` (se aplicável)
 5. Publique e confirme os cabeçalhos de segurança, `robots.txt`, `sitemap.xml` e páginas legais.
-6. Adicione os domínios de Production e Preview ao `CORS_ORIGINS` do backend.
+6. Adicione apenas as origens exatas autorizadas ao `CORS_ORIGINS` do backend; não autorize
+   indiscriminadamente todos os previews a consultar serviços privados de produção.
 
 ### Ordem segura entre API e frontend
 
 Prefira publicar primeiro a API e só depois o frontend. O comando `npm run check:deployment-api` faz
 apenas pedidos públicos de leitura. Aceita o contrato completo — capacidades
-`parliament_explorer_v1` e `parliament_publication_history_v1` — ou, durante a transição, confirma
+`global_search_v1`, `parliament_explorer_v1` e `parliament_publication_history_v1` — ou, se a API
+não anunciar nenhuma dessas capacidades versionadas durante a transição, confirma
 todos os caminhos anteriores que servem as mesmas fotografias revistas. Neste segundo modo a
 interface fica deliberadamente limitada à consulta sequencial, sem fingir que a pesquisa avançada
 está disponível. O Vercel bloqueia o frontend se nenhum dos dois contratos for seguro. Após a
@@ -54,14 +69,16 @@ e do contacto chegaram efetivamente ao artefacto.
 
 ## Render
 
-O `render.yaml` define um serviço Python e PostgreSQL. Crie um Blueprint, preencha variáveis marcadas
-como `sync: false` e aguarde o endpoint de saúde.
+Para uma instalação nova baseada em Render, o `render.yaml` define um serviço Python e um
+PostgreSQL separado. Preencha variáveis `sync: false` e confirme a topologia antes de criar o
+Blueprint. Na instalação existente, preserve a base Supabase e confirme `/api/v1/health/ready`.
 
-O serviço FastAPI não deve executar migrações concorrentes no arranque. Aplique-as uma vez:
-
-```bash
-DATABASE_URL='URL externa do Render' npm run db:deploy
-```
+O serviço FastAPI não executa migrações no arranque. Para esta produção, use exclusivamente
+`.github/workflows/production-schema-migration.yml`, com o SHA exato de `main`, confirmação
+`MIGRAR-V5` e o identificador de um ensaio real bem-sucedido com menos de 24 horas. O workflow
+verifica o destino Supabase, TLS com CA oficial, provas de migração e segundo restauro V5,
+preservação dos dados, checksums, RLS e ausência de privilégios privados do navegador.
+As credenciais pertencem aos Secrets do ambiente; não as cole em comandos, documentos ou logs.
 
 Depois, atualize `NEXT_PUBLIC_API_URL` no Vercel. Em planos gratuitos, espere suspensão por
 inatividade e retenção reduzida do PostgreSQL; não os trate como arquivo oficial durável.
@@ -98,8 +115,9 @@ Uma falha deve marcar `SyncRun=FAILED/PARTIAL`, alertar a equipa e manter a últ
 No repositório, `.github/workflows/official-index-sync.yml` executa a atualização diária antes de
 `.github/workflows/operational-status.yml` verificar a frescura. A atualização escreve apenas
 índices e registos operacionais de sincronização; não promove conteúdo editorial. O workflow
-`.github/workflows/public-smoke.yml` testa o domínio público após cada push em `main` e numa
-execução diária, com repetição enquanto o deployment propaga.
+`.github/workflows/public-smoke.yml` testa o domínio público após um deployment `Production`
+bem-sucedido, diariamente e por execução manual, com repetição enquanto o deployment propaga.
+A API também é testada nas execuções diárias e manuais.
 
 ## Checklist pós-publicação
 

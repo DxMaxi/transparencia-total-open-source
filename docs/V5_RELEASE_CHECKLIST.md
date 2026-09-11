@@ -5,6 +5,12 @@ significa que existe código ou evidência já verificada; não significa autori
 mesma operação noutro ambiente. Deploy, migração, segredos, Supabase, utilizadores e dados reais
 continuam a exigir autorizações separadas.
 
+Atualização de 11-09-2026: a autorização operacional do responsável foi obtida para esta
+produção. O [registo de entrega](V5_DELIVERY_2026-09-09.md) comprova agora 33 migrações,
+preservação dos dados e criação do perfil ADMIN. O responsável concluiu MFA e confirmou o acesso
+ao painel; os ensaios de staging continuam separados. Consulte também a
+[revisão de todos os documentos](V5_DOCUMENTATION_AUDIT_2026-09-11.md).
+
 ## A. Baseline integrada
 
 - [x] Licença PolyForm Noncommercial para o software V5 documentada.
@@ -306,7 +312,7 @@ operacionais, a associação de partes ou a publicação de relações.
 - [x] Citações e âncoras fora da entrada são rejeitadas.
 - [ ] Prompt injection no documento não altera instruções.
 - [x] Revisão permite aprovar, rejeitar, corrigir ou regenerar.
-- [x] Apenas a versão aprovada entra na projeção pública.
+- [x] Apenas a versão aprovada e objeto de decisão específica de publicação entra na projeção pública.
 - [x] Conteúdo público mostra rótulo de IA, fontes, modelo e data.
 - [ ] Cenários usam factos e cálculos determinísticos, não previsão livre.
 - [ ] Limite de custo, tamanho, taxa e cache configurados.
@@ -332,7 +338,8 @@ operacionais, a associação de partes ou a publicação de relações.
 - [ ] DRE tem circuito de promoção público próprio.
 - [ ] BASE tem circuito de promoção público próprio.
   - [x] Contrato factual individual, fotografia imutável e retirada na V5.51.
-  - [ ] Organizações, correspondências exatas privadas e relações aguardam portas próprias.
+  - [x] Portas de organizações V5.53 e candidatos privados de correspondência V5.54 implementadas.
+  - [ ] Ensaios remotos dessas portas e publicação específica de relações factuais V5.55.
 - [ ] EPT tem tratamento real juridicamente revisto e sem equivaler portal a declaração.
   - [x] V5.46–V5.47 fecham tecnicamente a entrada, identidade, avaliação documental, publicação e
     retirada; a ativação continua bloqueada até à revisão jurídica operacional independente.
@@ -346,8 +353,13 @@ operacionais, a associação de partes ou a publicação de relações.
 
 ## L. Produção, privacidade e recuperação
 
-- [ ] Backup cifrado válido obtido antes das migrações V5.
-- [ ] Migrações de produção autorizadas e executadas separadamente.
+- [x] Backup cifrado válido obtido antes das migrações V5: cópia `34461932964`,
+  restauro e segundo ciclo V5 `34547252155` aprovados em 11-09-2026.
+- [x] Migrações de produção autorizadas e executadas separadamente: `34547739521`,
+  33 checksums aprovados e 520 379 registos originais preservados.
+- [x] Perfil ADMIN da conta autorizada criado; sem divulgar email ou UUID no repositório.
+- [x] MFA pessoal e acesso editorial real de produção comprovados em 11-09-2026 pelo responsável;
+  consulta independente confirmou um fator TOTP verificado e zero pendentes.
 - [x] Backend V5 publicado sem promover dados automaticamente.
 - [x] Frontend e backend anunciam capacidades compatíveis e falham fechados quando o esquema ainda
   não suporta uma área.
