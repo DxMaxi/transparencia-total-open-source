@@ -353,6 +353,11 @@ operacionais, a associação de partes ou a publicação de relações.
 
 ## L. Produção, privacidade e recuperação
 
+- [ ] Capacidade de produção suficiente para as cargas previstas e crescimento, sem ultrapassar
+  a quota do plano. Em 12-09-2026: 532 106 387 bytes, plano Free; recolha parlamentar automática
+  suspensa até resolver a capacidade. Não foi autorizado nem efetuado aumento de custos.
+- [ ] Retomar a recolha parlamentar apenas após prova de capacidade e uma execução controlada
+  sem publicação editorial, com contagens, hashes e estado operacional verificados.
 - [x] Backup cifrado válido obtido antes das migrações V5: cópia `34461932964`,
   restauro e segundo ciclo V5 `34547252155` aprovados em 11-09-2026.
 - [x] Migrações de produção autorizadas e executadas separadamente: `34547739521`,

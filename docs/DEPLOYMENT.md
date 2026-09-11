@@ -119,6 +119,20 @@ No repositório, `.github/workflows/official-index-sync.yml` executa a atualiza�
 bem-sucedido, diariamente e por execução manual, com repetição enquanto o deployment propaga.
 A API também é testada nas execuções diárias e manuais.
 
+**Estado operacional em 12-09-2026:** o workflow `Parliament staging sync`
+(`.github/workflows/parliament-sync.yml`, ID `329979490`) foi desativado temporariamente no
+GitHub por capacidade. Apesar do nome, utiliza o ambiente `production`; não comprova staging
+segregado. A base mede 532 106 387 bytes no plano Free. A suspensão impede novas execuções
+agendadas desse workflow; não muda a disponibilidade da API nem apaga dados. Backups,
+monitorização e atualização de índices mantêm os respetivos agendamentos.
+
+Antes de reativar, documentar capacidade disponível suficiente, estimativa da carga e limite
+de crescimento; verificar backup recente e integridade. Só então reativar o workflow e executar
+uma recolha controlada, confirmar contagens/hashes e ausência de publicação editorial, e rever
+a frescura no monitor. Até essa prova, o atraso parlamentar deve continuar visível e não ser
+convertido em ausência de atividade. Uma solução de arquivo externo exige implementação,
+verificação de integridade e ensaio de restauro antes de qualquer remoção de bytes existentes.
+
 ## Checklist pós-publicação
 
 - HTTPS e redirecionamento ativo em frontend e API.

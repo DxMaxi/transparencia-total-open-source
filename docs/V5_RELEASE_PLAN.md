@@ -7,6 +7,12 @@ de preservação dos dados. O perfil ADMIN autorizado e o acesso ao painel com M
 os restantes gates continuam separados. O [registo de entrega](V5_DELIVERY_2026-09-09.md) e a
 [checklist](V5_RELEASE_CHECKLIST.md) são a referência operacional atual.
 
+Atualização de 12-09-2026: a correção parlamentar da PR #144 foi integrada e publicada.
+A recolha automática foi suspensa antes da integração porque a base continua acima da quota
+Free. Resolver a capacidade precede novas cargas volumosas. O responsável mantém por publicar
+nome e email; não foi autorizada alteração de faturação. O restauro pós-migração passou com
+aviso operacional, sem provar recuperação de Auth/MFA ou os ensaios remotos de staging.
+
 ### Fotografia de planeamento de 7 de setembro de 2026
 
 Este plano fixa o âmbito necessário para concluir a `v0.5.0`. Foi preparado em 13 de agosto de

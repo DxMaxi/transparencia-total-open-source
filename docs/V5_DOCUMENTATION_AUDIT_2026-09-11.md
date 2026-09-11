@@ -104,3 +104,30 @@ na última entrada do [registo de entrega](V5_DELIVERY_2026-09-09.md).
 
 O [plano](V5_RELEASE_PLAN.md) e a [checklist](V5_RELEASE_CHECKLIST.md) continuam canónicos.
 Uma página de documentação coerente não substitui a execução ou decisão que descreve.
+
+## Reverificação de 12 de setembro de 2026
+
+O conjunto atual contém **93 documentos**: os 90 originais, este relatório, o índice e a
+atestação pós-migração. A leitura automática integral foi repetida sobre o commit
+`5b78f2e50de6a049bcf16670e05e003c407a1272`, seguida de revisão dirigida e atualização dos
+documentos operacionais. Zero destinos de ficheiros em falta e zero ocorrências dos três
+padrões de segredos pesquisados. Mantêm-se os limites de âmbito descritos acima.
+
+Dos **61 URLs externos**, 60 responderam HTTP 200; a página parlamentar de reuniões plenárias
+excedeu o tempo de espera inicial e numa segunda tentativa de 35 segundos. Não foi declarada
+como ligação inexistente nem substituída por uma fonte diferente. O sucesso de 11-09 não é
+apresentado como prova de disponibilidade atual dessa página.
+
+A PR #144 passou o CI do candidato e foi integrada/publicada. O smoke do domínio e API passou
+13 páginas; o Investigador mantém a resposta neutra 503 prevista enquanto não está disponível.
+Este teste comprova o tratamento da indisponibilidade, não o funcionamento integral desse módulo.
+
+Foi acrescentado à checklist o bloqueio de capacidade: 532 106 387 bytes no plano Free e recolha
+parlamentar automática desativada antes da integração. A tabela `raw_source_objects` ocupa
+295 739 392 bytes, incluindo os seus índices/armazenamento auxiliar; isso não é uma estimativa
+de bytes que se possam apagar ou de espaço imediatamente recuperável. A solução continua por
+implementar, sem autorização para novos custos nem eliminação de dados.
+
+O handoff confirma agora MFA, restauro com aviso, remoção da chave temporária e a decisão de não
+publicar nome/email. A conclusão permanece: **V5 integral ainda não pronta para lançamento**.
+As limitações são requisitos operacionais reais, não apenas documentação por atualizar.
