@@ -208,9 +208,12 @@ def normalise_initiatives(
         official_path = _text(
             _field(record, "IniLinkTexto", "IniUrl", "officialUrl", "urlIniciativa")
         )
-        official_url = require_parliament_url(
-            urljoin(parliament_base_url, official_path) if official_path else source_url
-        )
+        official_url = urljoin(parliament_base_url, official_path) if official_path else source_url
+        # O JSON oficial conserva ligações HTTP antigas ao visualizador, disponível em HTTPS.
+        # Só esta origem e caminho exatos são atualizados; a guarda geral continua obrigatória.
+        if official_url.startswith("http://app.parlamento.pt/webutils/docs/doc.pdf?"):
+            official_url = "https://" + official_url.removeprefix("http://")
+        official_url = require_parliament_url(official_url)
         event_introduced_at, latest_phase = _initiative_timeline(record)
         initiatives[source_id] = ParliamentaryInitiativeRecord(
             source_id=source_id,

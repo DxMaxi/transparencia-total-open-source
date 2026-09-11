@@ -54,6 +54,13 @@ não contém detalhe nominal estruturado, o ator permanece `UNKNOWN`. Uma votaç
 de uma iniciativa não é ligada arbitrariamente a uma delas. As reuniões expostas são observações
 dos campos `reuniao`, `tipoReuniao` e `data` da votação, não uma afirmação de agenda completa.
 
+O JSON oficial pode conservar uma ligação antiga `http://app.parlamento.pt/webutils/docs/doc.pdf`
+com query para o texto da iniciativa. A normalização atualiza exclusivamente esse visualizador
+para HTTPS, preservando caminho e query; a guarda de URLs continua a recusar outros endereços
+HTTP, credenciais e origens não autorizadas. O documento bruto e o SHA-256 da fonte não mudam.
+Em 11-09-2026, a variante HTTPS do documento que bloqueou a recolha foi confirmada com HTTP 200
+e assinatura PDF. Isto não constitui revisão editorial nem prova de uma nova recolha completa.
+
 ## Diário da República
 
 Portal: <https://diariodarepublica.pt/>

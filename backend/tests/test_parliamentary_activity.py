@@ -1,10 +1,69 @@
 from datetime import UTC, datetime
 
+import pytest
+
 from app.services.parliamentary_activity import normalise_initiatives, normalise_sessions
 
 SHA = "a" * 64
 SOURCE_URL = "https://www.parlamento.pt/dados/atividade.json"
 RETRIEVED_AT = datetime(2026, 8, 6, 7, 0, tzinfo=UTC)
+
+
+@pytest.mark.parametrize("scheme", ["http", "https"])
+def test_official_legacy_document_link_uses_https_without_changing_evidence(scheme: str) -> None:
+    path = "app.parlamento.pt/webutils/docs/doc.pdf?path=616263&fich=source.docx&Inline=true"
+    original_url = f"{scheme}://{path}"
+    record = {
+        "IniId": "initiative-test",
+        "IniNr": "1",
+        "IniDescTipo": "Projeto de Lei",
+        "IniTitulo": "Documento de teste",
+        "IniLinkTexto": original_url,
+    }
+    result = normalise_initiatives(
+        [record],
+        legislature="XVII",
+        source_url=SOURCE_URL,
+        document_sha256=SHA,
+        retrieved_at=RETRIEVED_AT,
+        parliament_base_url="https://www.parlamento.pt",
+    )
+    assert len(result) == 1
+    assert str(result[0].official_url) == f"https://{path}"
+    assert str(result[0].source.url) == SOURCE_URL
+    assert result[0].source.content_sha256 == SHA
+    assert record["IniLinkTexto"] == original_url
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://app.parlamento.pt/webutils/docs/doc.txt?path=test",
+        "http://www.parlamento.pt/webutils/docs/doc.pdf?path=test",
+        "http://app.parlamento.pt.evil.test/webutils/docs/doc.pdf?path=test",
+        "http://user@app.parlamento.pt/webutils/docs/doc.pdf?path=test",
+        "http://app.parlamento.pt:8080/webutils/docs/doc.pdf?path=test",
+        "https://user@app.parlamento.pt/webutils/docs/doc.pdf?path=test",
+        "https://evil.test/webutils/docs/doc.pdf?path=test",
+    ],
+)
+def test_legacy_document_exception_does_not_relax_the_url_guard(url: str) -> None:
+    record = {
+        "IniId": "initiative-test",
+        "IniNr": "1",
+        "IniDescTipo": "Projeto de Lei",
+        "IniTitulo": "Documento de teste",
+        "IniLinkTexto": url,
+    }
+    with pytest.raises(ValueError, match="URL parlamentar não autorizada"):
+        normalise_initiatives(
+            [record],
+            legislature="XVII",
+            source_url=SOURCE_URL,
+            document_sha256=SHA,
+            retrieved_at=RETRIEVED_AT,
+            parliament_base_url="https://www.parlamento.pt",
+        )
 
 
 def test_normalise_sessions_preserves_only_official_fields() -> None:
