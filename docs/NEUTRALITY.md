@@ -17,12 +17,17 @@ pista de pesquisa, mas não fundamentam sozinhas um facto publicado.
 
 Antes de revisão, a base de dados usa `UNVERIFIED`; esse estado impede classificação prematura.
 
-| Estado público | Critério mínimo |
-|---|---|
-| Cumprido | Todos os resultados verificáveis da medida estão em vigor ou concluídos, com prova oficial |
-| Em execução | Existe ato oficial concreto e pelo menos um resultado ainda não terminou |
-| Incumprido | Um objetivo ou prazo explícito, comparável e já vencido não foi alcançado |
-| Abandonado | Existe revogação, substituição incompatível ou declaração oficial inequívoca de cessação |
+| Estado técnico | Estado público | Critério mínimo |
+|---|---|---|
+| `UNVERIFIED` | Por verificar | Ainda não existe decisão editorial sobre a execução |
+| `NOT_STARTED` | Não iniciada | Revisão humana fundamentada no período e nas fontes declaradas; ausência de dados não basta |
+| `IN_PROGRESS` | Em curso | Existem atos oficiais verificáveis em curso, sem prova de conclusão |
+| `PARTIAL` | Parcialmente cumprida | As provas revistas satisfazem parte dos critérios públicos |
+| `FULFILLED` | Cumprida | As provas revistas satisfazem integralmente os critérios públicos |
+
+Aplica-se o [vocabulário V5.20](V5_PROMESSOMETRO_VOCABULARY.md). Os valores legados
+`BROKEN` e `ABANDONED` permanecem apenas no histórico físico e são recusados nas projeções
+públicas; não existe reclassificação automática.
 
 Uma percentagem de execução só pode resultar de subcritérios publicados, ponderação explícita e
 evidência para cada parcela. Não deve ser estimada por um modelo de IA.
@@ -33,7 +38,8 @@ Regras adicionais:
 - financiamento anunciado não prova despesa executada;
 - um projeto-piloto não prova cobertura nacional;
 - mudança de redação deve ser comparada pelo resultado verificável, não por palavras isoladas;
-- uma medida sem prazo continua `EM EXECUÇÃO` ou `UNVERIFIED`, nunca `INCUMPRIDO` apenas por tempo.
+- a passagem do tempo não determina o estado; sem prova suficiente, mantém-se a incerteza e
+  não se infere execução, conclusão ou incumprimento.
 
 ## Assiduidade
 

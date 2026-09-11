@@ -1,12 +1,18 @@
 # Transparência Total / Fator Cívico — V5 em desenvolvimento
 
+> **Ponto de situação — 11 de setembro de 2026:** os contratos de código chegam à V5.54.
+> A conclusão pública da V5 continua condicionada à [checklist de lançamento](docs/V5_RELEASE_CHECKLIST.md).
+> O [índice de todos os documentos](docs/README.md) distingue instruções atuais, contratos por etapa
+> e provas históricas; a [revisão documental](docs/V5_DOCUMENTATION_AUDIT_2026-09-11.md)
+> regista as correções e os requisitos ainda abertos. Os números do fecho V4 abaixo são históricos.
+
 Plataforma cívica, neutra e sem fins lucrativos para acompanhar atividade política em
 Portugal através de dados oficiais auditáveis. A partir da V5, o código-fonte é disponibilizado
 para consulta, auditoria, execução, modificação e contribuição não comercial sob a licença
 PolyForm Noncommercial 1.0.0. Esta modalidade é *source-available*, não *open-source* segundo a
 definição da Open Source Initiative.
 
-> **Estado do projeto:** a `v0.4.0` é a última versão pública estável e tem os gates técnicos e
+> **Fecho histórico da V4:** a `v0.4.0` é a última versão pública estável e tem os gates técnicos e
 > operacionais
 > concluídos. Inclui arquivo PostgreSQL dos bytes oficiais, fotografias parlamentares versionadas e
 > append-only, revisão humana por âmbito, API pública fail-closed, catálogo inicial do Programa do
@@ -23,7 +29,7 @@ definição da Open Source Initiative.
 > commit final desse fecho. A V5 começa pela governação de licença e pelo circuito editorial
 > privado; esta branch não altera os dados aprovados da V4.
 
-> **V5.1 a V5.52 preparadas; ativação remota de staging pendente:** o painel privado usa
+> **V5.1 a V5.54 preparadas; ativação remota de staging pendente:** o painel privado usa
 > login por convite,
 > MFA obrigatório, funções de administrador/revisor, comparação entre fonte atestada e JSON
 > normalizado, versões e decisões append-only. A V5.2 acrescentou propostas parlamentares privadas,
@@ -885,24 +891,26 @@ As instruções completas estão em [Publicação](docs/DEPLOYMENT.md). Resumo:
 ### Frontend no Vercel
 
 1. Publique o repositório no GitHub e importe-o no Vercel.
-2. Mantenha a raiz do projeto e o preset Next.js; `vercel.json` executa `npm run build:next`.
+2. Mantenha a raiz do projeto e o preset Next.js; `vercel.json` verifica compatibilidade da API,
+   gera Prisma, executa `npm run build:next` e verifica os artefactos.
 3. Defina `NEXT_PUBLIC_API_URL` e a identificação pública aplicável em
    `NEXT_PUBLIC_LEGAL_RESPONSIBLE_NAME`; use `NEXT_PUBLIC_LEGAL_ADDRESS`,
    `NEXT_PUBLIC_LEGAL_TAX_ID` e `NEXT_PUBLIC_LEGAL_REGISTRATION` apenas quando juridicamente
    aplicáveis. Não use placeholders em produção.
 4. Faça deploy e adicione o domínio HTTPS à variável `CORS_ORIGINS` do backend.
+5. Para o painel V5, configure URL e chave publicável Supabase no frontend, convite, perfil staff
+   e MFA conforme o runbook. Nunca substitua a chave publicável por uma chave secreta.
 
-### Backend e PostgreSQL no Render
+### Instalação existente: API Render e base Supabase
 
-1. No Render, escolha **New → Blueprint** e selecione o repositório; `render.yaml` cria API e DB.
-2. Preencha `CORS_ORIGINS`, VAPID e, se usado, OpenAI nos segredos do serviço.
-3. Copie a **External Database URL** e aplique as migrações uma vez a partir de um terminal seguro:
+1. Preserve a ligação Supabase nos Secrets e confirme a saúde em `/api/v1/health/ready`.
+2. Configure apenas origens autorizadas e segredos necessários do serviço.
+3. Aplique alterações do esquema exclusivamente pelo workflow protegido
+   `production-schema-migration.yml`, com commit exato e prova recente de restauro.
+4. Defina o URL Render como `NEXT_PUBLIC_API_URL` e valide o frontend após a API.
 
-   ```bash
-   DATABASE_URL='postgresql://…' npm run db:deploy
-   ```
-
-4. Defina o URL Render como `NEXT_PUBLIC_API_URL` no Vercel e volte a publicar o frontend.
+O `render.yaml` com PostgreSQL Render é uma alternativa para uma instalação nova; não representa
+a base de produção existente e não deve substituir essa ligação. Consulte o runbook antes de o usar.
 
 O plano gratuito do Render suspende serviços sem tráfego, causando arranques frios, e a base de
 dados gratuita tem retenção limitada. A disponibilidade e a recuperação devem ser reavaliadas

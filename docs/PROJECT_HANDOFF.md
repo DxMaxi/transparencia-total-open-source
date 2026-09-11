@@ -1,6 +1,21 @@
 # PROJECT HANDOFF — Transparência Total / Fator Cívico
 
-Atualizado em: **2026-09-07**
+Checkpoint operacional atualizado em: **2026-09-11**
+
+## Continuação mais recente
+
+Código até V5.54 integrado. PRs #137–#141 fecharam o ensaio cifrado, o workflow protegido,
+a verificação TLS com CA oficial, os limites de espera e a impressão dos bytes do arquivo sem
+os expandir em JSON. Restauro `34547252155` e migração de produção `34547739521` aprovados:
+33 migrações, zero incompletas, 520 379 registos originais preservados. Perfil ADMIN criado.
+O MFA do responsável e a prova de recuperação posterior à migração devem ser confirmados no
+[registo de entrega](V5_DELIVERY_2026-09-09.md); não se inferem do sucesso da migração.
+
+O [índice documental](README.md) abrange todo o conjunto versionado e distingue contratos,
+instruções e checkpoints históricos. A [revisão documental](V5_DOCUMENTATION_AUDIT_2026-09-11.md)
+não fecha a avaliação jurídica nem as lacunas editoriais da V5.
+
+## Contexto preservado do checkpoint de 7 de setembro
 
 Este documento existe para permitir continuidade segura entre sessões de trabalho, colaboradores e chats sem depender de memória externa ao repositório.
 

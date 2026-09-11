@@ -1,6 +1,13 @@
 # Plano de conclusão da V5
 
-## Estado de referência
+## Estado corrente e referência histórica
+
+Em 11-09-2026, o código chega à V5.54 e as 33 migrações de produção foram aplicadas com prova
+de preservação dos dados. O perfil ADMIN autorizado e o acesso ao painel com MFA foram comprovados;
+os restantes gates continuam separados. O [registo de entrega](V5_DELIVERY_2026-09-09.md) e a
+[checklist](V5_RELEASE_CHECKLIST.md) são a referência operacional atual.
+
+### Fotografia de planeamento de 7 de setembro de 2026
 
 Este plano fixa o âmbito necessário para concluir a `v0.5.0`. Foi preparado em 13 de agosto de
 2026 e atualizado em 7 de setembro de 2026 a partir do código V5.52.1 integrado em `main`, do

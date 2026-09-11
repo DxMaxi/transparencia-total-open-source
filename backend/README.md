@@ -1,4 +1,11 @@
-# API Transparência Total / Fator Cívico — V4
+# API Transparência Total / Fator Cívico — V5 em preparação
+
+O backend inclui os contratos V5 até V5.54. O circuito editorial exige JWT Supabase,
+staff ativo, função autorizada e MFA; as operações públicas mantêm revisão e publicação separadas.
+Consulte o [estado documental](../docs/README.md), a [publicação](../docs/DEPLOYMENT.md) e a
+[checklist V5](../docs/V5_RELEASE_CHECKLIST.md). Os exemplos V3/V4 abaixo conservam o contexto
+legado; não substituem o workflow protegido de migração de produção nem autorizam coletores
+limitados a `ENVIRONMENT=staging` a escrever em produção.
 
 Serviço FastAPI responsável por descobrir, descarregar, preservar e normalizar fontes oficiais.
 Inclui ingestão persistente do Parlamento, pré-visualização BASE JSON/XML/ZIP e staging BASE

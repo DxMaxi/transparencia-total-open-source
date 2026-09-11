@@ -95,7 +95,7 @@ export function AdminMfaSetup({ configured, next }: { configured: boolean; next:
         if (enrollment.error) throw enrollment.error;
         setState({
           factorId: enrollment.data.id,
-          qrCode: `data:image/svg+xml;utf-8,${encodeURIComponent(enrollment.data.totp.qr_code)}`,
+          qrCode: enrollment.data.totp.qr_code,
           secret: enrollment.data.totp.secret,
           existing: false,
         });
@@ -143,16 +143,21 @@ export function AdminMfaSetup({ configured, next }: { configured: boolean; next:
           {/* O QR contém o segredo TOTP e nunca é enviado para o backend editorial. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={state.qrCode} alt="Código QR para configurar a aplicação autenticadora" />
-          <div>
-            <strong>Se não conseguir digitalizar</strong>
-            <p>Introduza manualmente esta chave na aplicação autenticadora:</p>
+          <details>
+            <summary>Se não conseguir digitalizar</summary>
+            <p>
+              Na aplicação autenticadora do telemóvel, escolha adicionar uma conta e introduzir
+              uma chave manualmente. Use o nome Transparência Total e o tipo baseado no tempo
+              (TOTP). Introduza esta chave apenas nessa aplicação:
+            </p>
             <code>{state.secret}</code>
-          </div>
+            <p>Não partilhe esta chave nem o código QR.</p>
+          </details>
         </div>
       ) : null}
       {state ? (
         <form className="private-auth-form" onSubmit={verify}>
-          <label htmlFor="mfa-code">Código de seis algarismos</label>
+          <label htmlFor="mfa-code">Código de seis algarismos da aplicação autenticadora</label>
           <input
             id="mfa-code"
             name="code"
