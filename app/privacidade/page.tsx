@@ -26,9 +26,13 @@ export default function PrivacyPage() {
       <section className="card legal-card">
         <h2>1. Responsável pelo tratamento</h2>
         <p>
-          O responsável pelo tratamento é <strong>{LEGAL_RESPONSIBLE}</strong>, no âmbito do
-          projeto cívico independente {PROJECT_NAME}. O ponto de contacto único para
-          privacidade está identificado no{" "}
+          {LEGAL_RESPONSIBLE ? (
+            <>O responsável pelo tratamento é <strong>{LEGAL_RESPONSIBLE}</strong>.</>
+          ) : (
+            <>A identificação do responsável pelo tratamento ainda não foi publicada.</>
+          )}{" "}
+          Esta política refere-se ao projeto cívico independente {PROJECT_NAME}.
+          A disponibilidade do contacto para privacidade é indicada no{" "}
           <InstitutionalContactLink fallbackLabel="canal institucional" />.
           {LEGAL_ADDRESS ? <> Endereço de contacto: {LEGAL_ADDRESS}.</> : null}
           {LEGAL_TAX_ID ? <> Identificação fiscal: {LEGAL_TAX_ID}.</> : null} Não foi designado

@@ -13,7 +13,9 @@ export function SiteFooter() {
             Projeto cívico independente, sem publicidade e sem filiação partidária.
             Não é um website oficial do Estado.
           </p>
-          <span className="footer-responsible">Responsável: {LEGAL_RESPONSIBLE}</span>
+          {LEGAL_RESPONSIBLE ? (
+            <span className="footer-responsible">Responsável: {LEGAL_RESPONSIBLE}</span>
+          ) : null}
           <InstitutionalContactLink fallbackLabel="Contacto institucional em preparação" />
           <PwaControls />
         </div>

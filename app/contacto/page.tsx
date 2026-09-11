@@ -27,7 +27,7 @@ export default function ContactPage() {
       <section className="contact-overview" aria-labelledby="contact-responsible">
         <div className="card contact-identity">
           <span className="eyebrow">Responsável pelo projeto</span>
-          <h2 id="contact-responsible">{LEGAL_RESPONSIBLE}</h2>
+          <h2 id="contact-responsible">{LEGAL_RESPONSIBLE ?? "Identificação ainda não publicada"}</h2>
           <p>
             {PROJECT_NAME} é um projeto cívico independente e não é um serviço oficial do Estado.
             {LEGAL_ADDRESS ? <> Endereço público: {LEGAL_ADDRESS}.</> : null}

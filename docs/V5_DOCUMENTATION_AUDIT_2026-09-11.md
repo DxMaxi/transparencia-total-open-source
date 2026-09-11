@@ -25,6 +25,9 @@ O site acessível e o esquema V5 aplicado não comprovam esses requisitos.
   responderam **HTTP 200** nesta verificação, seguindo redirecionamentos. Este resultado prova
   acessibilidade momentânea, não estabilidade, correção do conteúdo, validade jurídica ou
   ausência de alteração posterior das fontes.
+- Após acrescentar as novas provas, os **60 URLs externos** do conjunto revisto responderam
+  HTTP 200. Cinco páginas parlamentares excederam inicialmente o tempo de espera e responderam
+  na repetição; a disponibilidade dos portais externos continua sujeita a variação.
 - Zero ocorrências dos três padrões pesquisados nos documentos: identidade privada age,
   cabeçalho de chave privada e chave secreta Supabase. Não é uma pesquisa universal de segredos
   nem uma repetição da auditoria de toda a história Git.
@@ -79,8 +82,10 @@ na última entrada do [registo de entrega](V5_DELIVERY_2026-09-09.md).
    de operações privadas em `aal1`, revogação de conta e circuito editorial completo, incluindo
    concorrência, correção, publicação e retirada. A elegibilidade inicial da sessão é a exceção
    deliberada que aceita `aal1` para preparar o segundo fator.
-2. Confirmar backup e restauro posteriores à migração, remover o segredo temporário e documentar
-   recuperação de Auth/MFA separadamente. O dump do esquema `public` não recupera esses fatores.
+2. Documentar e ensaiar recuperação de Auth/MFA separadamente. O dump do esquema `public` não
+   recupera esses fatores. Backup/restauro pós-migração e remoção do segredo temporário foram
+   concluídos posteriormente; a [atestação](RESTORE_ATTESTATION_2026-09-11.json) conserva
+   `PASS_WITH_OPERATIONAL_WARNING`, que não equivale a operação global saudável.
 3. Consolidar humanamente os 1 590 candidatos técnicos do Programa do Governo; definir critérios,
    preservar localizadores e separar prova legislativa, orçamental e de execução. Não são 1 590
    promessas já publicadas ou classificadas.

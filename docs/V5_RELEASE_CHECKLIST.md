@@ -365,11 +365,15 @@ operacionais, a associação de partes ou a publicação de relações.
   não suporta uma área.
 - [ ] CORS, CSP, rate limit, autenticação e logs revistos.
 - [ ] Email institucional configurado com SPF, DKIM e DMARC.
+  Em 11-09-2026, o responsável decidiu não publicar ainda nome nem email; manter esses campos
+  por configurar, sem substituir pelos dados privados da conta administrativa.
 - [ ] Políticas legais atualizadas após ativar IA, perfis sensíveis ou PWA.
 - [ ] AIPD e aconselhamento jurídico independente registados onde aplicável.
-- [ ] Backup pós-migração cifrado e retido fora do fornecedor principal.
-- [ ] Restauro pós-migração aprovado num PostgreSQL 17 isolado.
-- [ ] Segredos temporários de recuperação removidos depois do ensaio.
+- [x] Backup pós-migração cifrado e retido fora do fornecedor principal: `34547986986`.
+- [x] Restauro pós-migração aprovado num PostgreSQL 17 isolado: `34597421996`, integridade e
+  contagens aprovadas, com `PASS_WITH_OPERATIONAL_WARNING`; o aviso operacional não foi ocultado.
+- [x] Segredos temporários de recuperação removidos depois do ensaio: `BACKUP_AGE_IDENTITY`
+  eliminado de `recovery` em 11-09-2026, com ausência confirmada.
 - [ ] Monitorização não cria perfis de visitantes nem recolhe conteúdo sensível.
 
 ## M. Publicação do código e release

@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 import test from "node:test";
+import { runInNewContext } from "node:vm";
+import ts from "typescript";
 
 const root = new URL("../", import.meta.url);
 
@@ -40,7 +42,22 @@ test("legal information is reachable and supports real controller identification
     await readFile(new URL(`app/${route}/page.tsx`, root), "utf8");
   }
   assert.match(site, /NEXT_PUBLIC_LEGAL_RESPONSIBLE_NAME/);
-  assert.match(site, /Maximiano Moreira/);
+  const compiled = ts.transpileModule(site, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  }).outputText;
+  const evaluate = (env) => {
+    const context = { exports: {}, process: { env }, URL };
+    runInNewContext(compiled, context, { timeout: 1000 });
+    return context.exports;
+  };
+  for (const env of [{}, { NEXT_PUBLIC_LEGAL_RESPONSIBLE_NAME: "  ", NEXT_PUBLIC_CONTACT_EMAIL: "  " }]) {
+    const values = evaluate(env);
+    assert.equal(values.LEGAL_RESPONSIBLE, null);
+    assert.equal(values.CONTACT_EMAIL, null);
+  }
+  const configured = evaluate({ NEXT_PUBLIC_LEGAL_RESPONSIBLE_NAME: "  Entidade de teste  ", NEXT_PUBLIC_CONTACT_EMAIL: "contact@example.test" });
+  assert.equal(configured.LEGAL_RESPONSIBLE, "Entidade de teste");
+  assert.equal(configured.CONTACT_EMAIL, "contact@example.test");
   assert.match(site, /NEXT_PUBLIC_LEGAL_ADDRESS/);
   assert.match(site, /NEXT_PUBLIC_LEGAL_TAX_ID/);
 });
