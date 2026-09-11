@@ -2,13 +2,13 @@
 
 import argparse
 import asyncio
-import hashlib
 import json
 from typing import Any
 
 import asyncpg
 
 from app.core.config import get_settings
+from app.repositories.postgres import _asyncpg_connection_options
 
 
 async def verify_archive(*, limit: int | None = None) -> dict[str, Any]:
@@ -17,7 +17,9 @@ async def verify_archive(*, limit: int | None = None) -> dict[str, Any]:
         raise RuntimeError("DATABASE_URL não configurada")
 
     query = """
-        SELECT storage_key, content_sha256, byte_size, content
+        SELECT storage_key, content_sha256, byte_size,
+               encode(sha256(content), 'hex') AS observed_sha256,
+               octet_length(content)::bigint AS observed_size
         FROM raw_source_objects
         ORDER BY storage_key
     """
@@ -26,20 +28,25 @@ async def verify_archive(*, limit: int | None = None) -> dict[str, Any]:
         query += " LIMIT $1"
         arguments = (limit,)
 
-    connection = await asyncpg.connect(settings.database_url.get_secret_value())
+    # O servidor calcula o hash dos bytes reais. Não transferir o arquivo inteiro
+    # para a memória do processo que executa a verificação.
+    dsn, server_settings = _asyncpg_connection_options(settings.database_url.get_secret_value())
+    connection = await asyncpg.connect(
+        dsn, server_settings=server_settings, timeout=10, command_timeout=300
+    )
     try:
-        rows = await connection.fetch(query, *arguments)
+        async with connection.transaction(isolation="repeatable_read", readonly=True):
+            rows = await connection.fetch(query, *arguments)
     finally:
         await connection.close()
 
     corrupt: list[dict[str, object]] = []
     verified = 0
     for row in rows:
-        content = bytes(row["content"])
         expected_sha256 = str(row["content_sha256"])
         expected_size = int(row["byte_size"])
-        observed_sha256 = hashlib.sha256(content).hexdigest()
-        observed_size = len(content)
+        observed_sha256 = str(row["observed_sha256"])
+        observed_size = int(row["observed_size"])
         expected_key = f"sha256/{expected_sha256[:2]}/{expected_sha256}"
 
         problems: list[str] = []
@@ -88,7 +95,11 @@ async def main_async() -> None:
     args = parse_args()
     if args.limit is not None and args.limit < 1:
         raise ValueError("--limit deve ser maior que zero")
-    result = await verify_archive(limit=args.limit)
+    try:
+        result = await verify_archive(limit=args.limit)
+    except Exception:
+        print(json.dumps({"status": "CHECK_FAILED", "read_only": True}))
+        raise SystemExit(1) from None
     print(json.dumps(result, ensure_ascii=False, indent=2))
     if result["status"] != "VERIFIED":
         raise SystemExit(1)

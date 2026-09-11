@@ -23,6 +23,7 @@ jobs:
       CORS_ORIGINS: https://www.transparenciatotal.pt
       OFFICIAL_USER_AGENT: ${{ secrets.PRODUCTION_OFFICIAL_USER_AGENT }}
       RAW_ARCHIVE_WARNING_BYTES: ${{ vars.RAW_ARCHIVE_WARNING_BYTES || '400000000' }}
+      DATABASE_WARNING_BYTES: ${{ vars.DATABASE_WARNING_BYTES || '450000000' }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -38,9 +39,31 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e './backend'
       - name: Medir capacidade do arquivo
+        id: capacity
+        shell: bash
+        continue-on-error: true
         working-directory: backend
-        run: python -m scripts.report_archive_capacity
+        run: python -m scripts.report_archive_capacity | tee capacity-report.json
       - name: Verificar todos os objetos arquivados
+        id: integrity
+        shell: bash
+        if: ${{ !cancelled() && (steps.capacity.outcome == 'success' || steps.capacity.outcome == 'failure') }}
+        continue-on-error: true
         working-directory: backend
-        run: python -m scripts.verify_v4_archive
+        run: python -m scripts.verify_v4_archive | tee integrity-report.json
+      - name: Guardar os relatórios sem conteúdo de documentos
+        if: ${{ !cancelled() && steps.capacity.outcome != 'skipped' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: database-capacity-and-archive-integrity
+          path: |
+            backend/capacity-report.json
+            backend/integrity-report.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Assinalar aviso de capacidade ou falha de integridade
+        if: ${{ !cancelled() && (steps.capacity.outcome == 'failure' || steps.integrity.outcome == 'failure') }}
+        run: |
+          echo "Capacidade ou integridade requer atenção; consultar os relatórios separados."
+          exit 1
 

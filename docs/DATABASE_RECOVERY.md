@@ -141,3 +141,32 @@ O workflow `production-schema-migration.yml` é manual, exige o commit exato de 
 evento, commit e ausência de diferenças nas migrações antes de usar o secret de produção. O destino
 é limitado ao projeto Supabase confirmado, com TLS e porta de sessão. Compara o conteúdo antes e
 depois e conserva apenas a prova agregada; não convida contas nem publica conteúdo editorial.
+
+## Capacidade e integridade são verificações independentes
+
+`report_archive_capacity` mede tanto a relação `raw_source_objects` (incluindo índices/TOAST)
+como a base inteira por `pg_database_size`. O tamanho lógico dos documentos não equivale ao
+espaço ocupado em disco: o PostgreSQL pode comprimir os bytes. Um arquivo abaixo do seu limite
+não prova que a base completa esteja abaixo da quota.
+
+- `RAW_ARCHIVE_WARNING_BYTES`: aviso para a relação, por omissão 400 000 000 bytes.
+- `DATABASE_WARNING_BYTES`: aviso para a base inteira, por omissão 450 000 000 bytes,
+  conservador para a instalação Free atual. Não é a quota do fornecedor nem uma proibição
+  técnica de escrita. Rever explicitamente perante mudança de alojamento/capacidade.
+- `OK` significa apenas que ambos os limites configurados não foram atingidos; não garante
+  capacidade para qualquer carga futura. `WARNING` termina com código 2; `CHECK_FAILED`, com 1.
+
+As ligações têm limites de espera e as leituras usam uma transação read-only. Nenhum destes
+comandos apaga, compacta, publica ou regista uma nova sincronização na base.
+
+O workflow `Archive integrity` conserva os dois relatórios durante 30 dias. Um aviso de capacidade
+não impede o cálculo da integridade; o resultado global continua a falhar se uma das verificações
+requerer atenção. Consultar os resultados separados antes de interpretar uma execução vermelha
+como corrupção. Os relatórios não incluem conteúdo documental ou credenciais.
+
+`verify_v4_archive` calcula SHA-256 diretamente sobre o `bytea` real no PostgreSQL e recebe
+apenas hashes, tamanhos e chaves. Continua a comparar hash declarado, tamanho e chave derivada;
+não aceita o hash registado como prova sem ler os bytes. Evita transferir o arquivo completo
+para a memória do verificador. A consulta tem um limite de 300 segundos; excedê-lo produz falha
+de verificação, nunca um resultado íntegro por omissão. Testes em PostgreSQL descartável alteram
+conteúdo sem alterar o comprimento, tamanho declarado e chave para comprovar a deteção.
