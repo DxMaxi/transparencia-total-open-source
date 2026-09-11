@@ -30,6 +30,8 @@ Esta revisão não declara a `v0.5.0` pronta nem transforma modelos legais em pa
 
 Inclui todos os Markdown/MDX versionados, licenças textuais e o JSON documental existente.
 Os dois documentos novos desta revisão são este índice e o relatório ligado acima.
+Foi posteriormente acrescentada a [atestação do restauro pós-migração](RESTORE_ATTESTATION_2026-09-11.json),
+com integridade aprovada e aviso operacional preservado.
 
 | Documento | Uso e limite |
 |---|---|

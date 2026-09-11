@@ -81,7 +81,7 @@ test("public and contributor copy describes the license scopes without relicensi
   assert.match(privacy, /consentimento explícito/);
   assert.match(cookies, /Desativar e apagar alertas/);
   assert.match(cookies, /não ativa a cache offline/);
-  assert.match(legalSite, /20 de agosto de 2026/);
+  assert.match(legalSite, /11 de setembro de 2026/);
 });
 
 test("governance blocks selective interference while retaining lawful correction paths", async () => {

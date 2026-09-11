@@ -26,7 +26,12 @@ export default function TermsPage() {
       <section className="card legal-card">
         <h2>Identificação</h2>
         <p>
-          {PROJECT_NAME} é um projeto cívico independente, gerido por <strong>{LEGAL_RESPONSIBLE}</strong>.{" "}
+          {PROJECT_NAME} é um projeto cívico independente.{" "}
+          {LEGAL_RESPONSIBLE ? (
+            <>É gerido por <strong>{LEGAL_RESPONSIBLE}</strong>.</>
+          ) : (
+            <>A identificação do responsável ainda não foi publicada.</>
+          )}{" "}
           Contacto institucional: <InstitutionalContactLink />.
         </p>
         {LEGAL_ADDRESS || LEGAL_TAX_ID || LEGAL_REGISTRATION ? (

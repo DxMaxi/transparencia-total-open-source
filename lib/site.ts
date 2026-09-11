@@ -38,9 +38,9 @@ export const SITE_URL = publicSiteUrl();
 export const CONTACT_EMAIL = publicContactEmail();
 export const PROJECT_NAME = "Transparência Total / Fator Cívico";
 export const LEGAL_RESPONSIBLE_NAME =
-  process.env.NEXT_PUBLIC_LEGAL_RESPONSIBLE_NAME?.trim() || "Maximiano Moreira";
+  process.env.NEXT_PUBLIC_LEGAL_RESPONSIBLE_NAME?.trim() || null;
 export const LEGAL_RESPONSIBLE = LEGAL_RESPONSIBLE_NAME;
 export const LEGAL_ADDRESS = process.env.NEXT_PUBLIC_LEGAL_ADDRESS?.trim() ?? "";
 export const LEGAL_TAX_ID = process.env.NEXT_PUBLIC_LEGAL_TAX_ID?.trim() ?? "";
 export const LEGAL_REGISTRATION = process.env.NEXT_PUBLIC_LEGAL_REGISTRATION?.trim() ?? "";
-export const LEGAL_UPDATED_AT = "20 de agosto de 2026";
+export const LEGAL_UPDATED_AT = "11 de setembro de 2026";
