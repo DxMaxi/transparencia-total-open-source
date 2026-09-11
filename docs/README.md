@@ -3,6 +3,10 @@
 Revisto em 11 de setembro de 2026 sobre o conjunto versionado de `main`
 `642d8fc8a698c96af45d9c3abdaea9f04cf2866a`, com correções documentais nesta revisão.
 
+Reverificação em 12-09-2026: **93 documentos** atuais, incluindo este índice, o relatório e a
+atestação posterior. O inventário original abaixo permanece histórico; as provas e limitações
+atuais estão no relatório de revisão e na última entrada do registo de entrega.
+
 ## Começar aqui
 
 - [Checklist canónica de conclusão da V5](V5_RELEASE_CHECKLIST.md): condições e provas por ambiente.

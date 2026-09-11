@@ -1,6 +1,6 @@
 # PROJECT HANDOFF — Transparência Total / Fator Cívico
 
-Checkpoint operacional atualizado em: **2026-09-11**
+Checkpoint operacional atualizado em: **2026-09-12** (Europe/Lisbon)
 
 ## Continuação mais recente
 
@@ -8,8 +8,21 @@ Código até V5.54 integrado. PRs #137–#141 fecharam o ensaio cifrado, o workf
 a verificação TLS com CA oficial, os limites de espera e a impressão dos bytes do arquivo sem
 os expandir em JSON. Restauro `34547252155` e migração de produção `34547739521` aprovados:
 33 migrações, zero incompletas, 520 379 registos originais preservados. Perfil ADMIN criado.
-O MFA do responsável e a prova de recuperação posterior à migração devem ser confirmados no
-[registo de entrega](V5_DELIVERY_2026-09-09.md); não se inferem do sucesso da migração.
+O responsável concluiu o MFA e confirmou acesso ao painel. O restauro pós-migração
+`34597421996` passou com aviso operacional; a chave temporária foi removida de `recovery`.
+As PRs #142–#143 corrigiram o QR e removeram o nome pessoal predefinido das páginas públicas.
+Manter a decisão do responsável de não publicar ainda nome nem email.
+
+PR #144 integrada em `5b78f2e50de6a049bcf16670e05e003c407a1272`, com CI do candidato aprovado;
+frontend e API publicados nesse commit. Corrige apenas o visualizador parlamentar HTTP legado
+para HTTPS. **A recolha parlamentar automática está suspensa por capacidade**, confirmada como
+`disabled_manually` no GitHub em 12-09, antes da integração. Produção continua com 532 106 387
+bytes no plano Free, cuja quota de base é 500 MB. Não iniciar uma carga volumosa, apagar arquivos
+ou alterar faturação para contornar este limite. Não existe aprovação para novos custos.
+
+O [registo de entrega](V5_DELIVERY_2026-09-09.md) fixa as provas e as condições de retoma.
+O site acessível e os testes aprovados não fecham staging, revisão editorial, cobertura,
+recuperação de Auth, avaliação jurídica ou as restantes condições da V5.
 
 O [índice documental](README.md) abrange todo o conjunto versionado e distingue contratos,
 instruções e checkpoints históricos. A [revisão documental](V5_DOCUMENTATION_AUDIT_2026-09-11.md)
