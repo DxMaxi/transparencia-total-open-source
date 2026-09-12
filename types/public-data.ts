@@ -215,7 +215,7 @@ export type InterestGraphDataset = {
 };
 
 export type SpeechVoteComparisonData = {
-  id?: string;
+  id: string;
   subject: string;
   statement: {
     quote: string;
@@ -232,8 +232,8 @@ export type SpeechVoteComparisonData = {
   comparison: {
     outcome: "CONSISTENT" | "INCONSISTENT" | "INCONCLUSIVE";
     score: number | null;
-    comparablePairs: number;
-    totalStatements: number;
+    comparablePairs: number | null;
+    totalStatements: number | null;
     methodologyVersion: string;
     rationale: string;
   };

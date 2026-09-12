@@ -839,10 +839,13 @@ class PublishedComparisonVote(BaseModel):
 
 
 class PublishedComparisonMetrics(BaseModel):
+    """Resultado de um par; agregados exigem um contrato próprio de comparabilidade."""
+
     outcome: Literal["CONSISTENT", "INCONSISTENT", "INCONCLUSIVE"]
-    score: Decimal | None = Field(default=None, ge=0, le=100)
-    comparable_pairs: int = Field(ge=1)
-    total_statements: int = Field(ge=1)
+    scope: Literal["INDIVIDUAL_PAIR"] = "INDIVIDUAL_PAIR"
+    score: None = None
+    comparable_pairs: None = None
+    total_statements: None = None
     methodology_version: str
     rationale: str
 
