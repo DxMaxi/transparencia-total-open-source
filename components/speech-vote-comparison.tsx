@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { CheckIcon, ExternalLinkIcon, ShieldCheckIcon } from "@/components/icons";
 import type { SpeechVoteComparisonData } from "@/types/public-data";
 
 export function SpeechVoteComparison({ data }: { data: SpeechVoteComparisonData }) {
   const [showMethod, setShowMethod] = useState(false);
   const { statement, vote, comparison } = data;
-  const excluded = Math.max(comparison.totalStatements - comparison.comparablePairs, 0);
+  const titleId = useId();
   const outcomeLabel = {
     CONSISTENT: "CONSISTENTE",
     INCONSISTENT: "INCONSISTENTE",
@@ -15,11 +15,11 @@ export function SpeechVoteComparison({ data }: { data: SpeechVoteComparisonData 
   }[comparison.outcome];
 
   return (
-    <section className="investigator-card comparison-v2" aria-labelledby="comparison-v2-title">
+    <section className="investigator-card comparison-v2" aria-labelledby={titleId}>
       <div className="investigator-card__heading">
         <div>
           <span className="eyebrow">Discurso público vs. voto real</span>
-          <h2 id="comparison-v2-title">A mesma matéria, lado a lado</h2>
+          <h2 id={titleId}>A mesma matéria, lado a lado</h2>
         </div>
         <span className="review-state-chip">Comparação revista</span>
       </div>
@@ -66,30 +66,18 @@ export function SpeechVoteComparison({ data }: { data: SpeechVoteComparisonData 
       </div>
 
       <div className="coherence-result">
-        <div
-          className="coherence-score"
-          role="img"
-          aria-label={comparison.score == null ? "Índice agregado ainda indisponível" : `${comparison.score} por cento nos pares comparáveis`}
-        >
-          <strong>{comparison.score == null ? "—" : `${comparison.score}%`}</strong>
-          <span>pares revistos</span>
-        </div>
         <div className="coherence-copy">
           <span className="outcome-chip"><CheckIcon /> {outcomeLabel}</span>
-          <h3>Índice de coerência factual</h3>
+          <h3>Resultado deste par</h3>
           <p>{comparison.rationale}</p>
-          <div className="coverage-row">
-            <span><strong>{comparison.comparablePairs}</strong> par comparável</span>
-            <span><strong>{comparison.totalStatements}</strong> declarações analisadas</span>
-            <span><strong>{excluded}</strong> excluídas por insuficiência</span>
-          </div>
+          <p>Esta revisão abrange apenas a declaração e o voto apresentados. Não representa uma avaliação global da pessoa.</p>
           <button type="button" className="method-toggle" onClick={() => setShowMethod((value) => !value)}>
-            {showMethod ? "Ocultar método" : "Como é calculado?"}
+            {showMethod ? "Ocultar método" : "Método e limites"}
           </button>
           {showMethod && (
             <div className="method-disclosure">
               <p>
-                Percentagem = pares consistentes ÷ pares comparáveis revistos. Pares inconclusivos ou sobre matérias diferentes não entram no denominador.
+                Um índice agregado exige um universo revisto, período e metodologia comuns. Esses elementos não estão comprovados por este par; não são apresentados percentagens ou totais de cobertura.
               </p>
               <span>Versão: {comparison.methodologyVersion}</span>
             </div>

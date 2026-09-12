@@ -469,7 +469,6 @@ def test_public_projection_queries_require_matching_archive_attestations() -> No
     assert "source_archive_attestations evidence_archive" in promises_source
     assert "source_archive_attestations relationship_archive" in investigator_source
     assert "source_archive_attestations comparison_archive" in investigator_source
-    assert "source_archive_attestations all_statement_archive" in investigator_source
     assert "source_archive_attestations vote_archive" in investigator_source
     assert "source_archive_attestations statement_archive" in investigator_source
     assert "contract_archive.source_document_id = sd.id" not in investigator_source

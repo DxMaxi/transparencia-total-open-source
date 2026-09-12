@@ -428,8 +428,9 @@ type RawInvestigator = {
     comparison: {
       outcome: "CONSISTENT" | "INCONSISTENT" | "INCONCLUSIVE";
       score?: string | number | null;
-      comparable_pairs: number;
-      total_statements: number;
+      scope?: "INDIVIDUAL_PAIR";
+      comparable_pairs?: number | null;
+      total_statements?: number | null;
       methodology_version: string;
       rationale: string;
     };
@@ -2148,9 +2149,11 @@ export async function loadPublicInvestigator(): Promise<LoadedData<PublicInvesti
           },
           comparison: {
             outcome: item.comparison.outcome,
-            score: item.comparison.score == null ? null : Number(item.comparison.score),
-            comparablePairs: item.comparison.comparable_pairs,
-            totalStatements: item.comparison.total_statements,
+            // Uma resposta antiga pode misturar métricas de outro período. Este percurso
+            // apresenta apenas o par individual, mesmo durante um deployment gradual.
+            score: null,
+            comparablePairs: null,
+            totalStatements: null,
             methodologyVersion: item.comparison.methodology_version,
             rationale: item.comparison.rationale,
           },
