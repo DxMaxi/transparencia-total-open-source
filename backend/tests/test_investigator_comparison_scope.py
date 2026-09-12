@@ -107,6 +107,13 @@ async def test_investigator_query_publication_and_withdrawal_on_migrated_schema(
         assert len(published) == 1
         metrics = PublishedComparisonMetrics(**published[0]["comparison"])
         assert metrics.score is metrics.comparable_pairs is metrics.total_statements is None
+        await connection.execute(
+            "UPDATE source_archive_attestations SET content_sha256 = repeat('b',64)"
+        )
+        assert not (await repository.get_public_investigator_dataset(limit=10))["comparisons"]
+        await connection.execute(
+            "UPDATE source_archive_attestations SET content_sha256 = repeat('a',64)"
+        )
         await connection.execute("UPDATE vote_records SET actor_source_id = 'different-person'")
         assert not (await repository.get_public_investigator_dataset(limit=10))["comparisons"]
         await connection.execute("UPDATE vote_records SET actor_source_id = 'official-1'")
