@@ -7,6 +7,22 @@ import { resolveProductionMigrationTarget } from "../scripts/production-migratio
 
 const root = new URL("../", import.meta.url);
 
+test("capacity warnings preserve the integrity check and remain visible as a failed workflow", async () => {
+  const workflow = await readFile(new URL(".github/workflows/archive-integrity.yml", root), "utf8");
+  assert.match(workflow, /DATABASE_WARNING_BYTES:.*450000000/);
+  const capacity = workflow.slice(workflow.indexOf("id: capacity"), workflow.indexOf("id: integrity"));
+  const integrity = workflow.slice(workflow.indexOf("id: integrity"), workflow.indexOf("uses: actions\/upload-artifact"));
+  for (const step of [capacity, integrity]) {
+    assert.match(step, /shell: bash/); // Explicit bash retains pipefail across tee.
+    assert.match(step, /continue-on-error: true/);
+  }
+  assert.match(integrity, /steps\.capacity\.outcome == 'failure'/);
+  assert.match(workflow, /steps\.capacity\.outcome == 'failure' \|\| steps\.integrity\.outcome == 'failure'/);
+  assert.match(workflow, /exit 1/);
+  assert.match(workflow, /backend\/capacity-report\.json/);
+  assert.match(workflow, /backend\/integrity-report\.json/);
+});
+
 test("production migration refuses other projects, transaction pooling and missing authorization", () => {
   const base = {
     ENVIRONMENT: "production",

@@ -1,4 +1,4 @@
-"""Relatório de capacidade do arquivo privado da V4.
+"""Relatório de capacidade da base e do arquivo privado.
 
 A operação é exclusivamente de leitura. Não apaga, compacta, migra ou publica dados.
 Termina com código 2 quando o limite de aviso configurado é atingido, permitindo
@@ -8,22 +8,27 @@ alertar antes de ser necessário contratar armazenamento adicional.
 import asyncio
 import json
 import os
+from datetime import UTC, datetime
 
 import asyncpg
 
 from app.core.config import get_settings
+from app.repositories.postgres import _asyncpg_connection_options
 
 DEFAULT_WARNING_BYTES = 400_000_000
+DEFAULT_DATABASE_WARNING_BYTES = 450_000_000
 
 
-def _warning_limit() -> int:
-    raw_value = os.getenv("RAW_ARCHIVE_WARNING_BYTES", str(DEFAULT_WARNING_BYTES))
+def _warning_limit(
+    name: str = "RAW_ARCHIVE_WARNING_BYTES", default: int = DEFAULT_WARNING_BYTES
+) -> int:
+    raw_value = os.getenv(name, str(default))
     try:
         value = int(raw_value)
     except ValueError as exc:
-        raise RuntimeError("RAW_ARCHIVE_WARNING_BYTES deve ser um número inteiro") from exc
+        raise RuntimeError(f"{name} deve ser um número inteiro") from exc
     if value < 10_000_000:
-        raise RuntimeError("RAW_ARCHIVE_WARNING_BYTES deve ser pelo menos 10000000")
+        raise RuntimeError(f"{name} deve ser pelo menos 10000000")
     return value
 
 
@@ -32,32 +37,49 @@ async def report() -> dict[str, object]:
     if settings.database_url is None:
         raise RuntimeError("DATABASE_URL não configurada")
 
-    connection = await asyncpg.connect(settings.database_url.get_secret_value())
+    warning_bytes = _warning_limit()
+    database_warning_bytes = _warning_limit(
+        "DATABASE_WARNING_BYTES", DEFAULT_DATABASE_WARNING_BYTES
+    )
+    dsn, server_settings = _asyncpg_connection_options(settings.database_url.get_secret_value())
+    connection = await asyncpg.connect(
+        dsn, server_settings=server_settings, timeout=10, command_timeout=30
+    )
     try:
-        row = await connection.fetchrow(
-            """
+        async with connection.transaction(isolation="repeatable_read", readonly=True):
+            row = await connection.fetchrow(
+                """
             SELECT
                 COUNT(*)::bigint AS object_count,
                 COALESCE(SUM(byte_size), 0)::bigint AS logical_bytes,
                 COALESCE(pg_total_relation_size('raw_source_objects'), 0)::bigint
                     AS relation_bytes,
-                COALESCE(MAX(byte_size), 0)::bigint AS largest_object_bytes
+                COALESCE(MAX(byte_size), 0)::bigint AS largest_object_bytes,
+                pg_database_size(current_database())::bigint AS database_bytes
             FROM raw_source_objects
             """
-        )
+            )
     finally:
         await connection.close()
 
     if row is None:
         raise RuntimeError("Não foi possível calcular a capacidade do arquivo")
 
-    warning_bytes = _warning_limit()
     relation_bytes = int(row["relation_bytes"])
+    database_bytes = int(row["database_bytes"])
     utilization_percent = round((relation_bytes / warning_bytes) * 100, 2)
-    status = "WARNING" if relation_bytes >= warning_bytes else "OK"
+    reasons = []
+    if relation_bytes >= warning_bytes:
+        reasons.append("ARCHIVE_WARNING_THRESHOLD_REACHED")
+    if database_bytes >= database_warning_bytes:
+        reasons.append("DATABASE_WARNING_THRESHOLD_REACHED")
+    status = "WARNING" if reasons else "OK"
 
     return {
         "status": status,
+        "checked_at": datetime.now(UTC).isoformat(),
+        "read_only": True,
+        "warning_reasons": reasons,
         "storage_backend": "POSTGRES",
         "object_count": int(row["object_count"]),
         "logical_bytes": int(row["logical_bytes"]),
@@ -65,16 +87,23 @@ async def report() -> dict[str, object]:
         "largest_object_bytes": int(row["largest_object_bytes"]),
         "warning_bytes": warning_bytes,
         "utilization_percent": utilization_percent,
+        "database_bytes": database_bytes,
+        "database_warning_bytes": database_warning_bytes,
+        "database_utilization_percent": round(database_bytes / database_warning_bytes * 100, 2),
         "action": (
-            "Preparar migração para armazenamento S3/R2 antes de novas recolhas pesadas."
+            "Resolver a capacidade antes de novas recolhas pesadas; preservar os dados existentes."
             if status == "WARNING"
-            else "Nenhuma compra necessária; continuar a acompanhar a capacidade."
+            else "Abaixo dos limites de aviso configurados; continuar a acompanhar o crescimento."
         ),
     }
 
 
 async def main_async() -> None:
-    result = await report()
+    try:
+        result = await report()
+    except Exception:
+        print(json.dumps({"status": "CHECK_FAILED", "read_only": True}))
+        raise SystemExit(1) from None
     print(json.dumps(result, ensure_ascii=False, indent=2))
     if result["status"] == "WARNING":
         raise SystemExit(2)
