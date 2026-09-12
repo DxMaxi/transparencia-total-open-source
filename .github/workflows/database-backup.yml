@@ -27,7 +27,7 @@ jobs:
       AWS_EC2_METADATA_DISABLED: "true"
       PYTHONUNBUFFERED: "1"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v6
         with:
