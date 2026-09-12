@@ -78,7 +78,7 @@ jobs:
       - name: Validar configuração segregada de staging
         run: node scripts/validate-staging-workflow-inputs.mjs
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version-file: .python-version
           cache: pip
