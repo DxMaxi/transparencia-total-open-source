@@ -11,6 +11,7 @@ from typing import Any, cast
 
 import asyncpg
 
+from app.core.staff_auth import StaffAuthUnavailable
 from app.models.base_organisation import safe_registry_text
 from app.models.editorial import (
     EditorialAction,
@@ -107,16 +108,38 @@ class EditorialRepository:
         self,
         *,
         auth_user_id: uuid.UUID,
+        session_id: uuid.UUID,
         assurance_level: str,
     ) -> StaffSession:
-        row = await self.pool.fetchrow(
-            """
-            SELECT id, auth_user_id, public_alias, role
-            FROM staff_profiles
-            WHERE auth_user_id = $1 AND active = TRUE
-            """,
-            auth_user_id,
-        )
+        try:
+            row = await self.pool.fetchrow(
+                """
+                SELECT staff.id, staff.auth_user_id, staff.public_alias, staff.role
+                FROM public.staff_profiles staff
+                JOIN auth.users account ON account.id = staff.auth_user_id
+                JOIN auth.sessions session
+                  ON session.user_id = account.id AND session.id = $2
+                WHERE staff.auth_user_id = $1 AND staff.active = TRUE
+                  AND account.deleted_at IS NULL
+                  AND (account.banned_until IS NULL OR account.banned_until <= now())
+                  AND (session.not_after IS NULL OR session.not_after > now())
+                  AND ($3 = 'aal1' OR (
+                    $3 = 'aal2' AND session.aal::text = 'aal2'
+                    AND EXISTS (
+                      SELECT 1 FROM auth.mfa_factors factor
+                      WHERE factor.id = session.factor_id
+                        AND factor.user_id = account.id AND factor.status::text = 'verified'
+                    )
+                  ))
+                """,
+                auth_user_id,
+                session_id,
+                assurance_level,
+            )
+        except asyncpg.PostgresError:
+            raise StaffAuthUnavailable(
+                "Não foi possível confirmar a sessão editorial ativa"
+            ) from None
         if row is None:
             raise EditorialNotFoundError("Conta sem autorização editorial ativa")
         if assurance_level not in {"aal1", "aal2"}:

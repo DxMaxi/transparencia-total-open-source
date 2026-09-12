@@ -18,7 +18,23 @@ $bootstrap$;
 CREATE SCHEMA IF NOT EXISTS auth;
 
 CREATE TABLE IF NOT EXISTS auth.users (
-  id UUID PRIMARY KEY
+  id UUID PRIMARY KEY,
+  deleted_at TIMESTAMPTZ,
+  banned_until TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS auth.mfa_factors (
+  id UUID PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id),
+  status TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS auth.sessions (
+  id UUID PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id),
+  factor_id UUID REFERENCES auth.mfa_factors(id),
+  aal TEXT NOT NULL,
+  not_after TIMESTAMPTZ
 );
 
 CREATE TABLE IF NOT EXISTS auth.tt_disposable_test_marker (
