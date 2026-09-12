@@ -95,7 +95,9 @@ export function InvestigatorWorkbench({ dataset }: { dataset: PublicInvestigator
       {matches ? (
         <div className="investigator-stack">
           {filteredEdges.length > 0 && <InterestGraph dataset={filteredGraph} />}
-          {dataset.comparisons[0] && <SpeechVoteComparison data={dataset.comparisons[0]} />}
+          {dataset.comparisons.map((comparison) => (
+            <SpeechVoteComparison key={comparison.id} data={comparison} />
+          ))}
         </div>
       ) : (
         <div className="investigator-empty card">

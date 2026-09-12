@@ -2145,23 +2145,7 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                        vote_sd.publisher::text AS vote_source_publisher,
                        vote_sd.url AS vote_source_url,
                        vote_sd.retrieved_at AS vote_source_retrieved_at,
-                       vote_sd.content_sha256 AS vote_source_sha256,
-                       snapshot.score, snapshot.comparable_count,
-                       (
-                         SELECT COUNT(*)
-                         FROM public_statements all_ps
-                         JOIN source_documents all_statement_sd
-                           ON all_statement_sd.id = all_ps.source_document_id
-                         WHERE all_ps.person_id = p.id
-                           AND EXISTS (
-                             SELECT 1
-                             FROM source_archive_attestations all_statement_archive
-                             WHERE all_statement_archive.source_document_id = all_statement_sd.id
-                               AND all_statement_archive.content_sha256 =
-                                   all_statement_sd.content_sha256
-                               AND all_statement_archive.retrieval_url = all_statement_sd.url
-                           )
-                       ) AS total_statements
+                       vote_sd.content_sha256 AS vote_source_sha256
                 FROM statement_vote_comparisons c
                 JOIN public_statements ps ON ps.id = c.statement_id
                 JOIN people p ON p.id = ps.person_id
@@ -2175,15 +2159,16 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                   AND (to_jsonb(vr) ->> 'actor_source_id') = p.source_id
                   AND vr.source_document_id = ve.source_document_id
                 JOIN source_documents vote_sd ON vote_sd.id = ve.source_document_id
-                LEFT JOIN LATERAL (
-                    SELECT cs.score, cs.comparable_count
-                    FROM coherence_snapshots cs
-                    WHERE cs.person_id = p.id
-                    ORDER BY cs.period_ends_at DESC, cs.computed_at DESC LIMIT 1
-                ) snapshot ON TRUE
                 WHERE c.publication_status = 'PUBLISHED'
                   AND c.verification_status = 'VERIFIED'
-                  AND c.current_publication_snapshot_id IS NOT NULL
+                  AND (
+                    SELECT publication.action::text
+                    FROM editorial_publication_events publication
+                    WHERE publication.target_type = 'STATEMENT_VOTE_COMPARISON'
+                      AND publication.target_id = c.id
+                    ORDER BY publication.created_at DESC, publication.id DESC
+                    LIMIT 1
+                  ) = 'PUBLISH'
                   AND c.comparable = TRUE
                   AND c.outcome IN ('CONSISTENT', 'INCONSISTENT', 'INCONCLUSIVE')
                   AND vr.choice IN ('FAVOR', 'AGAINST', 'ABSTENTION', 'ABSENT')
@@ -2295,9 +2280,12 @@ class PostgresRepository(BasePromotionRepositoryMixin, BaseStagingRepositoryMixi
                 },
                 "comparison": {
                     "outcome": row["outcome"],
-                    "score": row["score"],
-                    "comparable_pairs": row["comparable_count"] or 1,
-                    "total_statements": max(int(row["total_statements"]), 1),
+                    # A fonte deste par não comprova um universo estatístico, período
+                    # agregado ou população revista. Não juntar a última métrica da pessoa.
+                    "scope": "INDIVIDUAL_PAIR",
+                    "score": None,
+                    "comparable_pairs": None,
+                    "total_statements": None,
                     "methodology_version": row["methodology_version"],
                     "rationale": row["rationale"],
                 },
