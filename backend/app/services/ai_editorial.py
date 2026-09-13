@@ -64,22 +64,20 @@ def validate_summary_against_source(summary: CitizenSummary, source_text: str) -
         and _ABSTENTION_TEXT in _searchable(summary.summary_2_minutes)
         and any(_ABSTENTION_TEXT in _searchable(item) for item in summary.uncertainties)
     )
-    if abstained:
-        return True
-    if not summary.source_anchors:
+    if not abstained and not summary.source_anchors:
         raise EditorialConflictError("A proposta de IA não contém âncoras verificáveis")
 
     searchable_source = _searchable(source_text)
     missing = [
         anchor.section
         for anchor in summary.source_anchors
-        if _searchable(anchor.section) not in searchable_source
+        if not _searchable(anchor.section) or _searchable(anchor.section) not in searchable_source
     ]
     if missing:
         raise EditorialConflictError(
             "A proposta de IA contém uma âncora que não existe no documento oficial"
         )
-    return False
+    return abstained
 
 
 class AiEditorialService:

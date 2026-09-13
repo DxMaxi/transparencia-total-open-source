@@ -11,6 +11,11 @@ preservação dos dados e criação do perfil ADMIN. O responsável concluiu MFA
 ao painel; os ensaios de staging continuam separados. Consulte também a
 [revisão de todos os documentos](V5_DOCUMENTATION_AUDIT_2026-09-11.md).
 
+Atualização de 13-09-2026: [staging remoto separado](V5_STAGING_2026-09-12.md) criado no plano
+gratuito, com 33 migrações, RLS e privilégios verificados. A PR #148 publicou a verificação
+de revogação das sessões. O [avaliador de IA](V5_AI_EVALUATION.md) está preparado, mas a
+qualidade do modelo continua `NOT_EVALUATED`; não foram usadas respostas reais nesta avaliação.
+
 ## A. Baseline integrada
 
 - [x] Licença PolyForm Noncommercial para o software V5 documentada.
@@ -124,13 +129,14 @@ ao painel; os ensaios de staging continuam separados. Consulte também a
 - [x] CI confirma a FK `auth.users`, RLS, triggers, `search_path` e ausência de privilégios browser.
 - [x] Workflow manual de staging integrado com confirmações por operação e recusa do destino de
   produção.
-- [ ] Inventário de esquema, triggers, RLS e privilégios revisto no projeto de staging confirmado.
+- [x] Inventário de esquema, triggers, RLS e privilégios revisto no projeto de staging confirmado:
+  79 tabelas com RLS, zero privilégios browser e zero triggers de aplicação desativados.
 - [x] CI confirma que defaults globais e específicos de `public` não reabrem objetos futuros aos
   papéis browser.
-- [ ] Migrações V5 aplicadas em staging.
-- [ ] Projeto Supabase usa signing key assimétrica.
+- [x] Migrações V5 aplicadas em staging: 33 checksums exatos comprovados.
+- [x] Projeto Supabase usa signing key assimétrica: JWKS de staging publica chave ES256/EC.
 - [ ] URL público e redirects exatos configurados sem wildcard amplo.
-- [ ] Registo público desativado; convite reservado ao dashboard Supabase.
+- [x] Registo público desativado; convite reservado ao dashboard Supabase.
 - [ ] Conta `ADMIN` de ensaio criada e associada a `staff_profiles`.
 - [ ] Conta `REVIEWER` de ensaio criada apenas se necessária ao teste de funções.
 - [ ] MFA/TOTP configurado.
@@ -317,6 +323,9 @@ operacionais, a associação de partes ou a publicação de relações.
 - [ ] Cenários usam factos e cálculos determinísticos, não previsão livre.
 - [ ] Limite de custo, tamanho, taxa e cache configurados.
 - [ ] Avaliação mede fidelidade, omissões, abstenção e diferenças entre grupos.
+  - [x] Corpus sintético de oito casos e avaliador offline com 24 amostras exigidas,
+    integridade das revisões e recusa de métricas globais com dados incompletos.
+  - [ ] Executar modelo, rever as respostas, ampliar corpus representativo e registar resultados.
 
 ## J. Pesquisa, comparação e PWA
 
@@ -386,7 +395,9 @@ operacionais, a associação de partes ou a publicação de relações.
 - [x] História Git integral pesquisada por segredos, dumps e identificadores protegidos no checkpoint V5.19;
   a [auditoria sanitizada](V5_RELEASE_PRIVACY_AUDIT.md) identificou um contacto pessoal histórico.
   Em 07-09-2026 o responsável confirmou que a visibilidade pública foi intencional. Esta decisão
-  não resolve nem aceita automaticamente o contacto histórico; nova verificação não está documentada.
+  não resolve nem aceita automaticamente o contacto histórico. A reverificação de 13-09-2026
+  está documentada na auditoria: os cinco alertas de segredos são exemplos/testes; o contacto
+  histórico continua presente e o respetivo requisito de privacidade permanece aberto.
 - [ ] Todas as credenciais anteriormente expostas confirmadas como revogadas.
 - [ ] Licenças do software, conteúdo e fontes verificadas.
 - [ ] Comunicação pública usa `source-available` enquanto vigorar PolyForm Noncommercial.

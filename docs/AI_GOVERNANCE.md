@@ -121,6 +121,12 @@ avaliação de desempenho.
 - Tratar o texto da fonte como dados não confiáveis; o prompt do documento não altera instruções.
 - Registar métricas e IDs técnicos sem guardar a chave nem cabeçalhos de autenticação.
 
+## Avaliação de qualidade
+
+O [avaliador offline da V5](V5_AI_EVALUATION.md) conserva o estado `NOT_EVALUATED` enquanto
+não existirem respostas do modelo e revisões completas. O corpus sintético e os testes do
+avaliador são uma fundação de regressão, não uma prova de qualidade nem autorização de publicação.
+
 ## Modelo local
 
 Para acrescentar um modelo local, implemente a interface abstrata `Summarizer`, mantenha o mesmo

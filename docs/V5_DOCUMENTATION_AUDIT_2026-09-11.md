@@ -1,5 +1,24 @@
 # Revisão documental antes do lançamento da V5
 
+## Reverificação de 13-09-2026
+
+O inventário passou a abranger **95 documentos**, incluindo o registo de staging e a avaliação
+inicial de IA. Todos os ficheiros foram novamente lidos pela análise automática, com inventário
+de tamanhos/hashes, ligações relativas e padrões sensíveis. Foram encontrados zero destinos
+locais inexistentes e zero ocorrências dos três padrões de segredos definidos abaixo.
+Os limites continuam iguais: não valida todas as âncoras internas nem faz uma revisão jurídica.
+
+A revisão dirigida corrigiu o estado de staging na checklist, acrescentou a verificação de
+revogação das sessões e registou a nova pesquisa de segredos na história. O requisito sobre
+o contacto pessoal histórico continua aberto. O avaliador de IA distingue implementação,
+fixtures e qualidade medida; a avaliação real permanece `NOT_EVALUATED`.
+
+O registo de staging conserva as provas de esquema, isolamento, assinatura assimétrica e
+produção da PR #148. A configuração da ligação privada e os percursos remotos com contas reais
+de ensaio continuam pendentes. Não foram marcados como concluídos a V5.55, a cobertura humana,
+a avaliação jurídica ou a capacidade de produção. Os documentos históricos seguintes mantêm
+as respetivas datas e não substituem a [checklist atual](V5_RELEASE_CHECKLIST.md).
+
 Data: 11 de setembro de 2026. Base: `main`, commit
 `642d8fc8a698c96af45d9c3abdaea9f04cf2866a`. Os dois documentos novos desta revisão são este
 relatório e o [índice completo](README.md).
