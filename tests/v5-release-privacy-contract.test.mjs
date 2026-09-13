@@ -88,7 +88,8 @@ test("the release separates intentional visibility from the unresolved privacy g
     checklist,
     /\[x\] Visibilidade pública do repositório autorizada separadamente[^\n]*07-09-2026/,
   );
-  assert.match(checklist, /nova verificação não está documentada/);
+  assert.match(checklist, /contacto\s+histórico continua presente/);
+  assert.match(checklist, /requisito de privacidade permanece aberto/);
   assert.match(checklist, /V5_RELEASE_PRIVACY_AUDIT\.md/);
   assert.match(technicalAudit, /V5_RELEASE_PRIVACY_AUDIT\.md/);
 });

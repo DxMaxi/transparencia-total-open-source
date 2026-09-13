@@ -111,15 +111,21 @@ export function resolveStagingWorkflowRequest(
     throw new Error("SUPABASE_URL não corresponde ao project ref de staging.");
   }
 
-  const corsOrigin = exactHttpsOrigin(
-    required(environment, "STAGING_CORS_ORIGIN"),
-    "STAGING_CORS_ORIGIN",
-  );
-  if (PRODUCTION_FRONTEND_HOSTS.has(corsOrigin.hostname)) {
-    throw new Error("A origem frontend de staging não pode ser o domínio de produção.");
-  }
-  if (required(environment, "CORS_ORIGINS") !== corsOrigin.origin) {
-    throw new Error("CORS_ORIGINS tem de coincidir exatamente com STAGING_CORS_ORIGIN.");
+  const readOnly = ["inventory-read-only", "inspect-readiness-read-only"].includes(operation);
+  const hasCors = environment.STAGING_CORS_ORIGIN?.trim() || environment.CORS_ORIGINS?.trim();
+  // Os inspetores não arrancam um servidor HTTP. Podem funcionar antes de existir frontend.
+  // Uma configuração presente continua a ser validada, mesmo numa operação read-only.
+  if (!readOnly || hasCors) {
+    const corsOrigin = exactHttpsOrigin(
+      required(environment, "STAGING_CORS_ORIGIN"),
+      "STAGING_CORS_ORIGIN",
+    );
+    if (PRODUCTION_FRONTEND_HOSTS.has(corsOrigin.hostname)) {
+      throw new Error("A origem frontend de staging não pode ser o domínio de produção.");
+    }
+    if (required(environment, "CORS_ORIGINS") !== corsOrigin.origin) {
+      throw new Error("CORS_ORIGINS tem de coincidir exatamente com STAGING_CORS_ORIGIN.");
+    }
   }
 
   required(environment, "DATABASE_URL");

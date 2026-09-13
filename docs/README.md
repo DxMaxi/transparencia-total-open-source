@@ -7,8 +7,13 @@ Reverificação em 12-09-2026: **93 documentos** atuais, incluindo este índice,
 atestação posterior. O inventário original abaixo permanece histórico; as provas e limitações
 atuais estão no relatório de revisão e na última entrada do registo de entrega.
 
+Reverificação de 13-09-2026: **95 documentos**, com staging separado e avaliador inicial de IA.
+As condições ainda abertas estão explícitas na checklist; a V5 não está declarada concluída.
+
 ## Começar aqui
 
+- [Staging separado e revogação de sessões](V5_STAGING_2026-09-12.md): configuração e provas de 13-09-2026.
+- [Avaliação inicial de IA](V5_AI_EVALUATION.md): corpus e avaliador; modelo ainda não avaliado.
 - [Checklist canónica de conclusão da V5](V5_RELEASE_CHECKLIST.md): condições e provas por ambiente.
 - [Registo de entrega e operações de produção](V5_DELIVERY_2026-09-09.md): consultar a entrada mais recente.
 - [Revisão documental completa do inventário](V5_DOCUMENTATION_AUDIT_2026-09-11.md): alcance, correções e lacunas.

@@ -1,5 +1,32 @@
 # V5.19 — auditoria de privacidade e segredos do candidato
 
+## Reverificação — 13 de setembro de 2026
+
+Foi repetida a pesquisa sobre todas as referências Git locais no checkpoint
+`afe7f666cd7dd2fcc4866efc55e9392cafe01e5e`, antes da integração da PR #148.
+Gitleaks 8.30.0, com o checksum oficial do ZIP indicado abaixo e redação integral dos valores,
+analisou **411 commits com patches**, cerca de **13,07 MB**, e devolveu cinco alertas:
+quatro UUID sintéticos no teste editorial e um placeholder documentado em `.env.example`.
+Os cinco candidatos foram reconciliados com os blobs exatos, sem divulgar os valores.
+
+A pesquisa adicional percorreu **433 commits alcançáveis**, **2 299 blobs únicos** e
+**44 128 928 bytes**. Esta contagem inclui commits sem patches analisados pelo Gitleaks.
+Não encontrou identidades privadas age, cabeçalhos de chave privada, secret keys Supabase
+ou chaves OpenAI nos padrões pesquisados. Encontrou **oito versões de ficheiros com contacto
+Gmail**, exclusivamente nos dois caminhos históricos já identificados abaixo. Os cinco
+padrões, incluindo Gmail, não tiveram ocorrências nos ficheiros então versionados.
+
+Na continuação sobre `f319ce98d884c218c98bf629a6ac283271927091` com as alterações de avaliação
+IA preparadas, Gitleaks analisou uma cópia isolada de **641 ficheiros versionados** e devolveu
+apenas três alertas nos mesmos dois caminhos: duas fixtures editoriais e o placeholder.
+Ficheiros privados ignorados, variáveis locais e artefactos de recuperação não foram copiados
+para esta pesquisa do código publicável. Esta observação não certifica os próximos commits.
+
+**O requisito de privacidade histórica permanece aberto.** A ausência de novas credenciais
+confirmadas no código não comprova a revogação externa de segredos anteriormente expostos,
+incluindo material partilhado fora do Git. Não foi reescrita a história, alterada a visibilidade,
+revogada a sessão do responsável ou publicado o contacto neste relatório.
+
 ## Decisão posterior — 7 de setembro de 2026
 
 O responsável do projeto confirmou expressamente que tornou o repositório público de forma

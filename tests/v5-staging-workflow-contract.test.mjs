@@ -110,3 +110,26 @@ test("the staging workflow is manual, segregated and inventories before any migr
   assert.match(service, /SHOW transaction_read_only/);
   assert.match(command, /transaction\(readonly=True, isolation="repeatable_read"\)/);
 });
+
+test("only read-only staging inspections may precede the frontend origin", () => {
+  for (const [operation, confirmation] of Object.entries(STAGING_OPERATION_CONFIRMATIONS)) {
+    const request = environment({
+      REQUESTED_OPERATION: operation,
+      REQUESTED_CONFIRMATION: confirmation,
+      STAGING_CORS_ORIGIN: "",
+      CORS_ORIGINS: "",
+    });
+    if (["inventory-read-only", "inspect-readiness-read-only"].includes(operation)) {
+      assert.equal(resolveStagingWorkflowRequest(request).operation, operation);
+      assert.throws(() => resolveStagingWorkflowRequest({ ...request, DATABASE_URL: "" }));
+      assert.throws(() => resolveStagingWorkflowRequest({
+        ...request, STAGING_FORBIDDEN_PROJECT_REFS: PROJECT_REF,
+      }));
+      assert.throws(() => resolveStagingWorkflowRequest({
+        ...request, CORS_ORIGINS: "https://www.transparenciatotal.pt",
+      }));
+    } else {
+      assert.throws(() => resolveStagingWorkflowRequest(request), /STAGING_CORS_ORIGIN/);
+    }
+  }
+});
