@@ -8,6 +8,10 @@ de tamanhos/hashes, ligações relativas e padrões sensíveis. Foram encontrado
 locais inexistentes e zero ocorrências dos três padrões de segredos definidos abaixo.
 Os limites continuam iguais: não valida todas as âncoras internas nem faz uma revisão jurídica.
 
+Foram consultados 68 URLs externos únicos. 67 responderam HTTP 200 na primeira passagem;
+a página parlamentar de reuniões plenárias excedeu o tempo de espera e respondeu HTTP 200
+na repetição. Esta prova de acessibilidade momentânea não valida o conteúdo dos destinos.
+
 A revisão dirigida corrigiu o estado de staging na checklist, acrescentou a verificação de
 revogação das sessões e registou a nova pesquisa de segredos na história. O requisito sobre
 o contacto pessoal histórico continua aberto. O avaliador de IA distingue implementação,
