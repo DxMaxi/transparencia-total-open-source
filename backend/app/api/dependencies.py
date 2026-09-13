@@ -399,6 +399,7 @@ async def get_staff_session(
         verified = await verifier.verify_bearer(authorization)
         return await repository.staff_session(
             auth_user_id=verified.auth_user_id,
+            session_id=verified.session_id,
             assurance_level=verified.assurance_level,
         )
     except InvalidStaffToken as exc:

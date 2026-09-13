@@ -25,6 +25,7 @@ class InvalidStaffToken(ValueError):
 @dataclass(frozen=True, slots=True)
 class VerifiedStaffToken:
     auth_user_id: UUID
+    session_id: UUID
     assurance_level: Literal["aal1", "aal2"]
     expires_at: int
 
@@ -89,7 +90,7 @@ class SupabaseJwtVerifier:
                 audience=self._settings.supabase_jwt_audience,
                 issuer=self.issuer,
                 leeway=30,
-                options={"require": ["exp", "iat", "sub", "aud", "aal", "role"]},
+                options={"require": ["exp", "iat", "sub", "aud", "aal", "role", "session_id"]},
             )
         except jwt.InvalidTokenError as exc:
             raise InvalidStaffToken("Sessão expirada ou inválida") from exc
@@ -101,12 +102,14 @@ class SupabaseJwtVerifier:
             raise InvalidStaffToken("Tipo de sessão não autorizado")
         try:
             auth_user_id = UUID(str(claims["sub"]))
+            session_id = UUID(str(claims["session_id"]))
             expires_at = int(claims["exp"])
         except (KeyError, TypeError, ValueError) as exc:
             raise InvalidStaffToken("Identidade de sessão inválida") from exc
 
         return VerifiedStaffToken(
             auth_user_id=auth_user_id,
+            session_id=session_id,
             assurance_level=assurance_level,
             expires_at=expires_at,
         )

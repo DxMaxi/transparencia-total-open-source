@@ -41,6 +41,7 @@ def _token(private_key: object, *, user_id: uuid.UUID, **overrides: object) -> s
         "exp": now + 300,
         "aal": "aal2",
         "role": "authenticated",
+        "session_id": str(uuid.uuid4()),
     }
     claims.update(overrides)
     return jwt.encode(
@@ -70,6 +71,7 @@ async def test_verifies_supabase_signature_issuer_audience_and_aal(
 
     assert first.auth_user_id == user_id
     assert first.assurance_level == "aal2"
+    assert isinstance(first.session_id, uuid.UUID)
     assert second == first
     assert route.call_count == 1
 
@@ -117,3 +119,23 @@ async def test_authentication_is_fail_closed_when_not_configured() -> None:
     with pytest.raises(StaffAuthUnavailable, match="não configurada"):
         await verifier.verify_bearer("Bearer token")
     await verifier.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("session_id", [None, "", "invalid-session", 123])
+async def test_rejects_token_without_valid_session_id(signing_material, session_id):
+    private_key, public_jwk = signing_material
+    verifier = SupabaseJwtVerifier(
+        Settings(_env_file=None, supabase_url="https://example.supabase.co")
+    )
+    try:
+        with respx.mock:
+            respx.get(verifier.jwks_url).mock(
+                return_value=Response(200, json={"keys": [public_jwk]})
+            )
+            with pytest.raises(InvalidStaffToken):
+                await verifier.verify_bearer(
+                    f"Bearer {_token(private_key, user_id=uuid.uuid4(), session_id=session_id)}"
+                )
+    finally:
+        await verifier.close()
