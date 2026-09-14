@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import { buildContentSecurityPolicy } from "./lib/content-security-policy";
+import { isNonPublicDeployment } from "./lib/deployment-environment";
 
 const isDevelopment = process.env.NODE_ENV !== "production";
 const contentSecurityPolicy = buildContentSecurityPolicy({ isDevelopment });
@@ -32,6 +33,9 @@ const nextConfig: NextConfig = {
       {
         source: "/(.*)",
         headers: [
+          ...(isNonPublicDeployment()
+            ? [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }]
+            : []),
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "X-Frame-Options", value: "DENY" },
           { key: "X-XSS-Protection", value: "0" },
