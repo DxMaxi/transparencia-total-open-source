@@ -134,6 +134,11 @@ qualidade do modelo continua `NOT_EVALUATED`; não foram usadas respostas reais 
 - [x] CI confirma que defaults globais e específicos de `public` não reabrem objetos futuros aos
   papéis browser.
 - [x] Migrações V5 aplicadas em staging: 33 checksums exatos comprovados.
+- [x] Ligação privada do workflow de staging comprovada com SSL e inventário read-only:
+  [34781902750](https://github.com/DxMaxi/transparencia-total-open-source/actions/runs/34781902750).
+- [x] API separada no Render Free com ligação privada instalada e readiness HTTP 200 em 14-09.
+- [ ] Frontend separado publicado e verificado; projeto Vercel Hobby criado, ainda sem prova
+  do site final. Inspeção editorial passa 15/16 controlos, faltando ADMIN.
 - [x] Projeto Supabase usa signing key assimétrica: JWKS de staging publica chave ES256/EC.
 - [ ] URL público e redirects exatos configurados sem wildcard amplo.
 - [x] Registo público desativado; convite reservado ao dashboard Supabase.

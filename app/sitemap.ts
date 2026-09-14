@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { loadPublicAiExplanations, loadPublicPoliticians } from "@/lib/public-data";
 import { SITE_URL } from "@/lib/site";
+import { isNonPublicDeployment } from "@/lib/deployment-environment";
 
 const publicRoutes = [
   "",
@@ -23,6 +24,7 @@ const publicRoutes = [
 export const revalidate = 60;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  if (isNonPublicDeployment()) return [];
   const staticEntries: MetadataRoute.Sitemap = publicRoutes.map((route) => ({
     url: `${SITE_URL}${route}`,
     lastModified: new Date("2026-08-13T00:00:00Z"),

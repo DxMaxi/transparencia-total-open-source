@@ -154,3 +154,17 @@ implementar, sem autorização para novos custos nem eliminação de dados.
 O handoff confirma agora MFA, restauro com aviso, remoção da chave temporária e a decisão de não
 publicar nome/email. A conclusão permanece: **V5 integral ainda não pronta para lançamento**.
 As limitações são requisitos operacionais reais, não apenas documentação por atualizar.
+
+## Continuação de 14 de setembro de 2026
+
+O inventário automático voltou a ler os 95 documentos versionados, sem destinos de ficheiros
+locais em falta e sem ocorrências dos três padrões de segredos pesquisados. Este resultado
+é limitado aos controlos descritos no início do relatório; não substitui revisão jurídica
+nem resolve o contacto que permanece na história Git.
+
+O [registo de staging](V5_STAGING_2026-09-12.md) foi corrigido: a ligação privada do GitHub
+passou o inventário remoto e já está instalada na API Render separada, cuja readiness
+responde HTTP 200. A inspeção editorial passou 15/16 controlos, faltando ADMIN; não foi
+apresentada como aprovação integral. O projeto frontend foi criado no plano Hobby e
+recebe proteção de indexação para staging/previews. A checklist mantém por comprovar
+o acesso real, MFA, publicação/retirada e recuperação de Auth.
