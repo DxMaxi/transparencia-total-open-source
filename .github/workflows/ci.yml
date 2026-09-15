@@ -26,7 +26,8 @@ jobs:
       - run: npm run lint
       - run: npm run db:validate
       - run: npm run test:frontend
-      - run: npm run db:generate
+      - name: Gerar cliente sem credenciais de base de dados
+        run: env -u DATABASE_URL npm run db:generate
       - run: npm run build:next
       - run: npm run verify:next-artifact
       - name: Instalar Chromium para E2E local
