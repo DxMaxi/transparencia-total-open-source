@@ -137,10 +137,10 @@ qualidade do modelo continua `NOT_EVALUATED`; não foram usadas respostas reais 
 - [x] Ligação privada do workflow de staging comprovada com SSL e inventário read-only:
   [34781902750](https://github.com/DxMaxi/transparencia-total-open-source/actions/runs/34781902750).
 - [x] API separada no Render Free com ligação privada instalada e readiness HTTP 200 em 14-09.
-- [ ] Frontend separado publicado e verificado; projeto Vercel Hobby criado, ainda sem prova
-  do site final. Inspeção editorial passa 15/16 controlos, faltando ADMIN.
+- [x] Frontend separado publicado no Vercel Hobby em 15-09, com login configurado,
+  exclusão de indexação e redirecionamento para login quando não existe sessão.
 - [x] Projeto Supabase usa signing key assimétrica: JWKS de staging publica chave ES256/EC.
-- [ ] URL público e redirects exatos configurados sem wildcard amplo.
+- [x] URL público e redirects exatos de staging configurados sem wildcard amplo.
 - [x] Registo público desativado; convite reservado ao dashboard Supabase.
 - [ ] Conta `ADMIN` de ensaio criada e associada a `staff_profiles`.
 - [ ] Conta `REVIEWER` de ensaio criada apenas se necessária ao teste de funções.
