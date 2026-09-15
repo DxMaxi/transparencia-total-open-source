@@ -168,3 +168,12 @@ responde HTTP 200. A inspeção editorial passou 15/16 controlos, faltando ADMIN
 apresentada como aprovação integral. O projeto frontend foi criado no plano Hobby e
 recebe proteção de indexação para staging/previews. A checklist mantém por comprovar
 o acesso real, MFA, publicação/retirada e recuperação de Auth.
+
+Em 15-09 a [continuação de staging](V5_STAGING_2026-09-12.md) passou a comprovar também
+frontend e API publicados, compatibilidade pública, exclusão de indexação, CORS exato,
+redirects e recusa de consultas editoriais anónimas. O bloqueio de compilação Prisma foi
+corrigido sem dar credenciais reais ao frontend. O inventário dos 95 documentos voltou a
+passar os controlos automáticos locais. A verificação externa anterior, de 14-09, verificou
+76 URLs e obteve HTTP 200 em todos; não é apresentada como uma nova medição de 15-09.
+Continuam abertos a conta ADMIN e os testes autenticados, revisão humana, requisitos
+jurídicos/privacidade e capacidade. Não foi criado o lançamento `v0.5.0`.
