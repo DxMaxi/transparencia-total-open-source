@@ -15,6 +15,13 @@ API ou no website.
 
 ## Fonte oficial fixada
 
+Execução remota de 21-09-2026: o
+[workflow 35593168205](https://github.com/DxMaxi/transparencia-total-open-source/actions/runs/35593168205)
+concluiu o arquivo e a persistência no staging segregado, após verificar migração, RLS
+e triggers. A consulta independente confirmou uma fotografia, 40 blocos, 1 590 candidatos
+privados e zero promessas públicas ou eventos de publicação. A revisão editorial e os
+critérios de compromisso continuam pendentes; estes candidatos não são promessas aprovadas.
+
 | Campo | Valor revisto |
 |---|---|
 | Documento | Programa do XXV Governo Constitucional |

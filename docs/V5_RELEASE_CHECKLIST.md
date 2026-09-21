@@ -142,7 +142,10 @@ qualidade do modelo continua `NOT_EVALUATED`; não foram usadas respostas reais 
 - [x] Projeto Supabase usa signing key assimétrica: JWKS de staging publica chave ES256/EC.
 - [x] URL público e redirects exatos de staging configurados sem wildcard amplo.
 - [x] Registo público desativado; convite reservado ao dashboard Supabase.
-- [ ] Conta `ADMIN` de ensaio criada e associada a `staff_profiles`.
+- [x] Conta `ADMIN` de ensaio criada por convite autorizado e associada a `staff_profiles`
+  em 21-09-2026; inspeção estrutural aprovada nos 16 controlos
+  ([35593112200](https://github.com/DxMaxi/transparencia-total-open-source/actions/runs/35593112200)).
+  A existência do perfil não comprova MFA nem o percurso autenticado.
 - [ ] Conta `REVIEWER` de ensaio criada apenas se necessária ao teste de funções.
 - [ ] MFA/TOTP configurado.
 - [ ] Sessão `aal1` recusada e sessão `aal2` aceite.
@@ -245,9 +248,11 @@ qualidade do modelo continua `NOT_EVALUATED`; não foram usadas respostas reais 
 ## G. Promessómetro
 
 - [ ] Critério público para identificar um compromisso verificável aprovado.
-- [ ] Programa do XXV Governo arquivado e versionado.
+- [x] Programa do XXV Governo arquivado e versionado em staging segregado.
   - [x] V5.48 — versão oficial fixada em manifesto por URL, data, tamanho, páginas e SHA-256.
-  - [ ] Aplicar a migração e arquivar a versão exata no staging segregado.
+  - [x] Migração comprovada e versão exata arquivada em 21-09-2026:
+    [35593168205](https://github.com/DxMaxi/transparencia-total-open-source/actions/runs/35593168205),
+    1 fotografia privada, 40 blocos e 1 590 candidatos; zero promessas ou eventos públicos.
 - [ ] Todos os compromissos individualizáveis catalogados.
   - [x] V5.48 — 1 590 itens enumerados entram como candidatos privados; isto não os classifica
     automaticamente como compromissos.
@@ -273,6 +278,9 @@ Governo](V5_PROMESSOMETRO_CATALOGUE.md).
   - [x] V5.49 exige um ZIP oficial por ano entre 2012 e o ano da recolha, sem lacunas ou duplicados.
   - [x] Anos civis terminados são históricos; o ano corrente permanece sempre provisório.
   - [x] Catálogo, recursos e hashes ficam privados, append-only e sem criar qualquer contrato.
+  - [x] Inventário remoto comprovado em 21-09-2026: uma fotografia e 15 recursos de
+    2012–2026, sem descarregar ZIP ou criar lotes de contratos
+    ([35593387248](https://github.com/DxMaxi/transparencia-total-open-source/actions/runs/35593387248)).
 - [ ] Lotes completos arquivados e persistidos apenas em staging.
 - [x] V5.50 — proposta editorial privada por contrato BASE e identificador oficial exato.
   - [x] Fonte, arquivo, catálogo temporal, limitações e contagens do lote normalizado são reconstruídos no servidor, sem alegar cobertura integral do ZIP.

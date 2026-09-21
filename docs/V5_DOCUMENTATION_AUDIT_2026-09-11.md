@@ -177,3 +177,18 @@ passar os controlos automáticos locais. A verificação externa anterior, de 14
 76 URLs e obteve HTTP 200 em todos; não é apresentada como uma nova medição de 15-09.
 Continuam abertos a conta ADMIN e os testes autenticados, revisão humana, requisitos
 jurídicos/privacidade e capacidade. Não foi criado o lançamento `v0.5.0`.
+
+## Continuação de 21 de setembro de 2026
+
+Antes desta atualização, a análise automática voltou a ler 95 documentos versionados
+(731 759 bytes), com zero destinos locais inexistentes e zero ocorrências dos três padrões
+de segredos pesquisados. Os 80 URLs externos encontrados responderam HTTP 200. Mantêm-se
+os limites da auditoria: não é uma revisão jurídica, não valida todas as âncoras nem fecha
+o contacto pessoal histórico ou a confirmação de revogação de todas as credenciais antigas.
+
+A checklist foi corrigida com provas remotas: ADMIN de ensaio criado por convite autorizado,
+16 controlos estruturais aprovados, Programa do Governo arquivado com 1 590 candidatos
+privados e catálogo BASE com 15 recursos anuais. O [registo de staging](V5_STAGING_2026-09-12.md)
+identifica as execuções, contagens e fronteiras de publicação. Os ensaios MFA e editoriais
+autenticados, revisão humana, V5.55, requisitos jurídicos e capacidade continuam abertos.
+Nenhuma dessas operações publicou dados ou concluiu a release `v0.5.0`.
