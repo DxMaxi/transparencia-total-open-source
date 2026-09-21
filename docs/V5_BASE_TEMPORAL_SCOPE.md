@@ -83,9 +83,14 @@ impede fotografias com lacunas, contagens falsas ou classificação temporal inc
 ## Limites desta etapa
 
 A V5.49 fecha somente o primeiro item do Investigador Cívico: definir e provar o âmbito temporal.
+Em 21-09-2026, a migração e a operação remota foram comprovadas no staging segregado pelo
+[workflow 35593387248](https://github.com/DxMaxi/transparencia-total-open-source/actions/runs/35593387248).
+Foram persistidos o JSON oficial atestado (45 985 bytes), uma fotografia temporal e 15
+recursos anuais entre 2012 e 2026. O ano corrente permanece provisório. Uma consulta
+independente confirmou zero lotes de contratos e zero eventos de publicação.
+
 Continuam separados e pendentes:
 
-- executar a migração e a operação em staging real;
 - descarregar e arquivar cada ZIP anual;
 - ligar cada lote de contratos ao recurso exato desta fotografia;
 - medir linhas lidas, excluídas, em conflito e normalizadas por ano;

@@ -1,6 +1,10 @@
 # Transparência Total / Fator Cívico — V5 em desenvolvimento
 
-> **Ponto de situação — 11 de setembro de 2026:** os contratos de código chegam à V5.54.
+> **Ponto de situação — 21 de setembro de 2026:** os contratos de código chegam à V5.54.
+> O [staging separado](docs/V5_STAGING_2026-09-12.md) tem site/API publicados, ADMIN de ensaio
+> e inspeção estrutural aprovada. O Programa do Governo e o inventário anual BASE foram
+> arquivados exclusivamente em privado. MFA e circuito editorial autenticado ainda carecem
+> de prova, assim como os restantes requisitos editoriais, jurídicos e de capacidade.
 > A conclusão pública da V5 continua condicionada à [checklist de lançamento](docs/V5_RELEASE_CHECKLIST.md).
 > O [índice de todos os documentos](docs/README.md) distingue instruções atuais, contratos por etapa
 > e provas históricas; a [revisão documental](docs/V5_DOCUMENTATION_AUDIT_2026-09-11.md)
@@ -29,7 +33,7 @@ definição da Open Source Initiative.
 > commit final desse fecho. A V5 começa pela governação de licença e pelo circuito editorial
 > privado; esta branch não altera os dados aprovados da V4.
 
-> **V5.1 a V5.54 preparadas; ativação remota de staging pendente:** o painel privado usa
+> **Contratos técnicos V5.1 a V5.54; conclusão operacional ainda pendente:** o painel privado usa
 > login por convite,
 > MFA obrigatório, funções de administrador/revisor, comparação entre fonte atestada e JSON
 > normalizado, versões e decisões append-only. A V5.2 acrescentou propostas parlamentares privadas,

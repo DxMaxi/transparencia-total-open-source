@@ -10,9 +10,14 @@ atuais estão no relatório de revisão e na última entrada do registo de entre
 Reverificação de 13-09-2026: **95 documentos**, com staging separado e avaliador inicial de IA.
 As condições ainda abertas estão explícitas na checklist; a V5 não está declarada concluída.
 
+Reverificação de 21-09-2026: os **95 documentos** continuam inventariados. O staging tem
+ADMIN de ensaio, inspeção estrutural aprovada e catálogos privados do Programa do Governo
+e Portal BASE. Consultar as entradas datadas mais recentes; MFA e circuito editorial
+autenticado ainda não estão comprovados.
+
 ## Começar aqui
 
-- [Staging separado e revogação de sessões](V5_STAGING_2026-09-12.md): configuração e provas de 13-09-2026.
+- [Staging separado e revogação de sessões](V5_STAGING_2026-09-12.md): configuração, contas e provas remotas até 21-09-2026.
 - [Avaliação inicial de IA](V5_AI_EVALUATION.md): corpus e avaliador; modelo ainda não avaliado.
 - [Checklist canónica de conclusão da V5](V5_RELEASE_CHECKLIST.md): condições e provas por ambiente.
 - [Registo de entrega e operações de produção](V5_DELIVERY_2026-09-09.md): consultar a entrada mais recente.
