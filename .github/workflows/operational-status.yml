@@ -25,7 +25,7 @@ jobs:
       V4_SOURCE_MAX_AGE_HOURS: "36"
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version-file: .python-version
           cache: pip
