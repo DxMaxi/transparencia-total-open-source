@@ -96,7 +96,7 @@ jobs:
       REVIEWER_ALIAS: ${{ inputs.reviewer_alias }}
       REVIEW_RATIONALE: ${{ inputs.review_rationale }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v6
         if: ${{ inputs.operation == 'migrate' }}
